@@ -24,11 +24,17 @@ function Layout() {
     }
   }, [loading, user, biz, bizLoading, navigate]);
 
-  if (loading || !user) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
-  }
-  if (bizLoading) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading workspace…</div>;
+  if (loading || !user || bizLoading) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background">
+        <div className="flex flex-col items-center gap-3 animate-rise">
+          <div className="h-10 w-10 rounded-2xl bg-primary/10 grid place-items-center">
+            <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          </div>
+          <p className="text-xs text-muted-foreground uppercase tracking-[0.18em]">Loading your workspace</p>
+        </div>
+      </div>
+    );
   }
   if (!biz) {
     return <Outlet />;
