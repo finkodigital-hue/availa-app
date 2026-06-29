@@ -1,14 +1,17 @@
+@import "@fontsource/fraunces/400.css";
+@import "@fontsource/fraunces/500.css";
+@import "@fontsource/fraunces/600.css";
+@import "@fontsource/fraunces/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-
-/*
- * Editorial Light design system
- * Warm paper background, deep ink foreground, terracotta accent.
- * Typography pairs Fraunces (display serif) with Inter (body sans).
- */
 
 @theme inline {
   --font-display: "Fraunces", ui-serif, Georgia, serif;
@@ -58,43 +61,30 @@
 
 :root {
   --radius: 0.875rem;
-  /* Warm editorial paper */
   --background: oklch(0.985 0.008 80);
   --foreground: oklch(0.18 0.01 60);
-
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.01 60);
-
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.01 60);
-
-  /* Terracotta */
   --primary: oklch(0.58 0.16 42);
   --primary-foreground: oklch(0.985 0.008 80);
-
-  /* Warm cream */
   --secondary: oklch(0.93 0.018 75);
   --secondary-foreground: oklch(0.22 0.012 60);
-
   --muted: oklch(0.95 0.012 80);
   --muted-foreground: oklch(0.48 0.012 60);
-
   --accent: oklch(0.93 0.018 75);
   --accent-foreground: oklch(0.22 0.012 60);
-
   --destructive: oklch(0.58 0.22 28);
   --destructive-foreground: oklch(0.985 0.008 80);
-
   --border: oklch(0.9 0.012 75);
   --input: oklch(0.9 0.012 75);
   --ring: oklch(0.58 0.16 42);
-
   --chart-1: oklch(0.58 0.16 42);
   --chart-2: oklch(0.45 0.05 60);
   --chart-3: oklch(0.72 0.1 75);
   --chart-4: oklch(0.35 0.04 60);
   --chart-5: oklch(0.85 0.04 80);
-
   --sidebar: oklch(0.97 0.012 80);
   --sidebar-foreground: oklch(0.18 0.01 60);
   --sidebar-primary: oklch(0.58 0.16 42);
@@ -141,36 +131,8 @@
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
-
-  html {
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-  }
-
-  body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-feature-settings: "ss01", "cv11";
-  }
-
-  h1, h2, h3, .font-display {
-    font-family: var(--font-display);
-    font-feature-settings: "ss01";
-    letter-spacing: -0.02em;
-  }
-}
-
-@utility shadow-soft {
-  box-shadow: 0 1px 2px oklch(0.18 0.01 60 / 0.04), 0 8px 24px oklch(0.18 0.01 60 / 0.06);
-}
-
-@utility card-elevated {
-  background-color: var(--color-card);
-  border-radius: var(--radius-2xl);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 1px 2px oklch(0.18 0.01 60 / 0.04), 0 8px 24px oklch(0.18 0.01 60 / 0.05);
+  * { border-color: var(--color-border); }
+  html { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body { background-color: var(--color-background); color: var(--color-foreground); }
+  h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
 }
