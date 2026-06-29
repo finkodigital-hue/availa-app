@@ -58,6 +58,9 @@ export type Database = {
       }
       bookings: {
         Row: {
+          amount_due_cents: number
+          amount_paid_cents: number
+          amount_refunded_cents: number
           business_id: string
           created_at: string
           customer_email: string | null
@@ -67,14 +70,20 @@ export type Database = {
           ends_at: string
           id: string
           notes: string | null
+          payment_status: string
           price_cents: number
           service_id: string
           staff_id: string
           starts_at: string
           status: string
+          stripe_charge_id: string | null
+          stripe_payment_intent_id: string | null
           updated_at: string
         }
         Insert: {
+          amount_due_cents?: number
+          amount_paid_cents?: number
+          amount_refunded_cents?: number
           business_id: string
           created_at?: string
           customer_email?: string | null
@@ -84,14 +93,20 @@ export type Database = {
           ends_at: string
           id?: string
           notes?: string | null
+          payment_status?: string
           price_cents?: number
           service_id: string
           staff_id: string
           starts_at: string
           status?: string
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
           updated_at?: string
         }
         Update: {
+          amount_due_cents?: number
+          amount_paid_cents?: number
+          amount_refunded_cents?: number
           business_id?: string
           created_at?: string
           customer_email?: string | null
@@ -101,11 +116,14 @@ export type Database = {
           ends_at?: string
           id?: string
           notes?: string | null
+          payment_status?: string
           price_cents?: number
           service_id?: string
           staff_id?: string
           starts_at?: string
           status?: string
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -179,6 +197,8 @@ export type Database = {
           address: string | null
           brand_color: string | null
           created_at: string
+          currency: string
+          deposit_percent: number
           description: string | null
           email: string | null
           facebook: string | null
@@ -187,8 +207,12 @@ export type Database = {
           logo_url: string | null
           name: string
           owner_id: string
+          payment_mode: string
           phone: string | null
           slug: string
+          stripe_account_id: string | null
+          stripe_charges_enabled: boolean
+          stripe_details_submitted: boolean
           timezone: string
           twitter: string | null
           updated_at: string
@@ -198,6 +222,8 @@ export type Database = {
           address?: string | null
           brand_color?: string | null
           created_at?: string
+          currency?: string
+          deposit_percent?: number
           description?: string | null
           email?: string | null
           facebook?: string | null
@@ -206,8 +232,12 @@ export type Database = {
           logo_url?: string | null
           name: string
           owner_id: string
+          payment_mode?: string
           phone?: string | null
           slug: string
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_details_submitted?: boolean
           timezone?: string
           twitter?: string | null
           updated_at?: string
@@ -217,6 +247,8 @@ export type Database = {
           address?: string | null
           brand_color?: string | null
           created_at?: string
+          currency?: string
+          deposit_percent?: number
           description?: string | null
           email?: string | null
           facebook?: string | null
@@ -225,8 +257,12 @@ export type Database = {
           logo_url?: string | null
           name?: string
           owner_id?: string
+          payment_mode?: string
           phone?: string | null
           slug?: string
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_details_submitted?: boolean
           timezone?: string
           twitter?: string | null
           updated_at?: string
@@ -268,6 +304,78 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "customers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          booking_id: string | null
+          business_id: string
+          created_at: string
+          currency: string
+          customer_email: string | null
+          customer_name: string | null
+          description: string | null
+          error_message: string | null
+          id: string
+          status: string
+          stripe_charge_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_refund_id: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          booking_id?: string | null
+          business_id: string
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          description?: string | null
+          error_message?: string | null
+          id?: string
+          status: string
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          booking_id?: string | null
+          business_id?: string
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          description?: string | null
+          error_message?: string | null
+          id?: string
+          status?: string
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
