@@ -1,0 +1,113 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useMyBusiness } from "@/lib/business";
+import { PageHeader } from "@/components/app-shell";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { WEEKDAYS } from "@/lib/format";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_authenticated/settings")({
+  component: SettingsPage,
+});
+
+function SettingsPage() {
+  const { data: biz } = useMyBusiness();
+  const qc = useQueryClient();
+  const [form, setForm] = useState<any>({});
+
+  useEffect(() => { if (biz) setForm(biz); }, [biz?.id]);
+
+  const { data: hours } = useQuery({
+    queryKey: ["business-hours", biz?.id],
+    enabled: !!biz?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("business_hours").select("*").eq("business_id", biz!.id).order("weekday");
+      if (error) throw error;
+      return data;
+    },
+  });
+  const [hoursForm, setHoursForm] = useState<any[]>([]);
+  useEffect(() => { if (hours) setHoursForm(hours); }, [hours]);
+
+  const saveBiz = async () => {
+    if (!biz) return;
+    const { error } = await supabase.from("businesses").update({
+      name: form.name, description: form.description,
+      address: form.address, phone: form.phone, email: form.email, website: form.website,
+      brand_color: form.brand_color, timezone: form.timezone,
+      instagram: form.instagram, facebook: form.facebook, twitter: form.twitter,
+    }).eq("id", biz.id);
+    if (error) return toast.error(error.message);
+    toast.success("Saved");
+    qc.invalidateQueries({ queryKey: ["my-business"] });
+  };
+
+  const saveHours = async () => {
+    if (!biz) return;
+    for (const h of hoursForm) {
+      await supabase.from("business_hours").update({
+        open_time: h.closed ? null : h.open_time,
+        close_time: h.closed ? null : h.close_time,
+        closed: h.closed,
+      }).eq("id", h.id);
+    }
+    toast.success("Hours saved");
+    qc.invalidateQueries({ queryKey: ["business-hours"] });
+  };
+
+  if (!biz) return null;
+
+  return (
+    <div className="p-6 md:p-10 max-w-3xl">
+      <PageHeader title="Settings" subtitle="Configure your business and hours." />
+
+      <section className="rounded-2xl border bg-card p-6 space-y-4">
+        <h2 className="font-display text-xl">Business profile</h2>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field label="Name"><Input value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+          <Field label="Brand color"><Input type="color" value={form.brand_color ?? "#C2410C"} onChange={(e) => setForm({ ...form, brand_color: e.target.value })} className="h-10 p-1" /></Field>
+          <Field label="Email"><Input type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+          <Field label="Phone"><Input value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
+          <Field label="Website"><Input value={form.website ?? ""} onChange={(e) => setForm({ ...form, website: e.target.value })} /></Field>
+          <Field label="Timezone"><Input value={form.timezone ?? ""} onChange={(e) => setForm({ ...form, timezone: e.target.value })} /></Field>
+        </div>
+        <Field label="Address"><Input value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
+        <Field label="Description"><Textarea value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <Field label="Instagram"><Input value={form.instagram ?? ""} onChange={(e) => setForm({ ...form, instagram: e.target.value })} placeholder="@handle" /></Field>
+          <Field label="Facebook"><Input value={form.facebook ?? ""} onChange={(e) => setForm({ ...form, facebook: e.target.value })} /></Field>
+          <Field label="Twitter"><Input value={form.twitter ?? ""} onChange={(e) => setForm({ ...form, twitter: e.target.value })} /></Field>
+        </div>
+        <div className="pt-2 flex justify-end"><Button onClick={saveBiz}>Save profile</Button></div>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 space-y-3 mt-6">
+        <h2 className="font-display text-xl">Opening hours</h2>
+        <div className="space-y-2">
+          {hoursForm.map((h, i) => (
+            <div key={h.id} className="grid grid-cols-[80px_1fr_1fr_80px] items-center gap-3">
+              <span className="text-sm">{WEEKDAYS[h.weekday]}</span>
+              <Input type="time" disabled={h.closed} value={h.open_time?.slice(0,5) ?? ""} onChange={(e) => { const c = [...hoursForm]; c[i] = { ...h, open_time: e.target.value }; setHoursForm(c); }} />
+              <Input type="time" disabled={h.closed} value={h.close_time?.slice(0,5) ?? ""} onChange={(e) => { const c = [...hoursForm]; c[i] = { ...h, close_time: e.target.value }; setHoursForm(c); }} />
+              <div className="flex items-center gap-2 justify-end">
+                <span className="text-xs text-muted-foreground">Closed</span>
+                <Switch checked={h.closed} onCheckedChange={(v) => { const c = [...hoursForm]; c[i] = { ...h, closed: v }; setHoursForm(c); }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="pt-2 flex justify-end"><Button onClick={saveHours}>Save hours</Button></div>
+      </section>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div><Label className="text-xs">{label}</Label><div className="mt-1.5">{children}</div></div>;
+}
