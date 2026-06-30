@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { compressImage, signedUrl } from "@/lib/image";
 import { fmtDate, fmtMoney, fmtTime, statusMeta } from "@/lib/format";
 import { toast } from "sonner";
