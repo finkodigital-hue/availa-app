@@ -125,22 +125,43 @@ function HoursEditor({ biz }: { biz: any }) {
   });
   const [form, setForm] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { if (hours) setForm(hours); }, [hours]);
+  useEffect(() => {
+    // Always render 7 rows, even if no rows exist yet — saving will upsert.
+    const byDay = new Map<number, any>((hours ?? []).map((r: any) => [r.weekday, r]));
+    setForm(
+      Array.from({ length: 7 }, (_, w) =>
+        byDay.get(w) ?? {
+          business_id: biz.id,
+          weekday: w,
+          open_time: w === 0 ? null : "09:00",
+          close_time: w === 0 ? null : "18:00",
+          closed: w === 0,
+        },
+      ),
+    );
+  }, [hours, biz.id]);
 
   const save = async () => {
     setSaving(true);
     try {
-      for (const h of form) {
-        await supabase.from("business_hours").update({
-          open_time: h.closed ? null : h.open_time,
-          close_time: h.closed ? null : h.close_time,
-          closed: h.closed,
-        }).eq("id", h.id);
-      }
+      const payload = form.map((h) => ({
+        id: h.id,
+        business_id: biz.id,
+        weekday: h.weekday,
+        open_time: h.closed ? null : (h.open_time || "09:00"),
+        close_time: h.closed ? null : (h.close_time || "18:00"),
+        closed: !!h.closed,
+      }));
+      const { error } = await supabase.from("business_hours").upsert(payload, { onConflict: "business_id,weekday" });
+      if (error) throw error;
       toast.success("Hours saved");
       qc.invalidateQueries({ queryKey: ["business-hours"] });
+      qc.invalidateQueries({ queryKey: ["slots-day"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not save");
     } finally { setSaving(false); }
   };
+
 
   if (isLoading) return <div className="space-y-2">{Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
 
@@ -148,7 +169,7 @@ function HoursEditor({ biz }: { biz: any }) {
     <div className="space-y-4">
       <div className="space-y-1.5">
         {form.map((h, i) => (
-          <div key={h.id} className={`grid grid-cols-[80px_1fr_1fr_auto] items-center gap-3 rounded-xl px-3 py-2 transition-colors ${h.closed ? "opacity-60" : "hover:bg-secondary/40"}`}>
+          <div key={h.weekday} className={`grid grid-cols-[80px_1fr_1fr_auto] items-center gap-3 rounded-xl px-3 py-2 transition-colors ${h.closed ? "opacity-60" : "hover:bg-secondary/40"}`}>
             <span className="text-sm font-medium">{WEEKDAYS[h.weekday]}</span>
             <Input type="time" disabled={h.closed} value={h.open_time?.slice(0, 5) ?? ""} onChange={(e) => { const c = [...form]; c[i] = { ...h, open_time: e.target.value }; setForm(c); }} className="h-9 tabular-nums" />
             <Input type="time" disabled={h.closed} value={h.close_time?.slice(0, 5) ?? ""} onChange={(e) => { const c = [...form]; c[i] = { ...h, close_time: e.target.value }; setForm(c); }} className="h-9 tabular-nums" />
