@@ -25,16 +25,18 @@ function PaymentsPage() {
       const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, customer_name, price_cents, paid_amount_cents, payment_status, starts_at, services(name)")
+        .select("id, customer_name, price_cents, payment_status, starts_at, services(name)")
         .eq("business_id", bid!)
         .order("starts_at", { ascending: false })
         .limit(100);
       if (error) throw error;
       const monthly = (data ?? []).filter((b: any) => new Date(b.starts_at) >= monthStart);
-      const collected = monthly.reduce((a, b: any) => a + (b.paid_amount_cents ?? 0), 0);
+      const collected = monthly
+        .filter((b: any) => b.payment_status === "paid")
+        .reduce((a, b: any) => a + (b.price_cents ?? 0), 0);
       const outstanding = (data ?? [])
         .filter((b: any) => b.payment_status !== "paid" && b.payment_status !== "refunded")
-        .reduce((a, b: any) => a + Math.max(0, (b.price_cents ?? 0) - (b.paid_amount_cents ?? 0)), 0);
+        .reduce((a, b: any) => a + (b.price_cents ?? 0), 0);
       return { rows: data ?? [], collected, outstanding };
     },
   });
@@ -74,7 +76,9 @@ function PaymentsPage() {
               >
                 {p.payment_status ?? "unpaid"}
               </Badge>
-              <div className="text-sm font-medium tabular-nums w-24 text-right">{fmtMoney(p.paid_amount_cents ?? 0)}</div>
+              <div className="text-sm font-medium tabular-nums w-24 text-right">
+                {p.payment_status === "paid" ? fmtMoney(p.price_cents ?? 0) : fmtMoney(0)}
+              </div>
             </div>
           ))}
         </div>
