@@ -52,11 +52,18 @@ function StaffPage() {
     },
   });
 
+  const [reassign, setReassign] = useState<{ staff: Staff; futureCount: number } | null>(null);
+
   const del = async (s: Staff) => {
-    // If they have bookings, suggest disabling instead
-    const { count } = await supabase.from("bookings").select("id", { count: "exact", head: true }).eq("staff_id", s.id);
+    const { count } = await supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("staff_id", s.id)
+      .gte("starts_at", new Date().toISOString())
+      .neq("status", "cancelled");
     if ((count ?? 0) > 0) {
-      toast.error("This staff member has bookings. Disable them instead to preserve history.");
+      // Show reassign flow instead of failing
+      setReassign({ staff: s, futureCount: count ?? 0 });
       return;
     }
     const { error } = await supabase.from("staff").delete().eq("id", s.id);
@@ -64,6 +71,7 @@ function StaffPage() {
     toast.success("Staff removed");
     qc.invalidateQueries({ queryKey: ["staff"] });
   };
+
 
   const toggleActive = async (s: Staff, v: boolean) => {
     const { error } = await supabase.from("staff").update({ active: v }).eq("id", s.id);
