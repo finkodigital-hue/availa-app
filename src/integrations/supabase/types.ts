@@ -196,6 +196,7 @@ export type Database = {
         Row: {
           address: string | null
           brand_color: string | null
+          cancellation_window_hours: number
           created_at: string
           currency: string
           deposit_percent: number
@@ -221,6 +222,7 @@ export type Database = {
         Insert: {
           address?: string | null
           brand_color?: string | null
+          cancellation_window_hours?: number
           created_at?: string
           currency?: string
           deposit_percent?: number
@@ -246,6 +248,7 @@ export type Database = {
         Update: {
           address?: string | null
           brand_color?: string | null
+          cancellation_window_hours?: number
           created_at?: string
           currency?: string
           deposit_percent?: number
@@ -272,6 +275,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          auth_user_id: string | null
           business_id: string
           created_at: string
           email: string | null
@@ -282,6 +286,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auth_user_id?: string | null
           business_id: string
           created_at?: string
           email?: string | null
@@ -292,6 +297,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auth_user_id?: string | null
           business_id?: string
           created_at?: string
           email?: string | null
@@ -552,6 +558,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_user_email: { Args: never; Returns: string }
       is_business_owner: { Args: { _business_id: string }; Returns: boolean }
     }
     Enums: {

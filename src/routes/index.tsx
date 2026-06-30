@@ -46,6 +46,9 @@ function Landing() {
             <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
           </nav>
           <div className="flex items-center gap-2 text-sm">
+            <Link to="/portal" className="hidden sm:inline-flex px-3.5 py-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors">
+              My bookings
+            </Link>
             <Link to="/auth" className="px-3.5 py-2 rounded-xl hover:bg-card transition-colors">
               Sign in
             </Link>
