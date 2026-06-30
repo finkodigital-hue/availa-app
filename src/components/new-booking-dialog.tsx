@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Search, UserPlus, ChevronLeft } from "lucide-react";
+import { Loader2, Search, UserPlus, ChevronLeft, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -32,11 +32,14 @@ type Service = {
 };
 type Staff = { id: string; name: string };
 
+type Step = "customer" | "service" | "staff" | "slot" | "confirm";
+
 type Prefill = {
   staffId?: string;
   date?: Date;
   isoTime?: string;
   serviceId?: string;
+  customerId?: string;
 };
 
 export function NewBookingDialog({
@@ -52,7 +55,7 @@ export function NewBookingDialog({
   prefill?: Prefill;
   onCreated?: () => void;
 }) {
-  const [step, setStep] = useState<"customer" | "service" | "slot" | "confirm">("customer");
+  const [step, setStep] = useState<Step>("customer");
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [newCust, setNewCust] = useState<{ name: string; email: string; phone: string } | null>(null);
   const [service, setService] = useState<Service | null>(null);
@@ -66,8 +69,10 @@ export function NewBookingDialog({
   const [notes, setNotes] = useState("");
   const [notify, setNotify] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingPrefill, setLoadingPrefill] = useState(false);
 
-  // Apply prefill when dialog opens
+  // Apply prefill when dialog opens. Resolve any prefilled IDs in parallel
+  // then jump straight to the first missing piece of information.
   useEffect(() => {
     if (!open) {
       setStep("customer");
@@ -78,32 +83,69 @@ export function NewBookingDialog({
       setTime(null);
       setNotes("");
       setNotify(true);
+      setLoadingPrefill(false);
       return;
     }
-    if (prefill?.date) {
-      const d = new Date(prefill.date);
+
+    const baseDate = prefill?.isoTime
+      ? new Date(prefill.isoTime)
+      : prefill?.date
+      ? new Date(prefill.date)
+      : null;
+    if (baseDate) {
+      const d = new Date(baseDate);
       d.setHours(0, 0, 0, 0);
       setDate(d);
     }
     if (prefill?.isoTime) setTime(prefill.isoTime);
-    // Preload staff record if provided
-    if (prefill?.staffId) {
-      supabase
-        .from("staff")
-        .select("id, name")
-        .eq("id", prefill.staffId)
-        .maybeSingle()
-        .then(({ data }) => data && setStaff({ id: data.id, name: data.name }));
+
+    const hasAnyId = !!(prefill?.staffId || prefill?.serviceId || prefill?.customerId);
+    if (!hasAnyId) {
+      setStep(firstMissing({ hasCustomer: false, hasService: false, hasStaff: false, hasTime: !!prefill?.isoTime }));
+      return;
     }
-    if (prefill?.serviceId) {
-      supabase
-        .from("services")
-        .select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color")
-        .eq("id", prefill.serviceId)
-        .maybeSingle()
-        .then(({ data }) => data && setService(data as Service));
-    }
+
+    setLoadingPrefill(true);
+    (async () => {
+      const [staffRes, svcRes, custRes] = await Promise.all([
+        prefill?.staffId
+          ? supabase.from("staff").select("id, name").eq("id", prefill.staffId).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+        prefill?.serviceId
+          ? supabase
+              .from("services")
+              .select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color")
+              .eq("id", prefill.serviceId)
+              .maybeSingle()
+          : Promise.resolve({ data: null } as any),
+        prefill?.customerId
+          ? supabase
+              .from("customers")
+              .select("id, name, email, phone")
+              .eq("id", prefill.customerId)
+              .maybeSingle()
+          : Promise.resolve({ data: null } as any),
+      ]);
+      const st = staffRes?.data ? { id: staffRes.data.id, name: staffRes.data.name } : null;
+      const sv = svcRes?.data as Service | null;
+      const cu = custRes?.data as Customer | null;
+      if (st) setStaff(st);
+      if (sv) setService(sv);
+      if (cu) setCustomer(cu);
+      setLoadingPrefill(false);
+      setStep(
+        firstMissing({
+          hasCustomer: !!cu,
+          hasService: !!sv,
+          hasStaff: !!st,
+          hasTime: !!prefill?.isoTime,
+        }),
+      );
+    })();
   }, [open, prefill]);
+
+  const customerLabel = customer?.name ?? newCust?.name ?? null;
+  const canConfirm = !!(service && staff && time && (customer || newCust));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -111,50 +153,77 @@ export function NewBookingDialog({
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">New booking</DialogTitle>
           <DialogDescription>
-            Walk-in, phone or manual booking. Customer first, then service & time.
+            We've pre-filled what we already know — only the missing details below.
           </DialogDescription>
         </DialogHeader>
 
-        {step === "customer" && (
+        {/* Inline summary of everything already chosen, with quick edit buttons */}
+        {(customerLabel || service || staff || time) && step !== "confirm" && (
+          <Summary
+            customer={customerLabel}
+            service={service}
+            staff={staff}
+            time={time}
+            onJump={(s) => setStep(s)}
+          />
+        )}
+
+        {loadingPrefill && (
+          <div className="py-6 grid place-items-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {!loadingPrefill && step === "customer" && (
           <CustomerStep
             businessId={businessId}
             onPick={(c) => {
               setCustomer(c);
               setNewCust(null);
-              setStep("service");
+              setStep(firstMissing({ hasCustomer: true, hasService: !!service, hasStaff: !!staff, hasTime: !!time }));
             }}
             onCreate={(c) => {
               setNewCust(c);
               setCustomer(null);
-              setStep("service");
+              setStep(firstMissing({ hasCustomer: true, hasService: !!service, hasStaff: !!staff, hasTime: !!time }));
             }}
           />
         )}
 
-        {step === "service" && (
+        {!loadingPrefill && step === "service" && (
           <ServiceStep
             businessId={businessId}
-            initialService={service}
-            initialStaff={staff}
+            current={service}
             onBack={() => setStep("customer")}
-            onPick={(svc, st) => {
+            onPick={(svc) => {
               setService(svc);
-              setStaff(st);
-              // If we have prefilled time already, skip slot picker
-              if (time && prefill?.isoTime) setStep("confirm");
-              else setStep("slot");
+              // If staff already chosen and still valid, keep it
+              setStep(firstMissing({ hasCustomer: !!(customer || newCust), hasService: true, hasStaff: !!staff, hasTime: !!time }));
             }}
           />
         )}
 
-        {step === "slot" && service && staff && (
+        {!loadingPrefill && step === "staff" && service && (
+          <StaffStep
+            businessId={businessId}
+            service={service}
+            current={staff}
+            onBack={() => setStep("service")}
+            onPick={(st) => {
+              setStaff(st);
+              setStep(firstMissing({ hasCustomer: !!(customer || newCust), hasService: true, hasStaff: true, hasTime: !!time }));
+            }}
+          />
+        )}
+
+        {!loadingPrefill && step === "slot" && service && staff && (
           <SlotStep
             businessId={businessId}
             staff={staff}
             service={service}
             date={date}
             setDate={setDate}
-            onBack={() => setStep("service")}
+            onBack={() => setStep("staff")}
             onPick={(iso) => {
               setTime(iso);
               setStep("confirm");
@@ -162,17 +231,15 @@ export function NewBookingDialog({
           />
         )}
 
-        {step === "confirm" && service && staff && time && (
+        {!loadingPrefill && step === "confirm" && canConfirm && service && staff && time && (
           <div className="space-y-4">
-            <div className="rounded-xl border bg-secondary/40 p-4 text-sm space-y-1.5">
-              <Row k="Customer" v={customer?.name ?? newCust?.name} />
-              <Row k="Service" v={`${service.name} · ${service.duration_minutes}m · ${fmtMoney(service.price_cents)}`} />
-              <Row k="Staff" v={staff.name} />
-              <Row
-                k="When"
-                v={`${new Date(time).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })} · ${fmtTime(time)}`}
-              />
-            </div>
+            <Summary
+              customer={customerLabel}
+              service={service}
+              staff={staff}
+              time={time}
+              onJump={(s) => setStep(s)}
+            />
             <div>
               <Label>Internal notes</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1.5" placeholder="Optional…" />
@@ -185,7 +252,7 @@ export function NewBookingDialog({
               <Switch checked={notify} onCheckedChange={setNotify} />
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setStep(prefill?.isoTime ? "service" : "slot")}>Back</Button>
+              <Button variant="ghost" onClick={() => setStep("slot")}>Back</Button>
               <Button
                 disabled={submitting}
                 onClick={async () => {
@@ -268,11 +335,59 @@ export function NewBookingDialog({
   );
 }
 
-function Row({ k, v }: { k: string; v: any }) {
+function firstMissing(s: { hasCustomer: boolean; hasService: boolean; hasStaff: boolean; hasTime: boolean }): Step {
+  if (!s.hasCustomer) return "customer";
+  if (!s.hasService) return "service";
+  if (!s.hasStaff) return "staff";
+  if (!s.hasTime) return "slot";
+  return "confirm";
+}
+
+function Summary({
+  customer,
+  service,
+  staff,
+  time,
+  onJump,
+}: {
+  customer: string | null;
+  service: Service | null;
+  staff: Staff | null;
+  time: string | null;
+  onJump: (s: Step) => void;
+}) {
   return (
-    <div className="grid grid-cols-[80px_1fr] gap-3 items-center">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">{k}</span>
-      <span className="font-medium text-sm">{v}</span>
+    <div className="rounded-xl border bg-secondary/40 p-3 text-sm space-y-1.5">
+      <SummaryRow k="Customer" v={customer} onEdit={() => onJump("customer")} />
+      <SummaryRow
+        k="Service"
+        v={service ? `${service.name} · ${service.duration_minutes}m · ${fmtMoney(service.price_cents)}` : null}
+        onEdit={() => onJump("service")}
+      />
+      <SummaryRow k="Staff" v={staff?.name ?? null} onEdit={() => onJump("staff")} />
+      <SummaryRow
+        k="When"
+        v={time ? `${new Date(time).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })} · ${fmtTime(time)}` : null}
+        onEdit={() => onJump("slot")}
+      />
+    </div>
+  );
+}
+
+function SummaryRow({ k, v, onEdit }: { k: string; v: string | null; onEdit: () => void }) {
+  return (
+    <div className="grid grid-cols-[72px_1fr_auto] gap-3 items-center">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</span>
+      <span className={`font-medium text-sm truncate ${v ? "" : "text-muted-foreground/60 italic"}`}>
+        {v ?? "—"}
+      </span>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+      >
+        <Pencil className="h-3 w-3" /> {v ? "Change" : "Set"}
+      </button>
     </div>
   );
 }
@@ -378,19 +493,15 @@ function CustomerStep({
 
 function ServiceStep({
   businessId,
-  initialService,
-  initialStaff,
+  current,
   onBack,
   onPick,
 }: {
   businessId: string;
-  initialService: Service | null;
-  initialStaff: Staff | null;
+  current: Service | null;
   onBack: () => void;
-  onPick: (svc: Service, staff: Staff) => void;
+  onPick: (svc: Service) => void;
 }) {
-  const [svc, setSvc] = useState<Service | null>(initialService);
-
   const { data: services, isLoading } = useQuery({
     queryKey: ["wi-services", businessId],
     queryFn: async () => {
@@ -405,11 +516,51 @@ function ServiceStep({
     },
   });
 
-  const { data: staffList, isLoading: loadingStaff } = useQuery({
-    queryKey: ["wi-staff", businessId, svc?.id],
-    enabled: !!svc,
+  return (
+    <div className="space-y-3">
+      <button onClick={onBack} className="text-xs text-muted-foreground inline-flex items-center gap-1">
+        <ChevronLeft className="h-3 w-3" /> Back
+      </button>
+      <Label className="text-xs uppercase tracking-wide text-muted-foreground">Service</Label>
+      {isLoading && <Skeleton className="h-12 w-full" />}
+      <div className="space-y-2 max-h-72 overflow-y-auto">
+        {services?.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => onPick(s)}
+            className={`w-full text-left rounded-xl border p-3 hover:bg-secondary/40 flex items-center justify-between ${
+              current?.id === s.id ? "border-primary bg-primary/5" : "bg-card"
+            }`}
+          >
+            <div>
+              <div className="font-medium text-sm">{s.name}</div>
+              <div className="text-xs text-muted-foreground">{s.duration_minutes} min</div>
+            </div>
+            <div className="text-sm tabular-nums">{fmtMoney(s.price_cents)}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StaffStep({
+  businessId,
+  service,
+  current,
+  onBack,
+  onPick,
+}: {
+  businessId: string;
+  service: Service;
+  current: Staff | null;
+  onBack: () => void;
+  onPick: (st: Staff) => void;
+}) {
+  const { data: staffList, isLoading } = useQuery({
+    queryKey: ["wi-staff", businessId, service.id],
     queryFn: async () => {
-      const linked = await supabase.from("service_staff").select("staff_id").eq("service_id", svc!.id);
+      const linked = await supabase.from("service_staff").select("staff_id").eq("service_id", service.id);
       let q = supabase.from("staff").select("id, name").eq("business_id", businessId).eq("active", true);
       if (linked.data && linked.data.length > 0) q = q.in("id", linked.data.map((r) => r.staff_id));
       const { data, error } = await q.order("name");
@@ -418,70 +569,32 @@ function ServiceStep({
     },
   });
 
-  // Auto-advance if we have a prefilled staff and a service
-  useEffect(() => {
-    if (svc && initialStaff && staffList?.some((s) => s.id === initialStaff.id)) {
-      onPick(svc, initialStaff);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [svc, staffList]);
-
   return (
     <div className="space-y-3">
       <button onClick={onBack} className="text-xs text-muted-foreground inline-flex items-center gap-1">
         <ChevronLeft className="h-3 w-3" /> Back
       </button>
-      {!svc && (
-        <>
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Service</Label>
-          {isLoading && <Skeleton className="h-12 w-full" />}
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {services?.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setSvc(s)}
-                className="w-full text-left rounded-xl border bg-card p-3 hover:bg-secondary/40 flex items-center justify-between"
-              >
-                <div>
-                  <div className="font-medium text-sm">{s.name}</div>
-                  <div className="text-xs text-muted-foreground">{s.duration_minutes} min</div>
-                </div>
-                <div className="text-sm tabular-nums">{fmtMoney(s.price_cents)}</div>
-              </button>
-            ))}
-          </div>
-        </>
+      <Label className="text-xs uppercase tracking-wide text-muted-foreground">Staff</Label>
+      {isLoading && <Skeleton className="h-12 w-full" />}
+      {!isLoading && staffList?.length === 0 && (
+        <p className="text-sm text-muted-foreground">No staff assigned to this service.</p>
       )}
-      {svc && (
-        <>
-          <div className="rounded-xl border bg-secondary/40 p-3 flex items-center justify-between">
-            <div>
-              <div className="font-medium text-sm">{svc.name}</div>
-              <div className="text-xs text-muted-foreground">{svc.duration_minutes} min · {fmtMoney(svc.price_cents)}</div>
+      <div className="space-y-2 max-h-72 overflow-y-auto">
+        {staffList?.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => onPick(s)}
+            className={`w-full text-left rounded-xl border p-3 hover:bg-secondary/40 flex items-center gap-3 ${
+              current?.id === s.id ? "border-primary bg-primary/5" : "bg-card"
+            }`}
+          >
+            <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-medium">
+              {s.name[0]?.toUpperCase()}
             </div>
-            <Button size="sm" variant="ghost" onClick={() => setSvc(null)}>Change</Button>
-          </div>
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Staff</Label>
-          {loadingStaff && <Skeleton className="h-12 w-full" />}
-          {!loadingStaff && staffList?.length === 0 && (
-            <p className="text-sm text-muted-foreground">No staff assigned to this service.</p>
-          )}
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {staffList?.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => onPick(svc, s)}
-                className="w-full text-left rounded-xl border bg-card p-3 hover:bg-secondary/40 flex items-center gap-3"
-              >
-                <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-medium">
-                  {s.name[0]?.toUpperCase()}
-                </div>
-                <div className="font-medium text-sm">{s.name}</div>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+            <div className="font-medium text-sm">{s.name}</div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
