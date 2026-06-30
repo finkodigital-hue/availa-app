@@ -451,6 +451,7 @@ function DetailRow({ label, value }: { label: string; value: any }) {
 /* ===== Today Summary Strip ===== */
 
 function TodayStrip({ bookings, staff, date }: { bookings: any[]; staff: any[]; date: Date }) {
+  const { START_HOUR, END_HOUR } = useHours();
   const isToday = date.toDateString() === new Date().toDateString();
   const active = bookings.filter((b) => b.status !== "cancelled");
   const revenue = active.reduce((sum, b) => sum + (b.price_cents ?? 0), 0);
@@ -704,6 +705,7 @@ function StaffColumn({
   onDrop: (bookingId: string, iso: string) => void;
   nowTop: number | null;
 }) {
+  const { START_HOUR } = useHours();
   const colRef = useRef<HTMLDivElement>(null);
   const [hoverTop, setHoverTop] = useState<number | null>(null);
   const [drag, setDrag] = useState<{ id: string; origIso: string; durationMin: number; x: number; y: number; newIso: string } | null>(null);
@@ -850,6 +852,7 @@ function BookingCard({
   onSelect: (b: any) => void;
   onDragInfo: (d: { id: string; origIso: string; durationMin: number; x: number; y: number; newIso: string } | null) => void;
 }) {
+  const { START_HOUR } = useHours();
   const [dragging, setDragging] = useState(false);
   const s = new Date(b.starts_at);
   const e = new Date(b.ends_at);
