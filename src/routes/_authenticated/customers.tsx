@@ -485,6 +485,7 @@ function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelet
                 onConfirm={async () => { await del(); }}
               />
               <Button variant="outline" onClick={() => onEdit(c)}><Pencil className="h-4 w-4 mr-1.5" /> Edit</Button>
+              <Button onClick={() => onBook(c.id)}><Calendar className="h-4 w-4 mr-1.5" /> Book again</Button>
               <Button variant="ghost" onClick={onClose}>Close</Button>
             </DialogFooter>
           </>
