@@ -464,8 +464,10 @@ function CalendarPage() {
         />
       )}
     </div>
+    </HoursContext.Provider>
   );
 }
+
 
 function DetailRow({ label, value }: { label: string; value: any }) {
   return (
