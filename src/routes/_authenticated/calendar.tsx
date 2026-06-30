@@ -154,6 +154,20 @@ function CalendarPage() {
     setNewOpen(true);
   };
 
+  // Global trigger from the mobile bottom nav floating "+" button, and from
+  // ?new=1 deep links (navigating to /calendar from elsewhere).
+  useEffect(() => {
+    const handler = () => openNewBooking();
+    window.addEventListener("luma:new-booking", handler as EventListener);
+    if (typeof window !== "undefined" && window.location.search.includes("new=1")) {
+      handler();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("new");
+      window.history.replaceState({}, "", url.toString());
+    }
+    return () => window.removeEventListener("luma:new-booking", handler as EventListener);
+  }, []);
+
   const dropMove = async (bookingId: string, newStaffId: string, newStart: Date) => {
     const b = (bookings ?? []).find((x: any) => x.id === bookingId);
     if (!b) return;

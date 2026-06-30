@@ -205,9 +205,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <main className="flex-1 min-w-0 pt-14 md:pt-0">{children}</main>
+      <main className="flex-1 min-w-0 pt-14 md:pt-0 pb-28 md:pb-0">{children}</main>
 
-      <MobileBottomNav onMore={() => setMobileOpen(true)} />
+      <MobileBottomNav
+        onMore={() => setMobileOpen(true)}
+        onAdd={() => {
+          // Dispatch a global event the Calendar listens for. If we're not
+          // already on /calendar, navigate first so the listener is mounted.
+          if (path.startsWith("/calendar")) {
+            window.dispatchEvent(new CustomEvent("luma:new-booking"));
+          } else {
+            router.navigate({ to: "/calendar", search: { new: 1 } as any });
+          }
+        }}
+      />
     </div>
   );
 }
