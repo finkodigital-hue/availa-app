@@ -468,7 +468,7 @@ function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelet
                 title={`Delete ${c.name}?`}
                 description="Their booking history will also be removed. This can't be undone."
                 confirmLabel="Delete customer"
-                onConfirm={del}
+                onConfirm={async () => { await del(); }}
               />
               <Button variant="outline" onClick={() => onEdit(c)}><Pencil className="h-4 w-4 mr-1.5" /> Edit</Button>
               <Button variant="ghost" onClick={onClose}>Close</Button>
