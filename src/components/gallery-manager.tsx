@@ -13,12 +13,14 @@ import { toast } from "sonner";
 
 type Media = { id: string; kind: string; path: string; sort_order: number };
 
-const KINDS: { key: "cover" | "logo" | "interior" | "team" | "portfolio"; label: string; description: string; single: boolean }[] = [
+const KINDS: { key: "cover" | "logo" | "interior" | "exterior" | "team" | "portfolio" | "before-after"; label: string; description: string; single: boolean }[] = [
   { key: "cover", label: "Cover photo", description: "Wide hero image at the top of your booking page.", single: true },
   { key: "logo", label: "Logo", description: "Square logo shown in the header.", single: true },
   { key: "interior", label: "Interior", description: "Photos of your space.", single: false },
+  { key: "exterior", label: "Exterior", description: "How customers find you from the outside.", single: false },
   { key: "team", label: "Team", description: "Group photos of your team.", single: false },
   { key: "portfolio", label: "Portfolio", description: "Examples of your work.", single: false },
+  { key: "before-after", label: "Before & after", description: "Transformation results, side by side.", single: false },
 ];
 
 export function GalleryManager({ businessId }: { businessId: string }) {

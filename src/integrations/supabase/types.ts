@@ -235,15 +235,31 @@ export type Database = {
       }
       businesses: {
         Row: {
+          accent_color: string | null
           address: string | null
+          booking_instructions: string | null
+          border_radius: number
           brand_color: string | null
+          browser_title: string | null
+          button_style: string
+          cancellation_policy: string | null
           cancellation_window_hours: number
+          cover_image_url: string | null
           created_at: string
           currency: string
+          custom_domain: string | null
           deposit_percent: number
           description: string | null
           email: string | null
+          email_footer: string | null
+          email_logo_url: string | null
+          emergency_active: boolean
+          emergency_message: string | null
           facebook: string | null
+          faq: Json
+          favicon_url: string | null
+          font: string
+          hide_powered_by: boolean
           id: string
           instagram: string | null
           logo_url: string | null
@@ -251,25 +267,50 @@ export type Database = {
           owner_id: string
           payment_mode: string
           phone: string | null
+          plan: string
+          secondary_color: string | null
+          show_durations: boolean
+          show_prices: boolean
+          show_staff: boolean
           slug: string
           stripe_account_id: string | null
           stripe_charges_enabled: boolean
           stripe_details_submitted: boolean
+          terms: string | null
+          theme: string
+          tiktok: string | null
           timezone: string
           twitter: string | null
           updated_at: string
           website: string | null
+          welcome_message: string | null
         }
         Insert: {
+          accent_color?: string | null
           address?: string | null
+          booking_instructions?: string | null
+          border_radius?: number
           brand_color?: string | null
+          browser_title?: string | null
+          button_style?: string
+          cancellation_policy?: string | null
           cancellation_window_hours?: number
+          cover_image_url?: string | null
           created_at?: string
           currency?: string
+          custom_domain?: string | null
           deposit_percent?: number
           description?: string | null
           email?: string | null
+          email_footer?: string | null
+          email_logo_url?: string | null
+          emergency_active?: boolean
+          emergency_message?: string | null
           facebook?: string | null
+          faq?: Json
+          favicon_url?: string | null
+          font?: string
+          hide_powered_by?: boolean
           id?: string
           instagram?: string | null
           logo_url?: string | null
@@ -277,25 +318,50 @@ export type Database = {
           owner_id: string
           payment_mode?: string
           phone?: string | null
+          plan?: string
+          secondary_color?: string | null
+          show_durations?: boolean
+          show_prices?: boolean
+          show_staff?: boolean
           slug: string
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean
           stripe_details_submitted?: boolean
+          terms?: string | null
+          theme?: string
+          tiktok?: string | null
           timezone?: string
           twitter?: string | null
           updated_at?: string
           website?: string | null
+          welcome_message?: string | null
         }
         Update: {
+          accent_color?: string | null
           address?: string | null
+          booking_instructions?: string | null
+          border_radius?: number
           brand_color?: string | null
+          browser_title?: string | null
+          button_style?: string
+          cancellation_policy?: string | null
           cancellation_window_hours?: number
+          cover_image_url?: string | null
           created_at?: string
           currency?: string
+          custom_domain?: string | null
           deposit_percent?: number
           description?: string | null
           email?: string | null
+          email_footer?: string | null
+          email_logo_url?: string | null
+          emergency_active?: boolean
+          emergency_message?: string | null
           facebook?: string | null
+          faq?: Json
+          favicon_url?: string | null
+          font?: string
+          hide_powered_by?: boolean
           id?: string
           instagram?: string | null
           logo_url?: string | null
@@ -303,14 +369,23 @@ export type Database = {
           owner_id?: string
           payment_mode?: string
           phone?: string | null
+          plan?: string
+          secondary_color?: string | null
+          show_durations?: boolean
+          show_prices?: boolean
+          show_staff?: boolean
           slug?: string
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean
           stripe_details_submitted?: boolean
+          terms?: string | null
+          theme?: string
+          tiktok?: string | null
           timezone?: string
           twitter?: string | null
           updated_at?: string
           website?: string | null
+          welcome_message?: string | null
         }
         Relationships: []
       }
@@ -354,6 +429,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "customers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      holiday_closures: {
+        Row: {
+          business_id: string
+          created_at: string
+          ends_on: string
+          id: string
+          label: string
+          starts_on: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          ends_on: string
+          id?: string
+          label: string
+          starts_on: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          ends_on?: string
+          id?: string
+          label?: string
+          starts_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "holiday_closures_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
