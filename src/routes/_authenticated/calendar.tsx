@@ -243,8 +243,36 @@ function CalendarPage() {
     setAnchor(d);
   };
 
+  // Derive visible-hours window from this business's opening periods.
+  const { data: periods } = useQuery({
+    queryKey: ["business-hour-periods", bid],
+    enabled: !!bid,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("business_hour_periods")
+        .select("open_time, close_time")
+        .eq("business_id", bid!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const hoursWindow = useMemo(() => {
+    if (!periods || !periods.length) return { START_HOUR: DEFAULT_START_HOUR, END_HOUR: DEFAULT_END_HOUR };
+    let minH = 23, maxH = 0;
+    for (const p of periods) {
+      const [oh] = String(p.open_time).split(":").map(Number);
+      const [ch, cm] = String(p.close_time).split(":").map(Number);
+      minH = Math.min(minH, oh);
+      maxH = Math.max(maxH, ch + (cm > 0 ? 1 : 0));
+    }
+    // pad slightly so drag/drop near edges feels natural
+    return { START_HOUR: Math.max(0, minH), END_HOUR: Math.min(24, Math.max(maxH, minH + 1)) };
+  }, [periods]);
+
   return (
+    <HoursContext.Provider value={hoursWindow}>
     <div className="p-3 sm:p-5 md:p-8 max-w-[1800px]">
+
       <PageHeader
         eyebrow="Schedule"
         title="Calendar"
