@@ -19,25 +19,31 @@ export type Database = {
           business_id: string
           ends_at: string
           id: string
+          kind: string | null
           reason: string | null
           staff_id: string | null
           starts_at: string
+          title: string | null
         }
         Insert: {
           business_id: string
           ends_at: string
           id?: string
+          kind?: string | null
           reason?: string | null
           staff_id?: string | null
           starts_at: string
+          title?: string | null
         }
         Update: {
           business_id?: string
           ends_at?: string
           id?: string
+          kind?: string | null
           reason?: string | null
           staff_id?: string | null
           starts_at?: string
+          title?: string | null
         }
         Relationships: [
           {
@@ -159,6 +165,47 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_goals: {
+        Row: {
+          bookings_target: number
+          business_id: string
+          created_at: string
+          customers_target: number
+          id: string
+          month: string
+          revenue_cents_target: number
+          updated_at: string
+        }
+        Insert: {
+          bookings_target?: number
+          business_id: string
+          created_at?: string
+          customers_target?: number
+          id?: string
+          month: string
+          revenue_cents_target?: number
+          updated_at?: string
+        }
+        Update: {
+          bookings_target?: number
+          business_id?: string
+          created_at?: string
+          customers_target?: number
+          id?: string
+          month?: string
+          revenue_cents_target?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_goals_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
         ]

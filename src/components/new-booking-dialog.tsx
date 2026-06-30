@@ -1,32 +1,55 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Search, UserPlus, ChevronLeft, ChevronRight, Check, X } from "lucide-react";
+import { Loader2, Search, UserPlus, ChevronLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fmtMoney, fmtTime } from "@/lib/format";
 import { useAvailableSlots, buildDateStrip } from "@/lib/slots";
 import { toast } from "sonner";
 
 type Customer = { id: string; name: string; email: string | null; phone: string | null };
-type Service = { id: string; name: string; duration_minutes: number; price_cents: number; buffer_before_min: number; buffer_after_min: number; color: string | null };
+type Service = {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  price_cents: number;
+  buffer_before_min: number;
+  buffer_after_min: number;
+  color: string | null;
+};
 type Staff = { id: string; name: string };
+
+type Prefill = {
+  staffId?: string;
+  date?: Date;
+  isoTime?: string;
+  serviceId?: string;
+};
 
 export function NewBookingDialog({
   open,
   onOpenChange,
   businessId,
+  prefill,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   businessId: string;
+  prefill?: Prefill;
   onCreated?: () => void;
 }) {
   const [step, setStep] = useState<"customer" | "service" | "slot" | "confirm">("customer");
@@ -34,40 +57,93 @@ export function NewBookingDialog({
   const [newCust, setNewCust] = useState<{ name: string; email: string; phone: string } | null>(null);
   const [service, setService] = useState<Service | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
-  const [date, setDate] = useState<Date>(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
+  const [date, setDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
   const [time, setTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [notify, setNotify] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Apply prefill when dialog opens
   useEffect(() => {
     if (!open) {
-      setStep("customer"); setCustomer(null); setNewCust(null);
-      setService(null); setStaff(null); setTime(null); setNotes(""); setNotify(true);
+      setStep("customer");
+      setCustomer(null);
+      setNewCust(null);
+      setService(null);
+      setStaff(null);
+      setTime(null);
+      setNotes("");
+      setNotify(true);
+      return;
     }
-  }, [open]);
+    if (prefill?.date) {
+      const d = new Date(prefill.date);
+      d.setHours(0, 0, 0, 0);
+      setDate(d);
+    }
+    if (prefill?.isoTime) setTime(prefill.isoTime);
+    // Preload staff record if provided
+    if (prefill?.staffId) {
+      supabase
+        .from("staff")
+        .select("id, name")
+        .eq("id", prefill.staffId)
+        .maybeSingle()
+        .then(({ data }) => data && setStaff({ id: data.id, name: data.name }));
+    }
+    if (prefill?.serviceId) {
+      supabase
+        .from("services")
+        .select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color")
+        .eq("id", prefill.serviceId)
+        .maybeSingle()
+        .then(({ data }) => data && setService(data as Service));
+    }
+  }, [open, prefill]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">New booking</DialogTitle>
-          <DialogDescription>Create a walk-in or phone booking on behalf of a customer.</DialogDescription>
+          <DialogDescription>
+            Walk-in, phone or manual booking. Customer first, then service & time.
+          </DialogDescription>
         </DialogHeader>
 
         {step === "customer" && (
           <CustomerStep
             businessId={businessId}
-            onPick={(c) => { setCustomer(c); setNewCust(null); setStep("service"); }}
-            onCreate={(c) => { setNewCust(c); setCustomer(null); setStep("service"); }}
+            onPick={(c) => {
+              setCustomer(c);
+              setNewCust(null);
+              setStep("service");
+            }}
+            onCreate={(c) => {
+              setNewCust(c);
+              setCustomer(null);
+              setStep("service");
+            }}
           />
         )}
 
         {step === "service" && (
           <ServiceStep
             businessId={businessId}
+            initialService={service}
+            initialStaff={staff}
             onBack={() => setStep("customer")}
-            onPick={(svc, st) => { setService(svc); setStaff(st); setStep("slot"); }}
+            onPick={(svc, st) => {
+              setService(svc);
+              setStaff(st);
+              // If we have prefilled time already, skip slot picker
+              if (time && prefill?.isoTime) setStep("confirm");
+              else setStep("slot");
+            }}
           />
         )}
 
@@ -79,7 +155,10 @@ export function NewBookingDialog({
             date={date}
             setDate={setDate}
             onBack={() => setStep("service")}
-            onPick={(iso) => { setTime(iso); setStep("confirm"); }}
+            onPick={(iso) => {
+              setTime(iso);
+              setStep("confirm");
+            }}
           />
         )}
 
@@ -89,7 +168,10 @@ export function NewBookingDialog({
               <Row k="Customer" v={customer?.name ?? newCust?.name} />
               <Row k="Service" v={`${service.name} · ${service.duration_minutes}m · ${fmtMoney(service.price_cents)}`} />
               <Row k="Staff" v={staff.name} />
-              <Row k="When" v={`${new Date(time).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })} · ${fmtTime(time)}`} />
+              <Row
+                k="When"
+                v={`${new Date(time).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })} · ${fmtTime(time)}`}
+              />
             </div>
             <div>
               <Label>Internal notes</Label>
@@ -103,17 +185,16 @@ export function NewBookingDialog({
               <Switch checked={notify} onCheckedChange={setNotify} />
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setStep("slot")}>Back</Button>
+              <Button variant="ghost" onClick={() => setStep(prefill?.isoTime ? "service" : "slot")}>Back</Button>
               <Button
                 disabled={submitting}
                 onClick={async () => {
                   setSubmitting(true);
                   try {
-                    // 1. Resolve customer (dedup)
                     let custId = customer?.id ?? null;
                     let custName = customer?.name ?? newCust?.name ?? "Walk-in";
-                    let custEmail = customer?.email ?? newCust?.email ?? null;
-                    let custPhone = customer?.phone ?? newCust?.phone ?? null;
+                    const custEmail = customer?.email ?? newCust?.email ?? null;
+                    const custPhone = customer?.phone ?? newCust?.phone ?? null;
                     if (!custId && newCust) {
                       const phoneNorm = newCust.phone.replace(/\D/g, "") || null;
                       const orParts: string[] = [];
@@ -121,24 +202,35 @@ export function NewBookingDialog({
                       if (phoneNorm) orParts.push(`phone_normalized.eq.${phoneNorm}`);
                       if (orParts.length) {
                         const { data: existing } = await supabase
-                          .from("customers").select("id, name, email, phone")
-                          .eq("business_id", businessId).or(orParts.join(",")).limit(1);
+                          .from("customers")
+                          .select("id, name, email, phone")
+                          .eq("business_id", businessId)
+                          .or(orParts.join(","))
+                          .limit(1);
                         if (existing && existing.length) {
-                          custId = existing[0].id; custName = existing[0].name;
+                          custId = existing[0].id;
+                          custName = existing[0].name;
                         }
                       }
                       if (!custId) {
-                        const { data: ins, error } = await supabase.from("customers").insert({
-                          business_id: businessId, name: newCust.name,
-                          email: newCust.email || null, phone: newCust.phone || null,
-                        }).select("id").single();
+                        const { data: ins, error } = await supabase
+                          .from("customers")
+                          .insert({
+                            business_id: businessId,
+                            name: newCust.name,
+                            email: newCust.email || null,
+                            phone: newCust.phone || null,
+                          })
+                          .select("id")
+                          .single();
                         if (error) throw error;
                         custId = ins.id;
                       }
                     }
-                    // 2. Create booking
                     const starts_at = time;
-                    const ends_at = new Date(new Date(starts_at).getTime() + service.duration_minutes * 60000).toISOString();
+                    const ends_at = new Date(
+                      new Date(starts_at).getTime() + service.duration_minutes * 60000,
+                    ).toISOString();
                     const { error } = await supabase.from("bookings").insert({
                       business_id: businessId,
                       service_id: service.id,
@@ -147,7 +239,8 @@ export function NewBookingDialog({
                       customer_name: custName,
                       customer_email: custEmail,
                       customer_phone: custPhone,
-                      starts_at, ends_at,
+                      starts_at,
+                      ends_at,
                       price_cents: service.price_cents,
                       notes: notes || null,
                       source: "walkin",
@@ -184,7 +277,11 @@ function Row({ k, v }: { k: string; v: any }) {
   );
 }
 
-function CustomerStep({ businessId, onPick, onCreate }: {
+function CustomerStep({
+  businessId,
+  onPick,
+  onCreate,
+}: {
   businessId: string;
   onPick: (c: Customer) => void;
   onCreate: (c: { name: string; email: string; phone: string }) => void;
@@ -199,7 +296,8 @@ function CustomerStep({ businessId, onPick, onCreate }: {
     queryFn: async () => {
       const term = q.trim();
       const { data, error } = await supabase
-        .from("customers").select("id, name, email, phone")
+        .from("customers")
+        .select("id, name, email, phone")
         .eq("business_id", businessId)
         .or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`)
         .limit(8);
@@ -278,19 +376,30 @@ function CustomerStep({ businessId, onPick, onCreate }: {
   );
 }
 
-function ServiceStep({ businessId, onBack, onPick }: {
+function ServiceStep({
+  businessId,
+  initialService,
+  initialStaff,
+  onBack,
+  onPick,
+}: {
   businessId: string;
+  initialService: Service | null;
+  initialStaff: Staff | null;
   onBack: () => void;
   onPick: (svc: Service, staff: Staff) => void;
 }) {
-  const [svc, setSvc] = useState<Service | null>(null);
+  const [svc, setSvc] = useState<Service | null>(initialService);
 
   const { data: services, isLoading } = useQuery({
     queryKey: ["wi-services", businessId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("services")
+      const { data, error } = await supabase
+        .from("services")
         .select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color")
-        .eq("business_id", businessId).eq("active", true).order("name");
+        .eq("business_id", businessId)
+        .eq("active", true)
+        .order("name");
       if (error) throw error;
       return data as Service[];
     },
@@ -308,6 +417,14 @@ function ServiceStep({ businessId, onBack, onPick }: {
       return data as Staff[];
     },
   });
+
+  // Auto-advance if we have a prefilled staff and a service
+  useEffect(() => {
+    if (svc && initialStaff && staffList?.some((s) => s.id === initialStaff.id)) {
+      onPick(svc, initialStaff);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [svc, staffList]);
 
   return (
     <div className="space-y-3">
@@ -369,7 +486,15 @@ function ServiceStep({ businessId, onBack, onPick }: {
   );
 }
 
-function SlotStep({ businessId, staff, service, date, setDate, onBack, onPick }: {
+function SlotStep({
+  businessId,
+  staff,
+  service,
+  date,
+  setDate,
+  onBack,
+  onPick,
+}: {
   businessId: string;
   staff: Staff;
   service: Service;
@@ -379,7 +504,10 @@ function SlotStep({ businessId, staff, service, date, setDate, onBack, onPick }:
   onPick: (iso: string) => void;
 }) {
   const { slots, isLoading } = useAvailableSlots({
-    businessId, staffId: staff.id, service, date,
+    businessId,
+    staffId: staff.id,
+    service,
+    date,
   });
   const days = useMemo(() => buildDateStrip(14), []);
 
@@ -399,13 +527,21 @@ function SlotStep({ businessId, staff, service, date, setDate, onBack, onPick }:
                 sel ? "bg-primary text-primary-foreground" : "bg-secondary/50 hover:bg-secondary"
               }`}
             >
-              <span className="uppercase tracking-wider text-[10px] opacity-80">{d.toLocaleDateString([], { weekday: "short" })}</span>
+              <span className="uppercase tracking-wider text-[10px] opacity-80">
+                {d.toLocaleDateString([], { weekday: "short" })}
+              </span>
               <span className="font-display text-base mt-0.5 tabular-nums">{d.getDate()}</span>
             </button>
           );
         })}
       </div>
-      {isLoading && <div className="grid grid-cols-4 gap-2">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}</div>}
+      {isLoading && (
+        <div className="grid grid-cols-4 gap-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 rounded-xl" />
+          ))}
+        </div>
+      )}
       {!isLoading && slots.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">No availability on this day.</p>
       )}

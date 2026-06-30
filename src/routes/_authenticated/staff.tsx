@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { StaffHoursEditor } from "@/components/staff-hours-editor";
 import { StaffServicesEditor } from "@/components/staff-services-editor";
+import { TimeOffEditor } from "@/components/time-off-editor";
 import { compressImage, signedUrl } from "@/lib/image";
 import { toast } from "sonner";
 
@@ -167,6 +168,7 @@ function StaffPage() {
                 <TabsTrigger value="profile" className="flex-1">Profile</TabsTrigger>
                 <TabsTrigger value="hours" className="flex-1">Hours</TabsTrigger>
                 <TabsTrigger value="services" className="flex-1">Services</TabsTrigger>
+                <TabsTrigger value="timeoff" className="flex-1">Time off</TabsTrigger>
               </TabsList>
               <TabsContent value="profile" className="mt-4">
                 <StaffProfileForm
@@ -181,6 +183,9 @@ function StaffPage() {
               </TabsContent>
               <TabsContent value="services" className="mt-4">
                 {bid && <StaffServicesEditor staffId={edit.id!} businessId={bid} />}
+              </TabsContent>
+              <TabsContent value="timeoff" className="mt-4">
+                {bid && <TimeOffEditor businessId={bid} staffId={edit.id!} />}
               </TabsContent>
             </Tabs>
           )}

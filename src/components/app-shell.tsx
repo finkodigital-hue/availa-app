@@ -12,6 +12,9 @@ import {
   X,
   Plus,
   Sparkles,
+  CalendarCheck,
+  CreditCard,
+  BarChart3,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -29,13 +32,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const NAV = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Overview" },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/calendar", icon: Calendar, label: "Calendar" },
-  { to: "/services", icon: Scissors, label: "Services" },
-  { to: "/staff", icon: Users, label: "Staff" },
+  { to: "/bookings", icon: CalendarCheck, label: "Bookings" },
   { to: "/customers", icon: UserCircle, label: "Customers" },
-  { to: "/assistant", icon: Sparkles, label: "AI Assistant" },
-  { to: "/preview", icon: ExternalLink, label: "Preview page" },
+  { to: "/staff", icon: Users, label: "Staff" },
+  { to: "/services", icon: Scissors, label: "Services" },
+  { to: "/payments", icon: CreditCard, label: "Payments" },
+  { to: "/reports", icon: BarChart3, label: "Reports" },
+  { to: "/assistant", icon: Sparkles, label: "Assistant" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 
@@ -77,7 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </div>
 
-      <nav className="flex flex-col gap-0.5 px-3 flex-1">
+      <nav className="flex flex-col gap-0.5 px-3 flex-1 overflow-y-auto">
         <div className="px-2 pb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           Workspace
         </div>
@@ -104,6 +109,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
+        {biz?.slug && (
+          <a
+            href={`/book/${biz.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-card/60"
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span>Preview page</span>
+          </a>
+        )}
       </nav>
 
       <div className="p-3 border-t border-border/60">
@@ -150,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-64 md:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen">
+      <aside className="hidden md:flex md:w-60 md:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen">
         {SidebarContent}
       </aside>
 
