@@ -706,7 +706,7 @@ function StaffColumn({
   onDrop: (bookingId: string, iso: string) => void;
   nowTop: number | null;
 }) {
-  const { START_HOUR } = useHours();
+  const { START_HOUR, END_HOUR } = useHours();
   const colRef = useRef<HTMLDivElement>(null);
   const [hoverTop, setHoverTop] = useState<number | null>(null);
   const [drag, setDrag] = useState<{ id: string; origIso: string; durationMin: number; x: number; y: number; newIso: string } | null>(null);
