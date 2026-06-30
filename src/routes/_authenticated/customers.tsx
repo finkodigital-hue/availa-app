@@ -201,7 +201,18 @@ function CustomersPage() {
         onClose={() => setOpenId(null)}
         onEdit={(c) => { setOpenId(null); setEditing(c); }}
         onDelete={() => { setOpenId(null); qc.invalidateQueries({ queryKey: ["customers"] }); }}
+        onBook={(id) => { setOpenId(null); setBookingFor(id); }}
       />
+
+      {bid && (
+        <NewBookingDialog
+          open={!!bookingFor}
+          onOpenChange={(o) => !o && setBookingFor(null)}
+          businessId={bid}
+          prefill={bookingFor ? { customerId: bookingFor } : undefined}
+          onCreated={() => { setBookingFor(null); qc.invalidateQueries({ queryKey: ["customers"] }); }}
+        />
+      )}
 
       <MergeDialog
         target={mergeFor}
