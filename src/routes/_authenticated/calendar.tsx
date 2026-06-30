@@ -516,6 +516,7 @@ function DayView({
   onCellClick: (staffId: string, isoTime: string) => void;
   onMove: (id: string, newStaffId: string, newStart: Date) => void;
 }) {
+  const { START_HOUR, END_HOUR } = useHours();
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
   const totalH = hours.length * HOUR_PX;
 
@@ -940,10 +941,12 @@ function WeekView({
   onSelect: (b: any) => void;
   onCellClick: (date: Date, isoTime: string) => void;
 }) {
+  const { START_HOUR, END_HOUR } = useHours();
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart); d.setDate(d.getDate() + i); return d;
   });
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
+
 
   if (isLoading) return <Skeleton className="h-[600px] w-full rounded-3xl" />;
 
