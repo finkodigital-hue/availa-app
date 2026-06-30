@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Plus,
+  Sparkles,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const NAV = [
   { to: "/services", icon: Scissors, label: "Services" },
   { to: "/staff", icon: Users, label: "Staff" },
   { to: "/customers", icon: UserCircle, label: "Customers" },
+  { to: "/assistant", icon: Sparkles, label: "AI Assistant" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 
