@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { fmtMoney, fmtTime } from "@/lib/format";
+import { NewBookingDialog } from "@/components/new-booking-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
@@ -34,6 +36,7 @@ function CalendarPage() {
   const qc = useQueryClient();
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date()));
   const [selected, setSelected] = useState<any | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
 
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => { const d = new Date(anchor); d.setDate(d.getDate() + i); return d; }),
@@ -84,6 +87,9 @@ function CalendarPage() {
         subtitle={`${anchor.toLocaleDateString([], { month: "long", day: "numeric" })} – ${days[6].toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}`}
         action={
           <div className="flex items-center gap-1.5">
+            <Button onClick={() => setNewOpen(true)} className="h-9 shadow-glow">
+              <Plus className="h-4 w-4 mr-1" /> New booking
+            </Button>
             <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => { const d = new Date(anchor); d.setDate(d.getDate() - 7); setAnchor(d); }}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -157,7 +163,10 @@ function CalendarPage() {
                       className="absolute left-1 right-1 rounded-lg bg-primary/15 hover:bg-primary/25 border-l-2 border-primary px-2 py-1 text-left overflow-hidden transition-all animate-rise"
                       style={{ top, height }}
                     >
-                      <div className="text-[11px] font-medium truncate">{b.customer_name}</div>
+                      <div className="text-[11px] font-medium truncate flex items-center gap-1">
+                        {b.customer_name}
+                        {b.source === "walkin" && <span className="inline-block px-1 rounded text-[8px] uppercase tracking-wider bg-foreground/10">Walk-in</span>}
+                      </div>
                       <div className="text-[10px] text-muted-foreground truncate">{b.services?.name}</div>
                     </button>
                   );
@@ -221,13 +230,19 @@ function CalendarPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setSelected(null)}>Close</Button>
             {selected?.status === "confirmed" && (
-              <Button variant="destructive" onClick={() => cancelBooking(selected.id)}>
-                Cancel booking
-              </Button>
+              <ConfirmDialog
+                trigger={<Button variant="destructive">Cancel booking</Button>}
+                title="Cancel this booking?"
+                description="The customer will be notified if reminders are enabled."
+                confirmLabel="Cancel booking"
+                onConfirm={async () => { await cancelBooking(selected.id); }}
+              />
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {bid && <NewBookingDialog open={newOpen} onOpenChange={setNewOpen} businessId={bid} onCreated={() => qc.invalidateQueries({ queryKey: ["calendar"] })} />}
     </div>
   );
 }

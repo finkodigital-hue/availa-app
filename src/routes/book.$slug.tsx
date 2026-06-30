@@ -60,7 +60,7 @@ export const Route = createFileRoute("/book/$slug")({
   component: PublicBooking,
 });
 
-type Service = { id: string; name: string; duration_minutes: number; price_cents: number; description: string | null };
+type Service = { id: string; name: string; duration_minutes: number; price_cents: number; description: string | null; buffer_before_min?: number | null; buffer_after_min?: number | null; color?: string | null };
 type Staff = { id: string; name: string; role: string | null };
 type Step = "service" | "staff" | "time" | "info" | "done";
 
@@ -87,7 +87,7 @@ function PublicBooking() {
   const { data: services, isLoading: loadingServices } = useQuery({
     queryKey: ["pub-services", biz.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("services").select("id, name, duration_minutes, price_cents, description").eq("business_id", biz.id).eq("active", true).order("name");
+      const { data, error } = await supabase.from("services").select("id, name, duration_minutes, price_cents, description, buffer_before_min, buffer_after_min, color").eq("business_id", biz.id).eq("active", true).order("name");
       if (error) throw error; return data as Service[];
     },
   });
@@ -121,19 +121,25 @@ function PublicBooking() {
 
   const slots = useMemo(() => {
     if (!service || !dayData?.hours || dayData.hours.closed || !dayData.hours.open_time) return [];
-    const slotMin = 30;
+    const slotMin = 15;
+    const bufBefore = service.buffer_before_min ?? 0;
+    const bufAfter = service.buffer_after_min ?? 0;
+    const totalMin = service.duration_minutes + bufBefore + bufAfter;
     const [oh, om] = dayData.hours.open_time.split(":").map(Number);
     const [ch, cm] = dayData.hours.close_time!.split(":").map(Number);
     const open = new Date(date); open.setHours(oh, om, 0, 0);
     const close = new Date(date); close.setHours(ch, cm, 0, 0);
     const result: { time: string; iso: string; hour: number }[] = [];
     const now = new Date();
-    for (let t = new Date(open); t.getTime() + service.duration_minutes * 60000 <= close.getTime(); t = new Date(t.getTime() + slotMin * 60000)) {
+    for (let t = new Date(open); t.getTime() + totalMin * 60000 <= close.getTime(); t = new Date(t.getTime() + slotMin * 60000)) {
       if (t < now) continue;
-      const slotEnd = new Date(t.getTime() + service.duration_minutes * 60000);
+      const slotEnd = new Date(t.getTime() + totalMin * 60000);
       const conflict = dayData.bookings.some((b: any) => new Date(b.starts_at) < slotEnd && new Date(b.ends_at) > t);
       const blocked = dayData.blocked.some((b: any) => (!b.staff_id || b.staff_id === staff?.id) && new Date(b.starts_at) < slotEnd && new Date(b.ends_at) > t);
-      if (!conflict && !blocked) result.push({ time: t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), iso: t.toISOString(), hour: t.getHours() });
+      if (!conflict && !blocked) {
+        const start = new Date(t.getTime() + bufBefore * 60000);
+        result.push({ time: start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), iso: start.toISOString(), hour: start.getHours() });
+      }
     }
     return result;
   }, [service, dayData, date, staff]);

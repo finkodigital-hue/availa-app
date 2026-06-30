@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Clock, Loader2, Palette } from "lucide-react";
+import { Building2, Clock, Loader2, Palette, ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WEEKDAYS } from "@/lib/format";
 import { toast } from "sonner";
+import { GalleryManager } from "@/components/gallery-manager";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -144,6 +145,10 @@ function SettingsPage() {
             Save hours
           </Button>
         </div>
+      </Section>
+
+      <Section icon={ImageIcon} title="Gallery & branding" description="Logo, cover image and showcase photos shown on your booking page.">
+        <GalleryManager businessId={biz.id} />
       </Section>
     </div>
   );

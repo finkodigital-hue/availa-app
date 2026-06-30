@@ -286,7 +286,7 @@ function RescheduleDialog({ booking, onClose, onDone }: { booking: Booking | nul
   const { slots, isLoading } = useAvailableSlots({
     businessId: booking?.business_id,
     staffId: booking?.staff_id,
-    durationMin: booking?.services?.duration_minutes,
+    service: booking?.services ? { duration_minutes: booking.services.duration_minutes } : undefined,
     date,
     excludeBookingId: booking?.id,
   });

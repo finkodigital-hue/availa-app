@@ -35,6 +35,7 @@ const NAV = [
   { to: "/staff", icon: Users, label: "Staff" },
   { to: "/customers", icon: UserCircle, label: "Customers" },
   { to: "/assistant", icon: Sparkles, label: "AI Assistant" },
+  { to: "/preview", icon: ExternalLink, label: "Preview page" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 
