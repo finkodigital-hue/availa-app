@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -48,8 +48,18 @@ export const Route = createFileRoute("/_authenticated/calendar")({
 const HOUR_PX = 64;
 const SLOT_MIN = 15;
 const SLOT_PX = HOUR_PX / (60 / SLOT_MIN);
-const START_HOUR = 7;
-const END_HOUR = 22;
+// Default visible window if a business hasn't configured opening hours yet.
+const DEFAULT_START_HOUR = 8;
+const DEFAULT_END_HOUR = 20;
+
+// Visible-window context derived from each business's opening periods.
+const HoursContext = createContext<{ START_HOUR: number; END_HOUR: number }>({
+  START_HOUR: DEFAULT_START_HOUR,
+  END_HOUR: DEFAULT_END_HOUR,
+});
+const useHours = () => useContext(HoursContext);
+
+
 
 type View = "day" | "week" | "month";
 
@@ -233,8 +243,36 @@ function CalendarPage() {
     setAnchor(d);
   };
 
+  // Derive visible-hours window from this business's opening periods.
+  const { data: periods } = useQuery({
+    queryKey: ["business-hour-periods", bid],
+    enabled: !!bid,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("business_hour_periods")
+        .select("open_time, close_time")
+        .eq("business_id", bid!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const hoursWindow = useMemo(() => {
+    if (!periods || !periods.length) return { START_HOUR: DEFAULT_START_HOUR, END_HOUR: DEFAULT_END_HOUR };
+    let minH = 23, maxH = 0;
+    for (const p of periods) {
+      const [oh] = String(p.open_time).split(":").map(Number);
+      const [ch, cm] = String(p.close_time).split(":").map(Number);
+      minH = Math.min(minH, oh);
+      maxH = Math.max(maxH, ch + (cm > 0 ? 1 : 0));
+    }
+    // pad slightly so drag/drop near edges feels natural
+    return { START_HOUR: Math.max(0, minH), END_HOUR: Math.min(24, Math.max(maxH, minH + 1)) };
+  }, [periods]);
+
   return (
+    <HoursContext.Provider value={hoursWindow}>
     <div className="p-3 sm:p-5 md:p-8 max-w-[1800px]">
+
       <PageHeader
         eyebrow="Schedule"
         title="Calendar"
@@ -426,8 +464,10 @@ function CalendarPage() {
         />
       )}
     </div>
+    </HoursContext.Provider>
   );
 }
+
 
 function DetailRow({ label, value }: { label: string; value: any }) {
   return (
@@ -441,6 +481,7 @@ function DetailRow({ label, value }: { label: string; value: any }) {
 /* ===== Today Summary Strip ===== */
 
 function TodayStrip({ bookings, staff, date }: { bookings: any[]; staff: any[]; date: Date }) {
+  const { START_HOUR, END_HOUR } = useHours();
   const isToday = date.toDateString() === new Date().toDateString();
   const active = bookings.filter((b) => b.status !== "cancelled");
   const revenue = active.reduce((sum, b) => sum + (b.price_cents ?? 0), 0);
@@ -505,6 +546,7 @@ function DayView({
   onCellClick: (staffId: string, isoTime: string) => void;
   onMove: (id: string, newStaffId: string, newStart: Date) => void;
 }) {
+  const { START_HOUR, END_HOUR } = useHours();
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
   const totalH = hours.length * HOUR_PX;
 
@@ -694,6 +736,7 @@ function StaffColumn({
   onDrop: (bookingId: string, iso: string) => void;
   nowTop: number | null;
 }) {
+  const { START_HOUR, END_HOUR } = useHours();
   const colRef = useRef<HTMLDivElement>(null);
   const [hoverTop, setHoverTop] = useState<number | null>(null);
   const [drag, setDrag] = useState<{ id: string; origIso: string; durationMin: number; x: number; y: number; newIso: string } | null>(null);
@@ -840,6 +883,7 @@ function BookingCard({
   onSelect: (b: any) => void;
   onDragInfo: (d: { id: string; origIso: string; durationMin: number; x: number; y: number; newIso: string } | null) => void;
 }) {
+  const { START_HOUR } = useHours();
   const [dragging, setDragging] = useState(false);
   const s = new Date(b.starts_at);
   const e = new Date(b.ends_at);
@@ -927,10 +971,12 @@ function WeekView({
   onSelect: (b: any) => void;
   onCellClick: (date: Date, isoTime: string) => void;
 }) {
+  const { START_HOUR, END_HOUR } = useHours();
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart); d.setDate(d.getDate() + i); return d;
   });
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
+
 
   if (isLoading) return <Skeleton className="h-[600px] w-full rounded-3xl" />;
 

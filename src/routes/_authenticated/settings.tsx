@@ -113,48 +113,108 @@ function ProfileEditor({ biz }: { biz: any }) {
   );
 }
 
+type Period = { id?: string; open_time: string; close_time: string };
+
 function HoursEditor({ biz }: { biz: any }) {
   const qc = useQueryClient();
-  const { data: hours, isLoading } = useQuery({
-    queryKey: ["business-hours", biz.id],
+  const { data: periods, isLoading } = useQuery({
+    queryKey: ["business-hour-periods", biz.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("business_hours").select("*").eq("business_id", biz.id).order("weekday");
+      const { data, error } = await supabase
+        .from("business_hour_periods")
+        .select("*")
+        .eq("business_id", biz.id)
+        .order("weekday")
+        .order("open_time");
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
-  const [form, setForm] = useState<any[]>([]);
+
+  // 7 buckets — array of periods per weekday. Empty array = closed.
+  const [days, setDays] = useState<Period[][]>(() => Array.from({ length: 7 }, () => []));
   const [saving, setSaving] = useState(false);
+
   useEffect(() => {
-    // Always render 7 rows, even if no rows exist yet — saving will upsert.
-    const byDay = new Map<number, any>((hours ?? []).map((r: any) => [r.weekday, r]));
-    setForm(
-      Array.from({ length: 7 }, (_, w) =>
-        byDay.get(w) ?? {
-          business_id: biz.id,
-          weekday: w,
-          open_time: w === 0 ? null : "09:00",
-          close_time: w === 0 ? null : "18:00",
-          closed: w === 0,
-        },
-      ),
-    );
-  }, [hours, biz.id]);
+    const buckets: Period[][] = Array.from({ length: 7 }, () => []);
+    for (const p of periods ?? []) {
+      buckets[(p as any).weekday]?.push({
+        id: (p as any).id,
+        open_time: String((p as any).open_time).slice(0, 5),
+        close_time: String((p as any).close_time).slice(0, 5),
+      });
+    }
+    setDays(buckets);
+  }, [periods]);
+
+  const updatePeriod = (w: number, i: number, patch: Partial<Period>) => {
+    setDays((prev) => {
+      const next = prev.map((arr) => arr.slice());
+      next[w][i] = { ...next[w][i], ...patch };
+      return next;
+    });
+  };
+  const addPeriod = (w: number) => {
+    setDays((prev) => {
+      const next = prev.map((arr) => arr.slice());
+      const last = next[w][next[w].length - 1];
+      next[w].push(last ? { open_time: last.close_time, close_time: "18:00" } : { open_time: "09:00", close_time: "18:00" });
+      return next;
+    });
+  };
+  const removePeriod = (w: number, i: number) => {
+    setDays((prev) => {
+      const next = prev.map((arr) => arr.slice());
+      next[w].splice(i, 1);
+      return next;
+    });
+  };
+  const toggleClosed = (w: number, closed: boolean) => {
+    setDays((prev) => {
+      const next = prev.map((arr) => arr.slice());
+      next[w] = closed ? [] : [{ open_time: "09:00", close_time: "18:00" }];
+      return next;
+    });
+  };
 
   const save = async () => {
     setSaving(true);
     try {
-      const payload = form.map((h) => ({
-        id: h.id,
-        business_id: biz.id,
-        weekday: h.weekday,
-        open_time: h.closed ? null : (h.open_time || "09:00"),
-        close_time: h.closed ? null : (h.close_time || "18:00"),
-        closed: !!h.closed,
-      }));
-      const { error } = await supabase.from("business_hours").upsert(payload, { onConflict: "business_id,weekday" });
-      if (error) throw error;
+      // Validate: each period open < close; no overlap within a day.
+      for (let w = 0; w < 7; w++) {
+        const sorted = [...days[w]].sort((a, b) => a.open_time.localeCompare(b.open_time));
+        for (let i = 0; i < sorted.length; i++) {
+          if (sorted[i].open_time >= sorted[i].close_time) throw new Error(`${WEEKDAYS[w]}: opening time must be before closing time.`);
+          if (i > 0 && sorted[i].open_time < sorted[i - 1].close_time) throw new Error(`${WEEKDAYS[w]}: periods overlap.`);
+        }
+      }
+
+      // Wipe & reinsert — simplest correct behaviour.
+      const { error: delErr } = await supabase.from("business_hour_periods").delete().eq("business_id", biz.id);
+      if (delErr) throw delErr;
+      const rows = days.flatMap((arr, w) => arr.map((p) => ({
+        business_id: biz.id, weekday: w, open_time: p.open_time, close_time: p.close_time,
+      })));
+      if (rows.length) {
+        const { error } = await supabase.from("business_hour_periods").insert(rows);
+        if (error) throw error;
+      }
+
+      // Mirror primary period back into legacy business_hours for compatibility.
+      const legacy = Array.from({ length: 7 }, (_, w) => {
+        const first = [...days[w]].sort((a, b) => a.open_time.localeCompare(b.open_time))[0];
+        return {
+          business_id: biz.id,
+          weekday: w,
+          open_time: first?.open_time ?? null,
+          close_time: first?.close_time ?? null,
+          closed: !first,
+        };
+      });
+      await supabase.from("business_hours").upsert(legacy, { onConflict: "business_id,weekday" });
+
       toast.success("Hours saved");
+      qc.invalidateQueries({ queryKey: ["business-hour-periods"] });
       qc.invalidateQueries({ queryKey: ["business-hours"] });
       qc.invalidateQueries({ queryKey: ["slots-day"] });
     } catch (e: any) {
@@ -162,23 +222,39 @@ function HoursEditor({ biz }: { biz: any }) {
     } finally { setSaving(false); }
   };
 
-
-  if (isLoading) return <div className="space-y-2">{Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
+  if (isLoading) return <div className="space-y-2">{Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>;
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        {form.map((h, i) => (
-          <div key={h.weekday} className={`grid grid-cols-[80px_1fr_1fr_auto] items-center gap-3 rounded-xl px-3 py-2 transition-colors ${h.closed ? "opacity-60" : "hover:bg-secondary/40"}`}>
-            <span className="text-sm font-medium">{WEEKDAYS[h.weekday]}</span>
-            <Input type="time" disabled={h.closed} value={h.open_time?.slice(0, 5) ?? ""} onChange={(e) => { const c = [...form]; c[i] = { ...h, open_time: e.target.value }; setForm(c); }} className="h-9 tabular-nums" />
-            <Input type="time" disabled={h.closed} value={h.close_time?.slice(0, 5) ?? ""} onChange={(e) => { const c = [...form]; c[i] = { ...h, close_time: e.target.value }; setForm(c); }} className="h-9 tabular-nums" />
-            <div className="flex items-center gap-2 justify-end">
-              <span className="text-xs text-muted-foreground">Closed</span>
-              <Switch checked={h.closed} onCheckedChange={(v) => { const c = [...form]; c[i] = { ...h, closed: v }; setForm(c); }} />
+      <p className="text-xs text-muted-foreground">Add multiple periods per day for split shifts (e.g. 9:00–13:00 and 14:00–18:00).</p>
+      <div className="space-y-2">
+        {days.map((periods, w) => {
+          const closed = periods.length === 0;
+          return (
+            <div key={w} className={`rounded-xl border bg-background p-3 transition-colors ${closed ? "opacity-70" : ""}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold">{WEEKDAYS[w]}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{closed ? "Closed" : "Open"}</span>
+                  <Switch checked={!closed} onCheckedChange={(v) => toggleClosed(w, !v)} />
+                </div>
+              </div>
+              {!closed && (
+                <div className="space-y-1.5">
+                  {periods.map((p, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
+                      <Input type="time" value={p.open_time} onChange={(e) => updatePeriod(w, i, { open_time: e.target.value })} className="h-9 tabular-nums" />
+                      <span className="text-xs text-muted-foreground">to</span>
+                      <Input type="time" value={p.close_time} onChange={(e) => updatePeriod(w, i, { close_time: e.target.value })} className="h-9 tabular-nums" />
+                      <Button variant="ghost" size="sm" onClick={() => removePeriod(w, i)} disabled={periods.length === 1} className="h-9 text-xs text-muted-foreground hover:text-destructive">Remove</Button>
+                    </div>
+                  ))}
+                  <Button variant="ghost" size="sm" onClick={() => addPeriod(w)} className="h-8 text-xs">+ Add period</Button>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <HolidayClosures businessId={biz.id} />
       <div className="flex justify-end">
@@ -190,6 +266,7 @@ function HoursEditor({ biz }: { biz: any }) {
     </div>
   );
 }
+
 
 function HolidayClosures({ businessId }: { businessId: string }) {
   const qc = useQueryClient();
