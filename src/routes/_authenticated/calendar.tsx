@@ -52,6 +52,14 @@ const SLOT_PX = HOUR_PX / (60 / SLOT_MIN);
 const DEFAULT_START_HOUR = 8;
 const DEFAULT_END_HOUR = 20;
 
+// Visible-window context derived from each business's opening periods.
+const HoursContext = createContext<{ START_HOUR: number; END_HOUR: number }>({
+  START_HOUR: DEFAULT_START_HOUR,
+  END_HOUR: DEFAULT_END_HOUR,
+});
+const useHours = () => useContext(HoursContext);
+
+
 
 type View = "day" | "week" | "month";
 
