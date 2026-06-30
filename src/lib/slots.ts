@@ -8,6 +8,13 @@ export type SlotService = {
   buffer_after_min?: number | null;
 };
 
+// Sensible default hours for a brand-new business that hasn't configured
+// anything yet — Monday to Saturday, 9 am to 6 pm; Sunday closed.
+function defaultHoursFor(weekday: number) {
+  if (weekday === 0) return { open_time: null, close_time: null, closed: true };
+  return { open_time: "09:00", close_time: "18:00", closed: false };
+}
+
 export function useAvailableSlots(opts: {
   businessId: string | undefined;
   staffId: string | undefined;
@@ -30,8 +37,15 @@ export function useAvailableSlots(opts: {
         supabase.from("bookings").select("id, starts_at, ends_at, status").eq("business_id", businessId!).eq("staff_id", staffId!).gte("starts_at", dayStart.toISOString()).lte("starts_at", dayEnd.toISOString()).neq("status", "cancelled"),
         supabase.from("blocked_dates").select("starts_at, ends_at, staff_id").eq("business_id", businessId!).lt("starts_at", dayEnd.toISOString()).gt("ends_at", dayStart.toISOString()),
       ]);
-      // Prefer staff hours when present, else fall back to business hours
-      const hours = staffHoursR.data ?? bizHoursR.data;
+      // Prefer explicit staff override (only when not "closed" — i.e. they truly opted in).
+      // Otherwise inherit business hours. If neither table has a row, fall back to defaults
+      // so the booking engine still works for brand-new businesses.
+      const staffH: any = staffHoursR.data;
+      const bizH: any = bizHoursR.data;
+      const hours =
+        (staffH && !staffH.closed && staffH.open_time)
+          ? staffH
+          : bizH ?? defaultHoursFor(date.getDay());
       return { hours, bookings: bookingsR.data ?? [], blocked: blockedR.data ?? [] };
     },
   });
@@ -40,7 +54,7 @@ export function useAvailableSlots(opts: {
     const dayData = dayQuery.data;
     if (!dayData || !service) return [];
     const h: any = dayData.hours;
-    if (!h || h.closed || !h.open_time) return [];
+    if (!h || h.closed || !h.open_time || !h.close_time) return [];
     const slotMin = 15;
     const bufBefore = service.buffer_before_min ?? 0;
     const bufAfter = service.buffer_after_min ?? 0;
@@ -53,7 +67,7 @@ export function useAvailableSlots(opts: {
     const now = new Date();
     for (let t = new Date(open); t.getTime() + totalMin * 60000 <= close.getTime(); t = new Date(t.getTime() + slotMin * 60000)) {
       if (t < now) continue;
-      const blockStart = new Date(t.getTime() - 0);
+      const blockStart = new Date(t.getTime());
       const blockEnd = new Date(t.getTime() + totalMin * 60000);
       const conflict = dayData.bookings.some((b: any) => b.id !== excludeBookingId && new Date(b.starts_at) < blockEnd && new Date(b.ends_at) > blockStart);
       const blocked = dayData.blocked.some((b: any) => (!b.staff_id || b.staff_id === staffId) && new Date(b.starts_at) < blockEnd && new Date(b.ends_at) > blockStart);

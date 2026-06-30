@@ -438,7 +438,9 @@ export type Database = {
       }
       customers: {
         Row: {
+          address: string | null
           auth_user_id: string | null
+          avatar_url: string | null
           business_id: string
           created_at: string
           email: string | null
@@ -450,7 +452,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           auth_user_id?: string | null
+          avatar_url?: string | null
           business_id: string
           created_at?: string
           email?: string | null
@@ -462,7 +466,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           auth_user_id?: string | null
+          avatar_url?: string | null
           business_id?: string
           created_at?: string
           email?: string | null
@@ -657,9 +663,11 @@ export type Database = {
       services: {
         Row: {
           active: boolean
+          archived_at: string | null
           buffer_after_min: number
           buffer_before_min: number
           business_id: string
+          category: string | null
           color: string | null
           created_at: string
           currency: string
@@ -673,9 +681,11 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          archived_at?: string | null
           buffer_after_min?: number
           buffer_before_min?: number
           business_id: string
+          category?: string | null
           color?: string | null
           created_at?: string
           currency?: string
@@ -689,9 +699,11 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          archived_at?: string | null
           buffer_after_min?: number
           buffer_before_min?: number
           business_id?: string
+          category?: string | null
           color?: string | null
           created_at?: string
           currency?: string
@@ -817,10 +829,18 @@ export type Database = {
     }
     Functions: {
       current_user_email: { Args: never; Returns: string }
+      ensure_business_hours: {
+        Args: { _business_id: string }
+        Returns: undefined
+      }
       is_business_owner: { Args: { _business_id: string }; Returns: boolean }
       merge_customers: {
         Args: { _loser: string; _winner: string }
         Returns: undefined
+      }
+      reassign_staff_bookings: {
+        Args: { _from_staff: string; _only_future?: boolean; _to_staff: string }
+        Returns: number
       }
     }
     Enums: {

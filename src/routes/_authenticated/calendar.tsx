@@ -4,14 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  Calendar as CalendarIcon,
   Clock,
   User,
   Plus,
-  CheckCircle2,
   XCircle,
-  UserX,
 } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
@@ -29,8 +27,9 @@ import {
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { signedUrl } from "@/lib/image";
-import { fmtMoney, fmtTime } from "@/lib/format";
+import { fmtMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   component: CalendarPage,
@@ -136,15 +135,15 @@ function CalendarPage() {
     },
   });
 
-  const setStatus = async (id: string, status: "completed" | "cancelled" | "no_show") => {
+  const setStatus = async (id: string, status: BookingStatus) => {
     const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success(
-      status === "completed" ? "Marked complete" : status === "cancelled" ? "Booking cancelled" : "Marked no-show",
-    );
-    setSelected(null);
+    toast.success(`Marked as ${statusMeta(status).label}`);
+    setSelected((s: any) => (s && s.id === id ? { ...s, status } : s));
     qc.invalidateQueries({ queryKey: ["calendar"] });
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
   };
+
 
   const openNewBooking = (cell?: { staffId?: string; isoTime?: string; date?: Date }) => {
     setPrefill(cell);
@@ -314,8 +313,16 @@ function CalendarPage() {
               <DetailRow
                 label="Status"
                 value={
-                  <Badge variant={selected.status === "confirmed" ? "default" : "secondary"} className="capitalize">
-                    {String(selected.status).replace("_", " ")}
+                  <Badge
+                    variant="outline"
+                    className="capitalize"
+                    style={{
+                      background: statusMeta(selected.status).tint,
+                      color: statusMeta(selected.status).color,
+                      borderColor: statusMeta(selected.status).color,
+                    }}
+                  >
+                    {statusMeta(selected.status).label}
                   </Badge>
                 }
               />
@@ -330,30 +337,48 @@ function CalendarPage() {
               )}
             </div>
           )}
+          {selected && (
+            <div className="space-y-2">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Change status</div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {BOOKING_STATUSES.map((s) => {
+                  const on = selected.status === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setStatus(selected.id, s.id)}
+                      className={`text-xs rounded-lg border px-2 py-1.5 transition-all ${on ? "ring-2 ring-offset-1 ring-offset-background font-medium" : "hover:bg-secondary/60"}`}
+                      style={
+                        on
+                          ? { background: s.tint, color: s.color, borderColor: s.color, ["--tw-ring-color" as any]: s.color }
+                          : { borderColor: "var(--color-border)" }
+                      }
+                    >
+                      <span className="inline-block h-1.5 w-1.5 rounded-full mr-1.5 align-middle" style={{ background: s.color }} />
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <DialogFooter className="flex-wrap gap-2">
-            {selected?.status === "confirmed" && (
-              <>
-                <Button variant="outline" onClick={() => setStatus(selected.id, "completed")}>
-                  <CheckCircle2 className="h-4 w-4 mr-1.5" /> Complete
-                </Button>
-                <Button variant="outline" onClick={() => setStatus(selected.id, "no_show")}>
-                  <UserX className="h-4 w-4 mr-1.5" /> No-show
-                </Button>
-                <ConfirmDialog
-                  trigger={
-                    <Button variant="destructive">
-                      <XCircle className="h-4 w-4 mr-1.5" /> Cancel
-                    </Button>
-                  }
-                  title="Cancel this booking?"
-                  description="The customer will be notified if reminders are enabled."
-                  confirmLabel="Cancel booking"
-                  onConfirm={async () => { await setStatus(selected.id, "cancelled"); }}
-                />
-              </>
+            {selected && selected.status !== "cancelled" && (
+              <ConfirmDialog
+                trigger={
+                  <Button variant="destructive">
+                    <XCircle className="h-4 w-4 mr-1.5" /> Cancel booking
+                  </Button>
+                }
+                title="Cancel this booking?"
+                description="The customer will be notified if reminders are enabled."
+                confirmLabel="Cancel booking"
+                onConfirm={async () => { await setStatus(selected.id, "cancelled"); setSelected(null); }}
+              />
             )}
             <Button variant="ghost" onClick={() => setSelected(null)}>Close</Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
@@ -636,6 +661,7 @@ function StaffColumn({
             }}
           >
             <div className="text-[11px] font-medium truncate flex items-center gap-1">
+              <span className="inline-block h-1.5 w-1.5 rounded-full shrink-0" style={{ background: statusMeta(b.status).color }} title={statusMeta(b.status).label} />
               {b.customer_name}
               {b.source === "walkin" && (
                 <span className="inline-block px-1 rounded text-[8px] uppercase tracking-wider bg-foreground/10">
@@ -647,6 +673,7 @@ function StaffColumn({
             <div className="text-[10px] text-muted-foreground tabular-nums">
               {fmtTime(b.starts_at)}
             </div>
+
           </button>
         );
       })}

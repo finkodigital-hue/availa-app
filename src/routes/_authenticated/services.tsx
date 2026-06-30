@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Scissors, Clock, DollarSign, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Scissors, Clock, DollarSign, Check, Archive, ArchiveRestore, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
@@ -27,10 +27,12 @@ type Service = {
   duration_minutes: number; price_cents: number; currency: string;
   active: boolean; image_url: string | null;
   buffer_before_min: number; buffer_after_min: number; color: string | null;
+  category: string | null; archived_at: string | null;
 };
 type Staff = { id: string; name: string };
 
 const COLORS = ["#C2410C", "#0EA5E9", "#10B981", "#A855F7", "#F59E0B", "#EC4899", "#6366F1", "#64748B"];
+
 
 function ServicesPage() {
   const { data: biz } = useMyBusiness();
@@ -72,7 +74,7 @@ function ServicesPage() {
   const save = async () => {
     if (!edit || !bid) return;
     if (!edit.name) return toast.error("Name is required");
-    const payload = {
+    const payload: any = {
       business_id: bid,
       name: edit.name,
       description: edit.description ?? null,
@@ -81,6 +83,7 @@ function ServicesPage() {
       buffer_before_min: Number(edit.buffer_before_min) || 0,
       buffer_after_min: Number(edit.buffer_after_min) || 0,
       color: edit.color ?? null,
+      category: edit.category?.trim() || null,
       active: edit.active ?? true,
     };
     const { data, error } = edit.id
@@ -96,14 +99,31 @@ function ServicesPage() {
     toast.success(edit.id ? "Service updated" : "Service created");
     setEdit(null);
     qc.invalidateQueries({ queryKey: ["services"] });
+    qc.invalidateQueries({ queryKey: ["slots-day"] });
+  };
+
+  const toggleArchive = async (s: Service) => {
+    const archived = !s.archived_at;
+    const { error } = await supabase
+      .from("services")
+      .update({ archived_at: archived ? new Date().toISOString() : null, active: !archived } as any)
+      .eq("id", s.id);
+    if (error) return toast.error(error.message);
+    toast.success(archived ? "Service archived" : "Service restored");
+    qc.invalidateQueries({ queryKey: ["services"] });
   };
 
   const del = async (id: string) => {
     const { error } = await supabase.from("services").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      // Likely FK violation — guide toward archive.
+      toast.error("This service has bookings — archive it instead.");
+      return;
+    }
     toast.success("Service deleted");
     qc.invalidateQueries({ queryKey: ["services"] });
   };
+
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
@@ -135,45 +155,67 @@ function ServicesPage() {
         />
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {services?.map((s, i) => (
-            <div
-              key={s.id}
-              className={`group rounded-2xl border bg-card p-5 card-hover animate-rise stagger-${(i % 6) + 1} relative overflow-hidden`}
-            >
-              {s.color && <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: s.color }} />}
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                <div className="min-w-0">
-                  <h3 className="font-display text-xl truncate">{s.name}</h3>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1.5">
-                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{s.duration_minutes} min</span>
-                    <span className="inline-flex items-center gap-1"><DollarSign className="h-3 w-3" />{fmtMoney(s.price_cents)}</span>
-                    {(s.buffer_before_min > 0 || s.buffer_after_min > 0) && (
-                      <span className="text-muted-foreground/80">+{s.buffer_before_min}/{s.buffer_after_min}m buffer</span>
-                    )}
+          {services?.map((s, i) => {
+            const isArchived = !!s.archived_at;
+            return (
+              <div
+                key={s.id}
+                className={`group rounded-2xl border bg-card p-5 card-hover animate-rise stagger-${(i % 6) + 1} relative overflow-hidden ${isArchived ? "opacity-60" : ""}`}
+              >
+                {s.color && <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: s.color }} />}
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-display text-xl truncate">{s.name}</h3>
+                      {s.category && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                          <Tag className="h-2.5 w-2.5" />{s.category}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1.5">
+                      <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{s.duration_minutes} min</span>
+                      <span className="inline-flex items-center gap-1"><DollarSign className="h-3 w-3" />{fmtMoney(s.price_cents)}</span>
+                      {(s.buffer_before_min > 0 || s.buffer_after_min > 0) && (
+                        <span className="text-muted-foreground/80">+{s.buffer_before_min}/{s.buffer_after_min}m buffer</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="p-2 rounded-lg hover:bg-secondary" onClick={() => setEdit(s)} aria-label="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      className="p-2 rounded-lg hover:bg-secondary"
+                      onClick={() => toggleArchive(s)}
+                      aria-label={isArchived ? "Restore" : "Archive"}
+                      title={isArchived ? "Restore" : "Archive"}
+                    >
+                      {isArchived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                    </button>
+                    <ConfirmDialog
+                      trigger={
+                        <button className="p-2 rounded-lg hover:bg-destructive/10 hover:text-destructive" aria-label="Delete">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      }
+                      title="Delete this service?"
+                      description="If it has bookings, archive it instead to preserve history."
+                      onConfirm={async () => { await del(s.id); }}
+                    />
                   </div>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="p-2 rounded-lg hover:bg-secondary" onClick={() => setEdit(s)} aria-label="Edit">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <ConfirmDialog
-                    trigger={
-                      <button className="p-2 rounded-lg hover:bg-destructive/10 hover:text-destructive" aria-label="Delete">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    }
-                    title="Delete this service?"
-                    description="Existing bookings will be kept."
-                    onConfirm={async () => { await del(s.id); }}
-                  />
+                {s.description && (
+                  <p className="text-sm text-muted-foreground mt-3 line-clamp-2 text-pretty">{s.description}</p>
+                )}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {isArchived && <Badge variant="secondary">Archived</Badge>}
+                  {!isArchived && !s.active && <Badge variant="secondary">Hidden</Badge>}
                 </div>
               </div>
-              {s.description && (
-                <p className="text-sm text-muted-foreground mt-3 line-clamp-2 text-pretty">{s.description}</p>
-              )}
-              {!s.active && <Badge variant="secondary" className="mt-3">Inactive</Badge>}
-            </div>
-          ))}
+            );
+          })}
+
         </div>
       )}
 
@@ -192,6 +234,11 @@ function ServicesPage() {
               <Label>Description</Label>
               <Textarea value={edit?.description ?? ""} onChange={(e) => setEdit({ ...edit, description: e.target.value })} className="mt-1.5" placeholder="What's included…" />
             </div>
+            <div>
+              <Label>Category</Label>
+              <Input value={edit?.category ?? ""} onChange={(e) => setEdit({ ...edit, category: e.target.value })} className="mt-1.5 h-10" placeholder="Hair, Nails, Skincare…" />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Duration (min)</Label>
