@@ -135,7 +135,7 @@ export function TimeOffEditor({ businessId, staffId }: { businessId: string; sta
                   title="Remove this time off?"
                   description="Bookings will become available in this period again."
                   confirmLabel="Remove"
-                  onConfirm={async () => del(r.id)}
+                  onConfirm={async () => { await del(r.id); }}
                 />
               </li>
             );
