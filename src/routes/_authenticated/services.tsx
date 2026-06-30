@@ -164,7 +164,7 @@ function ServicesPage() {
                     }
                     title="Delete this service?"
                     description="Existing bookings will be kept."
-                    onConfirm={() => del(s.id)}
+                    onConfirm={async () => { await del(s.id); }}
                   />
                 </div>
               </div>

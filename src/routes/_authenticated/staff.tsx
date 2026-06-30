@@ -128,7 +128,7 @@ function StaffPage() {
                       title="Remove this team member?"
                       description="If they have bookings, you'll need to disable them instead."
                       confirmLabel="Remove"
-                      onConfirm={() => del(s)}
+                      onConfirm={async () => { await del(s); }}
                     />
                   </div>
                 </div>
