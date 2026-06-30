@@ -48,8 +48,10 @@ export const Route = createFileRoute("/_authenticated/calendar")({
 const HOUR_PX = 64;
 const SLOT_MIN = 15;
 const SLOT_PX = HOUR_PX / (60 / SLOT_MIN);
-const START_HOUR = 7;
-const END_HOUR = 22;
+// Default visible window if a business hasn't configured opening hours yet.
+const DEFAULT_START_HOUR = 8;
+const DEFAULT_END_HOUR = 20;
+
 
 type View = "day" | "week" | "month";
 
