@@ -63,13 +63,14 @@
 
 :root {
   --radius: 0.875rem;
-  --background: oklch(0.985 0.008 80);
-  --foreground: oklch(0.18 0.01 60);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.01 60);
+  --background: oklch(0.98 0.012 78);
+  --foreground: oklch(0.22 0.012 280);
+  --card: oklch(0.995 0.006 80);
+  --card-foreground: oklch(0.22 0.012 280);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.01 60);
-  --primary: oklch(0.58 0.16 42);
+  --popover-foreground: oklch(0.22 0.012 280);
+  --primary: oklch(0.42 0.16 295);
+
   --primary-foreground: oklch(0.985 0.008 80);
   --secondary: oklch(0.93 0.018 75);
   --secondary-foreground: oklch(0.22 0.012 60);
@@ -83,20 +84,22 @@
   --success-foreground: oklch(0.985 0.008 80);
   --border: oklch(0.9 0.012 75);
   --input: oklch(0.9 0.012 75);
-  --ring: oklch(0.58 0.16 42);
-  --chart-1: oklch(0.58 0.16 42);
+  --ring: oklch(0.42 0.16 295);
+  --chart-1: oklch(0.42 0.16 295);
+
   --chart-2: oklch(0.45 0.05 60);
   --chart-3: oklch(0.72 0.1 75);
   --chart-4: oklch(0.35 0.04 60);
   --chart-5: oklch(0.85 0.04 80);
   --sidebar: oklch(0.97 0.012 80);
   --sidebar-foreground: oklch(0.18 0.01 60);
-  --sidebar-primary: oklch(0.58 0.16 42);
+  --sidebar-primary: oklch(0.42 0.16 295);
   --sidebar-primary-foreground: oklch(0.985 0.008 80);
   --sidebar-accent: oklch(0.93 0.018 75);
-  --sidebar-accent-foreground: oklch(0.22 0.012 60);
+  --sidebar-accent-foreground: oklch(0.22 0.012 280);
   --sidebar-border: oklch(0.9 0.012 75);
-  --sidebar-ring: oklch(0.58 0.16 42);
+  --sidebar-ring: oklch(0.42 0.16 295);
+
 
   --shadow-soft: 0 1px 2px oklch(0.18 0.01 60 / 0.04), 0 4px 24px -8px oklch(0.18 0.01 60 / 0.08);
   --shadow-elegant: 0 1px 0 oklch(1 0 0 / 0.6) inset, 0 1px 3px oklch(0.18 0.01 60 / 0.06), 0 12px 40px -12px oklch(0.18 0.01 60 / 0.14);
@@ -110,8 +113,9 @@
   --card-foreground: oklch(0.96 0.008 80);
   --popover: oklch(0.21 0.01 60);
   --popover-foreground: oklch(0.96 0.008 80);
-  --primary: oklch(0.7 0.15 42);
+  --primary: oklch(0.72 0.14 295);
   --primary-foreground: oklch(0.16 0.008 60);
+
   --secondary: oklch(0.26 0.012 60);
   --secondary-foreground: oklch(0.96 0.008 80);
   --muted: oklch(0.24 0.01 60);
@@ -124,20 +128,22 @@
   --success-foreground: oklch(0.16 0.008 60);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.7 0.15 42);
-  --chart-1: oklch(0.7 0.15 42);
+  --ring: oklch(0.72 0.14 295);
+  --chart-1: oklch(0.72 0.14 295);
+
   --chart-2: oklch(0.6 0.05 60);
   --chart-3: oklch(0.75 0.1 75);
   --chart-4: oklch(0.5 0.04 60);
   --chart-5: oklch(0.85 0.04 80);
   --sidebar: oklch(0.18 0.008 60);
   --sidebar-foreground: oklch(0.96 0.008 80);
-  --sidebar-primary: oklch(0.7 0.15 42);
+  --sidebar-primary: oklch(0.72 0.14 295);
   --sidebar-primary-foreground: oklch(0.16 0.008 60);
   --sidebar-accent: oklch(0.26 0.012 60);
   --sidebar-accent-foreground: oklch(0.96 0.008 80);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.7 0.15 42);
+  --sidebar-ring: oklch(0.72 0.14 295);
+
 }
 
 @layer base {
@@ -234,3 +240,24 @@
 @utility stagger-4 { animation-delay: 240ms; }
 @utility stagger-5 { animation-delay: 300ms; }
 @utility stagger-6 { animation-delay: 360ms; }
+
+/* ============== Calendar premium drag/lift ============== */
+@keyframes drop-bounce {
+  0% { transform: scale(1.05); }
+  60% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+@utility drag-lift {
+  cursor: grab;
+  transition: transform 0.18s cubic-bezier(0.16,1,0.3,1), box-shadow 0.18s ease, opacity 0.18s ease;
+  &:active { cursor: grabbing; }
+}
+@utility is-dragging {
+  transform: scale(1.04) rotate(-1.2deg);
+  opacity: 0.95;
+  box-shadow: 0 24px 48px -16px oklch(0 0 0 / 0.32), 0 8px 18px -6px oklch(0 0 0 / 0.18);
+  z-index: 50;
+}
+@utility drop-snap {
+  animation: drop-bounce 0.32s cubic-bezier(0.16,1,0.3,1) both;
+}

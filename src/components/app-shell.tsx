@@ -30,6 +30,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 
 const NAV = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -205,9 +206,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main className="flex-1 min-w-0 pt-14 md:pt-0">{children}</main>
+
+      <MobileBottomNav onMore={() => setMobileOpen(true)} />
     </div>
   );
 }
+
 
 export function PageHeader({
   title,
