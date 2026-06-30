@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { compressImage, signedUrl } from "@/lib/image";
 import { fmtDate, fmtMoney, fmtTime, statusMeta } from "@/lib/format";
 import { toast } from "sonner";
@@ -46,6 +47,7 @@ function CustomersPage() {
   const [mergeFor, setMergeFor] = useState<any | null>(null);
   const [editing, setEditing] = useState<Partial<Customer> | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [bookingFor, setBookingFor] = useState<string | null>(null);
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers", bid, q],
@@ -199,7 +201,18 @@ function CustomersPage() {
         onClose={() => setOpenId(null)}
         onEdit={(c) => { setOpenId(null); setEditing(c); }}
         onDelete={() => { setOpenId(null); qc.invalidateQueries({ queryKey: ["customers"] }); }}
+        onBook={(id) => { setOpenId(null); setBookingFor(id); }}
       />
+
+      {bid && (
+        <NewBookingDialog
+          open={!!bookingFor}
+          onOpenChange={(o) => !o && setBookingFor(null)}
+          businessId={bid}
+          prefill={bookingFor ? { customerId: bookingFor } : undefined}
+          onCreated={() => { setBookingFor(null); qc.invalidateQueries({ queryKey: ["customers"] }); }}
+        />
+      )}
 
       <MergeDialog
         target={mergeFor}
@@ -348,12 +361,13 @@ function CustomerEditDialog({ editing, businessId, onClose, onSaved }: {
   );
 }
 
-function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelete }: {
+function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelete, onBook }: {
   customerId: string | null;
   businessId: string | undefined;
   onClose: () => void;
   onEdit: (c: any) => void;
   onDelete: () => void;
+  onBook: (id: string) => void;
 }) {
   const { data, isLoading } = useQuery({
     queryKey: ["customer-detail", customerId],
@@ -471,6 +485,7 @@ function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelet
                 onConfirm={async () => { await del(); }}
               />
               <Button variant="outline" onClick={() => onEdit(c)}><Pencil className="h-4 w-4 mr-1.5" /> Edit</Button>
+              <Button onClick={() => onBook(c.id)}><Calendar className="h-4 w-4 mr-1.5" /> Book again</Button>
               <Button variant="ghost" onClick={onClose}>Close</Button>
             </DialogFooter>
           </>
