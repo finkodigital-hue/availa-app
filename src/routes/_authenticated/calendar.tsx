@@ -36,6 +36,7 @@ function CalendarPage() {
   const qc = useQueryClient();
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date()));
   const [selected, setSelected] = useState<any | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
 
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => { const d = new Date(anchor); d.setDate(d.getDate() + i); return d; }),
@@ -86,6 +87,9 @@ function CalendarPage() {
         subtitle={`${anchor.toLocaleDateString([], { month: "long", day: "numeric" })} – ${days[6].toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}`}
         action={
           <div className="flex items-center gap-1.5">
+            <Button onClick={() => setNewOpen(true)} className="h-9 shadow-glow">
+              <Plus className="h-4 w-4 mr-1" /> New booking
+            </Button>
             <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => { const d = new Date(anchor); d.setDate(d.getDate() - 7); setAnchor(d); }}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
