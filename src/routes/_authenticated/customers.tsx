@@ -47,6 +47,7 @@ function CustomersPage() {
   const [mergeFor, setMergeFor] = useState<any | null>(null);
   const [editing, setEditing] = useState<Partial<Customer> | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [bookingFor, setBookingFor] = useState<string | null>(null);
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers", bid, q],
