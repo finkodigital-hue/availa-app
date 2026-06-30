@@ -65,9 +65,10 @@ export async function buildAssistantContext(accessToken: string) {
 
   // Service popularity
   const svcCount: Record<string, number> = {};
-  recent.forEach((b: { service_id: string; status: string; services?: { name?: string } | null }) => {
+  recent.forEach((b: any) => {
     if (b.status === "cancelled") return;
-    const name = b.services?.name ?? b.service_id;
+    const svc = Array.isArray(b.services) ? b.services[0] : b.services;
+    const name = svc?.name ?? b.service_id;
     svcCount[name] = (svcCount[name] ?? 0) + 1;
   });
   const topServices = Object.entries(svcCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -96,8 +97,12 @@ export async function buildAssistantContext(accessToken: string) {
     `Business: ${business.name} (${business.timezone ?? "UTC"}, ${currency}).`,
     `Today: ${today.length} bookings.`,
     today.length
-      ? "Today's schedule:\n" + today.map((b: { starts_at: string; services?: {name?: string}|null; staff?: {name?: string}|null; customers?: {name?: string}|null; status: string }) =>
-          `  • ${new Date(b.starts_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})} — ${b.services?.name ?? "Service"} with ${b.staff?.name ?? "staff"} for ${b.customers?.name ?? "customer"} [${b.status}]`).join("\n")
+      ? "Today's schedule:\n" + today.map((b: any) => {
+          const svc = Array.isArray(b.services) ? b.services[0] : b.services;
+          const st = Array.isArray(b.staff) ? b.staff[0] : b.staff;
+          const c = Array.isArray(b.customers) ? b.customers[0] : b.customers;
+          return `  • ${new Date(b.starts_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})} — ${svc?.name ?? "Service"} with ${st?.name ?? "staff"} for ${c?.name ?? "customer"} [${b.status}]`;
+        }).join("\n")
       : "No bookings today.",
     `Next 14 days: ${upcoming.length} upcoming bookings.`,
     `Past 30 days: ${recent.length} bookings, ${fmt(revenue30)} revenue.`,
