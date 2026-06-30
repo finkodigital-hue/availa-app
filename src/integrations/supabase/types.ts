@@ -210,6 +210,41 @@ export type Database = {
           },
         ]
       }
+      business_hour_periods: {
+        Row: {
+          business_id: string
+          close_time: string
+          created_at: string
+          id: string
+          open_time: string
+          weekday: number
+        }
+        Insert: {
+          business_id: string
+          close_time: string
+          created_at?: string
+          id?: string
+          open_time: string
+          weekday: number
+        }
+        Update: {
+          business_id?: string
+          close_time?: string
+          created_at?: string
+          id?: string
+          open_time?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_hour_periods_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_hours: {
         Row: {
           business_id: string
