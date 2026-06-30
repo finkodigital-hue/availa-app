@@ -70,9 +70,11 @@ export type Database = {
           ends_at: string
           id: string
           notes: string | null
+          notify_customer: boolean
           payment_status: string
           price_cents: number
           service_id: string
+          source: string
           staff_id: string
           starts_at: string
           status: string
@@ -93,9 +95,11 @@ export type Database = {
           ends_at: string
           id?: string
           notes?: string | null
+          notify_customer?: boolean
           payment_status?: string
           price_cents?: number
           service_id: string
+          source?: string
           staff_id: string
           starts_at: string
           status?: string
@@ -116,9 +120,11 @@ export type Database = {
           ends_at?: string
           id?: string
           notes?: string | null
+          notify_customer?: boolean
           payment_status?: string
           price_cents?: number
           service_id?: string
+          source?: string
           staff_id?: string
           starts_at?: string
           status?: string
@@ -185,6 +191,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "business_hours_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_media: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          kind: string
+          path: string
+          sort_order: number
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          path: string
+          sort_order?: number
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          path?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_media_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
@@ -283,6 +324,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          phone_normalized: string | null
           updated_at: string
         }
         Insert: {
@@ -294,6 +336,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          phone_normalized?: string | null
           updated_at?: string
         }
         Update: {
@@ -305,6 +348,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          phone_normalized?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -456,7 +500,10 @@ export type Database = {
       services: {
         Row: {
           active: boolean
+          buffer_after_min: number
+          buffer_before_min: number
           business_id: string
+          color: string | null
           created_at: string
           currency: string
           description: string | null
@@ -469,7 +516,10 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          buffer_after_min?: number
+          buffer_before_min?: number
           business_id: string
+          color?: string | null
           created_at?: string
           currency?: string
           description?: string | null
@@ -482,7 +532,10 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          buffer_after_min?: number
+          buffer_before_min?: number
           business_id?: string
+          color?: string | null
           created_at?: string
           currency?: string
           description?: string | null
@@ -505,6 +558,7 @@ export type Database = {
       }
       staff: {
         Row: {
+          active: boolean
           bio: string | null
           bookable: boolean
           business_id: string
@@ -518,6 +572,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active?: boolean
           bio?: string | null
           bookable?: boolean
           business_id: string
@@ -531,6 +586,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active?: boolean
           bio?: string | null
           bookable?: boolean
           business_id?: string
@@ -553,6 +609,51 @@ export type Database = {
           },
         ]
       }
+      staff_hours: {
+        Row: {
+          business_id: string
+          close_time: string | null
+          closed: boolean
+          id: string
+          open_time: string | null
+          staff_id: string
+          weekday: number
+        }
+        Insert: {
+          business_id: string
+          close_time?: string | null
+          closed?: boolean
+          id?: string
+          open_time?: string | null
+          staff_id: string
+          weekday: number
+        }
+        Update: {
+          business_id?: string
+          close_time?: string | null
+          closed?: boolean
+          id?: string
+          open_time?: string | null
+          staff_id?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_hours_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_hours_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -560,6 +661,10 @@ export type Database = {
     Functions: {
       current_user_email: { Args: never; Returns: string }
       is_business_owner: { Args: { _business_id: string }; Returns: boolean }
+      merge_customers: {
+        Args: { _loser: string; _winner: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
