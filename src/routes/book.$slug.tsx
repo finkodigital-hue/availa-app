@@ -463,9 +463,17 @@ function PublicBooking() {
               <SummaryRow label="With" value={staff.name} />
               <SummaryRow label="Total" value={fmtMoney(service.price_cents)} />
             </div>
-            <Button variant="outline" onClick={reset} className="mt-8">
-              Book another
-            </Button>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Button variant="outline" onClick={reset}>Book another</Button>
+              {info.email && (
+                <a
+                  href="/portal"
+                  className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                >
+                  Manage your bookings →
+                </a>
+              )}
+            </div>
           </div>
         )}
       </main>
