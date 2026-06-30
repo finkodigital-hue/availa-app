@@ -361,12 +361,13 @@ function CustomerEditDialog({ editing, businessId, onClose, onSaved }: {
   );
 }
 
-function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelete }: {
+function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelete, onBook }: {
   customerId: string | null;
   businessId: string | undefined;
   onClose: () => void;
   onEdit: (c: any) => void;
   onDelete: () => void;
+  onBook: (id: string) => void;
 }) {
   const { data, isLoading } = useQuery({
     queryKey: ["customer-detail", customerId],
