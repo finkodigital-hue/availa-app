@@ -199,9 +199,106 @@ function StaffPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ReassignDialog
+        info={reassign}
+        allStaff={staff ?? []}
+        onClose={() => setReassign(null)}
+        onDone={() => { setReassign(null); qc.invalidateQueries({ queryKey: ["staff"] }); qc.invalidateQueries({ queryKey: ["calendar"] }); }}
+      />
     </div>
   );
 }
+
+function ReassignDialog({ info, allStaff, onClose, onDone }: {
+  info: { staff: Staff; futureCount: number } | null;
+  allStaff: Staff[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [target, setTarget] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setTarget(""); }, [info?.staff?.id]);
+
+  const candidates = allStaff.filter((s) => s.id !== info?.staff?.id && s.active);
+
+  const submit = async (alsoDelete: boolean) => {
+    if (!info) return;
+    setBusy(true);
+    try {
+      if (target) {
+        const { error } = await supabase.rpc("reassign_staff_bookings", {
+          _from_staff: info.staff.id, _to_staff: target, _only_future: true,
+        });
+        if (error) throw error;
+      }
+      if (alsoDelete) {
+        // Disable rather than hard-delete — preserves historic booking joins.
+        const { error } = await supabase.from("staff").update({ active: false, bookable: false }).eq("id", info.staff.id);
+        if (error) throw error;
+        toast.success(target ? "Bookings reassigned · staff disabled" : "Staff disabled");
+      } else {
+        toast.success(`Reassigned ${info.futureCount} booking${info.futureCount === 1 ? "" : "s"}`);
+      }
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not reassign");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={!!info} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl">Reassign upcoming bookings</DialogTitle>
+          <DialogDescription>
+            {info?.staff?.name} has <b>{info?.futureCount}</b> upcoming booking{info?.futureCount === 1 ? "" : "s"}.
+            Pick a teammate to take them over, then disable the account to preserve history.
+          </DialogDescription>
+        </DialogHeader>
+        {candidates.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No other active staff to reassign to. Add a new team member first, or disable this one without reassigning.</p>
+        ) : (
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {candidates.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setTarget(s.id)}
+                className={`w-full text-left rounded-xl border px-3 py-2.5 flex items-center gap-3 transition-colors ${
+                  target === s.id ? "bg-secondary border-foreground/40" : "bg-card hover:bg-secondary/40"
+                }`}
+              >
+                <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-medium">
+                  {s.name[0]?.toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{s.name}</div>
+                  {s.role && <div className="text-[11px] text-muted-foreground truncate">{s.role}</div>}
+                </div>
+                {target === s.id && <Badge>Selected</Badge>}
+              </button>
+            ))}
+          </div>
+        )}
+        <DialogFooter className="flex-wrap gap-2">
+          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button
+            variant="outline"
+            onClick={() => submit(false)}
+            disabled={busy || !target}
+          >
+            Reassign only
+          </Button>
+          <Button onClick={() => submit(true)} disabled={busy || (!target && candidates.length > 0)}>
+            {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {target ? "Reassign & disable" : "Just disable"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function StaffAvatar({ staff, tint }: { staff: Staff; tint: string }) {
   const [url, setUrl] = useState<string | null>(null);

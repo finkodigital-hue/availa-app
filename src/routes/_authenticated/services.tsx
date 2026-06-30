@@ -27,10 +27,12 @@ type Service = {
   duration_minutes: number; price_cents: number; currency: string;
   active: boolean; image_url: string | null;
   buffer_before_min: number; buffer_after_min: number; color: string | null;
+  category: string | null; archived_at: string | null;
 };
 type Staff = { id: string; name: string };
 
 const COLORS = ["#C2410C", "#0EA5E9", "#10B981", "#A855F7", "#F59E0B", "#EC4899", "#6366F1", "#64748B"];
+
 
 function ServicesPage() {
   const { data: biz } = useMyBusiness();
@@ -72,7 +74,7 @@ function ServicesPage() {
   const save = async () => {
     if (!edit || !bid) return;
     if (!edit.name) return toast.error("Name is required");
-    const payload = {
+    const payload: any = {
       business_id: bid,
       name: edit.name,
       description: edit.description ?? null,
@@ -81,6 +83,7 @@ function ServicesPage() {
       buffer_before_min: Number(edit.buffer_before_min) || 0,
       buffer_after_min: Number(edit.buffer_after_min) || 0,
       color: edit.color ?? null,
+      category: edit.category?.trim() || null,
       active: edit.active ?? true,
     };
     const { data, error } = edit.id
@@ -96,14 +99,31 @@ function ServicesPage() {
     toast.success(edit.id ? "Service updated" : "Service created");
     setEdit(null);
     qc.invalidateQueries({ queryKey: ["services"] });
+    qc.invalidateQueries({ queryKey: ["slots-day"] });
+  };
+
+  const toggleArchive = async (s: Service) => {
+    const archived = !s.archived_at;
+    const { error } = await supabase
+      .from("services")
+      .update({ archived_at: archived ? new Date().toISOString() : null, active: !archived } as any)
+      .eq("id", s.id);
+    if (error) return toast.error(error.message);
+    toast.success(archived ? "Service archived" : "Service restored");
+    qc.invalidateQueries({ queryKey: ["services"] });
   };
 
   const del = async (id: string) => {
     const { error } = await supabase.from("services").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      // Likely FK violation — guide toward archive.
+      toast.error("This service has bookings — archive it instead.");
+      return;
+    }
     toast.success("Service deleted");
     qc.invalidateQueries({ queryKey: ["services"] });
   };
+
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
