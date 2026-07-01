@@ -69,17 +69,20 @@ export type Database = {
           amount_refunded_cents: number
           business_id: string
           created_at: string
+          custom_color: string | null
+          custom_title: string | null
           customer_email: string | null
           customer_id: string | null
           customer_name: string
           customer_phone: string | null
           ends_at: string
           id: string
+          is_custom: boolean
           notes: string | null
           notify_customer: boolean
           payment_status: string
           price_cents: number
-          service_id: string
+          service_id: string | null
           source: string
           staff_id: string
           starts_at: string
@@ -94,17 +97,20 @@ export type Database = {
           amount_refunded_cents?: number
           business_id: string
           created_at?: string
+          custom_color?: string | null
+          custom_title?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name: string
           customer_phone?: string | null
           ends_at: string
           id?: string
+          is_custom?: boolean
           notes?: string | null
           notify_customer?: boolean
           payment_status?: string
           price_cents?: number
-          service_id: string
+          service_id?: string | null
           source?: string
           staff_id: string
           starts_at: string
@@ -119,17 +125,20 @@ export type Database = {
           amount_refunded_cents?: number
           business_id?: string
           created_at?: string
+          custom_color?: string | null
+          custom_title?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string
           customer_phone?: string | null
           ends_at?: string
           id?: string
+          is_custom?: boolean
           notes?: string | null
           notify_customer?: boolean
           payment_status?: string
           price_cents?: number
-          service_id?: string
+          service_id?: string | null
           source?: string
           staff_id?: string
           starts_at?: string

@@ -1044,6 +1044,9 @@ function WeekView({
                     const top = (s.getHours() - START_HOUR + s.getMinutes() / 60) * HOUR_PX;
                     const height = Math.max(28, ((e.getTime() - s.getTime()) / 3600000) * HOUR_PX);
                     const palette = paletteFor(b.staff_id);
+                    const isCustom = !!b.is_custom;
+                    const bg = isCustom ? `color-mix(in oklab, ${b.custom_color || "#a78bfa"} 22%, white)` : palette.bg;
+                    const border = isCustom ? b.custom_color || "#a78bfa" : palette.border;
                     return (
                       <button
                         key={b.id}
@@ -1051,13 +1054,16 @@ function WeekView({
                         className="absolute left-1 right-1 rounded-xl px-1.5 py-1 text-left overflow-hidden shadow-soft hover:shadow-elegant hover:-translate-y-0.5 transition-all"
                         style={{
                           top, height,
-                          background: palette.bg,
-                          border: `1px solid ${palette.border}`,
+                          background: bg,
+                          border: `1.5px ${isCustom ? "dashed" : "solid"} ${border}`,
                           color: palette.ink,
                         }}
                       >
-                        <div className="text-[11px] font-semibold truncate">{b.customer_name}</div>
-                        <div className="text-[10px] truncate opacity-80">{b.services?.name}</div>
+                        <div className="text-[11px] font-semibold truncate flex items-center gap-1">
+                          {isCustom && <span className="text-[9px] uppercase tracking-wider bg-black/10 rounded px-1">Custom</span>}
+                          {isCustom ? (b.custom_title || "Blocked") : b.customer_name}
+                        </div>
+                        {!isCustom && <div className="text-[10px] truncate opacity-80">{b.services?.name}</div>}
                       </button>
                     );
                   })}

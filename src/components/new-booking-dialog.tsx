@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Search, UserPlus, ChevronLeft, Pencil } from "lucide-react";
+import { Loader2, Search, UserPlus, ChevronLeft, Pencil, Sparkles, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fmtMoney, fmtTime } from "@/lib/format";
 import { useAvailableSlots, buildDateStrip } from "@/lib/slots";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type Customer = { id: string; name: string; email: string | null; phone: string | null };
 type Service = {
@@ -32,7 +33,7 @@ type Service = {
 };
 type Staff = { id: string; name: string };
 
-type Step = "customer" | "service" | "staff" | "slot" | "confirm";
+type Step = "customer" | "service" | "staff" | "slot" | "payment" | "confirm" | "custom";
 
 type Prefill = {
   staffId?: string;
@@ -41,6 +42,8 @@ type Prefill = {
   serviceId?: string;
   customerId?: string;
 };
+
+const CUSTOM_COLORS = ["#a78bfa", "#f472b6", "#60a5fa", "#34d399", "#fbbf24", "#f87171", "#94a3b8"];
 
 export function NewBookingDialog({
   open,
@@ -55,48 +58,40 @@ export function NewBookingDialog({
   prefill?: Prefill;
   onCreated?: () => void;
 }) {
+  const [isCustom, setIsCustom] = useState(false);
   const [step, setStep] = useState<Step>("customer");
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [newCust, setNewCust] = useState<{ name: string; email: string; phone: string } | null>(null);
   const [service, setService] = useState<Service | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
-  const [date, setDate] = useState<Date>(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
+  const [date, setDate] = useState<Date>(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const [time, setTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [notify, setNotify] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [loadingPrefill, setLoadingPrefill] = useState(false);
 
-  // Apply prefill when dialog opens. Resolve any prefilled IDs in parallel
-  // then jump straight to the first missing piece of information.
+  // Custom-only fields
+  const [customTitle, setCustomTitle] = useState("");
+  const [customColor, setCustomColor] = useState(CUSTOM_COLORS[0]);
+  const [customDuration, setCustomDuration] = useState(30);
+
+  // Payment fields
+  const [depositCents, setDepositCents] = useState<number>(0);
+  const [paymentStatus, setPaymentStatus] = useState<"unpaid" | "deposit" | "paid">("unpaid");
+
   useEffect(() => {
     if (!open) {
+      setIsCustom(false);
       setStep("customer");
-      setCustomer(null);
-      setNewCust(null);
-      setService(null);
-      setStaff(null);
-      setTime(null);
-      setNotes("");
-      setNotify(true);
-      setLoadingPrefill(false);
+      setCustomer(null); setNewCust(null); setService(null); setStaff(null);
+      setTime(null); setNotes(""); setNotify(true); setLoadingPrefill(false);
+      setCustomTitle(""); setCustomColor(CUSTOM_COLORS[0]); setCustomDuration(30);
+      setDepositCents(0); setPaymentStatus("unpaid");
       return;
     }
-
-    const baseDate = prefill?.isoTime
-      ? new Date(prefill.isoTime)
-      : prefill?.date
-      ? new Date(prefill.date)
-      : null;
-    if (baseDate) {
-      const d = new Date(baseDate);
-      d.setHours(0, 0, 0, 0);
-      setDate(d);
-    }
+    const baseDate = prefill?.isoTime ? new Date(prefill.isoTime) : prefill?.date ? new Date(prefill.date) : null;
+    if (baseDate) { const d = new Date(baseDate); d.setHours(0, 0, 0, 0); setDate(d); }
     if (prefill?.isoTime) setTime(prefill.isoTime);
 
     const hasAnyId = !!(prefill?.staffId || prefill?.serviceId || prefill?.customerId);
@@ -104,27 +99,12 @@ export function NewBookingDialog({
       setStep(firstMissing({ hasCustomer: false, hasService: false, hasStaff: false, hasTime: !!prefill?.isoTime }));
       return;
     }
-
     setLoadingPrefill(true);
     (async () => {
       const [staffRes, svcRes, custRes] = await Promise.all([
-        prefill?.staffId
-          ? supabase.from("staff").select("id, name").eq("id", prefill.staffId).maybeSingle()
-          : Promise.resolve({ data: null } as any),
-        prefill?.serviceId
-          ? supabase
-              .from("services")
-              .select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color")
-              .eq("id", prefill.serviceId)
-              .maybeSingle()
-          : Promise.resolve({ data: null } as any),
-        prefill?.customerId
-          ? supabase
-              .from("customers")
-              .select("id, name, email, phone")
-              .eq("id", prefill.customerId)
-              .maybeSingle()
-          : Promise.resolve({ data: null } as any),
+        prefill?.staffId ? supabase.from("staff").select("id, name").eq("id", prefill.staffId).maybeSingle() : Promise.resolve({ data: null } as any),
+        prefill?.serviceId ? supabase.from("services").select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color").eq("id", prefill.serviceId).maybeSingle() : Promise.resolve({ data: null } as any),
+        prefill?.customerId ? supabase.from("customers").select("id, name, email, phone").eq("id", prefill.customerId).maybeSingle() : Promise.resolve({ data: null } as any),
       ]);
       const st = staffRes?.data ? { id: staffRes.data.id, name: staffRes.data.name } : null;
       const sv = svcRes?.data as Service | null;
@@ -133,35 +113,139 @@ export function NewBookingDialog({
       if (sv) setService(sv);
       if (cu) setCustomer(cu);
       setLoadingPrefill(false);
-      setStep(
-        firstMissing({
-          hasCustomer: !!cu,
-          hasService: !!sv,
-          hasStaff: !!st,
-          hasTime: !!prefill?.isoTime,
-        }),
-      );
+      setStep(firstMissing({ hasCustomer: !!cu, hasService: !!sv, hasStaff: !!st, hasTime: !!prefill?.isoTime }));
     })();
   }, [open, prefill]);
 
+  // Switch to/from custom mode
+  useEffect(() => {
+    if (isCustom) {
+      setStep(staff ? (time ? "confirm" : "slot") : "custom");
+    } else {
+      setStep(firstMissing({ hasCustomer: !!(customer || newCust), hasService: !!service, hasStaff: !!staff, hasTime: !!time }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCustom]);
+
   const customerLabel = customer?.name ?? newCust?.name ?? null;
-  const canConfirm = !!(service && staff && time && (customer || newCust));
+  const wizardSteps: Step[] = isCustom
+    ? ["custom", "staff", "slot", "confirm"]
+    : ["customer", "service", "staff", "slot", "payment", "confirm"];
+  const stepIndex = Math.max(0, wizardSteps.indexOf(step));
+
+  const canConfirmRegular = !!(service && staff && time && (customer || newCust));
+  const canConfirmCustom = !!(customTitle && staff && time);
+
+  const customService: Service | null = isCustom
+    ? { id: "custom", name: customTitle || "Custom", duration_minutes: customDuration, price_cents: 0, buffer_before_min: 0, buffer_after_min: 0, color: customColor }
+    : null;
+
+  async function submit() {
+    setSubmitting(true);
+    try {
+      const starts_at = time!;
+      if (isCustom) {
+        const ends_at = new Date(new Date(starts_at).getTime() + customDuration * 60000).toISOString();
+        const { error } = await supabase.from("bookings").insert({
+          business_id: businessId,
+          staff_id: staff!.id,
+          service_id: null,
+          customer_id: null,
+          customer_name: customTitle,
+          starts_at,
+          ends_at,
+          price_cents: 0,
+          notes: notes || null,
+          source: "walkin",
+          notify_customer: false,
+          is_custom: true,
+          custom_title: customTitle,
+          custom_color: customColor,
+          status: "confirmed",
+        } as any);
+        if (error) throw error;
+      } else {
+        let custId = customer?.id ?? null;
+        let custName = customer?.name ?? newCust?.name ?? "Walk-in";
+        const custEmail = customer?.email ?? newCust?.email ?? null;
+        const custPhone = customer?.phone ?? newCust?.phone ?? null;
+        if (!custId && newCust) {
+          const phoneNorm = newCust.phone.replace(/\D/g, "") || null;
+          const orParts: string[] = [];
+          if (newCust.email) orParts.push(`email.ilike.${newCust.email}`);
+          if (phoneNorm) orParts.push(`phone_normalized.eq.${phoneNorm}`);
+          if (orParts.length) {
+            const { data: existing } = await supabase.from("customers").select("id, name, email, phone").eq("business_id", businessId).or(orParts.join(",")).limit(1);
+            if (existing && existing.length) { custId = existing[0].id; custName = existing[0].name; }
+          }
+          if (!custId) {
+            const { data: ins, error } = await supabase.from("customers").insert({ business_id: businessId, name: newCust.name, email: newCust.email || null, phone: newCust.phone || null }).select("id").single();
+            if (error) throw error;
+            custId = ins.id;
+          }
+        }
+        const ends_at = new Date(new Date(starts_at).getTime() + service!.duration_minutes * 60000).toISOString();
+        const { error } = await supabase.from("bookings").insert({
+          business_id: businessId,
+          service_id: service!.id,
+          staff_id: staff!.id,
+          customer_id: custId,
+          customer_name: custName,
+          customer_email: custEmail,
+          customer_phone: custPhone,
+          starts_at,
+          ends_at,
+          price_cents: service!.price_cents,
+          notes: notes || null,
+          source: "walkin",
+          notify_customer: notify,
+          deposit_cents: depositCents || null,
+          payment_status: paymentStatus,
+        } as any);
+        if (error) throw error;
+      }
+      toast.success(isCustom ? "Time blocked" : "Booking created");
+      onCreated?.();
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not create booking");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">New booking</DialogTitle>
-          <DialogDescription>
-            We've pre-filled what we already know — only the missing details below.
+          <DialogTitle className="font-display text-2xl flex items-center gap-2">
+            {isCustom ? <><Lock className="h-5 w-5" /> Block time / custom</> : <>New booking</>}
+          </DialogTitle>
+          <DialogDescription className="flex items-center justify-between gap-3">
+            <span>{isCustom ? "Internal only — no customer notification." : "We've pre-filled what we already know."}</span>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+              <Switch checked={isCustom} onCheckedChange={setIsCustom} />
+              Custom
+            </label>
           </DialogDescription>
         </DialogHeader>
 
-        {/* Inline summary of everything already chosen, with quick edit buttons */}
-        {(customerLabel || service || staff || time) && step !== "confirm" && (
+        {/* Progress dots */}
+        <div className="flex items-center gap-1.5">
+          {wizardSteps.map((s, i) => (
+            <div key={s} className={cn("h-1 flex-1 rounded-full transition-colors", i <= stepIndex ? "bg-primary" : "bg-secondary")} />
+          ))}
+        </div>
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground -mt-1">
+          Step {stepIndex + 1} of {wizardSteps.length}
+        </div>
+
+        {/* Summary */}
+        {step !== "confirm" && (customerLabel || service || staff || time || (isCustom && customTitle)) && (
           <Summary
-            customer={customerLabel}
-            service={service}
+            isCustom={isCustom}
+            customerOrTitle={isCustom ? customTitle || null : customerLabel}
+            service={isCustom ? customService : service}
             staff={staff}
             time={time}
             onJump={(s) => setStep(s)}
@@ -174,158 +258,101 @@ export function NewBookingDialog({
           </div>
         )}
 
-        {!loadingPrefill && step === "customer" && (
+        {!loadingPrefill && !isCustom && step === "customer" && (
           <CustomerStep
             businessId={businessId}
-            onPick={(c) => {
-              setCustomer(c);
-              setNewCust(null);
-              setStep(firstMissing({ hasCustomer: true, hasService: !!service, hasStaff: !!staff, hasTime: !!time }));
-            }}
-            onCreate={(c) => {
-              setNewCust(c);
-              setCustomer(null);
-              setStep(firstMissing({ hasCustomer: true, hasService: !!service, hasStaff: !!staff, hasTime: !!time }));
-            }}
+            onPick={(c) => { setCustomer(c); setNewCust(null); setStep(firstMissing({ hasCustomer: true, hasService: !!service, hasStaff: !!staff, hasTime: !!time })); }}
+            onCreate={(c) => { setNewCust(c); setCustomer(null); setStep(firstMissing({ hasCustomer: true, hasService: !!service, hasStaff: !!staff, hasTime: !!time })); }}
           />
         )}
 
-        {!loadingPrefill && step === "service" && (
+        {!loadingPrefill && !isCustom && step === "service" && (
           <ServiceStep
             businessId={businessId}
             current={service}
             onBack={() => setStep("customer")}
-            onPick={(svc) => {
-              setService(svc);
-              // If staff already chosen and still valid, keep it
-              setStep(firstMissing({ hasCustomer: !!(customer || newCust), hasService: true, hasStaff: !!staff, hasTime: !!time }));
-            }}
+            onPick={(svc) => { setService(svc); setStep(firstMissing({ hasCustomer: !!(customer || newCust), hasService: true, hasStaff: !!staff, hasTime: !!time })); }}
           />
         )}
 
-        {!loadingPrefill && step === "staff" && service && (
+        {!loadingPrefill && isCustom && step === "custom" && (
+          <CustomStep
+            title={customTitle} setTitle={setCustomTitle}
+            color={customColor} setColor={setCustomColor}
+            duration={customDuration} setDuration={setCustomDuration}
+            onNext={() => setStep("staff")}
+          />
+        )}
+
+        {!loadingPrefill && (step === "staff") && (isCustom ? customService : service) && (
           <StaffStep
             businessId={businessId}
-            service={service}
+            service={(isCustom ? customService : service)!}
             current={staff}
-            onBack={() => setStep("service")}
-            onPick={(st) => {
-              setStaff(st);
-              setStep(firstMissing({ hasCustomer: !!(customer || newCust), hasService: true, hasStaff: true, hasTime: !!time }));
-            }}
+            allowAny={isCustom}
+            onBack={() => setStep(isCustom ? "custom" : "service")}
+            onPick={(st) => { setStaff(st); setStep(firstMissing({ hasCustomer: isCustom || !!(customer || newCust), hasService: true, hasStaff: true, hasTime: !!time })); }}
           />
         )}
 
-        {!loadingPrefill && step === "slot" && service && staff && (
+        {!loadingPrefill && step === "slot" && staff && (isCustom ? customService : service) && (
           <SlotStep
             businessId={businessId}
             staff={staff}
-            service={service}
+            service={(isCustom ? customService : service)!}
             date={date}
             setDate={setDate}
             onBack={() => setStep("staff")}
-            onPick={(iso) => {
-              setTime(iso);
-              setStep("confirm");
-            }}
+            onPick={(iso) => { setTime(iso); setStep(isCustom ? "confirm" : "payment"); }}
           />
         )}
 
-        {!loadingPrefill && step === "confirm" && canConfirm && service && staff && time && (
+        {!loadingPrefill && !isCustom && step === "payment" && service && (
+          <PaymentStep
+            price={service.price_cents}
+            deposit={depositCents}
+            setDeposit={setDepositCents}
+            status={paymentStatus}
+            setStatus={setPaymentStatus}
+            onBack={() => setStep("slot")}
+            onNext={() => setStep("confirm")}
+          />
+        )}
+
+        {!loadingPrefill && step === "confirm" && ((isCustom && canConfirmCustom) || (!isCustom && canConfirmRegular)) && (
           <div className="space-y-4">
             <Summary
-              customer={customerLabel}
-              service={service}
+              isCustom={isCustom}
+              customerOrTitle={isCustom ? customTitle : customerLabel}
+              service={isCustom ? customService : service}
               staff={staff}
               time={time}
               onJump={(s) => setStep(s)}
             />
+            {isCustom && (
+              <div className="rounded-xl border-dashed border-2 p-3 bg-secondary/30 flex items-center gap-2 text-xs text-muted-foreground">
+                <Sparkles className="h-3.5 w-3.5" />
+                Custom bookings are only visible to your team.
+              </div>
+            )}
             <div>
               <Label>Internal notes</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1.5" placeholder="Optional…" />
             </div>
-            <div className="flex items-center justify-between rounded-xl bg-secondary/60 p-3">
-              <div>
-                <Label className="text-sm">Send confirmation</Label>
-                <p className="text-xs text-muted-foreground">Email/SMS the customer when integrations are connected.</p>
+            {!isCustom && (
+              <div className="flex items-center justify-between rounded-xl bg-secondary/60 p-3">
+                <div>
+                  <Label className="text-sm">Send confirmation</Label>
+                  <p className="text-xs text-muted-foreground">Email/SMS the customer when integrations are connected.</p>
+                </div>
+                <Switch checked={notify} onCheckedChange={setNotify} />
               </div>
-              <Switch checked={notify} onCheckedChange={setNotify} />
-            </div>
+            )}
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setStep("slot")}>Back</Button>
-              <Button
-                disabled={submitting}
-                onClick={async () => {
-                  setSubmitting(true);
-                  try {
-                    let custId = customer?.id ?? null;
-                    let custName = customer?.name ?? newCust?.name ?? "Walk-in";
-                    const custEmail = customer?.email ?? newCust?.email ?? null;
-                    const custPhone = customer?.phone ?? newCust?.phone ?? null;
-                    if (!custId && newCust) {
-                      const phoneNorm = newCust.phone.replace(/\D/g, "") || null;
-                      const orParts: string[] = [];
-                      if (newCust.email) orParts.push(`email.ilike.${newCust.email}`);
-                      if (phoneNorm) orParts.push(`phone_normalized.eq.${phoneNorm}`);
-                      if (orParts.length) {
-                        const { data: existing } = await supabase
-                          .from("customers")
-                          .select("id, name, email, phone")
-                          .eq("business_id", businessId)
-                          .or(orParts.join(","))
-                          .limit(1);
-                        if (existing && existing.length) {
-                          custId = existing[0].id;
-                          custName = existing[0].name;
-                        }
-                      }
-                      if (!custId) {
-                        const { data: ins, error } = await supabase
-                          .from("customers")
-                          .insert({
-                            business_id: businessId,
-                            name: newCust.name,
-                            email: newCust.email || null,
-                            phone: newCust.phone || null,
-                          })
-                          .select("id")
-                          .single();
-                        if (error) throw error;
-                        custId = ins.id;
-                      }
-                    }
-                    const starts_at = time;
-                    const ends_at = new Date(
-                      new Date(starts_at).getTime() + service.duration_minutes * 60000,
-                    ).toISOString();
-                    const { error } = await supabase.from("bookings").insert({
-                      business_id: businessId,
-                      service_id: service.id,
-                      staff_id: staff.id,
-                      customer_id: custId,
-                      customer_name: custName,
-                      customer_email: custEmail,
-                      customer_phone: custPhone,
-                      starts_at,
-                      ends_at,
-                      price_cents: service.price_cents,
-                      notes: notes || null,
-                      source: "walkin",
-                      notify_customer: notify,
-                    });
-                    if (error) throw error;
-                    toast.success("Booking created");
-                    onCreated?.();
-                    onOpenChange(false);
-                  } catch (e: any) {
-                    toast.error(e.message ?? "Could not create booking");
-                  } finally {
-                    setSubmitting(false);
-                  }
-                }}
-              >
+              <Button variant="ghost" onClick={() => setStep(isCustom ? "slot" : "payment")}>Back</Button>
+              <Button disabled={submitting} onClick={submit}>
                 {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Create booking
+                {isCustom ? "Block time" : "Create booking"}
               </Button>
             </DialogFooter>
           </div>
@@ -344,13 +371,15 @@ function firstMissing(s: { hasCustomer: boolean; hasService: boolean; hasStaff: 
 }
 
 function Summary({
-  customer,
+  isCustom,
+  customerOrTitle,
   service,
   staff,
   time,
   onJump,
 }: {
-  customer: string | null;
+  isCustom: boolean;
+  customerOrTitle: string | null;
   service: Service | null;
   staff: Staff | null;
   time: string | null;
@@ -358,12 +387,17 @@ function Summary({
 }) {
   return (
     <div className="rounded-xl border bg-secondary/40 p-3 text-sm space-y-1.5">
-      <SummaryRow k="Customer" v={customer} onEdit={() => onJump("customer")} />
-      <SummaryRow
-        k="Service"
-        v={service ? `${service.name} · ${service.duration_minutes}m · ${fmtMoney(service.price_cents)}` : null}
-        onEdit={() => onJump("service")}
-      />
+      <SummaryRow k={isCustom ? "Title" : "Customer"} v={customerOrTitle} onEdit={() => onJump(isCustom ? "custom" : "customer")} />
+      {!isCustom && (
+        <SummaryRow
+          k="Service"
+          v={service ? `${service.name} · ${service.duration_minutes}m · ${fmtMoney(service.price_cents)}` : null}
+          onEdit={() => onJump("service")}
+        />
+      )}
+      {isCustom && service && (
+        <SummaryRow k="Duration" v={`${service.duration_minutes} min`} onEdit={() => onJump("custom")} />
+      )}
       <SummaryRow k="Staff" v={staff?.name ?? null} onEdit={() => onJump("staff")} />
       <SummaryRow
         k="When"
@@ -378,24 +412,89 @@ function SummaryRow({ k, v, onEdit }: { k: string; v: string | null; onEdit: () 
   return (
     <div className="grid grid-cols-[72px_1fr_auto] gap-3 items-center">
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</span>
-      <span className={`font-medium text-sm truncate ${v ? "" : "text-muted-foreground/60 italic"}`}>
-        {v ?? "—"}
-      </span>
-      <button
-        type="button"
-        onClick={onEdit}
-        className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-      >
+      <span className={`font-medium text-sm truncate ${v ? "" : "text-muted-foreground/60 italic"}`}>{v ?? "—"}</span>
+      <button type="button" onClick={onEdit} className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
         <Pencil className="h-3 w-3" /> {v ? "Change" : "Set"}
       </button>
     </div>
   );
 }
 
+function CustomStep({
+  title, setTitle, color, setColor, duration, setDuration, onNext,
+}: {
+  title: string; setTitle: (v: string) => void;
+  color: string; setColor: (v: string) => void;
+  duration: number; setDuration: (v: number) => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <Label>Title</Label>
+        <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1.5 h-10" placeholder="e.g. Lunch, Training, Personal" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label>Duration (minutes)</Label>
+          <Input type="number" min={5} step={5} value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 30)} className="mt-1.5 h-10" />
+        </div>
+        <div>
+          <Label>Colour</Label>
+          <div className="mt-1.5 flex gap-1.5 flex-wrap">
+            {CUSTOM_COLORS.map((c) => (
+              <button key={c} type="button" onClick={() => setColor(c)}
+                className={cn("h-8 w-8 rounded-full border-2 transition-transform", color === c ? "border-foreground scale-110" : "border-transparent")}
+                style={{ background: c }} aria-label={`Colour ${c}`} />
+            ))}
+          </div>
+        </div>
+      </div>
+      <Button className="w-full" disabled={!title.trim()} onClick={onNext}>Continue</Button>
+    </div>
+  );
+}
+
+function PaymentStep({
+  price, deposit, setDeposit, status, setStatus, onBack, onNext,
+}: {
+  price: number;
+  deposit: number; setDeposit: (v: number) => void;
+  status: "unpaid" | "deposit" | "paid"; setStatus: (v: "unpaid" | "deposit" | "paid") => void;
+  onBack: () => void; onNext: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <button onClick={onBack} className="text-xs text-muted-foreground inline-flex items-center gap-1">
+        <ChevronLeft className="h-3 w-3" /> Back
+      </button>
+      <Label className="text-xs uppercase tracking-wide text-muted-foreground">Payment</Label>
+      <div className="rounded-xl border p-3 flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">Service price</span>
+        <span className="tabular-nums font-medium">{fmtMoney(price)}</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {(["unpaid", "deposit", "paid"] as const).map((v) => (
+          <button key={v} onClick={() => setStatus(v)}
+            className={cn("h-11 rounded-xl border text-xs font-medium capitalize", status === v ? "border-primary bg-primary/5 text-primary" : "bg-card text-muted-foreground hover:bg-secondary/40")}>
+            {v}
+          </button>
+        ))}
+      </div>
+      {status === "deposit" && (
+        <div>
+          <Label>Deposit amount (in cents)</Label>
+          <Input type="number" min={0} value={deposit} onChange={(e) => setDeposit(parseInt(e.target.value) || 0)} className="mt-1.5 h-10" />
+          <p className="text-[11px] text-muted-foreground mt-1">Currently {fmtMoney(deposit)} of {fmtMoney(price)}.</p>
+        </div>
+      )}
+      <Button className="w-full" onClick={onNext}>Continue</Button>
+    </div>
+  );
+}
+
 function CustomerStep({
-  businessId,
-  onPick,
-  onCreate,
+  businessId, onPick, onCreate,
 }: {
   businessId: string;
   onPick: (c: Customer) => void;
@@ -410,12 +509,7 @@ function CustomerStep({
     enabled: q.trim().length >= 2,
     queryFn: async () => {
       const term = q.trim();
-      const { data, error } = await supabase
-        .from("customers")
-        .select("id, name, email, phone")
-        .eq("business_id", businessId)
-        .or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`)
-        .limit(8);
+      const { data, error } = await supabase.from("customers").select("id, name, email, phone").eq("business_id", businessId).or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`).limit(8);
       if (error) throw error;
       return data as Customer[];
     },
@@ -442,9 +536,7 @@ function CustomerStep({
           </div>
         </div>
         <Button className="w-full" disabled={!form.name} onClick={() => onCreate(form)}>Continue</Button>
-        <p className="text-[11px] text-muted-foreground text-center">
-          We'll auto-merge with an existing customer if email or phone matches.
-        </p>
+        <p className="text-[11px] text-muted-foreground text-center">We'll auto-merge with an existing customer if email or phone matches.</p>
       </div>
     );
   }
@@ -453,13 +545,7 @@ function CustomerStep({
     <div className="space-y-3">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          autoFocus
-          placeholder="Search by name, email or phone…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="pl-9 h-11"
-        />
+        <Input autoFocus placeholder="Search by name, email or phone…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9 h-11" />
       </div>
       <Button variant="outline" className="w-full justify-start" onClick={() => setCreating(true)}>
         <UserPlus className="h-4 w-4 mr-2" /> New customer
@@ -471,14 +557,8 @@ function CustomerStep({
             <div className="p-4 text-sm text-muted-foreground text-center">No matches — create new customer above.</div>
           )}
           {results?.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => onPick(c)}
-              className="w-full text-left px-4 py-3 hover:bg-secondary/60 flex items-center gap-3"
-            >
-              <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-medium">
-                {c.name[0]?.toUpperCase()}
-              </div>
+            <button key={c.id} onClick={() => onPick(c)} className="w-full text-left px-4 py-3 hover:bg-secondary/60 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-medium">{c.name[0]?.toUpperCase()}</div>
               <div className="min-w-0 flex-1">
                 <div className="font-medium truncate text-sm">{c.name}</div>
                 <div className="text-xs text-muted-foreground truncate">{c.email ?? c.phone ?? "—"}</div>
@@ -492,30 +572,18 @@ function CustomerStep({
 }
 
 function ServiceStep({
-  businessId,
-  current,
-  onBack,
-  onPick,
+  businessId, current, onBack, onPick,
 }: {
-  businessId: string;
-  current: Service | null;
-  onBack: () => void;
-  onPick: (svc: Service) => void;
+  businessId: string; current: Service | null; onBack: () => void; onPick: (svc: Service) => void;
 }) {
   const { data: services, isLoading } = useQuery({
     queryKey: ["wi-services", businessId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("services")
-        .select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color")
-        .eq("business_id", businessId)
-        .eq("active", true)
-        .order("name");
+      const { data, error } = await supabase.from("services").select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color").eq("business_id", businessId).eq("active", true).order("name");
       if (error) throw error;
       return data as Service[];
     },
   });
-
   return (
     <div className="space-y-3">
       <button onClick={onBack} className="text-xs text-muted-foreground inline-flex items-center gap-1">
@@ -525,13 +593,8 @@ function ServiceStep({
       {isLoading && <Skeleton className="h-12 w-full" />}
       <div className="space-y-2 max-h-72 overflow-y-auto">
         {services?.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => onPick(s)}
-            className={`w-full text-left rounded-xl border p-3 hover:bg-secondary/40 flex items-center justify-between ${
-              current?.id === s.id ? "border-primary bg-primary/5" : "bg-card"
-            }`}
-          >
+          <button key={s.id} onClick={() => onPick(s)}
+            className={`w-full text-left rounded-xl border p-3 hover:bg-secondary/40 flex items-center justify-between ${current?.id === s.id ? "border-primary bg-primary/5" : "bg-card"}`}>
             <div>
               <div className="font-medium text-sm">{s.name}</div>
               <div className="text-xs text-muted-foreground">{s.duration_minutes} min</div>
@@ -545,30 +608,25 @@ function ServiceStep({
 }
 
 function StaffStep({
-  businessId,
-  service,
-  current,
-  onBack,
-  onPick,
+  businessId, service, current, onBack, onPick, allowAny,
 }: {
-  businessId: string;
-  service: Service;
-  current: Staff | null;
-  onBack: () => void;
-  onPick: (st: Staff) => void;
+  businessId: string; service: Service; current: Staff | null; onBack: () => void; onPick: (st: Staff) => void; allowAny?: boolean;
 }) {
   const { data: staffList, isLoading } = useQuery({
-    queryKey: ["wi-staff", businessId, service.id],
+    queryKey: ["wi-staff", businessId, service.id, allowAny],
     queryFn: async () => {
-      const linked = await supabase.from("service_staff").select("staff_id").eq("service_id", service.id);
+      let ids: string[] | null = null;
+      if (!allowAny) {
+        const linked = await supabase.from("service_staff").select("staff_id").eq("service_id", service.id);
+        if (linked.data && linked.data.length > 0) ids = linked.data.map((r) => r.staff_id);
+      }
       let q = supabase.from("staff").select("id, name").eq("business_id", businessId).eq("active", true);
-      if (linked.data && linked.data.length > 0) q = q.in("id", linked.data.map((r) => r.staff_id));
+      if (ids) q = q.in("id", ids);
       const { data, error } = await q.order("name");
       if (error) throw error;
       return data as Staff[];
     },
   });
-
   return (
     <div className="space-y-3">
       <button onClick={onBack} className="text-xs text-muted-foreground inline-flex items-center gap-1">
@@ -581,16 +639,9 @@ function StaffStep({
       )}
       <div className="space-y-2 max-h-72 overflow-y-auto">
         {staffList?.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => onPick(s)}
-            className={`w-full text-left rounded-xl border p-3 hover:bg-secondary/40 flex items-center gap-3 ${
-              current?.id === s.id ? "border-primary bg-primary/5" : "bg-card"
-            }`}
-          >
-            <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-medium">
-              {s.name[0]?.toUpperCase()}
-            </div>
+          <button key={s.id} onClick={() => onPick(s)}
+            className={`w-full text-left rounded-xl border p-3 hover:bg-secondary/40 flex items-center gap-3 ${current?.id === s.id ? "border-primary bg-primary/5" : "bg-card"}`}>
+            <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-medium">{s.name[0]?.toUpperCase()}</div>
             <div className="font-medium text-sm">{s.name}</div>
           </button>
         ))}
@@ -600,30 +651,12 @@ function StaffStep({
 }
 
 function SlotStep({
-  businessId,
-  staff,
-  service,
-  date,
-  setDate,
-  onBack,
-  onPick,
+  businessId, staff, service, date, setDate, onBack, onPick,
 }: {
-  businessId: string;
-  staff: Staff;
-  service: Service;
-  date: Date;
-  setDate: (d: Date) => void;
-  onBack: () => void;
-  onPick: (iso: string) => void;
+  businessId: string; staff: Staff; service: Service; date: Date; setDate: (d: Date) => void; onBack: () => void; onPick: (iso: string) => void;
 }) {
-  const { slots, isLoading } = useAvailableSlots({
-    businessId,
-    staffId: staff.id,
-    service,
-    date,
-  });
+  const { slots, isLoading } = useAvailableSlots({ businessId, staffId: staff.id, service, date });
   const days = useMemo(() => buildDateStrip(14), []);
-
   return (
     <div className="space-y-3">
       <button onClick={onBack} className="text-xs text-muted-foreground inline-flex items-center gap-1">
@@ -633,27 +666,16 @@ function SlotStep({
         {days.map((d) => {
           const sel = d.toDateString() === date.toDateString();
           return (
-            <button
-              key={d.toISOString()}
-              onClick={() => setDate(d)}
-              className={`shrink-0 flex flex-col items-center min-w-[52px] py-2 rounded-xl text-xs transition-all ${
-                sel ? "bg-primary text-primary-foreground" : "bg-secondary/50 hover:bg-secondary"
-              }`}
-            >
-              <span className="uppercase tracking-wider text-[10px] opacity-80">
-                {d.toLocaleDateString([], { weekday: "short" })}
-              </span>
+            <button key={d.toISOString()} onClick={() => setDate(d)}
+              className={`shrink-0 flex flex-col items-center min-w-[52px] py-2 rounded-xl text-xs transition-all ${sel ? "bg-primary text-primary-foreground" : "bg-secondary/50 hover:bg-secondary"}`}>
+              <span className="uppercase tracking-wider text-[10px] opacity-80">{d.toLocaleDateString([], { weekday: "short" })}</span>
               <span className="font-display text-base mt-0.5 tabular-nums">{d.getDate()}</span>
             </button>
           );
         })}
       </div>
       {isLoading && (
-        <div className="grid grid-cols-4 gap-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 rounded-xl" />
-          ))}
-        </div>
+        <div className="grid grid-cols-4 gap-2">{Array.from({ length: 8 }).map((_, i) => (<Skeleton key={i} className="h-10 rounded-xl" />))}</div>
       )}
       {!isLoading && slots.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">No availability on this day.</p>
@@ -661,11 +683,7 @@ function SlotStep({
       {!isLoading && slots.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-80 overflow-y-auto">
           {slots.map((s) => (
-            <button
-              key={s.iso}
-              onClick={() => onPick(s.iso)}
-              className="h-10 rounded-xl border bg-card hover:bg-primary hover:text-primary-foreground hover:border-transparent text-sm tabular-nums transition-colors"
-            >
+            <button key={s.iso} onClick={() => onPick(s.iso)} className="h-10 rounded-xl border bg-card hover:bg-primary hover:text-primary-foreground hover:border-transparent text-sm tabular-nums transition-colors">
               {s.time}
             </button>
           ))}
