@@ -30,6 +30,9 @@ type Service = {
   category: string | null; archived_at: string | null;
 };
 type Staff = { id: string; name: string };
+type InventoryItem = { id: string; name: string; unit: string | null };
+type RecipeLine = { inventory_item_id: string; quantity: number };
+
 
 const COLORS = ["#C2410C", "#0EA5E9", "#10B981", "#A855F7", "#F59E0B", "#EC4899", "#6366F1", "#64748B"];
 
