@@ -54,6 +54,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "blocked_dates_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_dates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "public_staff"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "blocked_dates_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
@@ -163,6 +177,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -174,6 +195,13 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "public_staff"
             referencedColumns: ["id"]
           },
           {
@@ -231,6 +259,13 @@ export type Database = {
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "business_goals_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
         ]
       }
       business_hour_periods: {
@@ -264,6 +299,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_hour_periods_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -301,6 +343,13 @@ export type Database = {
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "business_hours_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
         ]
       }
       business_media: {
@@ -334,6 +383,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_media_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -545,6 +601,13 @@ export type Database = {
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "customers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
         ]
       }
       holiday_closures: {
@@ -578,6 +641,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holiday_closures_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -625,6 +695,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -697,6 +774,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -774,10 +858,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "professional_invitations_accepted_business_id_fkey"
+            columns: ["accepted_business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "professional_invitations_salon_business_id_fkey"
             columns: ["salon_business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_invitations_salon_business_id_fkey"
+            columns: ["salon_business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -923,10 +1021,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "salon_professionals_pro_business_id_fkey"
+            columns: ["pro_business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "salon_professionals_salon_business_id_fkey"
             columns: ["salon_business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salon_professionals_salon_business_id_fkey"
+            columns: ["salon_business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -962,6 +1074,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_recipe_items_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
           {
@@ -1005,10 +1124,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "service_staff_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "service_staff_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_staff_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "public_staff"
             referencedColumns: ["id"]
           },
           {
@@ -1090,6 +1223,13 @@ export type Database = {
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "services_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
         ]
       }
       staff: {
@@ -1143,6 +1283,13 @@ export type Database = {
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "staff_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
         ]
       }
       staff_hours: {
@@ -1179,6 +1326,20 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_hours_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_hours_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "public_staff"
             referencedColumns: ["id"]
           },
           {
@@ -1233,6 +1394,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "blocked_dates_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_dates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "public_staff"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "blocked_dates_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
@@ -1244,6 +1419,183 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_businesses: {
+        Row: {
+          accent_color: string | null
+          address: string | null
+          booking_instructions: string | null
+          border_radius: number | null
+          brand_color: string | null
+          browser_title: string | null
+          button_style: string | null
+          cancellation_policy: string | null
+          cancellation_window_hours: number | null
+          cover_image_url: string | null
+          currency: string | null
+          custom_domain: string | null
+          deposit_percent: number | null
+          description: string | null
+          email: string | null
+          emergency_active: boolean | null
+          emergency_message: string | null
+          facebook: string | null
+          faq: Json | null
+          favicon_url: string | null
+          font: string | null
+          hide_powered_by: boolean | null
+          id: string | null
+          instagram: string | null
+          logo_url: string | null
+          name: string | null
+          payment_mode: string | null
+          phone: string | null
+          secondary_color: string | null
+          show_durations: boolean | null
+          show_prices: boolean | null
+          show_staff: boolean | null
+          slug: string | null
+          terms: string | null
+          theme: string | null
+          tiktok: string | null
+          timezone: string | null
+          twitter: string | null
+          website: string | null
+          welcome_message: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          address?: string | null
+          booking_instructions?: string | null
+          border_radius?: number | null
+          brand_color?: string | null
+          browser_title?: string | null
+          button_style?: string | null
+          cancellation_policy?: string | null
+          cancellation_window_hours?: number | null
+          cover_image_url?: string | null
+          currency?: string | null
+          custom_domain?: string | null
+          deposit_percent?: number | null
+          description?: string | null
+          email?: string | null
+          emergency_active?: boolean | null
+          emergency_message?: string | null
+          facebook?: string | null
+          faq?: Json | null
+          favicon_url?: string | null
+          font?: string | null
+          hide_powered_by?: boolean | null
+          id?: string | null
+          instagram?: string | null
+          logo_url?: string | null
+          name?: string | null
+          payment_mode?: string | null
+          phone?: string | null
+          secondary_color?: string | null
+          show_durations?: boolean | null
+          show_prices?: boolean | null
+          show_staff?: boolean | null
+          slug?: string | null
+          terms?: string | null
+          theme?: string | null
+          tiktok?: string | null
+          timezone?: string | null
+          twitter?: string | null
+          website?: string | null
+          welcome_message?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          address?: string | null
+          booking_instructions?: string | null
+          border_radius?: number | null
+          brand_color?: string | null
+          browser_title?: string | null
+          button_style?: string | null
+          cancellation_policy?: string | null
+          cancellation_window_hours?: number | null
+          cover_image_url?: string | null
+          currency?: string | null
+          custom_domain?: string | null
+          deposit_percent?: number | null
+          description?: string | null
+          email?: string | null
+          emergency_active?: boolean | null
+          emergency_message?: string | null
+          facebook?: string | null
+          faq?: Json | null
+          favicon_url?: string | null
+          font?: string | null
+          hide_powered_by?: boolean | null
+          id?: string | null
+          instagram?: string | null
+          logo_url?: string | null
+          name?: string | null
+          payment_mode?: string | null
+          phone?: string | null
+          secondary_color?: string | null
+          show_durations?: boolean | null
+          show_prices?: boolean | null
+          show_staff?: boolean | null
+          slug?: string | null
+          terms?: string | null
+          theme?: string | null
+          tiktok?: string | null
+          timezone?: string | null
+          twitter?: string | null
+          website?: string | null
+          welcome_message?: string | null
+        }
+        Relationships: []
+      }
+      public_staff: {
+        Row: {
+          active: boolean | null
+          bio: string | null
+          bookable: boolean | null
+          business_id: string | null
+          id: string | null
+          name: string | null
+          photo_url: string | null
+          role: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          bio?: string | null
+          bookable?: boolean | null
+          business_id?: string | null
+          id?: string | null
+          name?: string | null
+          photo_url?: string | null
+          role?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          bio?: string | null
+          bookable?: boolean | null
+          business_id?: string | null
+          id?: string | null
+          name?: string | null
+          photo_url?: string | null
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -1287,10 +1639,21 @@ export type Database = {
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "staff_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Functions: {
+      accept_professional_invitation: {
+        Args: { _pro_business_id: string; _token: string }
+        Returns: string
+      }
       create_public_booking: {
         Args: {
           p_business_id: string
@@ -1309,6 +1672,26 @@ export type Database = {
       ensure_business_hours: {
         Args: { _business_id: string }
         Returns: undefined
+      }
+      get_invitation_by_token: {
+        Args: { _token: string }
+        Returns: {
+          agreement_end: string
+          agreement_start: string
+          chair_label: string
+          commission_percent: number
+          email: string
+          expires_at: string
+          id: string
+          message: string
+          rent_amount_cents: number
+          rent_due_day: number
+          rent_mode: string
+          salon_brand_color: string
+          salon_business_id: string
+          salon_logo_url: string
+          salon_name: string
+        }[]
       }
       is_business_owner: { Args: { _business_id: string }; Returns: boolean }
       is_linked_pro_of: {
