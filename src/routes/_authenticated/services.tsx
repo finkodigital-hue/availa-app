@@ -350,6 +350,79 @@ function ServicesPage() {
                 </div>
               </div>
             )}
+
+            <div>
+              <Label>Products used</Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">Record what this service consumes from stock. No auto-deduction yet.</p>
+              {recipe.length > 0 && (
+                <div className="space-y-1.5 mb-2">
+                  {recipe.map((r, idx) => {
+                    const item = inventoryById(r.inventory_item_id);
+                    return (
+                      <div key={idx} className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
+                        <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="flex-1 truncate">{item?.name ?? "Unknown item"}</span>
+                        <span className="text-muted-foreground">{r.quantity}{item?.unit ? ` ${item.unit}` : ""}</span>
+                        <button
+                          type="button"
+                          onClick={() => setRecipe(recipe.filter((_, i) => i !== idx))}
+                          className="p-1 rounded hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Remove"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {inventory && inventory.length > 0 ? (
+                <div className="flex gap-2">
+                  <select
+                    value={newRecipeItemId}
+                    onChange={(e) => setNewRecipeItemId(e.target.value)}
+                    className="flex-1 h-9 rounded-md border bg-background px-2 text-sm"
+                  >
+                    <option value="">Choose item…</option>
+                    {inventory
+                      .filter((i) => !recipe.some((r) => r.inventory_item_id === i.id))
+                      .map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.name}{i.unit ? ` (${i.unit})` : ""}
+                        </option>
+                      ))}
+                  </select>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={newRecipeQty}
+                    onChange={(e) => setNewRecipeQty(e.target.value)}
+                    placeholder="Qty"
+                    className="w-24 h-9"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (!newRecipeItemId) return toast.error("Choose an item");
+                      const q = Number(newRecipeQty);
+                      if (!Number.isFinite(q) || q <= 0) return toast.error("Enter a quantity");
+                      setRecipe([...recipe, { inventory_item_id: newRecipeItemId, quantity: q }]);
+                      setNewRecipeItemId("");
+                      setNewRecipeQty("");
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No inventory items yet — add some in Stock first.</p>
+              )}
+            </div>
+
+
             <div className="flex items-center justify-between rounded-xl bg-secondary/60 p-3">
               <div>
                 <Label className="text-sm">Active</Label>
