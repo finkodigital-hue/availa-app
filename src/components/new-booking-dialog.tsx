@@ -505,19 +505,20 @@ function PaymentStep({
 }
 
 function CustomerStep({
-  businessId, onPick, onCreate,
+  businessId, crossBusiness, onPick, onCreate,
 }: {
   businessId: string;
+  crossBusiness?: boolean;
   onPick: (c: Customer) => void;
   onCreate: (c: { name: string; email: string; phone: string }) => void;
 }) {
   const [q, setQ] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(!!crossBusiness);
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
 
   const { data: results, isLoading } = useQuery({
     queryKey: ["customer-search", businessId, q],
-    enabled: q.trim().length >= 2,
+    enabled: !crossBusiness && q.trim().length >= 2,
     queryFn: async () => {
       const term = q.trim();
       const { data, error } = await supabase.from("customers").select("id, name, email, phone").eq("business_id", businessId).or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`).limit(8);
