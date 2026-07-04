@@ -441,6 +441,9 @@ function PublicBooking() {
               <div>
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Email</Label>
                 <Input type="email" value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} className="mt-1.5 h-11" placeholder="you@email.com" />
+                {info.email.length > 0 && !isValidEmail(info.email) && (
+                  <p className="mt-1 text-xs text-destructive">Please enter a valid email address.</p>
+                )}
               </div>
               <div>
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Phone</Label>
