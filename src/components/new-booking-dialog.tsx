@@ -31,7 +31,7 @@ type Service = {
   buffer_after_min: number;
   color: string | null;
 };
-type Staff = { id: string; name: string };
+type Staff = { id: string; name: string; business_id?: string };
 
 type Step = "customer" | "service" | "staff" | "slot" | "payment" | "confirm" | "custom";
 
@@ -102,11 +102,11 @@ export function NewBookingDialog({
     setLoadingPrefill(true);
     (async () => {
       const [staffRes, svcRes, custRes] = await Promise.all([
-        prefill?.staffId ? supabase.from("staff").select("id, name").eq("id", prefill.staffId).maybeSingle() : Promise.resolve({ data: null } as any),
+        prefill?.staffId ? supabase.from("staff").select("id, name, business_id").eq("id", prefill.staffId).maybeSingle() : Promise.resolve({ data: null } as any),
         prefill?.serviceId ? supabase.from("services").select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color").eq("id", prefill.serviceId).maybeSingle() : Promise.resolve({ data: null } as any),
         prefill?.customerId ? supabase.from("customers").select("id, name, email, phone").eq("id", prefill.customerId).maybeSingle() : Promise.resolve({ data: null } as any),
       ]);
-      const st = staffRes?.data ? { id: staffRes.data.id, name: staffRes.data.name } : null;
+      const st = staffRes?.data ? { id: staffRes.data.id, name: staffRes.data.name, business_id: staffRes.data.business_id } : null;
       const sv = svcRes?.data as Service | null;
       const cu = custRes?.data as Customer | null;
       if (st) setStaff(st);
@@ -144,10 +144,16 @@ export function NewBookingDialog({
     setSubmitting(true);
     try {
       const starts_at = time!;
+      // If the target staff belongs to a different business (independent
+      // professional linked to this salon), route the booking to THAT business
+      // so it lands in the pro's own data. RLS policies allow the salon owner
+      // to insert on the pro's behalf when the link permits it.
+      const targetBiz = staff?.business_id || businessId;
+      const isCrossBiz = targetBiz !== businessId;
       if (isCustom) {
         const ends_at = new Date(new Date(starts_at).getTime() + customDuration * 60000).toISOString();
         const { error } = await supabase.from("bookings").insert({
-          business_id: businessId,
+          business_id: targetBiz,
           staff_id: staff!.id,
           service_id: null,
           customer_id: null,
@@ -169,7 +175,11 @@ export function NewBookingDialog({
         let custName = customer?.name ?? newCust?.name ?? "Walk-in";
         const custEmail = customer?.email ?? newCust?.email ?? null;
         const custPhone = customer?.phone ?? newCust?.phone ?? null;
-        if (!custId && newCust) {
+        // Only look up / create customer rows on the current user's OWN
+        // business. For cross-business bookings (salon booking on behalf of a
+        // pro), keep customer info inline on the booking row — the pro owns
+        // their customer list and RLS blocks writes here anyway.
+        if (!isCrossBiz && !custId && newCust) {
           const phoneNorm = newCust.phone.replace(/\D/g, "") || null;
           const orParts: string[] = [];
           if (newCust.email) orParts.push(`email.ilike.${newCust.email}`);
@@ -186,10 +196,10 @@ export function NewBookingDialog({
         }
         const ends_at = new Date(new Date(starts_at).getTime() + service!.duration_minutes * 60000).toISOString();
         const { error } = await supabase.from("bookings").insert({
-          business_id: businessId,
+          business_id: targetBiz,
           service_id: service!.id,
           staff_id: staff!.id,
-          customer_id: custId,
+          customer_id: isCrossBiz ? null : custId,
           customer_name: custName,
           customer_email: custEmail,
           customer_phone: custPhone,
@@ -199,7 +209,7 @@ export function NewBookingDialog({
           notes: notes || null,
           source: "walkin",
           notify_customer: notify,
-          deposit_cents: depositCents || null,
+          amount_due_cents: depositCents || 0,
           payment_status: paymentStatus,
         } as any);
         if (error) throw error;
@@ -261,6 +271,7 @@ export function NewBookingDialog({
         {!loadingPrefill && !isCustom && step === "customer" && (
           <CustomerStep
             businessId={businessId}
+            crossBusiness={!!(staff?.business_id && staff.business_id !== businessId)}
             onPick={(c) => { setCustomer(c); setNewCust(null); setStep(firstMissing({ hasCustomer: true, hasService: !!service, hasStaff: !!staff, hasTime: !!time })); }}
             onCreate={(c) => { setNewCust(c); setCustomer(null); setStep(firstMissing({ hasCustomer: true, hasService: !!service, hasStaff: !!staff, hasTime: !!time })); }}
           />
@@ -268,7 +279,7 @@ export function NewBookingDialog({
 
         {!loadingPrefill && !isCustom && step === "service" && (
           <ServiceStep
-            businessId={businessId}
+            businessId={staff?.business_id ?? businessId}
             current={service}
             onBack={() => setStep("customer")}
             onPick={(svc) => { setService(svc); setStep(firstMissing({ hasCustomer: !!(customer || newCust), hasService: true, hasStaff: !!staff, hasTime: !!time })); }}
@@ -286,7 +297,7 @@ export function NewBookingDialog({
 
         {!loadingPrefill && (step === "staff") && (isCustom ? customService : service) && (
           <StaffStep
-            businessId={businessId}
+            businessId={staff?.business_id ?? businessId}
             service={(isCustom ? customService : service)!}
             current={staff}
             allowAny={isCustom}
@@ -297,7 +308,7 @@ export function NewBookingDialog({
 
         {!loadingPrefill && step === "slot" && staff && (isCustom ? customService : service) && (
           <SlotStep
-            businessId={businessId}
+            businessId={staff?.business_id ?? businessId}
             staff={staff}
             service={(isCustom ? customService : service)!}
             date={date}
@@ -494,19 +505,20 @@ function PaymentStep({
 }
 
 function CustomerStep({
-  businessId, onPick, onCreate,
+  businessId, crossBusiness, onPick, onCreate,
 }: {
   businessId: string;
+  crossBusiness?: boolean;
   onPick: (c: Customer) => void;
   onCreate: (c: { name: string; email: string; phone: string }) => void;
 }) {
   const [q, setQ] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(!!crossBusiness);
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
 
   const { data: results, isLoading } = useQuery({
     queryKey: ["customer-search", businessId, q],
-    enabled: q.trim().length >= 2,
+    enabled: !crossBusiness && q.trim().length >= 2,
     queryFn: async () => {
       const term = q.trim();
       const { data, error } = await supabase.from("customers").select("id, name, email, phone").eq("business_id", businessId).or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`).limit(8);

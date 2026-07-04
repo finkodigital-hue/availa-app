@@ -104,29 +104,57 @@ function CalendarPage() {
     return { start: s, end: e };
   }, [anchor, view]);
 
-  const { data: staff } = useQuery({
-    queryKey: ["calendar-staff", bid],
+  // Load business IDs whose staff/bookings should appear on this salon's
+  // shared calendar: the salon itself + every actively linked independent
+  // professional whose permissions allow calendar visibility.
+  const { data: linkedProBusinessIds } = useQuery({
+    queryKey: ["calendar-linked-pros", bid],
     enabled: !!bid,
     queryFn: async () => {
       const { data, error } = await supabase
+        .from("salon_professionals")
+        .select("pro_business_id, permissions")
+        .eq("salon_business_id", bid!)
+        .eq("status", "active");
+      if (error) throw error;
+      return (data ?? [])
+        .filter((r: any) => (r.permissions?.salon_can_view_calendar ?? true) !== false)
+        .map((r: any) => r.pro_business_id as string);
+    },
+  });
+
+  const allBizIds = useMemo(
+    () => (bid ? [bid, ...(linkedProBusinessIds ?? [])] : []),
+    [bid, linkedProBusinessIds],
+  );
+
+  const { data: staff } = useQuery({
+    queryKey: ["calendar-staff", bid, linkedProBusinessIds?.join(",")],
+    enabled: !!bid && !!linkedProBusinessIds,
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from("staff")
-        .select("id, name, role, photo_url")
-        .eq("business_id", bid!)
+        .select("id, name, role, photo_url, business_id, businesses:business_id(name)")
+        .in("business_id", allBizIds)
         .eq("active", true)
         .order("name");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map((s: any) => ({
+        ...s,
+        is_independent: s.business_id !== bid,
+        business_name: s.businesses?.name ?? null,
+      }));
     },
   });
 
   const { data: bookings, isLoading } = useQuery({
-    queryKey: ["calendar", bid, range.start.toISOString(), range.end.toISOString()],
-    enabled: !!bid,
+    queryKey: ["calendar", bid, linkedProBusinessIds?.join(","), range.start.toISOString(), range.end.toISOString()],
+    enabled: !!bid && !!linkedProBusinessIds,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("*, services(id, name, color, duration_minutes), staff(id, name, photo_url)")
-        .eq("business_id", bid!)
+        .select("*, services(id, name, color, duration_minutes), staff(id, name, photo_url, business_id)")
+        .in("business_id", allBizIds)
         .gte("starts_at", range.start.toISOString())
         .lt("starts_at", range.end.toISOString())
         .order("starts_at");
@@ -136,13 +164,13 @@ function CalendarPage() {
   });
 
   const { data: blocked } = useQuery({
-    queryKey: ["calendar-blocked", bid, range.start.toISOString(), range.end.toISOString()],
-    enabled: !!bid,
+    queryKey: ["calendar-blocked", bid, linkedProBusinessIds?.join(","), range.start.toISOString(), range.end.toISOString()],
+    enabled: !!bid && !!linkedProBusinessIds,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("blocked_dates")
         .select("*")
-        .eq("business_id", bid!)
+        .in("business_id", allBizIds)
         .lt("starts_at", range.end.toISOString())
         .gt("ends_at", range.start.toISOString());
       if (error) throw error;
@@ -699,7 +727,17 @@ function StaffColumnHeader({ staff, palette }: { staff: any; palette: StaffPalet
         />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold truncate tracking-tight">{staff.name}</div>
+        <div className="text-sm font-semibold truncate tracking-tight flex items-center gap-1.5">
+          <span className="truncate">{staff.name}</span>
+          {staff.is_independent && (
+            <span
+              className="shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300"
+              title={staff.business_name ? `Independent · ${staff.business_name}` : "Independent professional"}
+            >
+              IP
+            </span>
+          )}
+        </div>
         {staff.role && (
           <div className="text-[11px] text-muted-foreground truncate">{staff.role}</div>
         )}
