@@ -654,6 +654,87 @@ export type Database = {
           },
         ]
       }
+      professional_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_business_id: string | null
+          agreement_end: string | null
+          agreement_start: string | null
+          chair_label: string | null
+          commission_percent: number | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          message: string | null
+          rent_amount_cents: number | null
+          rent_due_day: number | null
+          rent_mode: string
+          salon_business_id: string
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_business_id?: string | null
+          agreement_end?: string | null
+          agreement_start?: string | null
+          chair_label?: string | null
+          commission_percent?: number | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          message?: string | null
+          rent_amount_cents?: number | null
+          rent_due_day?: number | null
+          rent_mode?: string
+          salon_business_id: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_business_id?: string | null
+          agreement_end?: string | null
+          agreement_start?: string | null
+          chair_label?: string | null
+          commission_percent?: number | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          message?: string | null
+          rent_amount_cents?: number | null
+          rent_due_day?: number | null
+          rent_mode?: string
+          salon_business_id?: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_invitations_accepted_business_id_fkey"
+            columns: ["accepted_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_invitations_salon_business_id_fkey"
+            columns: ["salon_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -677,6 +758,131 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      rent_payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          paid_method: string | null
+          period_end: string
+          period_start: string
+          salon_professional_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_method?: string | null
+          period_end: string
+          period_start: string
+          salon_professional_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_method?: string | null
+          period_end?: string
+          period_start?: string
+          salon_professional_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_payments_salon_professional_id_fkey"
+            columns: ["salon_professional_id"]
+            isOneToOne: false
+            referencedRelation: "salon_professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salon_professionals: {
+        Row: {
+          agreement_end: string | null
+          agreement_start: string | null
+          chair_label: string | null
+          color: string | null
+          commission_percent: number | null
+          created_at: string
+          display_order: number
+          id: string
+          permissions: Json
+          pro_business_id: string
+          rent_amount_cents: number | null
+          rent_due_day: number | null
+          rent_mode: string
+          salon_business_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agreement_end?: string | null
+          agreement_start?: string | null
+          chair_label?: string | null
+          color?: string | null
+          commission_percent?: number | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          permissions?: Json
+          pro_business_id: string
+          rent_amount_cents?: number | null
+          rent_due_day?: number | null
+          rent_mode?: string
+          salon_business_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agreement_end?: string | null
+          agreement_start?: string | null
+          chair_label?: string | null
+          color?: string | null
+          commission_percent?: number | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          permissions?: Json
+          pro_business_id?: string
+          rent_amount_cents?: number | null
+          rent_due_day?: number | null
+          rent_mode?: string
+          salon_business_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salon_professionals_pro_business_id_fkey"
+            columns: ["pro_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salon_professionals_salon_business_id_fkey"
+            columns: ["salon_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_staff: {
         Row: {
@@ -1009,6 +1215,10 @@ export type Database = {
         Returns: undefined
       }
       is_business_owner: { Args: { _business_id: string }; Returns: boolean }
+      is_linked_pro_of: {
+        Args: { _salon_business_id: string }
+        Returns: boolean
+      }
       merge_customers: {
         Args: { _loser: string; _winner: string }
         Returns: undefined

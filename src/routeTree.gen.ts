@@ -16,12 +16,14 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as PortalProfileRouteImport } from './routes/portal.profile'
 import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
+import { Route as AuthenticatedProfessionalsRouteImport } from './routes/_authenticated/professionals'
 import { Route as AuthenticatedPreviewRouteImport } from './routes/_authenticated/preview'
 import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
@@ -66,6 +68,11 @@ const PortalBookingsRoute = PortalBookingsRouteImport.update({
   path: '/bookings',
   getParentRoute: () => PortalRoute,
 } as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BookSlugRoute = BookSlugRouteImport.update({
   id: '/book/$slug',
   path: '/book/$slug',
@@ -96,6 +103,12 @@ const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedProfessionalsRoute =
+  AuthenticatedProfessionalsRouteImport.update({
+    id: '/professionals',
+    path: '/professionals',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPreviewRoute = AuthenticatedPreviewRouteImport.update({
   id: '/preview',
   path: '/preview',
@@ -155,12 +168,14 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/preview': typeof AuthenticatedPreviewRoute
+  '/professionals': typeof AuthenticatedProfessionalsRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/staff': typeof AuthenticatedStaffRoute
   '/api/chat': typeof ApiChatRoute
   '/book/$slug': typeof BookSlugRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/': typeof PortalIndexRoute
@@ -177,12 +192,14 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/preview': typeof AuthenticatedPreviewRoute
+  '/professionals': typeof AuthenticatedProfessionalsRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/staff': typeof AuthenticatedStaffRoute
   '/api/chat': typeof ApiChatRoute
   '/book/$slug': typeof BookSlugRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal': typeof PortalIndexRoute
@@ -202,12 +219,14 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/preview': typeof AuthenticatedPreviewRoute
+  '/_authenticated/professionals': typeof AuthenticatedProfessionalsRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/api/chat': typeof ApiChatRoute
   '/book/$slug': typeof BookSlugRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/': typeof PortalIndexRoute
@@ -227,12 +246,14 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payments'
     | '/preview'
+    | '/professionals'
     | '/reports'
     | '/services'
     | '/settings'
     | '/staff'
     | '/api/chat'
     | '/book/$slug'
+    | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
     | '/portal/'
@@ -249,12 +270,14 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payments'
     | '/preview'
+    | '/professionals'
     | '/reports'
     | '/services'
     | '/settings'
     | '/staff'
     | '/api/chat'
     | '/book/$slug'
+    | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
     | '/portal'
@@ -273,12 +296,14 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/payments'
     | '/_authenticated/preview'
+    | '/_authenticated/professionals'
     | '/_authenticated/reports'
     | '/_authenticated/services'
     | '/_authenticated/settings'
     | '/_authenticated/staff'
     | '/api/chat'
     | '/book/$slug'
+    | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
     | '/portal/'
@@ -291,6 +316,7 @@ export interface RootRouteChildren {
   PortalRoute: typeof PortalRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
   BookSlugRoute: typeof BookSlugRoute
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -344,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalBookingsRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/book/$slug': {
       id: '/book/$slug'
       path: '/book/$slug'
@@ -384,6 +417,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/professionals': {
+      id: '/_authenticated/professionals'
+      path: '/professionals'
+      fullPath: '/professionals'
+      preLoaderRoute: typeof AuthenticatedProfessionalsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/preview': {
@@ -462,6 +502,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedPreviewRoute: typeof AuthenticatedPreviewRoute
+  AuthenticatedProfessionalsRoute: typeof AuthenticatedProfessionalsRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -478,6 +519,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedPreviewRoute: AuthenticatedPreviewRoute,
+  AuthenticatedProfessionalsRoute: AuthenticatedProfessionalsRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
@@ -509,6 +551,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRoute: PortalRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
   BookSlugRoute: BookSlugRoute,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

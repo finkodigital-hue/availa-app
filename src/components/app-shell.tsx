@@ -15,6 +15,7 @@ import {
   CalendarCheck,
   CreditCard,
   BarChart3,
+  UserPlus,
   Upload,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -39,6 +40,7 @@ const NAV = [
   { to: "/bookings", icon: CalendarCheck, label: "Bookings" },
   { to: "/customers", icon: UserCircle, label: "Customers" },
   { to: "/staff", icon: Users, label: "Staff" },
+  { to: "/professionals", icon: UserPlus, label: "Professionals" },
   { to: "/services", icon: Scissors, label: "Services" },
   { to: "/payments", icon: CreditCard, label: "Payments" },
   { to: "/reports", icon: BarChart3, label: "Reports" },
