@@ -97,7 +97,7 @@ function PublicBooking() {
     enabled: !!service,
     queryFn: async () => {
       const linked = await supabase.from("service_staff").select("staff_id").eq("service_id", service!.id);
-      let q = supabase.from("staff").select("id, name, role").eq("business_id", biz.id).eq("bookable", true);
+      let q = (supabase as any).from("public_staff").select("id, name, role").eq("business_id", biz.id);
       if (linked.data && linked.data.length > 0) q = q.in("id", linked.data.map((r) => r.staff_id));
       const { data, error } = await q.order("name");
       if (error) throw error; return data as Staff[];
