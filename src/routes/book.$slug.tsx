@@ -179,6 +179,11 @@ function PublicBooking() {
       toast.error("Please enter a valid email address.");
       return;
     }
+    if (info.phone.trim() && !isValidPhone(info.phone)) {
+      toast.error("Please enter a valid phone number.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const starts_at = time;
