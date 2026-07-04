@@ -81,7 +81,7 @@ function PublicBooking() {
   const [info, setInfo] = useState({ name: "", email: "", phone: "", notes: "" });
   const [submitting, setSubmitting] = useState(false);
 
-  const brand = biz.brand_color ?? "#C2410C";
+  const brand = biz.brand_color ?? "#8E2A38";
   const brandStyle = { ["--brand" as any]: brand } as React.CSSProperties;
 
   const { data: services, isLoading: loadingServices } = useQuery({

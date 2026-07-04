@@ -37,7 +37,7 @@ export function BrandingEditor({ business }: { business: any }) {
   return (
     <div className="space-y-5">
       <div className="grid sm:grid-cols-3 gap-3">
-        <ColorField icon={Palette} label="Primary" value={f.brand_color ?? "#C2410C"} onChange={(v) => setF({ ...f, brand_color: v })} />
+        <ColorField icon={Palette} label="Primary" value={f.brand_color ?? "#8E2A38"} onChange={(v) => setF({ ...f, brand_color: v })} />
         <ColorField icon={Palette} label="Secondary" value={f.secondary_color ?? "#1F2937"} onChange={(v) => setF({ ...f, secondary_color: v })} />
         <ColorField icon={Palette} label="Accent" value={f.accent_color ?? "#0EA5E9"} onChange={(v) => setF({ ...f, accent_color: v })} />
       </div>
@@ -116,11 +116,11 @@ function BrandPreview({ b }: { b: any }) {
     >
       <div className="text-[10px] uppercase tracking-[0.18em] opacity-60 mb-2">Preview</div>
       <div className="flex items-center gap-3 mb-4">
-        <div className="h-10 w-10 grid place-items-center text-white font-semibold" style={{ background: b.brand_color ?? "#C2410C", borderRadius: radius }}>L</div>
+        <div className="h-10 w-10 grid place-items-center text-white font-semibold" style={{ background: b.brand_color ?? "#8E2A38", borderRadius: radius }}>L</div>
         <div className="font-display text-xl" style={{ fontFamily: `var(--brand-font, inherit)` }}>Your booking page</div>
       </div>
       <div className="grid grid-cols-3 gap-2">
-        <button className="px-3 py-2 text-xs text-white" style={{ background: b.brand_color ?? "#C2410C", borderRadius: btnRadius }}>Book now</button>
+        <button className="px-3 py-2 text-xs text-white" style={{ background: b.brand_color ?? "#8E2A38", borderRadius: btnRadius }}>Book now</button>
         <button className="px-3 py-2 text-xs border" style={{ borderColor: b.secondary_color ?? "#1F2937", color: b.secondary_color ?? "#1F2937", borderRadius: btnRadius }}>Secondary</button>
         <button className="px-3 py-2 text-xs text-white" style={{ background: b.accent_color ?? "#0EA5E9", borderRadius: btnRadius }}>Accent</button>
       </div>
