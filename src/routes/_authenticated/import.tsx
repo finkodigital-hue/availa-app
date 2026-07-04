@@ -220,12 +220,28 @@ function ImportPage() {
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
       <PageHeader
-        eyebrow="Step 2 of 3"
+        eyebrow="Step 3 of 3"
         title="Import customers"
-        subtitle="Match your CSV columns to Chairly customer fields. Nothing is saved yet."
+        subtitle="Match your CSV columns to Chairly customer fields, then import. Duplicates by email are skipped automatically."
       />
 
-      {!fileName ? (
+      {result ? (
+        <div className="rounded-2xl border bg-card p-8 text-center space-y-4">
+          <CheckCircle2 className="h-12 w-12 mx-auto text-primary" />
+          <h3 className="text-xl font-medium">Import complete</h3>
+          <p className="text-muted-foreground">
+            Imported <span className="font-semibold text-foreground">{result.imported}</span>
+            {" · "}Skipped <span className="font-semibold text-foreground">{result.dupes}</span> duplicates
+            {" · "}Skipped <span className="font-semibold text-foreground">{result.noName}</span> with no name
+          </p>
+          <div className="flex justify-center gap-2 pt-2">
+            <Button variant="outline" onClick={reset}>Import another file</Button>
+            <Button asChild><Link to="/customers">View customers</Link></Button>
+          </div>
+        </div>
+      ) : null}
+
+      {!result && !fileName ? (
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
