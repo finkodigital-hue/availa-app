@@ -143,6 +143,7 @@ export const devSeedProfessional = createServerFn({ method: "POST" })
   });
 
 export const devMagicLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: { email: string }) => data)
   .handler(async ({ data }) => {
     assertDev();
