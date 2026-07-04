@@ -872,6 +872,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_public_booking: {
+        Args: {
+          p_business_id: string
+          p_customer_email: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_ends_at: string
+          p_notes: string
+          p_service_id: string
+          p_staff_id: string
+          p_starts_at: string
+        }
+        Returns: string
+      }
       current_user_email: { Args: never; Returns: string }
       ensure_business_hours: {
         Args: { _business_id: string }

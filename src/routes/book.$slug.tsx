@@ -174,10 +174,16 @@ function PublicBooking() {
         setSubmitting(false);
         return;
       }
-      const { error } = await supabase.from("bookings").insert({
-        business_id: biz.id, service_id: service.id, staff_id: staff.id,
-        customer_name: info.name, customer_email: info.email || null, customer_phone: info.phone || null,
-        starts_at, ends_at, price_cents: service.price_cents, notes: info.notes || null,
+      const { error } = await supabase.rpc("create_public_booking", {
+        p_business_id: biz.id,
+        p_service_id: service.id,
+        p_staff_id: staff.id,
+        p_customer_name: info.name,
+        p_customer_email: info.email || "",
+        p_customer_phone: info.phone || "",
+        p_starts_at: starts_at,
+        p_ends_at: ends_at,
+        p_notes: info.notes || "",
       });
       if (error) throw error;
       setStep("done");
