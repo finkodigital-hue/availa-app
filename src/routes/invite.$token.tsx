@@ -158,29 +158,13 @@ function InviteAcceptPage() {
       await supabase.from("business_hours").insert(hours);
     }
 
-    // Create the salon <-> pro link
-    const { error: linkErr } = await supabase.from("salon_professionals").insert({
-      salon_business_id: invite.salon_business_id,
-      pro_business_id: proBusinessId!,
-      status: "active",
-      chair_label: invite.chair_label,
-      rent_mode: invite.rent_mode,
-      rent_amount_cents: invite.rent_amount_cents,
-      commission_percent: invite.commission_percent,
-      agreement_start: invite.agreement_start,
-      agreement_end: invite.agreement_end,
-      rent_due_day: invite.rent_due_day,
+    // Accept the invite via security-definer RPC (verifies token + ownership,
+    // creates the salon<->pro link and marks the invitation accepted).
+    const { error: acceptErr } = await (supabase as any).rpc("accept_professional_invitation", {
+      _token: token,
+      _pro_business_id: proBusinessId!,
     });
-    if (linkErr && !linkErr.message.includes("duplicate")) throw linkErr;
-
-    await supabase
-      .from("professional_invitations")
-      .update({
-        status: "accepted",
-        accepted_at: new Date().toISOString(),
-        accepted_business_id: proBusinessId,
-      })
-      .eq("id", invite.id);
+    if (acceptErr) throw acceptErr;
 
     toast.success("You're in! Welcome to Luma.");
     await qc.invalidateQueries();
