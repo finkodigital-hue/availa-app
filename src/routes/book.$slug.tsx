@@ -28,8 +28,8 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/book/$slug")({
   loader: async ({ params }) => {
-    const { data, error } = await supabase
-      .from("businesses")
+    const { data, error } = await (supabase as any)
+      .from("public_businesses")
       .select("id, name, slug, description, brand_color, logo_url, address, phone, website, email, timezone, instagram, facebook, twitter")
       .eq("slug", params.slug)
       .maybeSingle();
