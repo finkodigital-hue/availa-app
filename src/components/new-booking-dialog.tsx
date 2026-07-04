@@ -144,10 +144,16 @@ export function NewBookingDialog({
     setSubmitting(true);
     try {
       const starts_at = time!;
+      // If the target staff belongs to a different business (independent
+      // professional linked to this salon), route the booking to THAT business
+      // so it lands in the pro's own data. RLS policies allow the salon owner
+      // to insert on the pro's behalf when the link permits it.
+      const targetBiz = staff?.business_id || businessId;
+      const isCrossBiz = targetBiz !== businessId;
       if (isCustom) {
         const ends_at = new Date(new Date(starts_at).getTime() + customDuration * 60000).toISOString();
         const { error } = await supabase.from("bookings").insert({
-          business_id: businessId,
+          business_id: targetBiz,
           staff_id: staff!.id,
           service_id: null,
           customer_id: null,
@@ -169,7 +175,11 @@ export function NewBookingDialog({
         let custName = customer?.name ?? newCust?.name ?? "Walk-in";
         const custEmail = customer?.email ?? newCust?.email ?? null;
         const custPhone = customer?.phone ?? newCust?.phone ?? null;
-        if (!custId && newCust) {
+        // Only look up / create customer rows on the current user's OWN
+        // business. For cross-business bookings (salon booking on behalf of a
+        // pro), keep customer info inline on the booking row — the pro owns
+        // their customer list and RLS blocks writes here anyway.
+        if (!isCrossBiz && !custId && newCust) {
           const phoneNorm = newCust.phone.replace(/\D/g, "") || null;
           const orParts: string[] = [];
           if (newCust.email) orParts.push(`email.ilike.${newCust.email}`);
@@ -186,10 +196,10 @@ export function NewBookingDialog({
         }
         const ends_at = new Date(new Date(starts_at).getTime() + service!.duration_minutes * 60000).toISOString();
         const { error } = await supabase.from("bookings").insert({
-          business_id: businessId,
+          business_id: targetBiz,
           service_id: service!.id,
           staff_id: staff!.id,
-          customer_id: custId,
+          customer_id: isCrossBiz ? null : custId,
           customer_name: custName,
           customer_email: custEmail,
           customer_phone: custPhone,
