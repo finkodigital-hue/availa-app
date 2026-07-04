@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Scissors, Clock, DollarSign, Check, Archive, ArchiveRestore, Tag } from "lucide-react";
+import { Plus, Pencil, Trash2, Scissors, Clock, DollarSign, Check, Archive, ArchiveRestore, Tag, Package, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
@@ -30,6 +30,9 @@ type Service = {
   category: string | null; archived_at: string | null;
 };
 type Staff = { id: string; name: string };
+type InventoryItem = { id: string; name: string; unit: string | null };
+type RecipeLine = { inventory_item_id: string; quantity: number };
+
 
 const COLORS = ["#C2410C", "#0EA5E9", "#10B981", "#A855F7", "#F59E0B", "#EC4899", "#6366F1", "#64748B"];
 
@@ -40,6 +43,10 @@ function ServicesPage() {
   const qc = useQueryClient();
   const [edit, setEdit] = useState<Partial<Service> | null>(null);
   const [linked, setLinked] = useState<Set<string>>(new Set());
+  const [recipe, setRecipe] = useState<RecipeLine[]>([]);
+  const [newRecipeItemId, setNewRecipeItemId] = useState<string>("");
+  const [newRecipeQty, setNewRecipeQty] = useState<string>("");
+
 
   const { data: services, isLoading } = useQuery({
     queryKey: ["services", bid],
@@ -60,16 +67,46 @@ function ServicesPage() {
     },
   });
 
-  // Load linked staff whenever editing existing
+  const { data: inventory } = useQuery({
+    queryKey: ["inventory_items", bid],
+    enabled: !!bid,
+    queryFn: async () => {
+      const { data } = await supabase.from("inventory_items").select("id, name, unit").eq("business_id", bid!).order("name");
+      return (data ?? []) as InventoryItem[];
+    },
+  });
+
+  const { data: recipeCounts } = useQuery({
+    queryKey: ["service-recipe-counts", bid],
+    enabled: !!bid,
+    queryFn: async () => {
+      const { data } = await supabase.from("service_recipe_items").select("service_id").eq("business_id", bid!);
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => { counts[r.service_id] = (counts[r.service_id] || 0) + 1; });
+      return counts;
+    },
+  });
+
+  const inventoryById = (id: string) => inventory?.find((i) => i.id === id);
+
+  // Load linked staff + recipe whenever editing existing
   useEffect(() => {
     if (edit?.id) {
       supabase.from("service_staff").select("staff_id").eq("service_id", edit.id).then(({ data }) => {
         setLinked(new Set((data ?? []).map((r: any) => r.staff_id)));
       });
+      supabase.from("service_recipe_items").select("inventory_item_id, quantity").eq("service_id", edit.id).then(({ data }) => {
+        setRecipe((data ?? []).map((r: any) => ({ inventory_item_id: r.inventory_item_id, quantity: Number(r.quantity) })));
+      });
     } else if (edit) {
       setLinked(new Set());
+      setRecipe([]);
     }
+    setNewRecipeItemId("");
+    setNewRecipeQty("");
   }, [edit?.id]);
+
+
 
   const save = async () => {
     if (!edit || !bid) return;
@@ -96,10 +133,19 @@ function ServicesPage() {
     if (linked.size > 0) {
       await supabase.from("service_staff").insert(Array.from(linked).map((staff_id) => ({ service_id: sid, staff_id, business_id: bid })));
     }
+    // sync recipe
+    await supabase.from("service_recipe_items").delete().eq("service_id", sid);
+    if (recipe.length > 0) {
+      await supabase.from("service_recipe_items").insert(
+        recipe.map((r) => ({ service_id: sid, business_id: bid, inventory_item_id: r.inventory_item_id, quantity: r.quantity }))
+      );
+    }
     toast.success(edit.id ? "Service updated" : "Service created");
     setEdit(null);
     qc.invalidateQueries({ queryKey: ["services"] });
+    qc.invalidateQueries({ queryKey: ["service-recipe-counts", bid] });
     qc.invalidateQueries({ queryKey: ["slots-day"] });
+
   };
 
   const toggleArchive = async (s: Service) => {
@@ -208,10 +254,16 @@ function ServicesPage() {
                 {s.description && (
                   <p className="text-sm text-muted-foreground mt-3 line-clamp-2 text-pretty">{s.description}</p>
                 )}
+                {recipeCounts?.[s.id] ? (
+                  <p className="text-[11px] text-muted-foreground mt-2 inline-flex items-center gap-1">
+                    <Package className="h-3 w-3" />{recipeCounts[s.id]} product{recipeCounts[s.id] === 1 ? "" : "s"}
+                  </p>
+                ) : null}
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {isArchived && <Badge variant="secondary">Archived</Badge>}
                   {!isArchived && !s.active && <Badge variant="secondary">Hidden</Badge>}
                 </div>
+
               </div>
             );
           })}
@@ -298,6 +350,79 @@ function ServicesPage() {
                 </div>
               </div>
             )}
+
+            <div>
+              <Label>Products used</Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">Record what this service consumes from stock. No auto-deduction yet.</p>
+              {recipe.length > 0 && (
+                <div className="space-y-1.5 mb-2">
+                  {recipe.map((r, idx) => {
+                    const item = inventoryById(r.inventory_item_id);
+                    return (
+                      <div key={idx} className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
+                        <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="flex-1 truncate">{item?.name ?? "Unknown item"}</span>
+                        <span className="text-muted-foreground">{r.quantity}{item?.unit ? ` ${item.unit}` : ""}</span>
+                        <button
+                          type="button"
+                          onClick={() => setRecipe(recipe.filter((_, i) => i !== idx))}
+                          className="p-1 rounded hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Remove"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {inventory && inventory.length > 0 ? (
+                <div className="flex gap-2">
+                  <select
+                    value={newRecipeItemId}
+                    onChange={(e) => setNewRecipeItemId(e.target.value)}
+                    className="flex-1 h-9 rounded-md border bg-background px-2 text-sm"
+                  >
+                    <option value="">Choose item…</option>
+                    {inventory
+                      .filter((i) => !recipe.some((r) => r.inventory_item_id === i.id))
+                      .map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.name}{i.unit ? ` (${i.unit})` : ""}
+                        </option>
+                      ))}
+                  </select>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={newRecipeQty}
+                    onChange={(e) => setNewRecipeQty(e.target.value)}
+                    placeholder="Qty"
+                    className="w-24 h-9"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (!newRecipeItemId) return toast.error("Choose an item");
+                      const q = Number(newRecipeQty);
+                      if (!Number.isFinite(q) || q <= 0) return toast.error("Enter a quantity");
+                      setRecipe([...recipe, { inventory_item_id: newRecipeItemId, quantity: q }]);
+                      setNewRecipeItemId("");
+                      setNewRecipeQty("");
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No inventory items yet — add some in Stock first.</p>
+              )}
+            </div>
+
+
             <div className="flex items-center justify-between rounded-xl bg-secondary/60 p-3">
               <div>
                 <Label className="text-sm">Active</Label>

@@ -931,6 +931,55 @@ export type Database = {
           },
         ]
       }
+      service_recipe_items: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          inventory_item_id: string
+          quantity: number
+          service_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          quantity?: number
+          service_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          quantity?: number
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_recipe_items_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_recipe_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_recipe_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_staff: {
         Row: {
           business_id: string
