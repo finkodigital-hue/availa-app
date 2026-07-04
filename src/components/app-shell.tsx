@@ -45,6 +45,8 @@ const NAV = [
   { to: "/staff", icon: Users, label: "Staff" },
   { to: "/professionals", icon: UserPlus, label: "Professionals" },
   { to: "/services", icon: Scissors, label: "Services" },
+  { to: "/stock", icon: Package, label: "Stock" },
+
   { to: "/payments", icon: CreditCard, label: "Payments" },
   { to: "/reports", icon: BarChart3, label: "Reports" },
   { to: "/assistant", icon: Sparkles, label: "Assistant" },
