@@ -184,6 +184,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <DevUserSwitcher />
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </>
   );
