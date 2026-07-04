@@ -179,11 +179,11 @@ function PublicBooking() {
         p_service_id: service.id,
         p_staff_id: staff.id,
         p_customer_name: info.name,
-        p_customer_email: info.email || null,
-        p_customer_phone: info.phone || null,
+        p_customer_email: info.email || "",
+        p_customer_phone: info.phone || "",
         p_starts_at: starts_at,
         p_ends_at: ends_at,
-        p_notes: info.notes || null,
+        p_notes: info.notes || "",
       });
       if (error) throw error;
       setStep("done");
