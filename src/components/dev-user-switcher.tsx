@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useRouter } from "@tanstack/react-router";
 import { FlaskConical, Copy, Loader2 } from "lucide-react";
@@ -48,6 +48,15 @@ function DevUserSwitcherInner() {
       setBusy(null);
     }
   };
+
+  // Auto-seed the demo pro account the first time the dialog opens so the
+  // credentials shown are guaranteed to work immediately.
+  useEffect(() => {
+    if (open && !creds && busy === null) {
+      doSeed();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const signInAs = async (email: string, which: "pro" | "owner") => {
     setBusy(which);
