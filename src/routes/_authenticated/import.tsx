@@ -1,7 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
-import { Upload, FileText, X } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -76,7 +78,8 @@ function mapRow(row: Row, mapping: Mapping) {
 }
 
 function ImportPage() {
-  useMyBusiness();
+  const { data: biz } = useMyBusiness();
+  const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -84,6 +87,8 @@ function ImportPage() {
   const [dragging, setDragging] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [mapping, setMapping] = useState<Mapping>({ name: NONE, email: NONE, phone: NONE, notes: NONE });
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<{ imported: number; dupes: number; noName: number } | null>(null);
 
   const handleFile = useCallback((file: File) => {
     if (!file.name.toLowerCase().endsWith(".csv")) {
