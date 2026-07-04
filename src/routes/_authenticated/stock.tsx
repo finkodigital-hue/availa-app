@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, TrendingUp, TrendingDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { fmtMoney } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/stock")({
@@ -134,6 +135,32 @@ function StockPage() {
     i.low_stock_threshold !== null &&
     Number(i.current_stock) <= Number(i.low_stock_threshold);
 
+  const { data: profitability } = useQuery({
+    queryKey: ["service-profitability", bid],
+    enabled: !!bid,
+    queryFn: async () => {
+      const [{ data: services }, { data: recipes }] = await Promise.all([
+        supabase.from("services").select("id, name, price_cents").eq("business_id", bid!).is("archived_at", null),
+        supabase.from("service_recipe_items").select("service_id, quantity, inventory_items(cost_cents)").eq("business_id", bid!),
+      ]);
+      const costs: Record<string, number> = {};
+      (recipes ?? []).forEach((r: any) => {
+        const c = Number(r.inventory_items?.cost_cents ?? 0) * Number(r.quantity ?? 0);
+        costs[r.service_id] = (costs[r.service_id] || 0) + c;
+      });
+      return (services ?? []).map((s: any) => {
+        const cost = costs[s.id] || 0;
+        const profit = Number(s.price_cents || 0) - cost;
+        const margin = s.price_cents > 0 ? (profit / s.price_cents) * 100 : 0;
+        return { id: s.id, name: s.name, price: s.price_cents, cost, profit, margin };
+      });
+    },
+  });
+
+  const ranked = (profitability ?? []).filter((s) => s.price > 0);
+  const mostProfitable = [...ranked].sort((a, b) => b.profit - a.profit).slice(0, 3);
+  const leastProfitable = [...ranked].sort((a, b) => a.profit - b.profit).slice(0, 3);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -145,6 +172,41 @@ function StockPage() {
           </Button>
         }
       />
+
+      {ranked.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center gap-2 mb-3 text-sm font-medium">
+              <TrendingUp className="h-4 w-4 text-emerald-500" /> Most profitable services
+            </div>
+            <ol className="space-y-2 text-sm">
+              {mostProfitable.map((s, idx) => (
+                <li key={s.id} className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-4">{idx + 1}.</span>
+                  <span className="flex-1 truncate">{s.name}</span>
+                  <span className="tabular-nums font-medium">{fmtMoney(s.profit)}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">{s.margin.toFixed(0)}%</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center gap-2 mb-3 text-sm font-medium">
+              <TrendingDown className="h-4 w-4 text-amber-500" /> Least profitable services
+            </div>
+            <ol className="space-y-2 text-sm">
+              {leastProfitable.map((s, idx) => (
+                <li key={s.id} className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-4">{idx + 1}.</span>
+                  <span className="flex-1 truncate">{s.name}</span>
+                  <span className={`tabular-nums font-medium ${s.profit < 0 ? "text-destructive" : ""}`}>{fmtMoney(s.profit)}</span>
+                  <span className={`text-xs tabular-nums w-10 text-right ${s.profit < 0 ? "text-destructive" : "text-muted-foreground"}`}>{s.margin.toFixed(0)}%</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid gap-3">

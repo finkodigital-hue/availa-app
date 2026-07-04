@@ -30,7 +30,7 @@ type Service = {
   category: string | null; archived_at: string | null;
 };
 type Staff = { id: string; name: string };
-type InventoryItem = { id: string; name: string; unit: string | null };
+type InventoryItem = { id: string; name: string; unit: string | null; cost_cents: number | null };
 type RecipeLine = { inventory_item_id: string; quantity: number };
 
 
@@ -71,21 +71,31 @@ function ServicesPage() {
     queryKey: ["inventory_items", bid],
     enabled: !!bid,
     queryFn: async () => {
-      const { data } = await supabase.from("inventory_items").select("id, name, unit").eq("business_id", bid!).order("name");
+      const { data } = await supabase.from("inventory_items").select("id, name, unit, cost_cents").eq("business_id", bid!).order("name");
       return (data ?? []) as InventoryItem[];
     },
   });
 
-  const { data: recipeCounts } = useQuery({
-    queryKey: ["service-recipe-counts", bid],
+  const { data: recipeStats } = useQuery({
+    queryKey: ["service-recipe-stats", bid],
     enabled: !!bid,
     queryFn: async () => {
-      const { data } = await supabase.from("service_recipe_items").select("service_id").eq("business_id", bid!);
+      const { data } = await supabase
+        .from("service_recipe_items")
+        .select("service_id, quantity, inventory_items(cost_cents)")
+        .eq("business_id", bid!);
       const counts: Record<string, number> = {};
-      (data ?? []).forEach((r: any) => { counts[r.service_id] = (counts[r.service_id] || 0) + 1; });
-      return counts;
+      const costs: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => {
+        counts[r.service_id] = (counts[r.service_id] || 0) + 1;
+        const c = Number(r.inventory_items?.cost_cents ?? 0) * Number(r.quantity ?? 0);
+        costs[r.service_id] = (costs[r.service_id] || 0) + c;
+      });
+      return { counts, costs };
     },
   });
+  const recipeCounts = recipeStats?.counts;
+  const serviceCost = recipeStats?.costs ?? {};
 
   const inventoryById = (id: string) => inventory?.find((i) => i.id === id);
 
@@ -143,7 +153,7 @@ function ServicesPage() {
     toast.success(edit.id ? "Service updated" : "Service created");
     setEdit(null);
     qc.invalidateQueries({ queryKey: ["services"] });
-    qc.invalidateQueries({ queryKey: ["service-recipe-counts", bid] });
+    qc.invalidateQueries({ queryKey: ["service-recipe-stats", bid] });
     qc.invalidateQueries({ queryKey: ["slots-day"] });
 
   };
@@ -259,6 +269,27 @@ function ServicesPage() {
                     <Package className="h-3 w-3" />{recipeCounts[s.id]} product{recipeCounts[s.id] === 1 ? "" : "s"}
                   </p>
                 ) : null}
+                {(() => {
+                  const cost = Number(serviceCost[s.id] || 0);
+                  const profit = Number(s.price_cents || 0) - cost;
+                  const margin = s.price_cents > 0 ? (profit / s.price_cents) * 100 : 0;
+                  return (
+                    <div className="mt-3 grid grid-cols-3 gap-1.5 rounded-lg border bg-secondary/30 px-2.5 py-2 text-[11px]">
+                      <div>
+                        <div className="text-muted-foreground">Cost</div>
+                        <div className="tabular-nums font-medium">{fmtMoney(cost)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Profit</div>
+                        <div className={`tabular-nums font-medium ${profit < 0 ? "text-destructive" : ""}`}>{fmtMoney(profit)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Margin</div>
+                        <div className={`tabular-nums font-medium ${profit < 0 ? "text-destructive" : ""}`}>{s.price_cents > 0 ? `${margin.toFixed(0)}%` : "—"}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {isArchived && <Badge variant="secondary">Archived</Badge>}
                   {!isArchived && !s.active && <Badge variant="secondary">Hidden</Badge>}
