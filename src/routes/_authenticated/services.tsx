@@ -133,10 +133,19 @@ function ServicesPage() {
     if (linked.size > 0) {
       await supabase.from("service_staff").insert(Array.from(linked).map((staff_id) => ({ service_id: sid, staff_id, business_id: bid })));
     }
+    // sync recipe
+    await supabase.from("service_recipe_items").delete().eq("service_id", sid);
+    if (recipe.length > 0) {
+      await supabase.from("service_recipe_items").insert(
+        recipe.map((r) => ({ service_id: sid, business_id: bid, inventory_item_id: r.inventory_item_id, quantity: r.quantity }))
+      );
+    }
     toast.success(edit.id ? "Service updated" : "Service created");
     setEdit(null);
     qc.invalidateQueries({ queryKey: ["services"] });
+    qc.invalidateQueries({ queryKey: ["service-recipe-counts", bid] });
     qc.invalidateQueries({ queryKey: ["slots-day"] });
+
   };
 
   const toggleArchive = async (s: Service) => {
