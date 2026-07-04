@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Scissors, Clock, DollarSign, Check, Archive, ArchiveRestore, Tag } from "lucide-react";
+import { Plus, Pencil, Trash2, Scissors, Clock, DollarSign, Check, Archive, ArchiveRestore, Tag, Package, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
