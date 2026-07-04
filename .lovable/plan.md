@@ -1,129 +1,77 @@
-# Luma Polish & Functionality Update
+# Independent Professionals (Chair Rental)
 
-Scope: targeted polish — no rip-and-replace. Existing CRUD, Supabase, Stripe, auth, integrations stay untouched. I'll work in phases so you can review between batches.
+End-to-end delivery, sequenced into 5 milestones. Each milestone is shippable on its own and I'll verify before moving on.
 
----
+## Model (the load-bearing decision)
 
-## Phase 1 — Foundations (Global)
+Every professional — employee OR independent — is a `staff` row on **exactly one** `businesses` row (their own). An independent pro creates their own `businesses` row when they accept an invite. A new `salon_professionals` link table connects the salon business to the pro's business.
 
-**Bottom nav + floating add (mobile)**
-- Fix z-index/stacking so the floating `+` always sits above the bar and page content (currently the bar's `mx-2 rounded-t-3xl` clips behind it on some viewports).
-- Increase touch targets to 44px min, add safe-area padding properly, refine glass blur + shadow.
-- Add a global spacer utility so pages never hide content behind the bar.
+```text
+businesses (salon)  ──┐
+                      ├──> salon_professionals ──> businesses (pro's own)
+                      │         (rent terms,           │
+                      │          permissions,          ├─> staff (Sarah)
+                      │          status)               ├─> services
+                      │                                ├─> customers
+staff (Emma, Jordan)  ┘                                └─> bookings
+```
 
-**Responsive audit pass**
-- Convert problematic flex header rows to the `grid-cols-[minmax(0,1fr)_auto]` pattern with `min-w-0` / `shrink-0` / `truncate` (per project guideline).
-- Audit Dashboard, Reports, Payments, Bookings, Customers, Staff, Services, Settings for overflow on 360–414px widths.
-- Make all tables horizontally scrollable inside a `overflow-x-auto` wrapper with sticky first column where useful.
-- Replace `h-screen` with `h-dvh` where found.
+Bookings, customers, services always live on the **owning** business. The salon's calendar aggregates: own staff bookings + linked-and-visible pros' bookings via a security-definer function that respects each pro's permission flags. Nothing about a pro's business is ever readable via RLS from the salon side.
 
-**Accessibility quick wins**
-- Add `aria-label` to all icon-only buttons.
-- Visible focus rings via `focus-visible:ring-2 ring-primary/40`.
-- Color-contrast sweep on `text-muted-foreground` over pastels.
+## Milestone 1 — Foundation: invites, link table, dual dashboard
 
----
+New tables (all with GRANTs + RLS):
+- `professional_invitations` (salon_business_id, email, token, status, expires_at, rent terms snapshot)
+- `salon_professionals` (salon_business_id, pro_business_id, status, permissions jsonb, rent fields, agreement dates, chair label)
+- `rent_payments` (salon_professionals_id, period_start, period_end, amount_cents, status, paid_at)
 
-## Phase 2 — Calendar & Opening Hours
+Flows:
+- Salon: **Team** page (renamed from Staff internally kept; UI shows "Team" with two tabs — Employees / Independent professionals). Invite by email, revoke, view status.
+- Pro accept: `/invite/:token` — signs up, creates their own `businesses` row (reuses onboarding), the link flips to `active`.
+- On sign-in, if a user owns >1 business (rare) or is linked as a pro, we show a business switcher in the header. Otherwise identical to today.
 
-**Calendar**
-- Render only between earliest open → latest close across the week (derived from `business_hours`), with a 1-hour pad. No more 12am–11pm dead space.
-- Sticky staff headers (already partial — fix on iOS Safari).
-- Live current-time indicator only on today's column.
-- Better overlapping booking handling: side-by-side fan-out within a slot rather than stacking.
-- Tighter mobile day view: single-staff swipeable column with pill selector at top.
+RLS: `salon_professionals` readable by both sides; writable only by salon owner (permissions column writable by pro).
 
-**Opening Hours settings page (new)**
-- New tab in Settings → "Hours" rebuilt:
-  - Per-day enable/disable.
-  - **Multiple periods per day** (e.g. 9–13, 14–18) → requires a small schema change: replace single open/close with a `periods jsonb` column on `business_hours` (kept backward-compatible by reading legacy `open_time`/`close_time` as a single period).
-- Slot engine (`src/lib/slots.ts`) updated to iterate over periods.
+## Milestone 2 — Shared calendar & public booking
 
----
+- New RPC `get_salon_calendar(salon_business_id, from, to)` (SECURITY DEFINER, checks caller is salon owner, returns bookings from salon + every linked pro whose permissions allow calendar visibility). Independent pros' bookings surface with a lock icon and hide customer/notes when permission is off.
+- Salon calendar UI: pros appear as columns alongside employees, distinct color, "independent" chip.
+- Public `/book/:slug` (salon slug): pro list = salon staff + linked pros' staff. Service list = union (deduped by name for display, but each option carries which business owns it). Time slots respect the owning pro's `staff_hours`, `blocked_dates`, and existing bookings.
+- `create_public_booking` becomes `create_public_booking_v2` — routes the booking to the correct owning business based on the selected pro. Customer row is created on the owning business.
+- Salon owners can create/move a pro's booking only if that pro's permissions allow it (checked in an updated `enforce_booking_change_window`-style trigger).
 
-## Phase 3 — Bookings
+## Milestone 3 — Stripe Connect payments
 
-**Guided multi-step booking dialog**
-Rebuild `new-booking-dialog.tsx` as a 7-step wizard with progress bar:
-1. Customer (live search of existing + inline "Create customer" without leaving)
-2. Service
-3. Staff (filtered by service)
-4. Date & Time (with the redesigned strip)
-5. Payment / deposit (uses existing payment columns; no Stripe logic changes)
-6. Notes (public + private)
-7. Confirmation summary
+- Salon and each pro connect their own Stripe account (Standard Connect) via OAuth. Store `stripe_account_id` per business.
+- Server route `/api/public/stripe/oauth/callback` completes the connection.
+- Checkout: server fn creates a Stripe Checkout Session using `stripe_account: <owning business's account>` — money lands directly in that account. Salon never touches pro funds.
+- Webhook `/api/public/stripe/webhook`: signature-verified, upserts into `payments` scoped to the owning business.
 
-**Custom / staff-only bookings**
-- Add a "Custom booking" toggle inside the wizard (visible only to staff/owner — public booking page unchanged).
-- Schema: add `is_custom boolean`, `custom_title text`, `custom_color text` to `bookings`. Service/customer become optional when `is_custom`.
-- Calendar shows them with a dashed border + "Custom" pill.
+You'll need: **Stripe secret key** (platform) + **Stripe webhook signing secret** — I'll request via add_secret at this milestone, not now.
 
-**Booking cards**
-- Add icon row (VIP, Deposit, Walk-in, Notes, Online) — already partly there; standardize and add to week/month views.
-- Tighten typography & spacing.
+## Milestone 4 — Rent management
 
----
+- Salon `/rent` page: per-pro rent terms (weekly / monthly / % of revenue / fixed commission), agreement dates, due day.
+- `rent_payments` ledger with "Mark paid / Record payment / Outstanding". A daily server route (`/api/public/cron/generate-rent`) generates upcoming rent rows from active agreements — you'll wire pg_cron or an external scheduler to hit it.
+- Salon-only visibility. Pros see only what they owe (a stripped-down view of their own rows), never salon totals.
 
-## Phase 4 — Staff & Customers
+## Milestone 5 — Permission toggles & isolated reports
 
-**Staff profile page (new route)**
-- `/staff/$id` with tabs: Information · Availability · Services · Performance · Holidays · Documents (stub).
-- Replace long-press editing on the staff list with explicit Edit/Availability/Services/Performance/Holiday/Delete buttons (kebab menu on mobile).
+- Per-pro permission UI (on the pro's Settings): calendar visible, salon can book, salon can move, availability visible. Revenue / reports / customer notes are hardcoded private — no toggle.
+- Reports and analytics scoped strictly to `current business`. Assistant context builder already scopes by business; audit and lock down.
+- Final RLS sweep and a security scan.
 
-**Staff performance filters**
-- Date-range presets (Today, Yesterday, This/Last Week, This/Last Month, YTD, Custom) + comparison period toggle. Recharts updates in place.
+## Technical notes
 
-**Customer enrichments**
-- Add structured fields to `customers`: `hair_type`, `allergies`, `color_formula`, `medical_notes`, `preferred_staff_id`, plus existing notes for private internal.
-- Improved search (already exists) + better duplicate hints in the merge dialog.
+- `useMyBusiness` becomes `useCurrentBusiness` returning `{ business, role: 'salon_owner' | 'independent_pro', linkedSalons, linkedPros }`. Business switcher writes selected id to localStorage; server fns read it from a header the attacher adds.
+- All new tables: `GRANT ... TO authenticated`, `GRANT ALL ... TO service_role`, RLS on, policies scoped via `is_business_owner` and a new `is_linked_pro_of(salon_id)` security-definer helper.
+- Zero cross-business SELECT policies — the salon's aggregate calendar goes only through the SECURITY DEFINER RPC, which filters columns by permission.
+- Public booking stays anon-writeable only through the RPC.
 
----
+## What I'd like to confirm before I start Milestone 1
 
-## Phase 5 — Dashboard polish
+1. Rent model: is a pro on **one** rent term at a time (weekly OR monthly OR %) or can they be combined (e.g. weekly base + % commission)?
+2. Independent pro's public presence: should they appear only on the salon's `/book/:slug`, or also get their own `/book/:their-slug` standalone page? Spec says "customers should never notice Sarah owns a separate business," which suggests salon-only — confirm.
+3. On invite acceptance: do we reuse the full existing onboarding wizard (business name, hours, services, etc.) for the pro, or a slimmed-down version (name + timezone only, defaults for the rest)?
 
-- Wrap chart containers in `min-w-0` + `ResponsiveContainer` height clamps.
-- Business Insights card converts to horizontal scroll on mobile instead of clipping.
-- Stat cards use `grid-cols-2 sm:grid-cols-3 lg:grid-cols-6` with proper truncation.
-
----
-
-## Phase 6 — QA
-
-Use Playwright via shell at 390×844 (mobile), 820×1180 (tablet), 1440×900 (desktop) to:
-- Screenshot every authenticated route.
-- Verify floating + button is clickable on mobile.
-- Verify calendar scroll, booking wizard flow, opening-hours save.
-- Capture any remaining overflow/clipping and patch.
-
----
-
-## Database changes (single migration in Phase 2/3)
-
-1. `business_hours.periods jsonb` — array of `{open, close}` (nullable; legacy columns kept).
-2. `bookings.is_custom boolean default false`, `custom_title text`, `custom_color text`; relax `service_id`/`customer_id` to nullable when custom.
-3. `customers` add `hair_type`, `allergies`, `color_formula`, `medical_notes`, `preferred_staff_id uuid references staff`.
-
-All additive, RLS unchanged, existing data untouched.
-
----
-
-## What I will NOT touch
-- Stripe Connect / payments logic.
-- Resend / Twilio / Google Calendar integrations.
-- Auth flows, RLS policies, edge functions, AI assistant.
-- Public booking page behaviour (only visual polish if needed).
-- Demo seed data.
-
----
-
-## Delivery order
-
-I'll ship in this order, pausing after each so you can sanity-check:
-
-1. Phase 1 (foundations + bottom nav fix) — fastest visible win.
-2. Phase 2 (calendar + opening hours, incl. migration).
-3. Phase 3 (booking wizard + custom bookings, incl. migration).
-4. Phase 4 (staff profile + customer fields, incl. migration).
-5. Phase 5 + 6 (dashboard polish + QA sweep).
-
-Reply **"go"** to start Phase 1, or tell me to reorder / drop any phase.
+I'll wait for those three answers, then start with Milestone 1.
