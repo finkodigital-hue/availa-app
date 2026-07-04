@@ -111,6 +111,26 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
+
+        <div className="mt-4 pt-4 border-t border-border/60">
+          <Link
+            to="/import"
+            onClick={() => setMobileOpen(false)}
+            className={cn(
+              "relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200",
+              path === "/import" || path.startsWith("/import")
+                ? "bg-card text-foreground shadow-soft"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60",
+            )}
+          >
+            {(path === "/import" || path.startsWith("/import")) && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-primary" />
+            )}
+            <Upload className="h-4 w-4" />
+            <span>Import</span>
+          </Link>
+        </div>
+
         {biz?.slug && (
           <a
             href={`/book/${biz.slug}`}
