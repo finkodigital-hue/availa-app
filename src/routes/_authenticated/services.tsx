@@ -153,7 +153,7 @@ function ServicesPage() {
     toast.success(edit.id ? "Service updated" : "Service created");
     setEdit(null);
     qc.invalidateQueries({ queryKey: ["services"] });
-    qc.invalidateQueries({ queryKey: ["service-recipe-counts", bid] });
+    qc.invalidateQueries({ queryKey: ["service-recipe-stats", bid] });
     qc.invalidateQueries({ queryKey: ["slots-day"] });
 
   };
