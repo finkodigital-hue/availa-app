@@ -1,7 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
-import { Upload, FileText, X } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -76,7 +78,8 @@ function mapRow(row: Row, mapping: Mapping) {
 }
 
 function ImportPage() {
-  useMyBusiness();
+  const { data: biz } = useMyBusiness();
+  const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -84,6 +87,8 @@ function ImportPage() {
   const [dragging, setDragging] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [mapping, setMapping] = useState<Mapping>({ name: NONE, email: NONE, phone: NONE, notes: NONE });
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<{ imported: number; dupes: number; noName: number } | null>(null);
 
   const handleFile = useCallback((file: File) => {
     if (!file.name.toLowerCase().endsWith(".csv")) {
@@ -120,6 +125,7 @@ function ImportPage() {
     setRows([]);
     setColumns([]);
     setMapping({ name: NONE, email: NONE, phone: NONE, notes: NONE });
+    setResult(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -136,15 +142,106 @@ function ImportPage() {
     return opts;
   }, [columns, mapping.firstName, mapping.lastName]);
 
+  const runImport = async () => {
+    if (!biz?.id) {
+      toast.error("Business not loaded yet");
+      return;
+    }
+    setImporting(true);
+    try {
+      // Build rows
+      const noNameCount = mapped.filter((r) => !r.name).length;
+      const named = mapped.filter((r) => r.name);
+
+      // Fetch existing emails for this business
+      const { data: existing, error: fetchErr } = await supabase
+        .from("customers")
+        .select("email")
+        .eq("business_id", biz.id)
+        .not("email", "is", null);
+      if (fetchErr) throw fetchErr;
+      const existingEmails = new Set(
+        (existing ?? [])
+          .map((c) => (c.email ?? "").trim().toLowerCase())
+          .filter(Boolean),
+      );
+
+      // De-dupe within file + against existing
+      const seenEmails = new Set<string>();
+      let dupes = 0;
+      const toInsert: {
+        business_id: string;
+        name: string;
+        email: string | null;
+        phone: string | null;
+        notes: string | null;
+      }[] = [];
+      for (const r of named) {
+        const emailLower = r.email ? r.email.toLowerCase() : "";
+        if (emailLower) {
+          if (existingEmails.has(emailLower) || seenEmails.has(emailLower)) {
+            dupes++;
+            continue;
+          }
+          seenEmails.add(emailLower);
+        }
+        toInsert.push({
+          business_id: biz.id,
+          name: r.name,
+          email: r.email || null,
+          phone: r.phone || null,
+          notes: r.notes || null,
+        });
+      }
+
+      // Batch insert in chunks of 500
+      let imported = 0;
+      const CHUNK = 500;
+      for (let i = 0; i < toInsert.length; i += CHUNK) {
+        const chunk = toInsert.slice(i, i + CHUNK);
+        const { error: insErr } = await supabase.from("customers").insert(chunk);
+        if (insErr) throw insErr;
+        imported += chunk.length;
+      }
+
+      setResult({ imported, dupes, noName: noNameCount });
+      await qc.invalidateQueries({ queryKey: ["customers"] });
+      toast.success(`Imported ${imported} customers`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Import failed: ${msg}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const canImport = !!biz?.id && mapping.name !== NONE && mapped.some((r) => r.name);
+
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
       <PageHeader
-        eyebrow="Step 2 of 3"
+        eyebrow="Step 3 of 3"
         title="Import customers"
-        subtitle="Match your CSV columns to Chairly customer fields. Nothing is saved yet."
+        subtitle="Match your CSV columns to Chairly customer fields, then import. Duplicates by email are skipped automatically."
       />
 
-      {!fileName ? (
+      {result ? (
+        <div className="rounded-2xl border bg-card p-8 text-center space-y-4">
+          <CheckCircle2 className="h-12 w-12 mx-auto text-primary" />
+          <h3 className="text-xl font-medium">Import complete</h3>
+          <p className="text-muted-foreground">
+            Imported <span className="font-semibold text-foreground">{result.imported}</span>
+            {" · "}Skipped <span className="font-semibold text-foreground">{result.dupes}</span> duplicates
+            {" · "}Skipped <span className="font-semibold text-foreground">{result.noName}</span> with no name
+          </p>
+          <div className="flex justify-center gap-2 pt-2">
+            <Button variant="outline" onClick={reset}>Import another file</Button>
+            <Button asChild><Link to="/customers">View customers</Link></Button>
+          </div>
+        </div>
+      ) : null}
+
+      {!result && !fileName && (
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
@@ -177,7 +274,9 @@ function ImportPage() {
             {parsing ? "Parsing…" : "Select CSV file"}
           </Button>
         </div>
-      ) : (
+      )}
+
+      {!result && fileName && (
         <div className="space-y-5">
           <div className="rounded-2xl border bg-card p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
@@ -271,8 +370,11 @@ function ImportPage() {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={reset}>Choose another file</Button>
-            <Button disabled title="Coming in step 3">Continue to import</Button>
+            <Button variant="outline" onClick={reset} disabled={importing}>Choose another file</Button>
+            <Button onClick={runImport} disabled={!canImport || importing}>
+              {importing && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              {importing ? "Importing…" : `Import ${mapped.filter((r) => r.name).length} customers`}
+            </Button>
           </div>
         </div>
       )}
