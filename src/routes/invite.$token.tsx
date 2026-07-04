@@ -23,13 +23,19 @@ function InviteAcceptPage() {
   const { data: invite, isLoading, error } = useQuery({
     queryKey: ["invite", token],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("professional_invitations")
-        .select("*, salon:salon_business_id(id,name,logo_url,brand_color)")
-        .eq("token", token)
-        .maybeSingle();
+      const { data, error } = await (supabase as any).rpc("get_invitation_by_token", { _token: token });
       if (error) throw error;
-      return data as any;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+      return {
+        ...row,
+        salon: {
+          id: row.salon_business_id,
+          name: row.salon_name,
+          logo_url: row.salon_logo_url,
+          brand_color: row.salon_brand_color,
+        },
+      } as any;
     },
   });
 
