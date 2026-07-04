@@ -173,6 +173,41 @@ function StockPage() {
         }
       />
 
+      {ranked.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center gap-2 mb-3 text-sm font-medium">
+              <TrendingUp className="h-4 w-4 text-emerald-500" /> Most profitable services
+            </div>
+            <ol className="space-y-2 text-sm">
+              {mostProfitable.map((s, idx) => (
+                <li key={s.id} className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-4">{idx + 1}.</span>
+                  <span className="flex-1 truncate">{s.name}</span>
+                  <span className="tabular-nums font-medium">{fmtMoney(s.profit)}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">{s.margin.toFixed(0)}%</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center gap-2 mb-3 text-sm font-medium">
+              <TrendingDown className="h-4 w-4 text-amber-500" /> Least profitable services
+            </div>
+            <ol className="space-y-2 text-sm">
+              {leastProfitable.map((s, idx) => (
+                <li key={s.id} className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-4">{idx + 1}.</span>
+                  <span className="flex-1 truncate">{s.name}</span>
+                  <span className={`tabular-nums font-medium ${s.profit < 0 ? "text-destructive" : ""}`}>{fmtMoney(s.profit)}</span>
+                  <span className={`text-xs tabular-nums w-10 text-right ${s.profit < 0 ? "text-destructive" : "text-muted-foreground"}`}>{s.margin.toFixed(0)}%</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="grid gap-3">
           {[0, 1, 2].map((i) => (
