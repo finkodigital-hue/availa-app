@@ -102,11 +102,11 @@ export function NewBookingDialog({
     setLoadingPrefill(true);
     (async () => {
       const [staffRes, svcRes, custRes] = await Promise.all([
-        prefill?.staffId ? supabase.from("staff").select("id, name").eq("id", prefill.staffId).maybeSingle() : Promise.resolve({ data: null } as any),
+        prefill?.staffId ? supabase.from("staff").select("id, name, business_id").eq("id", prefill.staffId).maybeSingle() : Promise.resolve({ data: null } as any),
         prefill?.serviceId ? supabase.from("services").select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color").eq("id", prefill.serviceId).maybeSingle() : Promise.resolve({ data: null } as any),
         prefill?.customerId ? supabase.from("customers").select("id, name, email, phone").eq("id", prefill.customerId).maybeSingle() : Promise.resolve({ data: null } as any),
       ]);
-      const st = staffRes?.data ? { id: staffRes.data.id, name: staffRes.data.name } : null;
+      const st = staffRes?.data ? { id: staffRes.data.id, name: staffRes.data.name, business_id: staffRes.data.business_id } : null;
       const sv = svcRes?.data as Service | null;
       const cu = custRes?.data as Customer | null;
       if (st) setStaff(st);
