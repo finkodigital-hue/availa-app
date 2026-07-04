@@ -459,8 +459,18 @@ function PublicBooking() {
               </div>
               <div>
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Phone</Label>
-                <Input value={info.phone} onChange={(e) => setInfo({ ...info, phone: e.target.value })} className="mt-1.5 h-11" placeholder="(555) 000-0000" />
+                <Input
+                  value={info.phone}
+                  onChange={(e) => setInfo({ ...info, phone: sanitizePhone(e.target.value) })}
+                  className="mt-1.5 h-11"
+                  placeholder="(555) 000-0000"
+                  inputMode="tel"
+                />
+                {info.phone.length > 0 && !isValidPhone(info.phone) && (
+                  <p className="mt-1 text-xs text-destructive">Please enter a valid phone number (7–15 digits).</p>
+                )}
               </div>
+
             </div>
             <div>
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Notes <span className="text-muted-foreground/60 normal-case">(optional)</span></Label>
