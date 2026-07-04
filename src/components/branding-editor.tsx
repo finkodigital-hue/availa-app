@@ -116,7 +116,7 @@ function BrandPreview({ b }: { b: any }) {
     >
       <div className="text-[10px] uppercase tracking-[0.18em] opacity-60 mb-2">Preview</div>
       <div className="flex items-center gap-3 mb-4">
-        <div className="h-10 w-10 grid place-items-center text-white font-semibold" style={{ background: b.brand_color ?? "#8E2A38", borderRadius: radius }}>L</div>
+        <div className="h-10 w-10 grid place-items-center text-white font-semibold" style={{ background: b.brand_color ?? "#8E2A38", borderRadius: radius }}>{(b.name?.trim()?.[0] ?? "C").toUpperCase()}</div>
         <div className="font-display text-xl" style={{ fontFamily: `var(--brand-font, inherit)` }}>Your booking page</div>
       </div>
       <div className="grid grid-cols-3 gap-2">
