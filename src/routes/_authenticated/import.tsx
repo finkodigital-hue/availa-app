@@ -241,7 +241,7 @@ function ImportPage() {
         </div>
       ) : null}
 
-      {!result && !fileName ? (
+      {!result && !fileName && (
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
@@ -274,7 +274,9 @@ function ImportPage() {
             {parsing ? "Parsing…" : "Select CSV file"}
           </Button>
         </div>
-      ) : (
+      )}
+
+      {!result && fileName && (
         <div className="space-y-5">
           <div className="rounded-2xl border bg-card p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
