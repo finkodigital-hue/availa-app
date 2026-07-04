@@ -271,6 +271,7 @@ export function NewBookingDialog({
         {!loadingPrefill && !isCustom && step === "customer" && (
           <CustomerStep
             businessId={businessId}
+            crossBusiness={!!(staff?.business_id && staff.business_id !== businessId)}
             onPick={(c) => { setCustomer(c); setNewCust(null); setStep(firstMissing({ hasCustomer: true, hasService: !!service, hasStaff: !!staff, hasTime: !!time })); }}
             onCreate={(c) => { setNewCust(c); setCustomer(null); setStep(firstMissing({ hasCustomer: true, hasService: !!service, hasStaff: !!staff, hasTime: !!time })); }}
           />
@@ -278,7 +279,7 @@ export function NewBookingDialog({
 
         {!loadingPrefill && !isCustom && step === "service" && (
           <ServiceStep
-            businessId={businessId}
+            businessId={staff?.business_id ?? businessId}
             current={service}
             onBack={() => setStep("customer")}
             onPick={(svc) => { setService(svc); setStep(firstMissing({ hasCustomer: !!(customer || newCust), hasService: true, hasStaff: !!staff, hasTime: !!time })); }}
@@ -296,7 +297,7 @@ export function NewBookingDialog({
 
         {!loadingPrefill && (step === "staff") && (isCustom ? customService : service) && (
           <StaffStep
-            businessId={businessId}
+            businessId={staff?.business_id ?? businessId}
             service={(isCustom ? customService : service)!}
             current={staff}
             allowAny={isCustom}
@@ -307,7 +308,7 @@ export function NewBookingDialog({
 
         {!loadingPrefill && step === "slot" && staff && (isCustom ? customService : service) && (
           <SlotStep
-            businessId={businessId}
+            businessId={staff?.business_id ?? businessId}
             staff={staff}
             service={(isCustom ? customService : service)!}
             date={date}
