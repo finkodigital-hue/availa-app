@@ -71,21 +71,31 @@ function ServicesPage() {
     queryKey: ["inventory_items", bid],
     enabled: !!bid,
     queryFn: async () => {
-      const { data } = await supabase.from("inventory_items").select("id, name, unit").eq("business_id", bid!).order("name");
+      const { data } = await supabase.from("inventory_items").select("id, name, unit, cost_cents").eq("business_id", bid!).order("name");
       return (data ?? []) as InventoryItem[];
     },
   });
 
-  const { data: recipeCounts } = useQuery({
-    queryKey: ["service-recipe-counts", bid],
+  const { data: recipeStats } = useQuery({
+    queryKey: ["service-recipe-stats", bid],
     enabled: !!bid,
     queryFn: async () => {
-      const { data } = await supabase.from("service_recipe_items").select("service_id").eq("business_id", bid!);
+      const { data } = await supabase
+        .from("service_recipe_items")
+        .select("service_id, quantity, inventory_items(cost_cents)")
+        .eq("business_id", bid!);
       const counts: Record<string, number> = {};
-      (data ?? []).forEach((r: any) => { counts[r.service_id] = (counts[r.service_id] || 0) + 1; });
-      return counts;
+      const costs: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => {
+        counts[r.service_id] = (counts[r.service_id] || 0) + 1;
+        const c = Number(r.inventory_items?.cost_cents ?? 0) * Number(r.quantity ?? 0);
+        costs[r.service_id] = (costs[r.service_id] || 0) + c;
+      });
+      return { counts, costs };
     },
   });
+  const recipeCounts = recipeStats?.counts;
+  const serviceCost = recipeStats?.costs ?? {};
 
   const inventoryById = (id: string) => inventory?.find((i) => i.id === id);
 
