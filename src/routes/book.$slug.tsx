@@ -160,8 +160,18 @@ function PublicBooking() {
     return arr;
   }, []);
 
+  const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
   const book = async () => {
-    if (!service || !staff || !time || !info.name) return;
+    if (!service || !staff || !time) return;
+    if (!info.name.trim()) {
+      toast.error("Please enter your name.");
+      return;
+    }
+    if (!isValidEmail(info.email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
     setSubmitting(true);
     try {
       const starts_at = time;
@@ -188,7 +198,14 @@ function PublicBooking() {
       if (error) throw error;
       setStep("done");
     } catch (e: any) {
-      toast.error(e.message ?? "Could not book");
+      const msg = e?.message ?? "";
+      if (msg.includes("SLOT_TAKEN")) {
+        toast.error("That slot was just taken — pick another.");
+        setStep("time");
+        setTime(null);
+      } else {
+        toast.error(msg || "Could not book");
+      }
     } finally { setSubmitting(false); }
   };
 
