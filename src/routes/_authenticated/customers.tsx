@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import {
@@ -76,14 +76,9 @@ function CustomersPage() {
         title="Customers"
         subtitle="Everyone who's ever booked with you, with their full history."
         action={
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
-              <Link to="/import"><Upload className="h-4 w-4 mr-1" /> Import</Link>
-            </Button>
-            <Button onClick={() => setEditing({})} className="shadow-glow">
-              <Plus className="h-4 w-4 mr-1" /> Add customer
-            </Button>
-          </div>
+          <Button onClick={() => setEditing({})} className="shadow-glow">
+            <Plus className="h-4 w-4 mr-1" /> Add customer
+          </Button>
         }
       />
       <div className="relative mb-5 max-w-md">
