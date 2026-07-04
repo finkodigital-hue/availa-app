@@ -269,6 +269,27 @@ function ServicesPage() {
                     <Package className="h-3 w-3" />{recipeCounts[s.id]} product{recipeCounts[s.id] === 1 ? "" : "s"}
                   </p>
                 ) : null}
+                {(() => {
+                  const cost = Number(serviceCost[s.id] || 0);
+                  const profit = Number(s.price_cents || 0) - cost;
+                  const margin = s.price_cents > 0 ? (profit / s.price_cents) * 100 : 0;
+                  return (
+                    <div className="mt-3 grid grid-cols-3 gap-1.5 rounded-lg border bg-secondary/30 px-2.5 py-2 text-[11px]">
+                      <div>
+                        <div className="text-muted-foreground">Cost</div>
+                        <div className="tabular-nums font-medium">{fmtMoney(cost)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Profit</div>
+                        <div className={`tabular-nums font-medium ${profit < 0 ? "text-destructive" : ""}`}>{fmtMoney(profit)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Margin</div>
+                        <div className={`tabular-nums font-medium ${profit < 0 ? "text-destructive" : ""}`}>{s.price_cents > 0 ? `${margin.toFixed(0)}%` : "—"}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {isArchived && <Badge variant="secondary">Archived</Badge>}
                   {!isArchived && !s.active && <Badge variant="secondary">Hidden</Badge>}
