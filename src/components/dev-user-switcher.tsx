@@ -140,7 +140,7 @@ function DevUserSwitcherInner() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 Independent Professional (demo)
               </div>
-              <div className="mt-1 text-sm font-medium">Alex Rivera</div>
+              <div className="mt-1 text-sm font-medium">Finko (Demo Pro)</div>
               <div className="text-xs text-muted-foreground">
                 Linked as Chair 3 · $500/mo rent · own services, staff & customers
               </div>
