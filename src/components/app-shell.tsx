@@ -15,6 +15,7 @@ import {
   CalendarCheck,
   CreditCard,
   BarChart3,
+  UserPlus,
   Upload,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";

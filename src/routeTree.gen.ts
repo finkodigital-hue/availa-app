@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as PortalProfileRouteImport } from './routes/portal.profile'
 import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
@@ -66,6 +67,11 @@ const PortalBookingsRoute = PortalBookingsRouteImport.update({
   id: '/bookings',
   path: '/bookings',
   getParentRoute: () => PortalRoute,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BookSlugRoute = BookSlugRouteImport.update({
   id: '/book/$slug',
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/staff': typeof AuthenticatedStaffRoute
   '/api/chat': typeof ApiChatRoute
   '/book/$slug': typeof BookSlugRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/': typeof PortalIndexRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/staff': typeof AuthenticatedStaffRoute
   '/api/chat': typeof ApiChatRoute
   '/book/$slug': typeof BookSlugRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal': typeof PortalIndexRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/api/chat': typeof ApiChatRoute
   '/book/$slug': typeof BookSlugRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/': typeof PortalIndexRoute
@@ -244,6 +253,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/api/chat'
     | '/book/$slug'
+    | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
     | '/portal/'
@@ -267,6 +277,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/api/chat'
     | '/book/$slug'
+    | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
     | '/portal'
@@ -292,6 +303,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff'
     | '/api/chat'
     | '/book/$slug'
+    | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
     | '/portal/'
@@ -304,6 +316,7 @@ export interface RootRouteChildren {
   PortalRoute: typeof PortalRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
   BookSlugRoute: typeof BookSlugRoute
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -356,6 +369,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/bookings'
       preLoaderRoute: typeof PortalBookingsRouteImport
       parentRoute: typeof PortalRoute
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/book/$slug': {
       id: '/book/$slug'
@@ -531,6 +551,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRoute: PortalRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
   BookSlugRoute: BookSlugRoute,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
