@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ function AuthPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -164,16 +165,26 @@ function AuthPage() {
                     </Link>
                   )}
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="mt-1.5 h-11"
-                />
+                <div className="relative mt-1.5">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="h-11 pr-11"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             )}
             <Button type="submit" className="w-full h-11 shadow-glow" disabled={busy}>
