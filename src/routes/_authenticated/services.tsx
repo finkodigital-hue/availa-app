@@ -254,10 +254,16 @@ function ServicesPage() {
                 {s.description && (
                   <p className="text-sm text-muted-foreground mt-3 line-clamp-2 text-pretty">{s.description}</p>
                 )}
+                {recipeCounts?.[s.id] ? (
+                  <p className="text-[11px] text-muted-foreground mt-2 inline-flex items-center gap-1">
+                    <Package className="h-3 w-3" />{recipeCounts[s.id]} product{recipeCounts[s.id] === 1 ? "" : "s"}
+                  </p>
+                ) : null}
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {isArchived && <Badge variant="secondary">Archived</Badge>}
                   {!isArchived && !s.active && <Badge variant="secondary">Hidden</Badge>}
                 </div>
+
               </div>
             );
           })}
