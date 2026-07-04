@@ -44,7 +44,7 @@ function StockPage() {
   const [edit, setEdit] = useState<Partial<InventoryItem> | null>(null);
   const [adjust, setAdjust] = useState<InventoryItem | null>(null);
   const [adjustDelta, setAdjustDelta] = useState<string>("");
-  const [confirmDelete, setConfirmDelete] = useState<InventoryItem | null>(null);
+
 
   const { data: items, isLoading } = useQuery({
     queryKey: ["inventory_items", bid],
