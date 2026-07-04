@@ -161,6 +161,13 @@ function PublicBooking() {
   }, []);
 
   const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  const isValidPhone = (v: string) => {
+    if (!v.trim()) return true;
+    const digits = v.replace(/\D/g, "");
+    return digits.length >= 7 && digits.length <= 15;
+  };
+  const sanitizePhone = (v: string) => v.replace(/[^\d\s+()\-.]/g, "");
+
 
   const book = async () => {
     if (!service || !staff || !time) return;
