@@ -582,6 +582,53 @@ export type Database = {
           },
         ]
       }
+      inventory_items: {
+        Row: {
+          brand: string | null
+          business_id: string
+          cost_cents: number | null
+          created_at: string
+          current_stock: number
+          id: string
+          low_stock_threshold: number | null
+          name: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          business_id: string
+          cost_cents?: number | null
+          created_at?: string
+          current_stock?: number
+          id?: string
+          low_stock_threshold?: number | null
+          name: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          business_id?: string
+          cost_cents?: number | null
+          created_at?: string
+          current_stock?: number
+          id?: string
+          low_stock_threshold?: number | null
+          name?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_cents: number
