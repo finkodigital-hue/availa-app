@@ -67,16 +67,46 @@ function ServicesPage() {
     },
   });
 
-  // Load linked staff whenever editing existing
+  const { data: inventory } = useQuery({
+    queryKey: ["inventory_items", bid],
+    enabled: !!bid,
+    queryFn: async () => {
+      const { data } = await supabase.from("inventory_items").select("id, name, unit").eq("business_id", bid!).order("name");
+      return (data ?? []) as InventoryItem[];
+    },
+  });
+
+  const { data: recipeCounts } = useQuery({
+    queryKey: ["service-recipe-counts", bid],
+    enabled: !!bid,
+    queryFn: async () => {
+      const { data } = await supabase.from("service_recipe_items").select("service_id").eq("business_id", bid!);
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => { counts[r.service_id] = (counts[r.service_id] || 0) + 1; });
+      return counts;
+    },
+  });
+
+  const inventoryById = (id: string) => inventory?.find((i) => i.id === id);
+
+  // Load linked staff + recipe whenever editing existing
   useEffect(() => {
     if (edit?.id) {
       supabase.from("service_staff").select("staff_id").eq("service_id", edit.id).then(({ data }) => {
         setLinked(new Set((data ?? []).map((r: any) => r.staff_id)));
       });
+      supabase.from("service_recipe_items").select("inventory_item_id, quantity").eq("service_id", edit.id).then(({ data }) => {
+        setRecipe((data ?? []).map((r: any) => ({ inventory_item_id: r.inventory_item_id, quantity: Number(r.quantity) })));
+      });
     } else if (edit) {
       setLinked(new Set());
+      setRecipe([]);
     }
+    setNewRecipeItemId("");
+    setNewRecipeQty("");
   }, [edit?.id]);
+
+
 
   const save = async () => {
     if (!edit || !bid) return;
