@@ -31,7 +31,7 @@ type Service = {
   buffer_after_min: number;
   color: string | null;
 };
-type Staff = { id: string; name: string };
+type Staff = { id: string; name: string; business_id?: string };
 
 type Step = "customer" | "service" | "staff" | "slot" | "payment" | "confirm" | "custom";
 
