@@ -14,13 +14,13 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Luma — Bookings made beautiful" },
+      { title: "Chairly — Bookings made beautiful" },
       {
         name: "description",
         content:
           "The modern booking platform for studios, salons and service businesses. Calendars, customers, branded booking pages — out of the box.",
       },
-      { property: "og:title", content: "Luma — Bookings made beautiful" },
+      { property: "og:title", content: "Chairly — Bookings made beautiful" },
       {
         property: "og:description",
         content:
@@ -38,7 +38,7 @@ function Landing() {
       <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b border-border/60">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="font-display text-xl tracking-tight">
-            Luma<span className="text-primary">.</span>
+            Chairly<span className="text-primary">.</span>
           </Link>
           <nav className="hidden md:flex items-center gap-7 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
@@ -193,7 +193,7 @@ function Landing() {
         <div className="max-w-3xl mx-auto px-6 py-24 text-center">
           <Sparkles className="h-6 w-6 text-primary mx-auto" />
           <p className="mt-6 font-display text-3xl md:text-4xl leading-snug text-balance">
-            "We moved from spreadsheets to Luma and immediately doubled
+            "We moved from spreadsheets to Chairly and immediately doubled
             our online bookings. It just <span className="italic text-primary">feels right</span>."
           </p>
           <div className="mt-6 text-sm text-muted-foreground">
@@ -278,9 +278,9 @@ function Landing() {
       <footer className="border-t">
         <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <div className="font-display text-base text-foreground">
-            Luma<span className="text-primary">.</span>
+            Chairly<span className="text-primary">.</span>
           </div>
-          <div>© {new Date().getFullYear()} Luma — Made with care.</div>
+          <div>© {new Date().getFullYear()} Chairly — Made with care.</div>
           <div className="flex gap-5">
             <a href="#" className="hover:text-foreground">Privacy</a>
             <a href="#" className="hover:text-foreground">Terms</a>

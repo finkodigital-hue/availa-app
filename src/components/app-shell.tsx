@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <div className="px-5 pt-6 pb-4">
         <Link to="/dashboard" className="font-display text-xl tracking-tight inline-block">
-          Luma<span className="text-primary">.</span>
+          Chairly<span className="text-primary">.</span>
         </Link>
         {biz?.slug && (
           <a
@@ -174,7 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile header */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4">
         <Link to="/dashboard" className="font-display text-lg">
-          Luma<span className="text-primary">.</span>
+          Chairly<span className="text-primary">.</span>
         </Link>
         <button
           onClick={() => setMobileOpen(true)}
