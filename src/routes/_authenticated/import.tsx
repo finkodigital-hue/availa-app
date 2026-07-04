@@ -125,6 +125,7 @@ function ImportPage() {
     setRows([]);
     setColumns([]);
     setMapping({ name: NONE, email: NONE, phone: NONE, notes: NONE });
+    setResult(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
