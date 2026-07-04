@@ -33,6 +33,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { DevUserSwitcher } from "@/components/dev-user-switcher";
 
 const NAV = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
