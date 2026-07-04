@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.apply_booking_stock_deduction() FROM PUBLIC, anon, authenticated;
