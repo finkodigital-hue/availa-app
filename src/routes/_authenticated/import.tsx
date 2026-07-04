@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import { Upload, FileText, X } from "lucide-react";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/import")({
@@ -13,6 +15,65 @@ export const Route = createFileRoute("/_authenticated/import")({
 });
 
 type Row = Record<string, string>;
+
+const NONE = "__none__";
+const COMBINE_FIRST_LAST = "__combine_first_last__";
+
+type Mapping = {
+  name: string; // column header, or COMBINE_FIRST_LAST
+  email: string; // column header, or NONE
+  phone: string;
+  notes: string;
+  firstName?: string;
+  lastName?: string;
+};
+
+function findColumn(columns: string[], predicate: (lower: string) => boolean): string | undefined {
+  return columns.find((c) => predicate(c.toLowerCase()));
+}
+
+function guessMapping(columns: string[]): Mapping {
+  const nameCol = findColumn(columns, (l) => l.includes("name") || l.includes("client") || l.includes("customer"));
+  const firstName = findColumn(columns, (l) => l.includes("first") && l.includes("name"))
+    ?? findColumn(columns, (l) => l === "first" || l === "firstname" || l === "fname");
+  const lastName = findColumn(columns, (l) => l.includes("last") && l.includes("name"))
+    ?? findColumn(columns, (l) => l === "last" || l === "lastname" || l === "lname" || l === "surname");
+
+  let name = NONE;
+  if (nameCol && !(firstName && lastName && nameCol === firstName)) {
+    name = nameCol;
+  } else if (firstName && lastName) {
+    name = COMBINE_FIRST_LAST;
+  } else if (nameCol) {
+    name = nameCol;
+  }
+
+  return {
+    name,
+    email: findColumn(columns, (l) => l.includes("email")) ?? NONE,
+    phone: findColumn(columns, (l) => l.includes("phone") || l.includes("mobile") || l.includes("tel") || l.includes("cell")) ?? NONE,
+    notes: findColumn(columns, (l) => l.includes("note")) ?? NONE,
+    firstName,
+    lastName,
+  };
+}
+
+function mapRow(row: Row, mapping: Mapping) {
+  let name = "";
+  if (mapping.name === COMBINE_FIRST_LAST) {
+    const f = (mapping.firstName ? row[mapping.firstName] : "") ?? "";
+    const l = (mapping.lastName ? row[mapping.lastName] : "") ?? "";
+    name = `${f} ${l}`.trim();
+  } else if (mapping.name !== NONE) {
+    name = (row[mapping.name] ?? "").trim();
+  }
+  return {
+    name,
+    email: mapping.email !== NONE ? (row[mapping.email] ?? "").trim() : "",
+    phone: mapping.phone !== NONE ? (row[mapping.phone] ?? "").trim() : "",
+    notes: mapping.notes !== NONE ? (row[mapping.notes] ?? "").trim() : "",
+  };
+}
 
 function ImportPage() {
   useMyBusiness();
@@ -22,6 +83,7 @@ function ImportPage() {
   const [columns, setColumns] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [mapping, setMapping] = useState<Mapping>({ name: NONE, email: NONE, phone: NONE, notes: NONE });
 
   const handleFile = useCallback((file: File) => {
     if (!file.name.toLowerCase().endsWith(".csv")) {
@@ -35,8 +97,9 @@ function ImportPage() {
       skipEmptyLines: true,
       complete: (results) => {
         const data = (results.data as Row[]).filter((r) => Object.values(r).some((v) => v != null && String(v).trim() !== ""));
+        const cols = results.meta.fields ?? [];
         setRows(data);
-        setColumns(results.meta.fields ?? []);
+        setColumns(cols);
         setParsing(false);
         toast.success(`Parsed ${data.length} rows`);
       },
@@ -47,21 +110,38 @@ function ImportPage() {
     });
   }, []);
 
+  // Auto-guess when columns change
+  useEffect(() => {
+    if (columns.length > 0) setMapping(guessMapping(columns));
+  }, [columns]);
+
   const reset = () => {
     setFileName(null);
     setRows([]);
     setColumns([]);
+    setMapping({ name: NONE, email: NONE, phone: NONE, notes: NONE });
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  const preview = rows.slice(0, 100);
+  const mapped = useMemo(() => rows.map((r) => mapRow(r, mapping)), [rows, mapping]);
+  const skipped = useMemo(() => mapped.filter((r) => !r.name).length, [mapped]);
+  const preview = mapped.slice(0, 10);
+
+  const nameOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [];
+    if (mapping.firstName && mapping.lastName) {
+      opts.push({ value: COMBINE_FIRST_LAST, label: `${mapping.firstName} + ${mapping.lastName} (combined)` });
+    }
+    for (const c of columns) opts.push({ value: c, label: c });
+    return opts;
+  }, [columns, mapping.firstName, mapping.lastName]);
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
       <PageHeader
-        eyebrow="Step 1 of 3"
+        eyebrow="Step 2 of 3"
         title="Import customers"
-        subtitle="Upload a CSV to preview your data. Nothing is saved yet — mapping and import come next."
+        subtitle="Match your CSV columns to Chairly customer fields. Nothing is saved yet."
       />
 
       {!fileName ? (
@@ -114,10 +194,48 @@ function ImportPage() {
             </Button>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {columns.map((c) => (
-              <Badge key={c} variant="secondary">{c}</Badge>
-            ))}
+          <div className="rounded-2xl border bg-card p-5">
+            <h3 className="font-medium mb-1">Map your columns</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Choose which CSV column feeds each Chairly field. Name is required.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldMap
+                label="Name"
+                required
+                value={mapping.name}
+                onChange={(v) => setMapping((m) => ({ ...m, name: v }))}
+                options={nameOptions}
+                allowNone={false}
+              />
+              <FieldMap
+                label="Email"
+                value={mapping.email}
+                onChange={(v) => setMapping((m) => ({ ...m, email: v }))}
+                options={columns.map((c) => ({ value: c, label: c }))}
+              />
+              <FieldMap
+                label="Phone"
+                value={mapping.phone}
+                onChange={(v) => setMapping((m) => ({ ...m, phone: v }))}
+                options={columns.map((c) => ({ value: c, label: c }))}
+              />
+              <FieldMap
+                label="Notes"
+                value={mapping.notes}
+                onChange={(v) => setMapping((m) => ({ ...m, notes: v }))}
+                options={columns.map((c) => ({ value: c, label: c }))}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 items-center">
+            <Badge variant="secondary">{mapped.length} total rows</Badge>
+            {skipped > 0 ? (
+              <Badge variant="destructive">{skipped} without a name — will be skipped</Badge>
+            ) : (
+              <Badge variant="secondary">All rows have a name</Badge>
+            )}
           </div>
 
           <div className="rounded-2xl border bg-card overflow-hidden">
@@ -125,37 +243,74 @@ function ImportPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 border-b">
                   <tr>
-                    {columns.map((c) => (
-                      <th key={c} className="text-left font-medium px-4 py-2.5 whitespace-nowrap">{c}</th>
-                    ))}
+                    <th className="text-left font-medium px-4 py-2.5 whitespace-nowrap">Name</th>
+                    <th className="text-left font-medium px-4 py-2.5 whitespace-nowrap">Email</th>
+                    <th className="text-left font-medium px-4 py-2.5 whitespace-nowrap">Phone</th>
+                    <th className="text-left font-medium px-4 py-2.5 whitespace-nowrap">Notes</th>
                   </tr>
                 </thead>
                 <tbody>
                   {preview.map((row, i) => (
                     <tr key={i} className="border-b last:border-0">
-                      {columns.map((c) => (
-                        <td key={c} className="px-4 py-2 whitespace-nowrap text-muted-foreground">
-                          {row[c] ?? ""}
-                        </td>
-                      ))}
+                      <td className={`px-4 py-2 whitespace-nowrap ${row.name ? "" : "text-destructive italic"}`}>
+                        {row.name || "(no name — will be skipped)"}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">{row.email}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">{row.phone}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-muted-foreground max-w-xs truncate">{row.notes}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            {rows.length > preview.length && (
+            {mapped.length > preview.length && (
               <div className="px-4 py-2.5 text-xs text-muted-foreground border-t bg-muted/30">
-                Showing first {preview.length} of {rows.length} rows
+                Showing first {preview.length} of {mapped.length} rows
               </div>
             )}
           </div>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={reset}>Choose another file</Button>
-            <Button disabled title="Coming in step 2">Continue to mapping</Button>
+            <Button disabled title="Coming in step 3">Continue to import</Button>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function FieldMap({
+  label,
+  required,
+  value,
+  onChange,
+  options,
+  allowNone = true,
+}: {
+  label: string;
+  required?: boolean;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  allowNone?: boolean;
+}) {
+  return (
+    <div>
+      <Label className="mb-1.5 block">
+        {label} {required && <span className="text-destructive">*</span>}
+      </Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder="Select a column…" />
+        </SelectTrigger>
+        <SelectContent>
+          {allowNone && <SelectItem value={NONE}>— none —</SelectItem>}
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
