@@ -60,6 +60,13 @@ export type Database = {
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "blocked_dates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       bookings: {
@@ -174,6 +181,13 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_public"
             referencedColumns: ["id"]
           },
         ]
@@ -702,6 +716,13 @@ export type Database = {
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "service_staff_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       services: {
@@ -865,11 +886,107 @@ export type Database = {
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "staff_hours_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      blocked_dates_public: {
+        Row: {
+          business_id: string | null
+          ends_at: string | null
+          id: string | null
+          kind: string | null
+          staff_id: string | null
+          starts_at: string | null
+        }
+        Insert: {
+          business_id?: string | null
+          ends_at?: string | null
+          id?: string | null
+          kind?: string | null
+          staff_id?: string | null
+          starts_at?: string | null
+        }
+        Update: {
+          business_id?: string | null
+          ends_at?: string | null
+          id?: string | null
+          kind?: string | null
+          staff_id?: string | null
+          starts_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_dates_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_dates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_dates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_public: {
+        Row: {
+          active: boolean | null
+          bio: string | null
+          bookable: boolean | null
+          business_id: string | null
+          id: string | null
+          name: string | null
+          photo_url: string | null
+          role: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          bio?: string | null
+          bookable?: boolean | null
+          business_id?: string | null
+          id?: string | null
+          name?: string | null
+          photo_url?: string | null
+          role?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          bio?: string | null
+          bookable?: boolean | null
+          business_id?: string | null
+          id?: string | null
+          name?: string | null
+          photo_url?: string | null
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       create_public_booking: {
