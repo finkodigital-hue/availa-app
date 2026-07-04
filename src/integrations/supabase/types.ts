@@ -1219,6 +1219,10 @@ export type Database = {
         Args: { _salon_business_id: string }
         Returns: boolean
       }
+      is_salon_owner_of_pro: {
+        Args: { _pro_business_id: string }
+        Returns: boolean
+      }
       merge_customers: {
         Args: { _loser: string; _winner: string }
         Returns: undefined
@@ -1226,6 +1230,10 @@ export type Database = {
       reassign_staff_bookings: {
         Args: { _from_staff: string; _only_future?: boolean; _to_staff: string }
         Returns: number
+      }
+      salon_pro_permission: {
+        Args: { _perm: string; _pro_business_id: string }
+        Returns: boolean
       }
     }
     Enums: {
