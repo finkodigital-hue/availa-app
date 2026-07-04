@@ -478,7 +478,7 @@ function PublicBooking() {
             </div>
             <Button
               onClick={book}
-              disabled={submitting || !info.name.trim() || !isValidEmail(info.email)}
+              disabled={submitting || !info.name.trim() || !isValidEmail(info.email) || (info.phone.trim() && !isValidPhone(info.phone))}
               className="w-full h-12 text-base shadow-glow"
               style={{ background: brand }}
             >
