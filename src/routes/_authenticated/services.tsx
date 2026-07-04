@@ -43,6 +43,10 @@ function ServicesPage() {
   const qc = useQueryClient();
   const [edit, setEdit] = useState<Partial<Service> | null>(null);
   const [linked, setLinked] = useState<Set<string>>(new Set());
+  const [recipe, setRecipe] = useState<RecipeLine[]>([]);
+  const [newRecipeItemId, setNewRecipeItemId] = useState<string>("");
+  const [newRecipeQty, setNewRecipeQty] = useState<string>("");
+
 
   const { data: services, isLoading } = useQuery({
     queryKey: ["services", bid],
