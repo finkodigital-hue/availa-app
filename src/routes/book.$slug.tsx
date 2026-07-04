@@ -160,8 +160,18 @@ function PublicBooking() {
     return arr;
   }, []);
 
+  const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
   const book = async () => {
-    if (!service || !staff || !time || !info.name) return;
+    if (!service || !staff || !time) return;
+    if (!info.name.trim()) {
+      toast.error("Please enter your name.");
+      return;
+    }
+    if (!isValidEmail(info.email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
     setSubmitting(true);
     try {
       const starts_at = time;
@@ -188,7 +198,14 @@ function PublicBooking() {
       if (error) throw error;
       setStep("done");
     } catch (e: any) {
-      toast.error(e.message ?? "Could not book");
+      const msg = e?.message ?? "";
+      if (msg.includes("SLOT_TAKEN")) {
+        toast.error("That slot was just taken — pick another.");
+        setStep("time");
+        setTime(null);
+      } else {
+        toast.error(msg || "Could not book");
+      }
     } finally { setSubmitting(false); }
   };
 
@@ -424,6 +441,9 @@ function PublicBooking() {
               <div>
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Email</Label>
                 <Input type="email" value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} className="mt-1.5 h-11" placeholder="you@email.com" />
+                {info.email.length > 0 && !isValidEmail(info.email) && (
+                  <p className="mt-1 text-xs text-destructive">Please enter a valid email address.</p>
+                )}
               </div>
               <div>
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Phone</Label>
@@ -436,7 +456,7 @@ function PublicBooking() {
             </div>
             <Button
               onClick={book}
-              disabled={submitting || !info.name}
+              disabled={submitting || !info.name.trim() || !isValidEmail(info.email)}
               className="w-full h-12 text-base shadow-glow"
               style={{ background: brand }}
             >
