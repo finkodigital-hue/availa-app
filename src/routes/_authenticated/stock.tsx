@@ -135,6 +135,32 @@ function StockPage() {
     i.low_stock_threshold !== null &&
     Number(i.current_stock) <= Number(i.low_stock_threshold);
 
+  const { data: profitability } = useQuery({
+    queryKey: ["service-profitability", bid],
+    enabled: !!bid,
+    queryFn: async () => {
+      const [{ data: services }, { data: recipes }] = await Promise.all([
+        supabase.from("services").select("id, name, price_cents").eq("business_id", bid!).is("archived_at", null),
+        supabase.from("service_recipe_items").select("service_id, quantity, inventory_items(cost_cents)").eq("business_id", bid!),
+      ]);
+      const costs: Record<string, number> = {};
+      (recipes ?? []).forEach((r: any) => {
+        const c = Number(r.inventory_items?.cost_cents ?? 0) * Number(r.quantity ?? 0);
+        costs[r.service_id] = (costs[r.service_id] || 0) + c;
+      });
+      return (services ?? []).map((s: any) => {
+        const cost = costs[s.id] || 0;
+        const profit = Number(s.price_cents || 0) - cost;
+        const margin = s.price_cents > 0 ? (profit / s.price_cents) * 100 : 0;
+        return { id: s.id, name: s.name, price: s.price_cents, cost, profit, margin };
+      });
+    },
+  });
+
+  const ranked = (profitability ?? []).filter((s) => s.price > 0);
+  const mostProfitable = [...ranked].sort((a, b) => b.profit - a.profit).slice(0, 3);
+  const leastProfitable = [...ranked].sort((a, b) => a.profit - b.profit).slice(0, 3);
+
   return (
     <div className="space-y-6">
       <PageHeader
