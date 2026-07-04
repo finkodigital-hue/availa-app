@@ -310,7 +310,7 @@ function ImportPage() {
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
       <PageHeader
         eyebrow="Import"
-        title="Import from CSV"
+        title="Import"
         subtitle="Upload a spreadsheet to bulk-add customers or services. Duplicates are skipped automatically."
       />
 
