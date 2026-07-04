@@ -30,7 +30,7 @@ type Service = {
   category: string | null; archived_at: string | null;
 };
 type Staff = { id: string; name: string };
-type InventoryItem = { id: string; name: string; unit: string | null };
+type InventoryItem = { id: string; name: string; unit: string | null; cost_cents: number | null };
 type RecipeLine = { inventory_item_id: string; quantity: number };
 
 
