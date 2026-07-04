@@ -199,7 +199,7 @@ export function NewBookingDialog({
           notes: notes || null,
           source: "walkin",
           notify_customer: notify,
-          deposit_cents: depositCents || null,
+          amount_due_cents: depositCents || 0,
           payment_status: paymentStatus,
         } as any);
         if (error) throw error;
