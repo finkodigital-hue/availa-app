@@ -49,6 +49,15 @@ function DevUserSwitcherInner() {
     }
   };
 
+  // Auto-seed the demo pro account the first time the dialog opens so the
+  // credentials shown are guaranteed to work immediately.
+  useEffect(() => {
+    if (open && !creds && busy === null) {
+      doSeed();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const signInAs = async (email: string, which: "pro" | "owner") => {
     setBusy(which);
     try {
