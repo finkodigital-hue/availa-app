@@ -76,7 +76,8 @@
     "zod": "^4.4.3"
   },
   "overrides": {
-    "js-yaml": "^4.2.0"
+    "js-yaml": "^4.2.0",
+    "@tanstack/router-core": "1.171.14"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
