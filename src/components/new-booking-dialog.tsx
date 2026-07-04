@@ -78,7 +78,7 @@ export function NewBookingDialog({
 
   // Payment fields
   const [depositCents, setDepositCents] = useState<number>(0);
-  const [paymentStatus, setPaymentStatus] = useState<"unpaid" | "deposit" | "paid">("unpaid");
+  const [paymentStatus, setPaymentStatus] = useState<"unpaid" | "deposit_paid" | "paid">("unpaid");
 
   useEffect(() => {
     if (!open) {
@@ -471,7 +471,7 @@ function PaymentStep({
 }: {
   price: number;
   deposit: number; setDeposit: (v: number) => void;
-  status: "unpaid" | "deposit" | "paid"; setStatus: (v: "unpaid" | "deposit" | "paid") => void;
+  status: "unpaid" | "deposit_paid" | "paid"; setStatus: (v: "unpaid" | "deposit_paid" | "paid") => void;
   onBack: () => void; onNext: () => void;
 }) {
   return (
@@ -485,14 +485,14 @@ function PaymentStep({
         <span className="tabular-nums font-medium">{fmtMoney(price)}</span>
       </div>
       <div className="grid grid-cols-3 gap-2">
-        {(["unpaid", "deposit", "paid"] as const).map((v) => (
+        {(["unpaid", "deposit_paid", "paid"] as const).map((v) => (
           <button key={v} onClick={() => setStatus(v)}
             className={cn("h-11 rounded-xl border text-xs font-medium capitalize", status === v ? "border-primary bg-primary/5 text-primary" : "bg-card text-muted-foreground hover:bg-secondary/40")}>
-            {v}
+            {v === "deposit_paid" ? "Deposit" : v}
           </button>
         ))}
       </div>
-      {status === "deposit" && (
+      {status === "deposit_paid" && (
         <div>
           <Label>Deposit amount (in cents)</Label>
           <Input type="number" min={0} value={deposit} onChange={(e) => setDeposit(parseInt(e.target.value) || 0)} className="mt-1.5 h-10" />

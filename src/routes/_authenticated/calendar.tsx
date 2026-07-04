@@ -127,9 +127,14 @@ function CalendarPage() {
     () => (bid ? [bid, ...(linkedProBusinessIds ?? [])] : []),
     [bid, linkedProBusinessIds],
   );
+  const linkedBizKey = linkedProBusinessIds?.join(",") ?? "";
+  const calendarQueryKey = useMemo(
+    () => ["calendar", bid, linkedBizKey, range.start.toISOString(), range.end.toISOString()],
+    [bid, linkedBizKey, range.start, range.end],
+  );
 
   const { data: staff } = useQuery({
-    queryKey: ["calendar-staff", bid, linkedProBusinessIds?.join(",")],
+    queryKey: ["calendar-staff", bid, linkedBizKey],
     enabled: !!bid && !!linkedProBusinessIds,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -148,7 +153,7 @@ function CalendarPage() {
   });
 
   const { data: bookings, isLoading } = useQuery({
-    queryKey: ["calendar", bid, linkedProBusinessIds?.join(","), range.start.toISOString(), range.end.toISOString()],
+    queryKey: calendarQueryKey,
     enabled: !!bid && !!linkedProBusinessIds,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -164,7 +169,7 @@ function CalendarPage() {
   });
 
   const { data: blocked } = useQuery({
-    queryKey: ["calendar-blocked", bid, linkedProBusinessIds?.join(","), range.start.toISOString(), range.end.toISOString()],
+    queryKey: ["calendar-blocked", bid, linkedBizKey, range.start.toISOString(), range.end.toISOString()],
     enabled: !!bid && !!linkedProBusinessIds,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -209,12 +214,17 @@ function CalendarPage() {
   const dropMove = async (bookingId: string, newStaffId: string, newStart: Date) => {
     const b = (bookings ?? []).find((x: any) => x.id === bookingId);
     if (!b) return;
+    const destinationStaff = (staff ?? []).find((x: any) => x.id === newStaffId);
+    if (destinationStaff?.business_id && b.business_id && destinationStaff.business_id !== b.business_id) {
+      toast.error("Move this booking within the same business calendar.");
+      return;
+    }
     const duration = new Date(b.ends_at).getTime() - new Date(b.starts_at).getTime();
     const newEnd = new Date(newStart.getTime() + duration);
     const prev = { staff_id: b.staff_id, starts_at: b.starts_at, ends_at: b.ends_at };
 
     qc.setQueryData<any[]>(
-      ["calendar", bid, range.start.toISOString(), range.end.toISOString()],
+      calendarQueryKey,
       (old) =>
         old?.map((x: any) =>
           x.id === bookingId ? { ...x, staff_id: newStaffId, starts_at: newStart.toISOString(), ends_at: newEnd.toISOString() } : x,
@@ -228,7 +238,7 @@ function CalendarPage() {
 
     if (error) {
       qc.setQueryData<any[]>(
-        ["calendar", bid, range.start.toISOString(), range.end.toISOString()],
+        calendarQueryKey,
         (old) => old?.map((x: any) => (x.id === bookingId ? { ...x, ...prev } : x)) ?? [],
       );
       toast.error(error.message);
@@ -244,7 +254,7 @@ function CalendarPage() {
         label: "Undo",
         onClick: async () => {
           qc.setQueryData<any[]>(
-            ["calendar", bid, range.start.toISOString(), range.end.toISOString()],
+            calendarQueryKey,
             (old) => old?.map((x: any) => (x.id === bookingId ? { ...x, ...prev } : x)) ?? [],
           );
           await supabase.from("bookings").update(prev).eq("id", bookingId);
@@ -252,6 +262,8 @@ function CalendarPage() {
         },
       },
     });
+    qc.invalidateQueries({ queryKey: ["calendar"] });
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
   };
 
   const title = (() => {
