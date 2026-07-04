@@ -180,7 +180,7 @@ function DevUserSwitcherInner() {
                 <Button
                   size="sm"
                   disabled={busy !== null}
-                  onClick={() => signInAs("pro-demo@luma.test", "pro")}
+                  onClick={() => signInAs("finko@au.com", "pro")}
                 >
                   {busy === "pro" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in as Pro"}
                 </Button>
