@@ -37,7 +37,7 @@ export const BUTTON_STYLES = [
 ];
 
 export function brandingVars(b: BrandingSource | null | undefined): React.CSSProperties {
-  const brand = b?.brand_color ?? "#C2410C";
+  const brand = b?.brand_color ?? "#8E2A38";
   const secondary = b?.secondary_color ?? brand;
   const accent = b?.accent_color ?? brand;
   const font = FONT_STACKS[b?.font ?? "fraunces"] ?? FONT_STACKS.fraunces;
