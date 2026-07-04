@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Package, Minus } from "lucide-react";
+import { Plus, Pencil, Trash2, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
@@ -45,7 +45,6 @@ function StockPage() {
   const [adjust, setAdjust] = useState<InventoryItem | null>(null);
   const [adjustDelta, setAdjustDelta] = useState<string>("");
 
-
   const { data: items, isLoading } = useQuery({
     queryKey: ["inventory_items", bid],
     enabled: !!bid,
@@ -64,7 +63,10 @@ function StockPage() {
 
   const save = async () => {
     if (!edit || !bid) return;
-    if (!edit.name?.trim()) return toast.error("Name is required");
+    if (!edit.name?.trim()) {
+      toast.error("Name is required");
+      return;
+    }
     const payload: any = {
       business_id: bid,
       name: edit.name.trim(),
@@ -72,42 +74,56 @@ function StockPage() {
       unit: edit.unit?.toString().trim() || null,
       current_stock: Number(edit.current_stock) || 0,
       low_stock_threshold:
-        edit.low_stock_threshold === null || edit.low_stock_threshold === undefined || edit.low_stock_threshold === ("" as any)
+        edit.low_stock_threshold === null ||
+        edit.low_stock_threshold === undefined ||
+        (edit.low_stock_threshold as any) === ""
           ? null
           : Number(edit.low_stock_threshold),
       cost_cents:
-        edit.cost_cents === null || edit.cost_cents === undefined || edit.cost_cents === ("" as any)
+        edit.cost_cents === null ||
+        edit.cost_cents === undefined ||
+        (edit.cost_cents as any) === ""
           ? null
           : Math.round(Number(edit.cost_cents)),
     };
     const { error } = edit.id
       ? await supabase.from("inventory_items").update(payload).eq("id", edit.id)
       : await supabase.from("inventory_items").insert(payload);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success(edit.id ? "Item updated" : "Item added");
     setEdit(null);
     invalidate();
   };
 
-  const remove = async () => {
-    if (!confirmDelete) return;
-    const { error } = await supabase.from("inventory_items").delete().eq("id", confirmDelete.id);
-    if (error) return toast.error(error.message);
+  const remove = async (id: string) => {
+    const { error } = await supabase.from("inventory_items").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Item deleted");
-    setConfirmDelete(null);
     invalidate();
   };
 
   const applyAdjust = async () => {
     if (!adjust) return;
     const delta = Number(adjustDelta);
-    if (!Number.isFinite(delta) || delta === 0) return toast.error("Enter a non-zero amount");
+    if (!Number.isFinite(delta) || delta === 0) {
+      toast.error("Enter a non-zero amount");
+      return;
+    }
     const next = Number(adjust.current_stock) + delta;
     const { error } = await supabase
       .from("inventory_items")
       .update({ current_stock: next })
       .eq("id", adjust.id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success(`Stock updated to ${next}`);
     setAdjust(null);
     setAdjustDelta("");
@@ -115,14 +131,15 @@ function StockPage() {
   };
 
   const isLow = (i: InventoryItem) =>
-    i.low_stock_threshold !== null && Number(i.current_stock) <= Number(i.low_stock_threshold);
+    i.low_stock_threshold !== null &&
+    Number(i.current_stock) <= Number(i.low_stock_threshold);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Stock"
-        description="Track inventory manually per business."
-        actions={
+        subtitle="Track inventory manually per business."
+        action={
           <Button onClick={() => setEdit({ current_stock: 0 })}>
             <Plus className="h-4 w-4 mr-2" /> Add item
           </Button>
@@ -156,13 +173,17 @@ function StockPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium truncate">{i.name}</span>
-                  {i.brand && <span className="text-sm text-muted-foreground">· {i.brand}</span>}
+                  {i.brand && (
+                    <span className="text-sm text-muted-foreground">· {i.brand}</span>
+                  )}
                   {isLow(i) && <Badge variant="destructive">Low</Badge>}
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
                   {Number(i.current_stock)} {i.unit || "units"}
                   {i.low_stock_threshold !== null && (
-                    <span className="ml-2">· threshold {Number(i.low_stock_threshold)}</span>
+                    <span className="ml-2">
+                      · threshold {Number(i.low_stock_threshold)}
+                    </span>
                   )}
                   {i.cost_cents !== null && (
                     <span className="ml-2">· ${(i.cost_cents / 100).toFixed(2)}</span>
@@ -178,20 +199,22 @@ function StockPage() {
                     setAdjustDelta("");
                   }}
                 >
-                  <Minus className="h-3 w-3 mr-1" />
-                  <Plus className="h-3 w-3 mr-1" />
                   Adjust
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => setEdit(i)}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setConfirmDelete(i)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <ConfirmDialog
+                  trigger={
+                    <Button variant="ghost" size="icon">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  }
+                  title="Delete item?"
+                  description={`This will permanently remove "${i.name}".`}
+                  confirmLabel="Delete"
+                  onConfirm={() => remove(i.id)}
+                />
               </div>
             </div>
           ))}
@@ -236,7 +259,9 @@ function StockPage() {
                 <Input
                   type="number"
                   value={edit?.current_stock ?? 0}
-                  onChange={(e) => setEdit({ ...edit, current_stock: e.target.value as any })}
+                  onChange={(e) =>
+                    setEdit({ ...edit, current_stock: e.target.value as any })
+                  }
                 />
               </div>
               <div>
@@ -297,15 +322,6 @@ function StockPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <ConfirmDialog
-        open={!!confirmDelete}
-        onOpenChange={(o) => !o && setConfirmDelete(null)}
-        title="Delete item?"
-        description={`This will permanently remove "${confirmDelete?.name}".`}
-        confirmText="Delete"
-        onConfirm={remove}
-      />
     </div>
   );
 }
