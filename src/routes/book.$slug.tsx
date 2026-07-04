@@ -161,6 +161,13 @@ function PublicBooking() {
   }, []);
 
   const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  const isValidPhone = (v: string) => {
+    if (!v.trim()) return true;
+    const digits = v.replace(/\D/g, "");
+    return digits.length >= 7 && digits.length <= 15;
+  };
+  const sanitizePhone = (v: string) => v.replace(/[^\d\s+()\-.]/g, "");
+
 
   const book = async () => {
     if (!service || !staff || !time) return;
@@ -172,6 +179,11 @@ function PublicBooking() {
       toast.error("Please enter a valid email address.");
       return;
     }
+    if (info.phone.trim() && !isValidPhone(info.phone)) {
+      toast.error("Please enter a valid phone number.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const starts_at = time;
@@ -447,8 +459,18 @@ function PublicBooking() {
               </div>
               <div>
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Phone</Label>
-                <Input value={info.phone} onChange={(e) => setInfo({ ...info, phone: e.target.value })} className="mt-1.5 h-11" placeholder="(555) 000-0000" />
+                <Input
+                  value={info.phone}
+                  onChange={(e) => setInfo({ ...info, phone: sanitizePhone(e.target.value) })}
+                  className="mt-1.5 h-11"
+                  placeholder="(555) 000-0000"
+                  inputMode="tel"
+                />
+                {info.phone.length > 0 && !isValidPhone(info.phone) && (
+                  <p className="mt-1 text-xs text-destructive">Please enter a valid phone number (7–15 digits).</p>
+                )}
               </div>
+
             </div>
             <div>
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Notes <span className="text-muted-foreground/60 normal-case">(optional)</span></Label>
@@ -456,7 +478,7 @@ function PublicBooking() {
             </div>
             <Button
               onClick={book}
-              disabled={submitting || !info.name.trim() || !isValidEmail(info.email)}
+              disabled={submitting || !info.name.trim() || !isValidEmail(info.email) || (info.phone.trim().length > 0 && !isValidPhone(info.phone))}
               className="w-full h-12 text-base shadow-glow"
               style={{ background: brand }}
             >
