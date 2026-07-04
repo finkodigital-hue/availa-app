@@ -142,6 +142,81 @@ function ImportPage() {
     return opts;
   }, [columns, mapping.firstName, mapping.lastName]);
 
+  const runImport = async () => {
+    if (!biz?.id) {
+      toast.error("Business not loaded yet");
+      return;
+    }
+    setImporting(true);
+    try {
+      // Build rows
+      const noNameCount = mapped.filter((r) => !r.name).length;
+      const named = mapped.filter((r) => r.name);
+
+      // Fetch existing emails for this business
+      const { data: existing, error: fetchErr } = await supabase
+        .from("customers")
+        .select("email")
+        .eq("business_id", biz.id)
+        .not("email", "is", null);
+      if (fetchErr) throw fetchErr;
+      const existingEmails = new Set(
+        (existing ?? [])
+          .map((c) => (c.email ?? "").trim().toLowerCase())
+          .filter(Boolean),
+      );
+
+      // De-dupe within file + against existing
+      const seenEmails = new Set<string>();
+      let dupes = 0;
+      const toInsert: {
+        business_id: string;
+        name: string;
+        email: string | null;
+        phone: string | null;
+        notes: string | null;
+      }[] = [];
+      for (const r of named) {
+        const emailLower = r.email ? r.email.toLowerCase() : "";
+        if (emailLower) {
+          if (existingEmails.has(emailLower) || seenEmails.has(emailLower)) {
+            dupes++;
+            continue;
+          }
+          seenEmails.add(emailLower);
+        }
+        toInsert.push({
+          business_id: biz.id,
+          name: r.name,
+          email: r.email || null,
+          phone: r.phone || null,
+          notes: r.notes || null,
+        });
+      }
+
+      // Batch insert in chunks of 500
+      let imported = 0;
+      const CHUNK = 500;
+      for (let i = 0; i < toInsert.length; i += CHUNK) {
+        const chunk = toInsert.slice(i, i + CHUNK);
+        const { error: insErr } = await supabase.from("customers").insert(chunk);
+        if (insErr) throw insErr;
+        imported += chunk.length;
+      }
+
+      setResult({ imported, dupes, noName: noNameCount });
+      await qc.invalidateQueries({ queryKey: ["customers"] });
+      toast.success(`Imported ${imported} customers`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Import failed: ${msg}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const canImport = !!biz?.id && mapping.name !== NONE && mapped.some((r) => r.name);
+
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
       <PageHeader
