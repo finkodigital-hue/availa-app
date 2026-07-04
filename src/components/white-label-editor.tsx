@@ -118,11 +118,11 @@ export function WhiteLabelEditor({ business }: { business: any }) {
           <Crown className="h-4 w-4 text-amber-500 mt-0.5" />
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Remove "Powered by Luma"</span>
+              <span className="text-sm font-medium">Remove "Powered by Chairly"</span>
               {!premium && <Badge variant="secondary" className="text-[10px]">Premium</Badge>}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Hide Luma branding across your booking page, customer portal and emails.
+              Hide Chairly branding across your booking page, customer portal and emails.
             </p>
           </div>
           <Switch checked={!!f.hide_powered_by && premium} onCheckedChange={(v) => setF({ ...f, hide_powered_by: v })} disabled={!premium} />
