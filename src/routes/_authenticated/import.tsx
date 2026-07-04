@@ -370,8 +370,11 @@ function ImportPage() {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={reset}>Choose another file</Button>
-            <Button disabled title="Coming in step 3">Continue to import</Button>
+            <Button variant="outline" onClick={reset} disabled={importing}>Choose another file</Button>
+            <Button onClick={runImport} disabled={!canImport || importing}>
+              {importing && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              {importing ? "Importing…" : `Import ${mapped.filter((r) => r.name).length} customers`}
+            </Button>
           </div>
         </div>
       )}
