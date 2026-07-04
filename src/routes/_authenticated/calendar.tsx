@@ -727,7 +727,17 @@ function StaffColumnHeader({ staff, palette }: { staff: any; palette: StaffPalet
         />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold truncate tracking-tight">{staff.name}</div>
+        <div className="text-sm font-semibold truncate tracking-tight flex items-center gap-1.5">
+          <span className="truncate">{staff.name}</span>
+          {staff.is_independent && (
+            <span
+              className="shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300"
+              title={staff.business_name ? `Independent · ${staff.business_name}` : "Independent professional"}
+            >
+              IP
+            </span>
+          )}
+        </div>
         {staff.role && (
           <div className="text-[11px] text-muted-foreground truncate">{staff.role}</div>
         )}
