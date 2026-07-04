@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const DEMO_EMAIL = "pro-demo@luma.test";
-const DEMO_PASSWORD = "DemoPro123!";
+const DEMO_EMAIL = "finko@au.com";
+const DEMO_PASSWORD = "Money123!";
 
 function assertDev() {
   if (process.env.NODE_ENV === "production") {

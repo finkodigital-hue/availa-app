@@ -140,7 +140,7 @@ function DevUserSwitcherInner() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 Independent Professional (demo)
               </div>
-              <div className="mt-1 text-sm font-medium">Alex Rivera</div>
+              <div className="mt-1 text-sm font-medium">Finko (Demo Pro)</div>
               <div className="text-xs text-muted-foreground">
                 Linked as Chair 3 · $500/mo rent · own services, staff & customers
               </div>
@@ -180,7 +180,7 @@ function DevUserSwitcherInner() {
                 <Button
                   size="sm"
                   disabled={busy !== null}
-                  onClick={() => signInAs("pro-demo@luma.test", "pro")}
+                  onClick={() => signInAs("finko@au.com", "pro")}
                 >
                   {busy === "pro" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in as Pro"}
                 </Button>
