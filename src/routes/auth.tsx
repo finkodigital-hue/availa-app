@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { Loader2, Sparkles, Eye, EyeOff } from "lucide-react";
+import { Loader2, Sparkles, Eye, EyeOff, MailCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [signupEmail, setSignupEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) navigate({ to: "/dashboard", replace: true });
@@ -46,7 +47,8 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Account created. Welcome!");
+        setSignupEmail(email);
+        setPassword("");
       } else if (mode === "reset") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth`,
@@ -58,7 +60,13 @@ function AuthPage() {
         if (error) throw error;
       }
     } catch (err: any) {
-      toast.error(err.message ?? "Something went wrong");
+      const isUnconfirmed =
+        err?.code === "email_not_confirmed" || /email not confirmed/i.test(err?.message ?? "");
+      if (isUnconfirmed) {
+        toast.error("Please verify your email first. Check your inbox for the link.");
+      } else {
+        toast.error(err.message ?? "Something went wrong");
+      }
     } finally {
       setBusy(false);
     }
@@ -119,6 +127,31 @@ function AuthPage() {
           >
             Chairly<span className="text-primary">.</span>
           </Link>
+
+          {signupEmail ? (
+            <div className="animate-rise">
+              <div className="h-14 w-14 rounded-full bg-primary/10 text-primary grid place-items-center mb-6">
+                <MailCheck className="h-7 w-7" />
+              </div>
+              <h1 className="font-display text-3xl md:text-4xl tracking-tight">Check your email</h1>
+              <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
+                Your account is set up. We've sent a verification link to:
+              </p>
+              <div className="mt-3 rounded-xl border border-border bg-muted px-4 py-3 text-sm font-semibold text-foreground break-all">
+                {signupEmail}
+              </div>
+              <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
+                Click the link in that email to verify your account, then come back here to sign in.
+                Didn't get it? Check your spam folder.
+              </p>
+              <Button asChild className="w-full h-11 shadow-glow mt-8">
+                <Link to="/auth" search={{ mode: "signin" }} onClick={() => setSignupEmail(null)}>
+                  Back to sign in
+                </Link>
+              </Button>
+            </div>
+          ) : (
+          <>
           <h1 className="font-display text-3xl md:text-4xl tracking-tight">{heading}</h1>
           <p className="text-sm text-muted-foreground mt-2">{sub}</p>
 
@@ -221,6 +254,8 @@ function AuthPage() {
               </Link>
             )}
           </p>
+          </>
+          )}
         </div>
       </div>
     </div>

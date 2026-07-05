@@ -1,5 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Check } from "lucide-react";
+import {
+  ArrowRight,
+  Armchair,
+  CalendarCheck2,
+  Check,
+  CreditCard,
+  Globe,
+  Repeat,
+  Users,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -94,71 +103,39 @@ function Landing() {
     {
       title: "Branded booking page",
       body:
-        "Your name, your colours, your services — a page clients actually want to use, no app to download.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4" />
-        </svg>
-      ),
+        "Your name, your colours, your services. A page clients actually want to use, no app to download.",
+      icon: <Globe className="h-[22px] w-[22px]" strokeWidth={2} />,
     },
     {
       title: "No-clash calendar",
       body:
-        "Day, week and month views per chair. Two people can't grab the same slot — the calendar won't allow it.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M8 2v4M16 2v4M3 10h18" />
-          <circle cx="12" cy="16" r="2.4" />
-        </svg>
-      ),
+        "Day, week and month views per chair. Two people can't grab the same slot, the calendar won't allow it.",
+      icon: <CalendarCheck2 className="h-[22px] w-[22px]" strokeWidth={2} />,
     },
     {
       title: "Client book",
       body:
-        "Every booking builds a client record — visit history, spend, notes. Walk-in becomes a regular, automatically.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-        </svg>
-      ),
+        "Every booking builds a client record: visit history, spend, notes. A walk-in becomes a regular, automatically.",
+      icon: <Users className="h-[22px] w-[22px]" strokeWidth={2} />,
     },
     {
       title: "Payments & deposits",
       body:
         "Take deposits to kill no-shows, and see what you've collected and what's still owed at a glance.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <rect x="2" y="5" width="20" height="14" rx="2" />
-          <path d="M2 10h20" />
-        </svg>
-      ),
+      icon: <CreditCard className="h-[22px] w-[22px]" strokeWidth={2} />,
     },
     {
       title: "Staff & chairs",
       body:
         "Add stylists or rent-a-chair independents. Each keeps their own schedule, their own clients, their own page.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M12 2 4 7v10l8 5 8-5V7z" />
-          <path d="M12 22V12M4 7l8 5 8-5" />
-        </svg>
-      ),
+      icon: <Armchair className="h-[22px] w-[22px]" strokeWidth={2} />,
     },
     {
       title: "Switch from Fresha",
       soon: true,
       body:
         "Bring your services, staff and client list across in one upload. Leaving the old system won't cost you a thing.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M12 3v12M8 11l4 4 4-4" />
-          <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-        </svg>
-      ),
+      icon: <Repeat className="h-[22px] w-[22px]" strokeWidth={2} />,
     },
   ];
 
@@ -217,7 +194,7 @@ function Landing() {
             <Link
               to="/auth"
               search={{ mode: "signup" } as any}
-              className="group inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground font-semibold text-sm px-5 py-2.5 shadow-[0_10px_22px_-10px_color-mix(in_oklab,var(--primary)_70%,transparent)] hover:opacity-95 transition"
+              className="group inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-primary text-primary-foreground font-semibold text-sm px-5 py-2.5 shadow-glow hover:opacity-95 transition active:scale-[0.97]"
             >
               Start free
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -238,54 +215,47 @@ function Landing() {
         />
         <div className="relative max-w-6xl mx-auto px-6 grid lg:grid-cols-[1.15fr_.85fr] gap-12 items-center py-16 lg:py-24">
           <div>
-            <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-primary bg-[color:color-mix(in_oklab,var(--primary)_8%,var(--background))] border border-[color:color-mix(in_oklab,var(--primary)_16%,transparent)] rounded-full px-3 py-1.5 mb-6">
+            <span className="animate-rise inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-primary bg-[color:color-mix(in_oklab,var(--primary)_8%,var(--background))] border border-[color:color-mix(in_oklab,var(--primary)_16%,transparent)] rounded-full px-3 py-1.5 mb-6">
               <span className="relative h-1.5 w-1.5 rounded-full bg-primary">
                 <span className="absolute -inset-1 rounded-full border border-primary/40 animate-ping" />
               </span>
               Now onboarding the first salons
             </span>
-            <h1 className="font-display font-bold tracking-tight leading-[0.98] text-[clamp(2.9rem,6.5vw,4.9rem)] mb-6">
+            <h1 className="animate-rise stagger-1 font-display font-bold tracking-tight leading-[0.98] text-[clamp(2.9rem,6.5vw,4.9rem)] mb-6">
               Fill the chair.
               <span className="block text-primary">Run the business.</span>
             </h1>
-            <p className="text-muted-foreground text-[clamp(1.05rem,1.6vw,1.22rem)] max-w-[33ch] mb-8">
+            <p className="animate-rise stagger-2 text-muted-foreground text-[clamp(1.05rem,1.6vw,1.22rem)] max-w-[34ch] mb-8">
               A branded booking page, a calendar that refuses double-bookings, and a client book
-              that remembers everyone — whether you own the salon or rent one chair in it.
+              that remembers every regular.
             </p>
-            <div className="flex flex-wrap gap-3 items-center">
+            <div className="animate-rise stagger-3 flex flex-wrap gap-3 items-center">
               <Link
                 to="/auth"
                 search={{ mode: "signup" } as any}
-                className="group inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground font-semibold text-[.95rem] px-5 py-3 shadow-[0_10px_22px_-10px_color-mix(in_oklab,var(--primary)_70%,transparent)] hover:opacity-95 transition"
+                className="group inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-primary text-primary-foreground font-semibold text-[.95rem] px-5 py-3 shadow-glow hover:opacity-95 transition active:scale-[0.97]"
               >
                 Create your booking page
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <a
                 href="#features"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-transparent text-foreground font-semibold text-[.95rem] px-5 py-3 hover:bg-card transition"
+                className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-border bg-transparent text-foreground font-semibold text-[.95rem] px-5 py-3 hover:bg-card transition active:scale-[0.97]"
               >
                 See a live example
               </a>
             </div>
-            <div className="mt-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>Free for one chair</span>
-              <span className="h-1 w-1 rounded-full bg-border" />
-              <span>No card needed</span>
-              <span className="h-1 w-1 rounded-full bg-border" />
-              <span>Live in minutes</span>
-            </div>
           </div>
 
-          <div className="relative grid place-items-center min-h-[340px]">
+          <div className="animate-rise stagger-2 relative grid place-items-center min-h-[340px]">
             <ChairSvg />
             <div
               aria-hidden
-              className="absolute bottom-3 right-0 sm:-right-1 w-56 rounded-2xl border border-border bg-card p-4 shadow-[0_28px_60px_-22px_color-mix(in_oklab,var(--primary)_28%,transparent)]"
+              className="absolute bottom-3 right-0 sm:-right-1 w-56 rounded-2xl border border-border bg-card p-4 shadow-elegant"
               style={{ animation: "chairly-float 5s ease-in-out infinite" }}
             >
               <div className="flex items-center gap-2 mb-2">
-                <div className="h-8 w-8 rounded-full grid place-items-center font-display font-bold text-sm bg-[#E7D6B4] text-[#6E1F2B]">
+                <div className="h-8 w-8 rounded-full grid place-items-center font-display font-bold text-sm bg-[color:color-mix(in_oklab,var(--brass)_35%,var(--background))] text-primary">
                   R
                 </div>
                 <div>
@@ -295,7 +265,7 @@ function Landing() {
               </div>
               <div className="flex justify-between items-center text-xs pt-2 border-t border-border">
                 <span className="text-muted-foreground">Chair 2 · Camille</span>
-                <span className="text-[.68rem] font-semibold rounded-full px-2 py-0.5 bg-[#e7f4ec] text-[#2c7a4b]">
+                <span className="text-[.68rem] font-semibold rounded-full px-2 py-0.5 bg-success/10 text-success">
                   Confirmed
                 </span>
               </div>
@@ -305,12 +275,24 @@ function Landing() {
         <style>{`@keyframes chairly-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}`}</style>
       </section>
 
+      {/* Trust strip */}
+      <div className="border-y border-border/70 bg-[color:color-mix(in_oklab,var(--background)_94%,var(--foreground)_6%)]">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-2">
+            <Check className="h-4 w-4 text-primary" /> Free for one chair
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Check className="h-4 w-4 text-primary" /> No card needed
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Check className="h-4 w-4 text-primary" /> Live in minutes
+          </span>
+        </div>
+      </div>
+
       {/* How it works */}
       <section id="how" className="py-20 md:py-24">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-[.78rem] font-bold tracking-[0.14em] uppercase text-[color:var(--brass)] mb-3">
-            Up and running
-          </div>
           <h2 className="font-display font-bold tracking-tight leading-[1.05] text-[clamp(1.9rem,3.6vw,2.7rem)] max-w-[20ch]">
             Three steps from sign-up to your first booking.
           </h2>
@@ -318,7 +300,7 @@ function Landing() {
             {steps.map((s, i) => (
               <div
                 key={s.n}
-                className="relative rounded-2xl border border-border bg-card p-7 shadow-[0_1px_2px_rgba(30,26,23,.04),0_12px_28px_-14px_rgba(30,26,23,.18)]"
+                className={`relative rounded-2xl border border-border bg-card p-7 shadow-soft card-hover animate-rise stagger-${i + 1}`}
               >
                 <div className="font-display font-bold text-white bg-primary w-9 h-9 rounded-xl grid place-items-center mb-4">
                   {s.n}
@@ -337,21 +319,18 @@ function Landing() {
       {/* Features */}
       <section id="features" className="py-20 md:py-24 border-y border-border bg-[color:color-mix(in_oklab,var(--background)_92%,var(--foreground)_8%)]">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-[.78rem] font-bold tracking-[0.14em] uppercase text-[color:var(--brass)] mb-3">
-            What's inside
-          </div>
           <h2 className="font-display font-bold tracking-tight leading-[1.05] text-[clamp(1.9rem,3.6vw,2.7rem)] max-w-[20ch]">
             Everything the chair needs. Nothing it doesn't.
           </h2>
           <p className="text-muted-foreground text-lg max-w-[44ch] mt-4">
-            Built for one-chair independents and busy salon floors alike — the same tools, priced
+            Built for one-chair independents and busy salon floors alike, the same tools priced
             for where you are.
           </p>
           <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((f) => (
+            {features.map((f, i) => (
               <div
                 key={f.title}
-                className="rounded-2xl border border-border bg-background p-6 transition hover:-translate-y-1 hover:shadow-[0_1px_2px_rgba(30,26,23,.04),0_12px_28px_-14px_rgba(30,26,23,.18)]"
+                className={`rounded-2xl border border-border bg-background p-6 card-hover animate-rise stagger-${(i % 6) + 1}`}
               >
                 <div className="w-11 h-11 rounded-xl grid place-items-center text-primary mb-4 bg-[color:color-mix(in_oklab,var(--primary)_10%,var(--background))]">
                   {f.icon}
@@ -359,7 +338,7 @@ function Landing() {
                 <h3 className="font-display font-semibold text-lg tracking-tight mb-1.5 flex items-center gap-2">
                   {f.title}
                   {f.soon && (
-                    <span className="text-[.62rem] font-bold uppercase tracking-wider text-[color:var(--brass)] border border-[#E7D6B4] bg-[color:color-mix(in_oklab,var(--brass)_8%,transparent)] rounded px-1.5 py-0.5">
+                    <span className="text-[.62rem] font-bold uppercase tracking-wider text-[color:var(--brass)] border border-[color:color-mix(in_oklab,var(--brass)_35%,transparent)] bg-[color:color-mix(in_oklab,var(--brass)_8%,transparent)] rounded px-1.5 py-0.5">
                       Soon
                     </span>
                   )}
@@ -381,19 +360,19 @@ function Landing() {
             Free while it's just you. Fair when you grow.
           </h2>
           <div className="mt-12 grid md:grid-cols-3 gap-5 items-stretch max-w-[420px] md:max-w-none mx-auto">
-            {tiers.map((t) => {
+            {tiers.map((t, i) => {
               const featured = !!t.featured;
               return (
                 <div
                   key={t.name}
-                  className={`relative rounded-3xl p-8 flex flex-col border ${
+                  className={`relative rounded-3xl p-8 flex flex-col border card-hover animate-rise stagger-${i + 1} ${
                     featured
-                      ? "bg-foreground text-background border-foreground shadow-[0_2px_6px_rgba(30,26,23,.05),0_28px_60px_-22px_color-mix(in_oklab,var(--primary)_28%,transparent)]"
+                      ? "bg-foreground text-background border-foreground shadow-glow"
                       : "bg-card border-border"
                   }`}
                 >
                   {featured && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[.68rem] font-bold uppercase tracking-wider bg-[color:var(--brass)] text-[#1E1A17] rounded-full px-3 py-1">
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[.68rem] font-bold uppercase tracking-wider bg-[color:var(--brass)] text-foreground rounded-full px-3 py-1">
                       Most popular
                     </span>
                   )}
@@ -428,7 +407,7 @@ function Landing() {
                   <Link
                     to="/auth"
                     search={{ mode: "signup" } as any}
-                    className={`w-full inline-flex items-center justify-center rounded-full font-semibold text-[.95rem] px-5 py-3 transition ${
+                    className={`w-full inline-flex items-center justify-center whitespace-nowrap rounded-full font-semibold text-[.95rem] px-5 py-3 transition active:scale-[0.97] ${
                       featured
                         ? "bg-background text-foreground hover:opacity-90"
                         : "border border-border bg-transparent text-foreground hover:bg-background"
@@ -461,7 +440,7 @@ function Landing() {
                   "radial-gradient(circle, color-mix(in oklab, var(--brass) 35%, transparent), transparent 70%)",
               }}
             />
-            <div className="relative">
+            <div className="relative animate-rise">
               <h2 className="font-display font-bold tracking-tight text-[clamp(2rem,4vw,3rem)] mb-3">
                 Ready to fill the chair?
               </h2>
@@ -471,7 +450,7 @@ function Landing() {
               <Link
                 to="/auth"
                 search={{ mode: "signup" } as any}
-                className="inline-flex items-center gap-2 rounded-full bg-background text-foreground font-semibold text-[.95rem] px-6 py-3 hover:opacity-95 transition"
+                className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-background text-foreground font-semibold text-[.95rem] px-6 py-3 hover:opacity-95 transition active:scale-[0.97]"
               >
                 Create your booking page
                 <ArrowRight className="h-4 w-4" />
@@ -486,7 +465,7 @@ function Landing() {
         <div className="max-w-6xl mx-auto px-6 flex flex-wrap items-center justify-between gap-5">
           <Wordmark className="text-xl" />
           <div className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Chairly — made for people who work from a chair.
+            © {new Date().getFullYear()} Chairly. Made for people who work from a chair.
           </div>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <a href="#" className="hover:text-foreground">Privacy</a>
