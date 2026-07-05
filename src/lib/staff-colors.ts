@@ -1,14 +1,17 @@
-// Soft pastel palette assigned deterministically per staff id.
-// Each entry: name → { bg (soft), border (slightly darker), ink (text on bg), dot (chip dot) }
+// Refined, low-chroma palette assigned deterministically per staff id.
+// Kept in the same tonal family as the brand's warm terracotta primary —
+// restrained saturation across all hues so the calendar reads as one
+// coherent system rather than a rainbow of pastels.
+// Each entry: name → { bg (wash), border (accent), ink (text on bg), dot (chip dot) }
 export const STAFF_PASTELS = [
-  { name: "Sky Blue",   bg: "oklch(0.94 0.04 235)", border: "oklch(0.78 0.09 235)", ink: "oklch(0.32 0.09 235)", dot: "oklch(0.7 0.13 235)" },
-  { name: "Mint Green", bg: "oklch(0.94 0.05 165)", border: "oklch(0.78 0.1 165)",  ink: "oklch(0.32 0.09 165)", dot: "oklch(0.7 0.14 165)" },
-  { name: "Peach",      bg: "oklch(0.94 0.05 45)",  border: "oklch(0.8 0.1 45)",    ink: "oklch(0.4 0.12 45)",   dot: "oklch(0.72 0.14 45)" },
-  { name: "Lavender",   bg: "oklch(0.94 0.05 295)", border: "oklch(0.78 0.1 295)",  ink: "oklch(0.36 0.12 295)", dot: "oklch(0.66 0.16 295)" },
-  { name: "Soft Pink",  bg: "oklch(0.94 0.045 5)",  border: "oklch(0.8 0.1 5)",     ink: "oklch(0.4 0.13 5)",    dot: "oklch(0.72 0.15 5)" },
-  { name: "Pale Yellow",bg: "oklch(0.96 0.06 95)",  border: "oklch(0.82 0.12 95)",  ink: "oklch(0.4 0.1 80)",    dot: "oklch(0.78 0.15 95)" },
-  { name: "Light Teal", bg: "oklch(0.94 0.04 195)", border: "oklch(0.78 0.09 195)", ink: "oklch(0.32 0.09 200)", dot: "oklch(0.7 0.13 195)" },
-  { name: "Sand",       bg: "oklch(0.94 0.03 75)",  border: "oklch(0.8 0.06 70)",   ink: "oklch(0.38 0.05 60)",  dot: "oklch(0.7 0.08 70)" },
+  { name: "Terracotta", bg: "oklch(0.965 0.022 35)",  border: "oklch(0.74 0.08 35)",   ink: "oklch(0.36 0.07 32)",  dot: "oklch(0.63 0.13 34)" },
+  { name: "Amber",      bg: "oklch(0.965 0.028 85)",  border: "oklch(0.77 0.09 82)",   ink: "oklch(0.4 0.06 70)",   dot: "oklch(0.7 0.13 80)" },
+  { name: "Sage",       bg: "oklch(0.96 0.022 150)",  border: "oklch(0.74 0.07 150)",  ink: "oklch(0.36 0.05 150)", dot: "oklch(0.63 0.1 150)" },
+  { name: "Slate Teal", bg: "oklch(0.96 0.018 205)",  border: "oklch(0.74 0.055 205)", ink: "oklch(0.36 0.04 205)", dot: "oklch(0.62 0.08 205)" },
+  { name: "Dusty Blue", bg: "oklch(0.96 0.02 258)",   border: "oklch(0.74 0.065 258)", ink: "oklch(0.38 0.055 258)",dot: "oklch(0.64 0.1 258)" },
+  { name: "Mauve",      bg: "oklch(0.955 0.024 312)", border: "oklch(0.72 0.07 312)",  ink: "oklch(0.4 0.065 312)", dot: "oklch(0.62 0.11 312)" },
+  { name: "Dusty Rose", bg: "oklch(0.96 0.026 8)",    border: "oklch(0.76 0.075 8)",   ink: "oklch(0.42 0.07 8)",   dot: "oklch(0.68 0.12 8)" },
+  { name: "Warm Taupe", bg: "oklch(0.955 0.012 70)",  border: "oklch(0.74 0.03 70)",   ink: "oklch(0.38 0.02 60)",  dot: "oklch(0.62 0.045 65)" },
 ] as const;
 
 export type StaffPalette = (typeof STAFF_PASTELS)[number];

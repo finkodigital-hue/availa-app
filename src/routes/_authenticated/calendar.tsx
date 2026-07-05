@@ -63,6 +63,26 @@ const useHours = () => useContext(HoursContext);
 
 type View = "day" | "week" | "month";
 
+// Pointer-driven drag state for the day view — lifted to DayView so a move
+// can be hit-tested against any staff column, not just the one it started in.
+type DragMode = "move" | "resize-start" | "resize-end";
+type DragState = {
+  id: string;
+  mode: DragMode;
+  originStaffId: string;
+  startClientY: number;
+  origTop: number;
+  origHeight: number;
+  origStartIso: string;
+  origEndIso: string;
+  currentStaffId: string;
+  currentTop: number;
+  currentHeight: number;
+  currentStartIso: string;
+  currentEndIso: string;
+  customerName: string;
+};
+
 function startOfWeek(d: Date) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
@@ -266,6 +286,49 @@ function CalendarPage() {
     qc.invalidateQueries({ queryKey: ["dashboard"] });
   };
 
+  const resizeBooking = async (bookingId: string, edge: "start" | "end", newIso: string) => {
+    const b = (bookings ?? []).find((x: any) => x.id === bookingId);
+    if (!b) return;
+    const prev = { starts_at: b.starts_at, ends_at: b.ends_at };
+    const next = edge === "start" ? { starts_at: newIso, ends_at: b.ends_at } : { starts_at: b.starts_at, ends_at: newIso };
+    if (new Date(next.ends_at).getTime() - new Date(next.starts_at).getTime() < SLOT_MIN * 60000) return;
+
+    qc.setQueryData<any[]>(
+      calendarQueryKey,
+      (old) => old?.map((x: any) => (x.id === bookingId ? { ...x, ...next } : x)) ?? [],
+    );
+
+    const { error } = await supabase.from("bookings").update(next).eq("id", bookingId);
+
+    if (error) {
+      qc.setQueryData<any[]>(
+        calendarQueryKey,
+        (old) => old?.map((x: any) => (x.id === bookingId ? { ...x, ...prev } : x)) ?? [],
+      );
+      toast.error(error.message);
+      return;
+    }
+
+    try { (navigator as any).vibrate?.(10); } catch {}
+
+    toast.success("Booking resized", {
+      description: `${fmtTime(next.starts_at)} – ${fmtTime(next.ends_at)}`,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          qc.setQueryData<any[]>(
+            calendarQueryKey,
+            (old) => old?.map((x: any) => (x.id === bookingId ? { ...x, ...prev } : x)) ?? [],
+          );
+          await supabase.from("bookings").update(prev).eq("id", bookingId);
+          qc.invalidateQueries({ queryKey: ["calendar"] });
+        },
+      },
+    });
+    qc.invalidateQueries({ queryKey: ["calendar"] });
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
+  };
+
   const title = (() => {
     if (view === "day") return anchor.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
     if (view === "week") {
@@ -374,6 +437,7 @@ function CalendarPage() {
           onSelect={setSelected}
           onCellClick={(staffId, isoTime) => openNewBooking({ staffId, isoTime, date: anchor })}
           onMove={dropMove}
+          onResize={resizeBooking}
         />
       )}
 
@@ -576,6 +640,7 @@ function DayView({
   onSelect,
   onCellClick,
   onMove,
+  onResize,
 }: {
   staff: any[];
   bookings: any[];
@@ -585,6 +650,7 @@ function DayView({
   onSelect: (b: any) => void;
   onCellClick: (staffId: string, isoTime: string) => void;
   onMove: (id: string, newStaffId: string, newStart: Date) => void;
+  onResize: (id: string, edge: "start" | "end", newIso: string) => void;
 }) {
   const { START_HOUR, END_HOUR } = useHours();
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
@@ -592,12 +658,13 @@ function DayView({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRaf = useRef<number | null>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
 
-  // Auto-scroll near edges of the scroll container
-  const handleDragOverContainer = (e: React.DragEvent) => {
+  // Auto-scroll near edges of the scroll container while dragging/resizing
+  const autoScroll = (clientY: number) => {
     if (!scrollRef.current) return;
     const rect = scrollRef.current.getBoundingClientRect();
-    const y = e.clientY - rect.top;
+    const y = clientY - rect.top;
     const EDGE = 64;
     let dy = 0;
     if (y < EDGE) dy = -Math.ceil((EDGE - y) / 4);
@@ -605,7 +672,7 @@ function DayView({
     if (dy !== 0) {
       if (autoScrollRaf.current) cancelAnimationFrame(autoScrollRaf.current);
       const step = () => {
-        scrollRef.current!.scrollTop += dy;
+        if (scrollRef.current) scrollRef.current.scrollTop += dy;
         autoScrollRaf.current = requestAnimationFrame(step);
       };
       autoScrollRaf.current = requestAnimationFrame(step);
@@ -616,6 +683,88 @@ function DayView({
   };
   const stopAutoScroll = () => {
     if (autoScrollRaf.current) { cancelAnimationFrame(autoScrollRaf.current); autoScrollRaf.current = null; }
+  };
+
+  const topToIso = (top: number) => {
+    const minutes = Math.max(0, Math.round(top / SLOT_PX) * SLOT_MIN);
+    const d = new Date(date);
+    d.setHours(START_HOUR, 0, 0, 0);
+    d.setMinutes(d.getMinutes() + minutes);
+    return d.toISOString();
+  };
+
+  const beginDrag = (
+    b: any,
+    mode: DragMode,
+    staffId: string,
+    top: number,
+    height: number,
+    clientY: number,
+  ) => {
+    setDrag({
+      id: b.id,
+      mode,
+      originStaffId: staffId,
+      startClientY: clientY,
+      origTop: top,
+      origHeight: height,
+      origStartIso: b.starts_at,
+      origEndIso: b.ends_at,
+      currentStaffId: staffId,
+      currentTop: top,
+      currentHeight: height,
+      currentStartIso: b.starts_at,
+      currentEndIso: b.ends_at,
+      customerName: b.customer_name || "Booking",
+    });
+  };
+
+  const updateDrag = (e: React.PointerEvent) => {
+    autoScroll(e.clientY);
+    setDrag((d) => {
+      if (!d) return d;
+      const deltaY = e.clientY - d.startClientY;
+      if (d.mode === "move") {
+        let top = Math.round((d.origTop + deltaY) / SLOT_PX) * SLOT_PX;
+        top = Math.max(0, Math.min(top, totalH - d.origHeight));
+        const el = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-staff-col]") as HTMLElement | null;
+        const currentStaffId = el?.dataset.staffId || d.currentStaffId;
+        return {
+          ...d,
+          currentTop: top,
+          currentStaffId,
+          currentStartIso: topToIso(top),
+          currentEndIso: topToIso(top + d.origHeight),
+        };
+      }
+      if (d.mode === "resize-end") {
+        let height = Math.round((d.origHeight + deltaY) / SLOT_PX) * SLOT_PX;
+        height = Math.max(SLOT_PX, Math.min(height, totalH - d.origTop));
+        return { ...d, currentHeight: height, currentEndIso: topToIso(d.origTop + height) };
+      }
+      // resize-start
+      let top = Math.round((d.origTop + deltaY) / SLOT_PX) * SLOT_PX;
+      top = Math.max(0, Math.min(top, d.origTop + d.origHeight - SLOT_PX));
+      const height = d.origHeight + (d.origTop - top);
+      return { ...d, currentTop: top, currentHeight: height, currentStartIso: topToIso(top) };
+    });
+  };
+
+  const endDrag = () => {
+    stopAutoScroll();
+    setDrag((d) => {
+      if (!d) return null;
+      if (d.mode === "move") {
+        if (d.currentStaffId !== d.originStaffId || d.currentStartIso !== d.origStartIso) {
+          onMove(d.id, d.currentStaffId, new Date(d.currentStartIso));
+        }
+      } else if (d.mode === "resize-end") {
+        if (d.currentEndIso !== d.origEndIso) onResize(d.id, "end", d.currentEndIso);
+      } else {
+        if (d.currentStartIso !== d.origStartIso) onResize(d.id, "start", d.currentStartIso);
+      }
+      return null;
+    });
   };
 
   const now = new Date();
@@ -649,9 +798,6 @@ function DayView({
       <div
         ref={scrollRef}
         className="overflow-auto max-h-[calc(100vh-280px)] scroll-smooth"
-        onDragOver={handleDragOverContainer}
-        onDrop={stopAutoScroll}
-        onDragEnd={stopAutoScroll}
       >
         <div style={{ minWidth: 64 + staff.length * 180 }}>
           {/* Sticky staff header */}
@@ -673,7 +819,7 @@ function DayView({
               {hours.map((h, i) => (
                 <div
                   key={h}
-                  className="text-[10px] text-muted-foreground/80 text-right pr-2 -mt-1.5 tabular-nums font-medium"
+                  className={`text-[10px] text-muted-foreground/80 text-right pr-2 tabular-nums font-medium ${i === 0 ? "" : "-mt-1.5"}`}
                   style={{ height: HOUR_PX, position: "absolute", top: i * HOUR_PX, right: 0, left: 0 }}
                 >
                   {h % 12 || 12}
@@ -695,8 +841,11 @@ function DayView({
                   blocked={blocked.filter((b: any) => !b.staff_id || b.staff_id === s.id)}
                   onSelect={onSelect}
                   onCellClick={(iso) => onCellClick(s.id, iso)}
-                  onDrop={(id, iso) => onMove(id, s.id, new Date(iso))}
                   nowTop={nowTop}
+                  drag={drag}
+                  onDragStart={beginDrag}
+                  onDragMove={updateDrag}
+                  onDragEnd={endDrag}
                 />
               );
             })}
@@ -772,8 +921,11 @@ function StaffColumn({
   blocked,
   onSelect,
   onCellClick,
-  onDrop,
   nowTop,
+  drag,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
 }: {
   staff: any;
   palette: StaffPalette;
@@ -783,45 +935,23 @@ function StaffColumn({
   blocked: any[];
   onSelect: (b: any) => void;
   onCellClick: (iso: string) => void;
-  onDrop: (bookingId: string, iso: string) => void;
   nowTop: number | null;
+  drag: DragState | null;
+  onDragStart: (b: any, mode: DragMode, staffId: string, top: number, height: number, clientY: number) => void;
+  onDragMove: (e: React.PointerEvent) => void;
+  onDragEnd: () => void;
 }) {
   const { START_HOUR, END_HOUR } = useHours();
-  const colRef = useRef<HTMLDivElement>(null);
   const [hoverTop, setHoverTop] = useState<number | null>(null);
-  const [drag, setDrag] = useState<{ id: string; origIso: string; durationMin: number; x: number; y: number; newIso: string } | null>(null);
 
-  const yToDate = (y: number) => {
-    const minutes = Math.max(0, Math.round(y / SLOT_PX) * SLOT_MIN);
-    const d = new Date(date);
-    d.setHours(START_HOUR, 0, 0, 0);
-    d.setMinutes(d.getMinutes() + minutes);
-    return d;
-  };
+  const isDragTargetHere = drag?.mode === "move" && drag.currentStaffId === staff.id;
+  const isForeignTarget = isDragTargetHere && drag!.originStaffId !== staff.id;
 
   return (
     <div
-      ref={colRef}
+      data-staff-col
+      data-staff-id={staff.id}
       className="relative border-r last:border-r-0"
-      onDragOver={(e) => {
-        if (!colRef.current) return;
-        const rect = colRef.current.getBoundingClientRect();
-        e.preventDefault();
-        const y = Math.round((e.clientY - rect.top) / SLOT_PX) * SLOT_PX;
-        setHoverTop(y);
-        setDrag((d) => (d ? { ...d, x: e.clientX, y: e.clientY, newIso: yToDate(y).toISOString() } : d));
-      }}
-      onDragLeave={() => setHoverTop(null)}
-      onDrop={(e) => {
-        e.preventDefault();
-        const id = e.dataTransfer.getData("text/booking-id");
-        if (!id || !colRef.current) return;
-        const rect = colRef.current.getBoundingClientRect();
-        const d = yToDate(e.clientY - rect.top);
-        onDrop(id, d.toISOString());
-        setHoverTop(null);
-        setDrag(null);
-      }}
     >
       {/* slot grid — lighter lines, hour separators stronger */}
       {hours.map((_, i) => (
@@ -829,10 +959,20 @@ function StaffColumn({
           key={i}
           className="border-b border-border/40 hover:bg-secondary/30 cursor-pointer transition-colors group"
           style={{ height: HOUR_PX }}
+          onMouseMove={(e) => {
+            if (drag) return;
+            const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+            const y = Math.round((i * HOUR_PX + (e.clientY - rect.top)) / SLOT_PX) * SLOT_PX;
+            setHoverTop(y);
+          }}
+          onMouseLeave={() => setHoverTop(null)}
           onClick={(e) => {
             const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
             const y = i * HOUR_PX + (e.clientY - rect.top);
-            const d = yToDate(y);
+            const minutes = Math.max(0, Math.round(y / SLOT_PX) * SLOT_MIN);
+            const d = new Date(date);
+            d.setHours(START_HOUR, 0, 0, 0);
+            d.setMinutes(d.getMinutes() + minutes);
             onCellClick(d.toISOString());
           }}
         >
@@ -840,6 +980,21 @@ function StaffColumn({
           <div className="h-1/2 border-b border-dashed border-border/25" />
         </div>
       ))}
+
+      {/* new-booking hover preview — shows exactly where a click will land */}
+      {hoverTop !== null && !drag && (
+        <div
+          className="absolute left-1 right-1 rounded-xl pointer-events-none create-preview flex items-center gap-1 px-2"
+          style={{
+            top: hoverTop,
+            height: 2 * SLOT_PX,
+            background: `color-mix(in oklab, ${palette.border} 14%, transparent)`,
+            border: `1.5px dashed color-mix(in oklab, ${palette.border} 55%, transparent)`,
+          }}
+        >
+          <Plus className="h-3 w-3 opacity-50 shrink-0" style={{ color: palette.ink }} />
+        </div>
+      )}
 
       {/* blocked overlays */}
       {blocked.map((b: any) => {
@@ -869,26 +1024,36 @@ function StaffColumn({
       {/* now line */}
       {nowTop !== null && (
         <div className="absolute left-0 right-0 z-10 pointer-events-none" style={{ top: nowTop }}>
-          <div className="h-px relative" style={{ background: "oklch(0.6 0.2 25)" }}>
+          <div className="h-px relative" style={{ background: "oklch(0.62 0.2 39)" }}>
             <div
               className="absolute -left-1 -top-1 h-2 w-2 rounded-full animate-pulse-ring"
-              style={{ background: "oklch(0.6 0.2 25)" }}
+              style={{ background: "oklch(0.62 0.2 39)" }}
             />
           </div>
         </div>
       )}
 
-      {/* drop preview */}
-      {hoverTop !== null && (
+      {/* cross-column drag ghost — shown in the column the pointer is over
+          when it differs from the booking's origin column */}
+      {isForeignTarget && (
         <div
-          className="absolute left-1 right-1 rounded-xl pointer-events-none"
+          className="absolute left-1.5 right-1.5 rounded-2xl pointer-events-none drag-ghost overflow-hidden"
           style={{
-            top: hoverTop,
-            height: 4 * SLOT_PX,
-            background: `color-mix(in oklab, ${palette.border} 30%, transparent)`,
+            top: drag!.currentTop,
+            height: drag!.currentHeight,
+            background: `color-mix(in oklab, ${palette.border} 26%, transparent)`,
             border: `1.5px dashed ${palette.border}`,
           }}
-        />
+        >
+          <div className="px-2.5 py-1.5">
+            <div className="text-[12px] font-semibold truncate" style={{ color: palette.ink }}>
+              {drag!.customerName}
+            </div>
+            <div className="text-[10px] tabular-nums opacity-75" style={{ color: palette.ink }}>
+              {fmtTime(drag!.currentStartIso)} – {fmtTime(drag!.currentEndIso)}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* bookings */}
@@ -898,24 +1063,14 @@ function StaffColumn({
           b={b}
           palette={palette}
           date={date}
+          staffId={staff.id}
           onSelect={onSelect}
-          onDragInfo={setDrag}
+          drag={drag}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
+          onDragEnd={onDragEnd}
         />
       ))}
-
-      {/* floating drag tooltip */}
-      {drag && (
-        <div
-          className="fixed z-50 pointer-events-none px-3 py-2 rounded-xl bg-foreground text-background text-[11px] shadow-elegant"
-          style={{ left: drag.x + 16, top: drag.y + 12 }}
-        >
-          <div className="font-medium">{(bookings.find((x) => x.id === drag.id) || {}).customer_name || "Booking"}</div>
-          <div className="opacity-80 tabular-nums">
-            {fmtTime(drag.origIso)} → {fmtTime(drag.newIso)}
-          </div>
-          <div className="opacity-60 tabular-nums">{drag.durationMin} min</div>
-        </div>
-      )}
     </div>
   );
 }
@@ -924,23 +1079,80 @@ function BookingCard({
   b,
   palette,
   date,
+  staffId,
   onSelect,
-  onDragInfo,
+  drag,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
 }: {
   b: any;
   palette: StaffPalette;
   date: Date;
+  staffId: string;
   onSelect: (b: any) => void;
-  onDragInfo: (d: { id: string; origIso: string; durationMin: number; x: number; y: number; newIso: string } | null) => void;
+  drag: DragState | null;
+  onDragStart: (b: any, mode: DragMode, staffId: string, top: number, height: number, clientY: number) => void;
+  onDragMove: (e: React.PointerEvent) => void;
+  onDragEnd: () => void;
 }) {
   const { START_HOUR } = useHours();
-  const [dragging, setDragging] = useState(false);
   const s = new Date(b.starts_at);
   const e = new Date(b.ends_at);
   const dayStart = new Date(date); dayStart.setHours(START_HOUR, 0, 0, 0);
-  const top = ((s.getTime() - dayStart.getTime()) / 60000 / 60) * HOUR_PX;
-  const height = Math.max(34, ((e.getTime() - s.getTime()) / 60000 / 60) * HOUR_PX);
-  const durationMin = Math.round((e.getTime() - s.getTime()) / 60000);
+  const baseTop = ((s.getTime() - dayStart.getTime()) / 60000 / 60) * HOUR_PX;
+  const baseHeight = Math.max(34, ((e.getTime() - s.getTime()) / 60000 / 60) * HOUR_PX);
+
+  const isActive = drag?.id === b.id;
+  const isMoving = isActive && drag!.mode === "move";
+  const isResizing = isActive && drag!.mode !== "move";
+  const isElsewhere = isMoving && drag!.currentStaffId !== staffId;
+
+  const top = isActive && !isElsewhere ? drag!.currentTop : baseTop;
+  const height = isActive && !isElsewhere ? drag!.currentHeight : baseHeight;
+  const liveStartIso = isActive ? drag!.currentStartIso : b.starts_at;
+  const liveEndIso = isActive ? drag!.currentEndIso : b.ends_at;
+  const liveDurationMin = Math.round((new Date(liveEndIso).getTime() - new Date(liveStartIso).getTime()) / 60000);
+
+  // Brief settle bounce right after a drag/resize commits.
+  const [justSettled, setJustSettled] = useState(false);
+  const wasActive = useRef(false);
+  useEffect(() => {
+    if (wasActive.current && !isActive) {
+      setJustSettled(true);
+      const t = setTimeout(() => setJustSettled(false), 320);
+      return () => clearTimeout(t);
+    }
+    wasActive.current = isActive;
+  }, [isActive]);
+
+  // Pointer-driven drag/resize — a move only "commits" past a small
+  // movement threshold, so a plain tap still opens the detail dialog.
+  const pending = useRef<{ mode: DragMode; startX: number; startY: number; active: boolean } | null>(null);
+  const draggedRef = useRef(false);
+
+  const startPending = (mode: DragMode) => (ev: React.PointerEvent) => {
+    ev.stopPropagation();
+    pending.current = { mode, startX: ev.clientX, startY: ev.clientY, active: false };
+    (ev.target as HTMLElement).setPointerCapture(ev.pointerId);
+  };
+
+  const handlePointerMove = (ev: React.PointerEvent) => {
+    const p = pending.current;
+    if (!p) return;
+    if (!p.active) {
+      if (Math.abs(ev.clientX - p.startX) < 4 && Math.abs(ev.clientY - p.startY) < 4) return;
+      p.active = true;
+      draggedRef.current = true;
+      onDragStart(b, p.mode, staffId, baseTop, baseHeight, p.startY);
+    }
+    onDragMove(ev);
+  };
+
+  const handlePointerUp = () => {
+    if (pending.current?.active) onDragEnd();
+    pending.current = null;
+  };
 
   const status = statusMeta(b.status);
   const depositPaid = (b.amount_paid_cents ?? 0) > 0;
@@ -951,58 +1163,94 @@ function BookingCard({
   const isVip = !!b.is_vip;
 
   return (
-    <button
-      draggable
-      onDragStart={(ev) => {
-        ev.dataTransfer.setData("text/booking-id", b.id);
-        ev.dataTransfer.effectAllowed = "move";
-        setDragging(true);
-        onDragInfo({ id: b.id, origIso: b.starts_at, durationMin, x: ev.clientX, y: ev.clientY, newIso: b.starts_at });
-      }}
-      onDragEnd={() => { setDragging(false); onDragInfo(null); }}
-      onClick={(ev) => { ev.stopPropagation(); onSelect(b); }}
-      className={`absolute left-1.5 right-1.5 rounded-2xl text-left overflow-hidden drag-lift shadow-soft hover:shadow-elegant hover:-translate-y-0.5 active:scale-[0.99] drop-snap ${dragging ? "is-dragging" : ""}`}
-      style={{
-        top,
-        height,
-        background: palette.bg,
-        border: `1px solid ${palette.border}`,
-        color: palette.ink,
-      }}
-    >
-      {/* Left status accent bar */}
-      <span
-        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl"
-        style={{ background: status.color }}
-      />
-      {/* Faded placeholder when dragging */}
-      {dragging && (
-        <span className="absolute inset-0 rounded-2xl border-2 border-dashed border-foreground/15 bg-card/60" />
-      )}
-      <div className="relative px-2.5 py-1.5">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <div className="text-[12px] font-semibold truncate flex-1" style={{ color: palette.ink }}>
-            {b.customer_name || "—"}
-          </div>
-          {isVip && <Sparkle className="h-3 w-3 shrink-0" style={{ color: palette.ink }} />}
-        </div>
-        {height >= 44 && (
-          <div className="text-[11px] truncate opacity-80">{b.services?.name}</div>
+    <>
+      <button
+        type="button"
+        onPointerDown={startPending("move")}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onClick={(ev) => {
+          ev.stopPropagation();
+          if (draggedRef.current) { draggedRef.current = false; return; }
+          onSelect(b);
+        }}
+        className={`group absolute left-1.5 right-1.5 rounded-2xl text-left overflow-hidden drag-lift shadow-soft hover:shadow-elegant hover:-translate-y-0.5 active:scale-[0.99] touch-none ${
+          isMoving && !isElsewhere ? "is-dragging" : ""
+        } ${isResizing ? "is-resizing" : ""} ${isElsewhere ? "opacity-35" : ""} ${justSettled ? "drop-snap" : ""}`}
+        style={{
+          top,
+          height,
+          background: palette.bg,
+          border: `1px solid ${palette.border}`,
+          color: palette.ink,
+        }}
+      >
+        {/* Left status accent bar */}
+        <span
+          className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl"
+          style={{ background: status.color }}
+        />
+        {/* Faded placeholder when moved into another column */}
+        {isElsewhere && (
+          <span className="absolute inset-0 rounded-2xl border-2 border-dashed border-foreground/15 bg-card/60" />
         )}
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[10px] tabular-nums opacity-75">{fmtTime(b.starts_at)}</span>
-          {b.price_cents > 0 && height >= 56 && (
-            <span className="text-[10px] tabular-nums opacity-60">· {fmtMoney(b.price_cents)}</span>
+        <div className="relative px-2.5 py-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="text-[12px] font-semibold truncate flex-1" style={{ color: palette.ink }}>
+              {b.customer_name || "—"}
+            </div>
+            {isVip && <Sparkle className="h-3 w-3 shrink-0" style={{ color: palette.ink }} />}
+          </div>
+          {height >= 44 && (
+            <div className="text-[11px] truncate opacity-80">{b.services?.name}</div>
           )}
-          <span className="ml-auto flex items-center gap-1 opacity-80">
-            {depositPaid && <Wallet className="h-3 w-3" />}
-            {isWalkin && <Footprints className="h-3 w-3" />}
-            {isOnline && !isWalkin && <Globe className="h-3 w-3" />}
-            {hasNotes && <StickyNote className="h-3 w-3" />}
-          </span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[10px] tabular-nums opacity-75">{fmtTime(b.starts_at)}</span>
+            {b.price_cents > 0 && height >= 56 && (
+              <span className="text-[10px] tabular-nums opacity-60">· {fmtMoney(b.price_cents)}</span>
+            )}
+            <span className="ml-auto flex items-center gap-1 opacity-80">
+              {depositPaid && <Wallet className="h-3 w-3" />}
+              {isWalkin && <Footprints className="h-3 w-3" />}
+              {isOnline && !isWalkin && <Globe className="h-3 w-3" />}
+              {hasNotes && <StickyNote className="h-3 w-3" />}
+            </span>
+          </div>
         </div>
-      </div>
-    </button>
+
+        {/* Resize handles — only meaningful while not mid cross-column move */}
+        {!isElsewhere && (
+          <>
+            <span
+              className="absolute left-1/2 -translate-x-1/2 -top-0.5 h-2.5 w-10 rounded-full cursor-ns-resize resize-handle bg-foreground/30 group-hover:opacity-60 hover:!opacity-100 touch-none z-10"
+              onPointerDown={startPending("resize-start")}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+            />
+            <span
+              className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 h-2.5 w-10 rounded-full cursor-ns-resize resize-handle bg-foreground/30 group-hover:opacity-60 hover:!opacity-100 touch-none z-10"
+              onPointerDown={startPending("resize-end")}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+            />
+          </>
+        )}
+      </button>
+
+      {/* Live time badge while actively dragging/resizing this booking */}
+      {isActive && !isElsewhere && (
+        <div
+          className="absolute z-40 pointer-events-none px-2.5 py-1.5 rounded-xl bg-foreground text-background text-[11px] shadow-elegant whitespace-nowrap drag-badge"
+          style={{ top: Math.max(0, top - 40), left: 6 }}
+        >
+          <div className="font-medium tabular-nums">{fmtTime(liveStartIso)} – {fmtTime(liveEndIso)}</div>
+          <div className="opacity-70 tabular-nums">{liveDurationMin} min</div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1059,8 +1307,8 @@ function WeekView({
 
           <div className="grid relative" style={{ gridTemplateColumns: "64px repeat(7, minmax(96px, 1fr))" }}>
             <div className="border-r">
-              {hours.map((h) => (
-                <div key={h} className="text-[10px] text-muted-foreground/80 text-right pr-2 -mt-1.5 tabular-nums font-medium" style={{ height: HOUR_PX }}>
+              {hours.map((h, i) => (
+                <div key={h} className={`text-[10px] text-muted-foreground/80 text-right pr-2 tabular-nums font-medium ${i === 0 ? "" : "-mt-1.5"}`} style={{ height: HOUR_PX }}>
                   {h % 12 || 12}
                   <span className="ml-0.5 opacity-60">{h < 12 ? "AM" : "PM"}</span>
                 </div>
