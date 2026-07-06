@@ -83,7 +83,7 @@ function AuthPage() {
         <div className="absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-primary/30 blur-3xl animate-float" />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <Link to="/" className="font-display text-2xl">
-            Chairly<span className="text-primary">.</span>
+            Bookzenvo<span className="text-primary">.</span>
           </Link>
 
           <div className="max-w-md">
@@ -117,7 +117,7 @@ function AuthPage() {
             to="/"
             className="md:hidden font-display text-2xl mb-8 inline-block"
           >
-            Chairly<span className="text-primary">.</span>
+            Bookzenvo<span className="text-primary">.</span>
           </Link>
           <h1 className="font-display text-3xl md:text-4xl tracking-tight">{heading}</h1>
           <p className="text-sm text-muted-foreground mt-2">{sub}</p>
@@ -201,7 +201,7 @@ function AuthPage() {
           <p className="mt-6 text-xs text-muted-foreground text-center">
             {mode === "signin" && (
               <>
-                New to Chairly?{" "}
+                New to Bookzenvo?{" "}
                 <Link to="/auth" search={{ mode: "signup" }} className="text-foreground underline-offset-4 hover:underline">
                   Create an account
                 </Link>

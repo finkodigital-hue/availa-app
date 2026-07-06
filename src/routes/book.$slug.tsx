@@ -533,7 +533,7 @@ function PublicBooking() {
       </main>
 
       <footer className="text-center text-[11px] text-muted-foreground py-6">
-        Powered by <span className="font-display text-foreground">Chairly<span style={{ color: brand }}>.</span></span>
+        Powered by <span className="font-display text-foreground">Bookzenvo<span style={{ color: brand }}>.</span></span>
       </footer>
     </div>
   );
