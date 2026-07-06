@@ -4,13 +4,13 @@ import { ArrowRight, Check } from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Chairly — Fill the chair. Run the business." },
+      { title: "Bookzenvo — Fill the chair. Run the business." },
       {
         name: "description",
         content:
           "A branded booking page, a calendar that refuses double-bookings, and a client book that remembers everyone — for salons, barbershops and rent-a-chair independents.",
       },
-      { property: "og:title", content: "Chairly — Fill the chair. Run the business." },
+      { property: "og:title", content: "Bookzenvo — Fill the chair. Run the business." },
       {
         property: "og:description",
         content:
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/")({
 function Wordmark({ className = "" }: { className?: string }) {
   return (
     <span className={`font-display font-bold tracking-tight ${className}`}>
-      Chairly<span className="text-[color:var(--brass)]">.</span>
+      Bookzenvo<span className="text-[color:var(--brass)]">.</span>
     </span>
   );
 }
@@ -69,7 +69,7 @@ function Landing() {
       n: 1,
       title: "Build your page",
       body:
-        "Add your services, your chairs, your hours. Pick your colour. It becomes a booking page at chairly.app/your-name.",
+        "Add your services, your chairs, your hours. Pick your colour. It becomes a booking page at bookzenvo.app/your-name.",
     },
     {
       n: 2,
@@ -282,7 +282,7 @@ function Landing() {
             <div
               aria-hidden
               className="absolute bottom-3 right-0 sm:-right-1 w-56 rounded-2xl border border-border bg-card p-4 shadow-[0_28px_60px_-22px_color-mix(in_oklab,var(--primary)_28%,transparent)]"
-              style={{ animation: "chairly-float 5s ease-in-out infinite" }}
+              style={{ animation: "bookzenvo-float 5s ease-in-out infinite" }}
             >
               <div className="flex items-center gap-2 mb-2">
                 <div className="h-8 w-8 rounded-full grid place-items-center font-display font-bold text-sm bg-[#E7D6B4] text-[#6E1F2B]">
@@ -302,7 +302,7 @@ function Landing() {
             </div>
           </div>
         </div>
-        <style>{`@keyframes chairly-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}`}</style>
+        <style>{`@keyframes bookzenvo-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}`}</style>
       </section>
 
       {/* How it works */}
@@ -486,7 +486,7 @@ function Landing() {
         <div className="max-w-6xl mx-auto px-6 flex flex-wrap items-center justify-between gap-5">
           <Wordmark className="text-xl" />
           <div className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Chairly — made for people who work from a chair.
+            © {new Date().getFullYear()} Bookzenvo — made for people who work from a chair.
           </div>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <a href="#" className="hover:text-foreground">Privacy</a>
