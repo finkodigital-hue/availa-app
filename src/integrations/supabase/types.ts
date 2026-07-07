@@ -706,6 +706,62 @@ export type Database = {
           },
         ]
       }
+      booking_stock_deductions: {
+        Row: {
+          business_id: string
+          booking_id: string
+          created_at: string
+          id: string
+          inventory_item_id: string
+          quantity: number
+        }
+        Insert: {
+          business_id: string
+          booking_id: string
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          quantity: number
+        }
+        Update: {
+          business_id?: string
+          booking_id?: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_stock_deductions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_stock_deductions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_stock_deductions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_stock_deductions_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_cents: number
@@ -1653,6 +1709,10 @@ export type Database = {
       accept_professional_invitation: {
         Args: { _pro_business_id: string; _token: string }
         Returns: string
+      }
+      adjust_booking_stock_deduction: {
+        Args: { p_deduction_id: string; p_new_quantity: number }
+        Returns: undefined
       }
       create_public_booking: {
         Args: {

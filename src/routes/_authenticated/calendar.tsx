@@ -18,6 +18,8 @@ import {
   Ban,
   CheckCircle2,
   TimerReset,
+  Package,
+  ChevronDown,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +28,8 @@ import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -514,6 +518,9 @@ function CalendarPage() {
               )}
             </div>
           )}
+          {selected && selected.status === "completed" && (
+            <StockUsedPanel bookingId={selected.id} />
+          )}
           {selected && (
             <div className="space-y-2">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Change status</div>
@@ -579,6 +586,107 @@ function DetailRow({ label, value }: { label: string; value: any }) {
       <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       <span className="font-medium text-sm text-right">{value}</span>
     </div>
+  );
+}
+
+type StockDeduction = {
+  id: string;
+  inventory_item_id: string;
+  quantity: number;
+  inventory_items: { name: string; unit: string | null } | null;
+};
+
+function StockUsedPanel({ bookingId }: { bookingId: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const { data: deductions, isLoading, error } = useQuery({
+    queryKey: ["booking-stock-deductions", bookingId],
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("booking_stock_deductions")
+        .select("id, inventory_item_id, quantity, inventory_items(name, unit)")
+        .eq("booking_id", bookingId);
+      if (error) throw error;
+      return data as unknown as StockDeduction[];
+    },
+  });
+
+  const migrationMissing = /schema cache|could not find the table/i.test((error as any)?.message ?? "");
+
+  const save = async (d: StockDeduction) => {
+    const raw = drafts[d.id];
+    const next = Number(raw);
+    if (!Number.isFinite(next) || next < 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
+    if (next === Number(d.quantity)) return;
+    setSavingId(d.id);
+    const { error } = await supabase.rpc("adjust_booking_stock_deduction", {
+      p_deduction_id: d.id,
+      p_new_quantity: next,
+    });
+    setSavingId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Stock usage updated");
+    qc.invalidateQueries({ queryKey: ["booking-stock-deductions", bookingId] });
+    qc.invalidateQueries({ queryKey: ["inventory_items"] });
+  };
+
+  if (migrationMissing) {
+    return (
+      <div className="rounded-2xl border border-dashed bg-secondary/40 px-4 py-3 text-xs text-muted-foreground flex items-center gap-2">
+        <Package className="h-3.5 w-3.5 shrink-0" />
+        Apply the database migration to enable stock tracking on completed bookings.
+      </div>
+    );
+  }
+
+  if (error) return null;
+  if (!isLoading && (!deductions || deductions.length === 0)) return null;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-2xl border bg-secondary/40">
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm"
+        >
+          <span className="inline-flex items-center gap-2 text-muted-foreground">
+            <Package className="h-3.5 w-3.5" />
+            Stock used{deductions ? ` (${deductions.length} item${deductions.length === 1 ? "" : "s"})` : ""}
+          </span>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-4 pb-4 space-y-2">
+        {isLoading ? (
+          <Skeleton className="h-8 w-full" />
+        ) : (
+          (deductions ?? []).map((d) => (
+            <div key={d.id} className="flex items-center gap-2">
+              <span className="flex-1 text-sm truncate">{d.inventory_items?.name ?? "Item"}</span>
+              <Input
+                type="number"
+                className="w-20 h-8"
+                value={drafts[d.id] ?? String(Number(d.quantity))}
+                onChange={(e) => setDrafts((s) => ({ ...s, [d.id]: e.target.value }))}
+                onBlur={() => save(d)}
+                disabled={savingId === d.id}
+              />
+              <span className="text-xs text-muted-foreground w-10">{d.inventory_items?.unit || ""}</span>
+            </div>
+          ))
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

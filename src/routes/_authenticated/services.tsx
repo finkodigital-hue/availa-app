@@ -44,8 +44,6 @@ function ServicesPage() {
   const [edit, setEdit] = useState<Partial<Service> | null>(null);
   const [linked, setLinked] = useState<Set<string>>(new Set());
   const [recipe, setRecipe] = useState<RecipeLine[]>([]);
-  const [newRecipeItemId, setNewRecipeItemId] = useState<string>("");
-  const [newRecipeQty, setNewRecipeQty] = useState<string>("");
 
 
   const { data: services, isLoading } = useQuery({
@@ -98,6 +96,12 @@ function ServicesPage() {
   const serviceCost = recipeStats?.costs ?? {};
 
   const inventoryById = (id: string) => inventory?.find((i) => i.id === id);
+  const defaultQtyFor = (item?: InventoryItem) => (item?.unit === "bottle" || item?.unit === "unit" ? 1 : 30);
+  const stepFor = (item?: InventoryItem) => (item?.unit === "bottle" || item?.unit === "unit" ? 1 : 5);
+  const recipeCostPreview = recipe.reduce((sum, r) => {
+    const item = inventoryById(r.inventory_item_id);
+    return sum + Number(r.quantity) * (item?.cost_cents ?? 0);
+  }, 0);
 
   // Load linked staff + recipe whenever editing existing
   useEffect(() => {
@@ -112,8 +116,6 @@ function ServicesPage() {
       setLinked(new Set());
       setRecipe([]);
     }
-    setNewRecipeItemId("");
-    setNewRecipeQty("");
   }, [edit?.id]);
 
 
@@ -384,69 +386,89 @@ function ServicesPage() {
 
             <div>
               <Label>Products used</Label>
-              <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">Record what this service consumes from stock. No auto-deduction yet.</p>
-              {recipe.length > 0 && (
-                <div className="space-y-1.5 mb-2">
-                  {recipe.map((r, idx) => {
-                    const item = inventoryById(r.inventory_item_id);
-                    return (
-                      <div key={idx} className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
-                        <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="flex-1 truncate">{item?.name ?? "Unknown item"}</span>
-                        <span className="text-muted-foreground">{r.quantity}{item?.unit ? ` ${item.unit}` : ""}</span>
-                        <button
-                          type="button"
-                          onClick={() => setRecipe(recipe.filter((_, i) => i !== idx))}
-                          className="p-1 rounded hover:bg-destructive/10 hover:text-destructive"
-                          aria-label="Remove"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">Automatically deducted from stock whenever a booking for this service is marked completed.</p>
               {inventory && inventory.length > 0 ? (
-                <div className="flex gap-2">
-                  <select
-                    value={newRecipeItemId}
-                    onChange={(e) => setNewRecipeItemId(e.target.value)}
-                    className="flex-1 h-9 rounded-md border bg-background px-2 text-sm"
-                  >
-                    <option value="">Choose item…</option>
-                    {inventory
-                      .filter((i) => !recipe.some((r) => r.inventory_item_id === i.id))
-                      .map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.name}{i.unit ? ` (${i.unit})` : ""}
-                        </option>
-                      ))}
-                  </select>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={newRecipeQty}
-                    onChange={(e) => setNewRecipeQty(e.target.value)}
-                    placeholder="Qty"
-                    className="w-24 h-9"
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      if (!newRecipeItemId) return toast.error("Choose an item");
-                      const q = Number(newRecipeQty);
-                      if (!Number.isFinite(q) || q <= 0) return toast.error("Enter a quantity");
-                      setRecipe([...recipe, { inventory_item_id: newRecipeItemId, quantity: q }]);
-                      setNewRecipeItemId("");
-                      setNewRecipeQty("");
-                    }}
-                  >
-                    Add
-                  </Button>
+                <div className="rounded-xl border bg-secondary/30 p-3 space-y-3">
+                  <div className="flex flex-wrap gap-1.5">
+                    {inventory.map((i) => {
+                      const on = recipe.some((r) => r.inventory_item_id === i.id);
+                      return (
+                        <button
+                          key={i.id}
+                          type="button"
+                          onClick={() => {
+                            if (on) {
+                              setRecipe(recipe.filter((r) => r.inventory_item_id !== i.id));
+                            } else {
+                              setRecipe([...recipe, { inventory_item_id: i.id, quantity: defaultQtyFor(i) }]);
+                            }
+                          }}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            on ? "bg-primary/10 border-primary text-primary" : "bg-card hover:bg-secondary/60"
+                          }`}
+                        >
+                          <Package className="h-3 w-3" />
+                          {i.name}
+                          {on && <Check className="h-3 w-3" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {recipe.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {recipe.map((r, idx) => {
+                        const item = inventoryById(r.inventory_item_id);
+                        const step = stepFor(item);
+                        return (
+                          <div key={idx} className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
+                            <span className="flex-1 truncate">{item?.name ?? "Unknown item"}</span>
+                            <div className="inline-flex items-center rounded-full border overflow-hidden">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setRecipe(recipe.map((x, i) => (i === idx ? { ...x, quantity: Math.max(0, x.quantity - step) } : x)))
+                                }
+                                className="h-6 w-6 flex items-center justify-center hover:bg-secondary/60"
+                                aria-label="Decrease"
+                              >
+                                −
+                              </button>
+                              <span className="w-px h-3 bg-border" />
+                              <button
+                                type="button"
+                                onClick={() => setRecipe(recipe.map((x, i) => (i === idx ? { ...x, quantity: x.quantity + step } : x)))}
+                                className="h-6 w-6 flex items-center justify-center hover:bg-secondary/60"
+                                aria-label="Increase"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <span className="text-muted-foreground tabular-nums w-16 text-right">
+                              {r.quantity}{item?.unit ? ` ${item.unit}` : ""}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setRecipe(recipe.filter((_, i) => i !== idx))}
+                              className="p-1 rounded hover:bg-destructive/10 hover:text-destructive"
+                              aria-label="Remove"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic px-1">No products selected yet — tap one above.</p>
+                  )}
+
+                  {recipeCostPreview > 0 && (
+                    <div className="flex items-center justify-between rounded-lg bg-emerald-500/10 px-3 py-2 text-xs">
+                      <span className="text-muted-foreground">Estimated product cost per booking</span>
+                      <span className="font-semibold tabular-nums">{fmtMoney(recipeCostPreview)}</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">No inventory items yet — add some in Stock first.</p>
