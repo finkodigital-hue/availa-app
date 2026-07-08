@@ -136,11 +136,11 @@ function CustomersPage() {
                 return (
                   <tr key={c.id} onClick={() => setOpenId(c.id)} className="border-t hover:bg-secondary/40 transition-colors group cursor-pointer">
                     <td className="px-5 py-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <CustomerAvatar customer={c} />
-                        <div>
-                          <div className="font-medium">{c.name}</div>
-                          {c.address && <div className="text-[11px] text-muted-foreground inline-flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" />{c.address}</div>}
+                        <div className="min-w-0">
+                          <div className="font-medium truncate max-w-[280px]">{c.name}</div>
+                          {c.address && <div className="text-[11px] text-muted-foreground inline-flex items-center gap-1 mt-0.5 truncate max-w-[280px]"><MapPin className="h-3 w-3 shrink-0" />{c.address}</div>}
                         </div>
                       </div>
                     </td>
@@ -301,7 +301,11 @@ function CustomerEditDialog({ editing, businessId, onClose, onSaved }: {
       }
       onSaved();
     } catch (e: any) {
-      toast.error(e.message ?? "Could not save");
+      if (e.code === "23505") {
+        toast.error("A customer with this email already exists.");
+      } else {
+        toast.error(e.message ?? "Could not save");
+      }
     } finally { setSaving(false); }
   };
 
@@ -407,6 +411,8 @@ function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelet
 
   const del = async () => {
     if (!customerId) return;
+    const { error: bookingsError } = await supabase.from("bookings").delete().eq("customer_id", customerId);
+    if (bookingsError) return toast.error(bookingsError.message);
     const { error } = await supabase.from("customers").delete().eq("id", customerId);
     if (error) return toast.error(error.message);
     toast.success("Customer deleted");
@@ -421,10 +427,10 @@ function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelet
           <div className="py-12 grid place-items-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : (
           <>
-            <DialogHeader>
-              <div className="flex items-center gap-4">
+            <DialogHeader className="min-w-0">
+              <div className="flex items-center gap-4 min-w-0">
                 <CustomerAvatar customer={c} />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <DialogTitle className="font-display text-2xl truncate">{c.name}</DialogTitle>
                   <DialogDescription className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
                     {c.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{c.email}</span>}
@@ -479,7 +485,7 @@ function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelet
             <DialogFooter className="flex-wrap gap-2 mt-4">
               <ConfirmDialog
                 trigger={<Button variant="destructive"><Trash2 className="h-4 w-4 mr-1.5" /> Delete</Button>}
-                title={`Delete ${c.name}?`}
+                title={`Delete ${c.name.length > 40 ? c.name.slice(0, 40).trim() + "…" : c.name}?`}
                 description="Their booking history will also be removed. This can't be undone."
                 confirmLabel="Delete customer"
                 onConfirm={async () => { await del(); }}
@@ -577,7 +583,7 @@ function MergeDialog({ target, onClose, onDone, businessId }: {
     <Dialog open={!!target} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">Merge into {target?.name}</DialogTitle>
+          <DialogTitle className="font-display text-2xl truncate">Merge into {target?.name}</DialogTitle>
           <DialogDescription>
             Pick a duplicate to merge. All their bookings and notes move into {target?.name}. The duplicate record is deleted.
           </DialogDescription>

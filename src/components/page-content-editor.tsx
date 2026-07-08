@@ -24,6 +24,9 @@ export function PageContentEditor({ business }: { business: any }) {
   }, [business?.id]);
 
   const save = async () => {
+    if (f.emergency_active && !f.emergency_message?.trim()) {
+      return toast.error("Add a message for the emergency closure banner, or turn it off");
+    }
     setSaving(true);
     const { error } = await supabase.from("businesses").update({
       welcome_message: f.welcome_message ?? null,

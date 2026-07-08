@@ -438,7 +438,7 @@ function Dashboard() {
               All <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <ul className="mt-4 space-y-1 max-h-[260px] overflow-y-auto">
+          <ul className="mt-4 space-y-1 max-h-[260px] overflow-y-auto overflow-x-hidden">
             {tLoading && Array.from({ length: 4 }).map((_, i) => (
               <li key={i} className="flex items-center gap-3 py-2">
                 <Skeleton className="h-9 w-9 rounded-full" />

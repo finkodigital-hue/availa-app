@@ -51,7 +51,11 @@ function Onboarding() {
       toast.success("Workspace created");
       navigate({ to: "/dashboard" });
     } catch (err: any) {
-      toast.error(err.message ?? "Could not create workspace");
+      if (err.code === "23505") {
+        toast.error("That booking page URL is already taken — try another.");
+      } else {
+        toast.error(err.message ?? "Could not create workspace");
+      }
     } finally {
       setBusy(false);
     }

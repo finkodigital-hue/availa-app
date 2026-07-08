@@ -34,6 +34,12 @@ export function StaffHoursEditor({ staffId, businessId }: { staffId: string; bus
   }, [data, staffId, businessId]);
 
   const save = async () => {
+    for (const r of rows) {
+      if (!r.closed && r.open_time && r.close_time && r.open_time >= r.close_time) {
+        toast.error(`${WEEKDAYS[r.weekday]}: opening time must be before closing time.`);
+        return;
+      }
+    }
     setSaving(true);
     try {
       // upsert each row

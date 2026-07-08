@@ -3,7 +3,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Send, CalendarCheck, Megaphone, TrendingUp, LineChart, Mail, Loader2, RotateCcw } from "lucide-react";
-import { AppShell, PageHeader } from "@/components/app-shell";
+import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,11 +39,9 @@ function AssistantPage() {
 
   if (!endpoint || !token) {
     return (
-      <AppShell>
-        <div className="p-6 md:p-10 grid place-items-center min-h-[60vh] text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-        </div>
-      </AppShell>
+      <div className="p-6 md:p-10 grid place-items-center min-h-[60vh] text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
     );
   }
   return <AssistantInner endpoint={endpoint} token={token} />;
@@ -80,9 +78,8 @@ function AssistantInner({ endpoint, token }: { endpoint: string; token: string }
   };
 
   return (
-    <AppShell>
-      <div className="p-6 md:p-10 max-w-4xl mx-auto">
-        <PageHeader
+    <div className="p-6 md:p-10 max-w-4xl mx-auto">
+      <PageHeader
           eyebrow="AI Assistant"
           title="Your business co-pilot"
           subtitle="Ask anything about your bookings, customers and growth. Answers use your live workspace data."
@@ -162,8 +159,7 @@ function AssistantInner({ endpoint, token }: { endpoint: string; token: string }
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
-      </div>
-    </AppShell>
+    </div>
   );
 }
 

@@ -16,7 +16,10 @@ export const Route = createFileRoute("/api/chat")({
           if (!Array.isArray(body.messages)) return new Response("messages required", { status: 400 });
 
           const key = process.env.LOVABLE_API_KEY;
-          if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
+          if (!key) {
+            console.error("LOVABLE_API_KEY is not configured");
+            return new Response("The assistant isn't configured yet. Please contact support.", { status: 500 });
+          }
 
           const { business, summary } = await buildAssistantContext(token);
           if (!business) return new Response("No workspace", { status: 400 });
