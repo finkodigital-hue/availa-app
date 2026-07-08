@@ -96,8 +96,12 @@ function ServicesPage() {
   const serviceCost = recipeStats?.costs ?? {};
 
   const inventoryById = (id: string) => inventory?.find((i) => i.id === id);
-  const defaultQtyFor = (item?: InventoryItem) => (item?.unit === "bottle" || item?.unit === "unit" ? 1 : 30);
-  const stepFor = (item?: InventoryItem) => (item?.unit === "bottle" || item?.unit === "unit" ? 1 : 5);
+  const isDiscreteUnit = (item?: InventoryItem) => {
+    const u = item?.unit?.trim().toLowerCase();
+    return u === "bottle" || u === "unit";
+  };
+  const defaultQtyFor = (item?: InventoryItem) => (isDiscreteUnit(item) ? 1 : 30);
+  const stepFor = (item?: InventoryItem) => (isDiscreteUnit(item) ? 1 : 5);
   const recipeCostPreview = recipe.reduce((sum, r) => {
     const item = inventoryById(r.inventory_item_id);
     return sum + Number(r.quantity) * (item?.cost_cents ?? 0);
@@ -123,11 +127,12 @@ function ServicesPage() {
   const save = async () => {
     if (!edit || !bid) return;
     if (!edit.name) return toast.error("Name is required");
+    if (!(Number(edit.duration_minutes) > 0)) return toast.error("Duration must be greater than 0 minutes");
     const payload: any = {
       business_id: bid,
       name: edit.name,
       description: edit.description ?? null,
-      duration_minutes: Number(edit.duration_minutes) || 60,
+      duration_minutes: Number(edit.duration_minutes),
       price_cents: Math.round(Number(edit.price_cents) || 0),
       buffer_before_min: Number(edit.buffer_before_min) || 0,
       buffer_after_min: Number(edit.buffer_after_min) || 0,
@@ -330,8 +335,8 @@ function ServicesPage() {
                 <Input type="number" min={5} step={5} value={edit?.duration_minutes ?? 60} onChange={(e) => setEdit({ ...edit, duration_minutes: Number(e.target.value) })} className="mt-1.5 h-10" />
               </div>
               <div>
-                <Label>Price (cents)</Label>
-                <Input type="number" min={0} value={edit?.price_cents ?? 0} onChange={(e) => setEdit({ ...edit, price_cents: Number(e.target.value) })} className="mt-1.5 h-10" />
+                <Label>Price ($)</Label>
+                <Input type="number" min={0} step="0.01" value={(edit?.price_cents ?? 0) / 100} onChange={(e) => setEdit({ ...edit, price_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1.5 h-10" />
                 <p className="text-[11px] text-muted-foreground mt-1">{fmtMoney(Number(edit?.price_cents) || 0)}</p>
               </div>
             </div>

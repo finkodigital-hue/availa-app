@@ -486,7 +486,7 @@ function AddRentPaymentDialog({ link, onOpenChange, onSaved }: { link: any | nul
   const submit = async () => {
     if (!link) return;
     const cents = Math.round(parseFloat(amount || "0") * 100);
-    if (!cents) return toast.error("Enter an amount");
+    if (!(cents > 0)) return toast.error("Enter an amount greater than $0");
     setBusy(true);
     try {
       const { error } = await supabase.from("rent_payments").insert({
@@ -531,7 +531,7 @@ function AddRentPaymentDialog({ link, onOpenChange, onSaved }: { link: any | nul
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Amount</Label>
-              <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5 h-10" />
+              <Input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5 h-10" />
             </div>
             <div>
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Due date</Label>
@@ -582,6 +582,13 @@ function InviteDialog({
   const submit = async () => {
     if (!salonBusinessId || !invitedBy) return;
     if (!email.trim()) return toast.error("Email is required");
+    if ((mode === "weekly" || mode === "monthly" || mode === "fixed_commission") && !(parseFloat(amount || "0") > 0)) {
+      return toast.error("Enter an amount greater than $0");
+    }
+    if (mode === "percentage") {
+      const pct = parseFloat(percent || "0");
+      if (!(pct > 0) || pct > 100) return toast.error("Enter a percentage between 0 and 100");
+    }
     setBusy(true);
     try {
       const payload: any = {
@@ -704,6 +711,8 @@ function InviteDialog({
               {mode === "percentage" && (
                 <Input
                   type="number"
+                  min={0}
+                  max={100}
                   step="0.1"
                   value={percent}
                   onChange={(e) => setPercent(e.target.value)}

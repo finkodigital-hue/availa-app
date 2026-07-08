@@ -241,9 +241,10 @@ function ProfileEditor({ biz }: { biz: any }) {
   useEffect(() => { setForm(biz); }, [biz?.id]);
 
   const save = async () => {
+    if (!form.name?.trim()) return toast.error("Business name is required");
     setSaving(true);
     const { error } = await supabase.from("businesses").update({
-      name: form.name, description: form.description,
+      name: form.name.trim(), description: form.description,
       address: form.address, phone: form.phone, email: form.email, website: form.website,
       timezone: form.timezone,
       instagram: form.instagram, facebook: form.facebook, tiktok: form.tiktok, twitter: form.twitter,
@@ -450,6 +451,7 @@ function HolidayClosures({ businessId }: { businessId: string }) {
 
   const add = async () => {
     if (!draft.label || !draft.starts_on || !draft.ends_on) return toast.error("Fill all fields");
+    if (draft.starts_on > draft.ends_on) return toast.error("End date must be on or after the start date");
     const { error } = await supabase.from("holiday_closures").insert({ business_id: businessId, ...draft });
     if (error) return toast.error(error.message);
     setDraft({ label: "", starts_on: "", ends_on: "" });

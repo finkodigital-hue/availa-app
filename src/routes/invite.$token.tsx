@@ -132,6 +132,10 @@ function InviteAcceptPage() {
 
     let proBusinessId = existing?.id as string | undefined;
 
+    if (proBusinessId && proBusinessId === invite.salon?.id) {
+      throw new Error("You already own this salon — it can't rent a chair from itself.");
+    }
+
     if (!proBusinessId) {
       const finalSlug = `${slugify(bizName)}-${Math.random().toString(36).slice(2, 6)}`;
       const { data: newBiz, error: bizErr } = await supabase

@@ -181,7 +181,10 @@ function StockPage() {
     invalidate();
   };
 
-  const stepFor = (i: InventoryItem) => (i.unit === "bottle" || i.unit === "unit" ? 1 : 5);
+  const stepFor = (i: InventoryItem) => {
+    const u = i.unit?.trim().toLowerCase();
+    return u === "bottle" || u === "unit" ? 1 : 5;
+  };
 
   const applyAdjust = async () => {
     if (!adjust) return;
@@ -537,12 +540,16 @@ function StockPage() {
               </p>
             )}
             <div>
-              <Label>Cost (cents)</Label>
+              <Label>Cost ($)</Label>
               <Input
                 type="number"
-                value={edit?.cost_cents ?? ""}
-                onChange={(e) => setEdit({ ...edit, cost_cents: e.target.value as any })}
-                placeholder="e.g. 1200 for $12.00"
+                min={0}
+                step="0.01"
+                value={(edit?.cost_cents as any) === "" || edit?.cost_cents === null || edit?.cost_cents === undefined ? "" : Number(edit.cost_cents) / 100}
+                onChange={(e) =>
+                  setEdit({ ...edit, cost_cents: e.target.value === "" ? "" : Math.round(parseFloat(e.target.value) * 100) as any })
+                }
+                placeholder="e.g. 12.00"
               />
             </div>
           </div>

@@ -17,7 +17,11 @@ export function BrandingEditor({ business }: { business: any }) {
   const [saving, setSaving] = useState(false);
   useEffect(() => { if (business) setF(business); }, [business?.id]);
 
+  const HEX = /^#[0-9a-fA-F]{6}$/;
   const save = async () => {
+    if (![f.brand_color, f.secondary_color, f.accent_color].every((c) => !c || HEX.test(c))) {
+      return toast.error("Colors must be a valid hex code, e.g. #8E2A38");
+    }
     setSaving(true);
     const { error } = await supabase.from("businesses").update({
       brand_color: f.brand_color,

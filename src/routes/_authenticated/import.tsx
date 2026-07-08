@@ -222,21 +222,32 @@ function ImportPage() {
     try {
       if (entity === "customers") {
         const named = mappedCustomers.filter((r) => r.name);
+        // The DB also enforces a per-business unique constraint on normalized
+        // phone (customers_business_phone_norm_uniq), not just email — dedupe
+        // against both here, or a same-phone row aborts the whole batch with
+        // a raw Postgres 409.
         const { data: existing, error: fetchErr } = await supabase
-          .from("customers").select("email").eq("business_id", biz.id).not("email", "is", null);
+          .from("customers").select("email, phone_normalized").eq("business_id", biz.id);
         if (fetchErr) throw fetchErr;
         const existingEmails = new Set(
           (existing ?? []).map((c) => (c.email ?? "").trim().toLowerCase()).filter(Boolean),
         );
-        const seen = new Set<string>();
+        const existingPhones = new Set(
+          (existing ?? []).map((c) => c.phone_normalized).filter(Boolean),
+        );
+        const seenEmails = new Set<string>();
+        const seenPhones = new Set<string>();
         let dupes = 0;
         const toInsert: any[] = [];
         for (const r of named) {
           const emailLower = r.email ? r.email.toLowerCase() : "";
-          if (emailLower) {
-            if (existingEmails.has(emailLower) || seen.has(emailLower)) { dupes++; continue; }
-            seen.add(emailLower);
-          }
+          const phoneNorm = r.phone ? r.phone.replace(/\D/g, "") : "";
+          const isDupe =
+            (emailLower && (existingEmails.has(emailLower) || seenEmails.has(emailLower))) ||
+            (phoneNorm && (existingPhones.has(phoneNorm) || seenPhones.has(phoneNorm)));
+          if (isDupe) { dupes++; continue; }
+          if (emailLower) seenEmails.add(emailLower);
+          if (phoneNorm) seenPhones.add(phoneNorm);
           toInsert.push({
             business_id: biz.id,
             name: r.name,
@@ -293,7 +304,9 @@ function ImportPage() {
         toast.success(`Imported ${imported} services`);
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
+      // Supabase/Postgrest errors are plain objects, not Error instances —
+      // String(e) on those yields the useless "[object Object]".
+      const msg = e instanceof Error ? e.message : (e as any)?.message ?? String(e);
       toast.error(`Import failed: ${msg}`);
     } finally {
       setImporting(false);

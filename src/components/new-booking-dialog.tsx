@@ -195,6 +195,11 @@ export function NewBookingDialog({
           }
         }
         const ends_at = new Date(new Date(starts_at).getTime() + service!.duration_minutes * 60000).toISOString();
+        // amount_paid_cents is what was actually collected; amount_due_cents
+        // is what's left owing. The deposit input is money collected now,
+        // so it belongs in amount_paid_cents, not amount_due_cents.
+        const amountPaid = paymentStatus === "paid" ? service!.price_cents : paymentStatus === "deposit_paid" ? (depositCents || 0) : 0;
+        const amountDue = Math.max(0, service!.price_cents - amountPaid);
         const { error } = await supabase.from("bookings").insert({
           business_id: targetBiz,
           service_id: service!.id,
@@ -209,7 +214,8 @@ export function NewBookingDialog({
           notes: notes || null,
           source: "walkin",
           notify_customer: notify,
-          amount_due_cents: depositCents || 0,
+          amount_paid_cents: amountPaid,
+          amount_due_cents: amountDue,
           payment_status: paymentStatus,
         } as any);
         if (error) throw error;
@@ -302,7 +308,11 @@ export function NewBookingDialog({
             current={staff}
             allowAny={isCustom}
             onBack={() => setStep(isCustom ? "custom" : "service")}
-            onPick={(st) => { setStaff(st); setStep(firstMissing({ hasCustomer: isCustom || !!(customer || newCust), hasService: true, hasStaff: true, hasTime: !!time })); }}
+            onPick={(st) => {
+              setStaff(st);
+              const next = firstMissing({ hasCustomer: isCustom || !!(customer || newCust), hasService: true, hasStaff: true, hasTime: !!time });
+              setStep(isCustom && next === "payment" ? "confirm" : next);
+            }}
           />
         )}
 
@@ -378,7 +388,7 @@ function firstMissing(s: { hasCustomer: boolean; hasService: boolean; hasStaff: 
   if (!s.hasService) return "service";
   if (!s.hasStaff) return "staff";
   if (!s.hasTime) return "slot";
-  return "confirm";
+  return "payment";
 }
 
 function Summary({
@@ -476,7 +486,7 @@ function PaymentStep({
 }) {
   return (
     <div className="space-y-3">
-      <button onClick={onBack} className="text-xs text-muted-foreground inline-flex items-center gap-1">
+      <button onClick={onBack} className="text-xs text-muted-foreground flex w-fit items-center gap-1">
         <ChevronLeft className="h-3 w-3" /> Back
       </button>
       <Label className="text-xs uppercase tracking-wide text-muted-foreground">Payment</Label>
@@ -494,8 +504,8 @@ function PaymentStep({
       </div>
       {status === "deposit_paid" && (
         <div>
-          <Label>Deposit amount (in cents)</Label>
-          <Input type="number" min={0} value={deposit} onChange={(e) => setDeposit(parseInt(e.target.value) || 0)} className="mt-1.5 h-10" />
+          <Label>Deposit amount ($)</Label>
+          <Input type="number" min={0} max={price / 100} step="0.01" value={deposit / 100} onChange={(e) => setDeposit(Math.max(0, Math.min(price, Math.round((parseFloat(e.target.value) || 0) * 100))))} className="mt-1.5 h-10" />
           <p className="text-[11px] text-muted-foreground mt-1">Currently {fmtMoney(deposit)} of {fmtMoney(price)}.</p>
         </div>
       )}
@@ -598,7 +608,7 @@ function ServiceStep({
   });
   return (
     <div className="space-y-3">
-      <button onClick={onBack} className="text-xs text-muted-foreground inline-flex items-center gap-1">
+      <button onClick={onBack} className="text-xs text-muted-foreground flex w-fit items-center gap-1">
         <ChevronLeft className="h-3 w-3" /> Back
       </button>
       <Label className="text-xs uppercase tracking-wide text-muted-foreground">Service</Label>
@@ -641,7 +651,7 @@ function StaffStep({
   });
   return (
     <div className="space-y-3">
-      <button onClick={onBack} className="text-xs text-muted-foreground inline-flex items-center gap-1">
+      <button onClick={onBack} className="text-xs text-muted-foreground flex w-fit items-center gap-1">
         <ChevronLeft className="h-3 w-3" /> Back
       </button>
       <Label className="text-xs uppercase tracking-wide text-muted-foreground">Staff</Label>
