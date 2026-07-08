@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Loader2, Sparkles, Building2, CheckCircle2 } from "lucide-react";
+import { Loader2, Sparkles, Building2, Armchair, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { slugify } from "@/lib/format";
@@ -179,7 +179,7 @@ function InviteAcceptPage() {
           <Sparkles className="h-3 w-3 text-primary" /> You're invited
         </div>
         <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center shrink-0">
             <Building2 className="h-5 w-5 text-primary" />
           </div>
           <div>
@@ -200,17 +200,33 @@ function InviteAcceptPage() {
             "{invite.message}"
           </div>
         )}
-        {invite.rent_mode !== "none" && (
-          <div className="mt-4 text-xs text-muted-foreground flex items-center gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Rent agreement: {rentSummary(invite)}
+        {(invite.chair_label || invite.rent_mode !== "none") && (
+          <div className="mt-4 rounded-xl border bg-card/60 p-3.5 space-y-2">
+            {invite.chair_label && (
+              <div className="text-sm flex items-center gap-2">
+                <Armchair className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span>{invite.chair_label}</span>
+              </div>
+            )}
+            {invite.rent_mode !== "none" && (
+              <div className="text-sm flex items-center gap-2">
+                <Wallet className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span>{rentSummary(invite)}</span>
+              </div>
+            )}
           </div>
         )}
 
         {user ? (
           <div className="mt-8 space-y-4">
-            <p className="text-sm">
-              Signed in as <b>{user.email}</b>. Give your business a name to finish accepting.
-            </p>
+            <div className="rounded-xl border bg-card/60 p-3.5 text-sm flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-primary/10 text-primary grid place-items-center font-display text-sm shrink-0">
+                {(user.email ?? "?").charAt(0).toUpperCase()}
+              </div>
+              <span className="text-pretty">
+                Signed in as <b>{user.email}</b>. Give your business a name to finish accepting.
+              </span>
+            </div>
             <div>
               <Label>Your business name</Label>
               <Input
@@ -227,18 +243,18 @@ function InviteAcceptPage() {
           </div>
         ) : (
           <form onSubmit={signInAndAccept} className="mt-8 space-y-4">
-            <div className="flex gap-1 text-xs">
+            <div className="inline-flex w-full p-1 rounded-full bg-secondary text-xs">
               <button
                 type="button"
                 onClick={() => setMode("signup")}
-                className={`px-3 py-1.5 rounded-full ${mode === "signup" ? "bg-foreground text-background" : "text-muted-foreground"}`}
+                className={`flex-1 px-3 py-1.5 rounded-full transition-colors ${mode === "signup" ? "bg-foreground text-background shadow-soft" : "text-muted-foreground hover:text-foreground"}`}
               >
                 Create account
               </button>
               <button
                 type="button"
                 onClick={() => setMode("signin")}
-                className={`px-3 py-1.5 rounded-full ${mode === "signin" ? "bg-foreground text-background" : "text-muted-foreground"}`}
+                className={`flex-1 px-3 py-1.5 rounded-full transition-colors ${mode === "signin" ? "bg-foreground text-background shadow-soft" : "text-muted-foreground hover:text-foreground"}`}
               >
                 Already have a Luma account
               </button>

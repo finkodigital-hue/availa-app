@@ -20,6 +20,7 @@ import {
   TimerReset,
   Package,
   ChevronDown,
+  Armchair,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -131,27 +132,33 @@ function CalendarPage() {
   // Load business IDs whose staff/bookings should appear on this salon's
   // shared calendar: the salon itself + every actively linked independent
   // professional whose permissions allow calendar visibility.
-  const { data: linkedProBusinessIds } = useQuery({
+  const { data: linkedPros } = useQuery({
     queryKey: ["calendar-linked-pros", bid],
     enabled: !!bid,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("salon_professionals")
-        .select("pro_business_id, permissions")
+        .select("pro_business_id, chair_label, permissions")
         .eq("salon_business_id", bid!)
         .eq("status", "active");
       if (error) throw error;
-      return (data ?? [])
-        .filter((r: any) => (r.permissions?.salon_can_view_calendar ?? true) !== false)
-        .map((r: any) => r.pro_business_id as string);
+      return (data ?? []).filter(
+        (r: any) => (r.permissions?.salon_can_view_calendar ?? true) !== false,
+      ) as { pro_business_id: string; chair_label: string | null }[];
     },
   });
 
+  const linkedProBusinessIds = useMemo(() => (linkedPros ?? []).map((p) => p.pro_business_id), [linkedPros]);
+  const chairLabelByBizId = useMemo(
+    () => new Map((linkedPros ?? []).map((p) => [p.pro_business_id, p.chair_label])),
+    [linkedPros],
+  );
+
   const allBizIds = useMemo(
-    () => (bid ? [bid, ...(linkedProBusinessIds ?? [])] : []),
+    () => (bid ? [bid, ...linkedProBusinessIds] : []),
     [bid, linkedProBusinessIds],
   );
-  const linkedBizKey = linkedProBusinessIds?.join(",") ?? "";
+  const linkedBizKey = linkedProBusinessIds.join(",");
   const calendarQueryKey = useMemo(
     () => ["calendar", bid, linkedBizKey, range.start.toISOString(), range.end.toISOString()],
     [bid, linkedBizKey, range.start, range.end],
@@ -159,11 +166,11 @@ function CalendarPage() {
 
   const { data: staff } = useQuery({
     queryKey: ["calendar-staff", bid, linkedBizKey],
-    enabled: !!bid && !!linkedProBusinessIds,
+    enabled: !!bid && linkedPros !== undefined,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff")
-        .select("id, name, role, photo_url, business_id, businesses:business_id(name)")
+        .select("id, name, role, photo_url, business_id")
         .in("business_id", allBizIds)
         .eq("active", true)
         .order("name");
@@ -171,14 +178,14 @@ function CalendarPage() {
       return (data ?? []).map((s: any) => ({
         ...s,
         is_independent: s.business_id !== bid,
-        business_name: s.businesses?.name ?? null,
+        chair_label: chairLabelByBizId.get(s.business_id) ?? null,
       }));
     },
   });
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: calendarQueryKey,
-    enabled: !!bid && !!linkedProBusinessIds,
+    enabled: !!bid && linkedPros !== undefined,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
@@ -194,7 +201,7 @@ function CalendarPage() {
 
   const { data: blocked } = useQuery({
     queryKey: ["calendar-blocked", bid, linkedBizKey, range.start.toISOString(), range.end.toISOString()],
-    enabled: !!bid && !!linkedProBusinessIds,
+    enabled: !!bid && linkedPros !== undefined,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("blocked_dates")
@@ -1000,10 +1007,10 @@ function StaffColumnHeader({ staff, palette }: { staff: any; palette: StaffPalet
           <span className="truncate">{staff.name}</span>
           {staff.is_independent && (
             <span
-              className="shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300"
-              title={staff.business_name ? `Independent · ${staff.business_name}` : "Independent professional"}
+              className="shrink-0 inline-grid place-items-center h-4 w-4 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300"
+              title={staff.chair_label ? `Independent · ${staff.chair_label}` : "Independent professional"}
             >
-              IP
+              <Armchair className="h-2.5 w-2.5" />
             </span>
           )}
         </div>
