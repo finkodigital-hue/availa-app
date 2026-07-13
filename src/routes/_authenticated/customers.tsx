@@ -55,7 +55,7 @@ function CustomersPage() {
     queryFn: async () => {
       let req = supabase
         .from("customers")
-        .select("id, name, email, phone, address, avatar_url, notes, created_at, bookings:bookings(id, starts_at, status, price_cents)")
+        .select("id, name, email, phone, address, avatar_url, notes, created_at")
         .eq("business_id", bid!)
         .order("created_at", { ascending: false })
         .limit(200);
@@ -63,9 +63,22 @@ function CustomersPage() {
         const term = q.trim();
         req = req.or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`);
       }
-      const { data, error } = await req;
+      // A per-customer embedded booking count runs as a correlated subquery
+      // under RLS (is_business_owner() re-evaluated per booking row scanned)
+      // and times out once a business has real appointment history — and a
+      // client-side fetch-and-count doesn't scale either once a business has
+      // tens of thousands of bookings. Aggregate server-side instead.
+      const [{ data, error }, { data: visitRows, error: visitErr }] = await Promise.all([
+        req,
+        supabase.rpc("customer_visit_counts", { _business_id: bid! }),
+      ]);
       if (error) throw error;
-      return data ?? [];
+      if (visitErr) throw visitErr;
+      const visitCounts = new Map<string, number>();
+      for (const v of visitRows ?? []) {
+        visitCounts.set(v.customer_id, Number(v.visits));
+      }
+      return (data ?? []).map((c) => ({ ...c, visits: visitCounts.get(c.id) ?? 0 }));
     },
   });
 
@@ -132,7 +145,7 @@ function CustomersPage() {
             </thead>
             <tbody>
               {customers?.map((c: any) => {
-                const visits = (c.bookings ?? []).filter((b: any) => b.status !== "cancelled").length;
+                const visits = c.visits;
                 return (
                   <tr key={c.id} onClick={() => setOpenId(c.id)} className="border-t hover:bg-secondary/40 transition-colors group cursor-pointer">
                     <td className="px-5 py-3">
@@ -171,7 +184,7 @@ function CustomersPage() {
 
           <ul className="sm:hidden divide-y">
             {customers?.map((c: any) => {
-              const visits = (c.bookings ?? []).filter((b: any) => b.status !== "cancelled").length;
+              const visits = c.visits;
               return (
                 <li key={c.id} onClick={() => setOpenId(c.id)} className="px-4 py-3 flex items-center gap-3 cursor-pointer">
                   <CustomerAvatar customer={c} />

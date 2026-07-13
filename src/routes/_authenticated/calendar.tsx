@@ -214,6 +214,27 @@ function CalendarPage() {
     },
   });
 
+  // Day view renders one column per staff member here. `staff` above is
+  // active-only (correct for "who can take a new booking today"), but an
+  // inactive/archived team member's existing bookings must stay visible —
+  // so add a read-only column for anyone with a booking in view who isn't
+  // already in the active list. New-booking clicks are disabled on those
+  // columns (see StaffColumn/_readOnly below); existing bookings remain
+  // fully viewable and editable.
+  const dayViewStaff = useMemo(() => {
+    const byId = new Map((staff ?? []).map((s: any) => [s.id, s]));
+    for (const b of bookings ?? []) {
+      if (b.status === "cancelled" || !b.staff || byId.has(b.staff.id)) continue;
+      byId.set(b.staff.id, {
+        ...b.staff,
+        is_independent: b.business_id !== bid,
+        chair_label: chairLabelByBizId.get(b.business_id) ?? null,
+        _readOnly: true,
+      });
+    }
+    return [...byId.values()];
+  }, [staff, bookings, bid, chairLabelByBizId]);
+
   const setStatus = async (id: string, status: BookingStatus) => {
     const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
     if (error) return toast.error(error.message);
@@ -440,7 +461,7 @@ function CalendarPage() {
 
       {view === "day" && (
         <DayView
-          staff={staff ?? []}
+          staff={dayViewStaff}
           bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
           blocked={blocked ?? []}
           date={anchor}
@@ -996,15 +1017,25 @@ function StaffColumnHeader({ staff, palette }: { staff: any; palette: StaffPalet
             {initialsOf(staff.name)}
           </div>
         )}
-        <span
-          className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-card"
-          style={{ background: "oklch(0.68 0.16 155)" }}
-          title="Online"
-        />
+        {!staff._readOnly && (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-card"
+            style={{ background: "oklch(0.68 0.16 155)" }}
+            title="Online"
+          />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold truncate tracking-tight flex items-center gap-1.5">
           <span className="truncate">{staff.name}</span>
+          {staff._readOnly && (
+            <span
+              className="shrink-0 text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground"
+              title="No longer an active team member — shown only because they have appointments here"
+            >
+              Inactive
+            </span>
+          )}
           {staff.is_independent && (
             <span
               className="shrink-0 inline-grid place-items-center h-4 w-4 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300"
@@ -1072,16 +1103,17 @@ function StaffColumn({
       {hours.map((_, i) => (
         <div
           key={i}
-          className="border-b border-border/40 hover:bg-secondary/30 cursor-pointer transition-colors group"
+          className={`border-b border-border/40 transition-colors group ${staff._readOnly ? "" : "hover:bg-secondary/30 cursor-pointer"}`}
           style={{ height: HOUR_PX }}
           onMouseMove={(e) => {
-            if (drag) return;
+            if (drag || staff._readOnly) return;
             const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
             const y = Math.round((i * HOUR_PX + (e.clientY - rect.top)) / SLOT_PX) * SLOT_PX;
             setHoverTop(y);
           }}
           onMouseLeave={() => setHoverTop(null)}
           onClick={(e) => {
+            if (staff._readOnly) return;
             const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
             const y = i * HOUR_PX + (e.clientY - rect.top);
             const minutes = Math.max(0, Math.round(y / SLOT_PX) * SLOT_MIN);
