@@ -18,6 +18,7 @@ import { Route as PortalProfileRouteImport } from './routes/portal.profile'
 import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
+import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-suggest'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
@@ -27,12 +28,14 @@ import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedProfessionalsRouteImport } from './routes/_authenticated/professionals'
 import { Route as AuthenticatedPreviewRouteImport } from './routes/_authenticated/preview'
 import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
+import { Route as AuthenticatedPageBuilderRouteImport } from './routes/_authenticated/page-builder'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+import { Route as AuthenticatedBlockPreviewRouteImport } from './routes/_authenticated/block-preview'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 
 const PortalRoute = PortalRouteImport.update({
@@ -77,6 +80,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
 const BookSlugRoute = BookSlugRouteImport.update({
   id: '/book/$slug',
   path: '/book/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPageAiSuggestRoute = ApiPageAiSuggestRouteImport.update({
+  id: '/api/page-ai-suggest',
+  path: '/api/page-ai-suggest',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -125,6 +133,12 @@ const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
   path: '/payments',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPageBuilderRoute =
+  AuthenticatedPageBuilderRouteImport.update({
+    id: '/page-builder',
+    path: '/page-builder',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -155,6 +169,12 @@ const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
   path: '/bookings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBlockPreviewRoute =
+  AuthenticatedBlockPreviewRouteImport.update({
+    id: '/block-preview',
+    path: '/block-preview',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
@@ -166,12 +186,14 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/portal': typeof PortalRouteWithChildren
   '/assistant': typeof AuthenticatedAssistantRoute
+  '/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/import': typeof AuthenticatedImportRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/page-builder': typeof AuthenticatedPageBuilderRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/preview': typeof AuthenticatedPreviewRoute
   '/professionals': typeof AuthenticatedProfessionalsRoute
@@ -181,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/staff': typeof AuthenticatedStaffRoute
   '/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/book/$slug': typeof BookSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
@@ -191,12 +214,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/assistant': typeof AuthenticatedAssistantRoute
+  '/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/import': typeof AuthenticatedImportRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/page-builder': typeof AuthenticatedPageBuilderRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/preview': typeof AuthenticatedPreviewRoute
   '/professionals': typeof AuthenticatedProfessionalsRoute
@@ -206,6 +231,7 @@ export interface FileRoutesByTo {
   '/staff': typeof AuthenticatedStaffRoute
   '/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/book/$slug': typeof BookSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
@@ -219,12 +245,14 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/portal': typeof PortalRouteWithChildren
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
+  '/_authenticated/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/page-builder': typeof AuthenticatedPageBuilderRoute
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/preview': typeof AuthenticatedPreviewRoute
   '/_authenticated/professionals': typeof AuthenticatedProfessionalsRoute
@@ -234,6 +262,7 @@ export interface FileRoutesById {
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/_authenticated/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/book/$slug': typeof BookSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
@@ -247,12 +276,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/portal'
     | '/assistant'
+    | '/block-preview'
     | '/bookings'
     | '/calendar'
     | '/customers'
     | '/dashboard'
     | '/import'
     | '/onboarding'
+    | '/page-builder'
     | '/payments'
     | '/preview'
     | '/professionals'
@@ -262,6 +293,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/stock'
     | '/api/chat'
+    | '/api/page-ai-suggest'
     | '/book/$slug'
     | '/invite/$token'
     | '/portal/bookings'
@@ -272,12 +304,14 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/assistant'
+    | '/block-preview'
     | '/bookings'
     | '/calendar'
     | '/customers'
     | '/dashboard'
     | '/import'
     | '/onboarding'
+    | '/page-builder'
     | '/payments'
     | '/preview'
     | '/professionals'
@@ -287,6 +321,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/stock'
     | '/api/chat'
+    | '/api/page-ai-suggest'
     | '/book/$slug'
     | '/invite/$token'
     | '/portal/bookings'
@@ -299,12 +334,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/portal'
     | '/_authenticated/assistant'
+    | '/_authenticated/block-preview'
     | '/_authenticated/bookings'
     | '/_authenticated/calendar'
     | '/_authenticated/customers'
     | '/_authenticated/dashboard'
     | '/_authenticated/import'
     | '/_authenticated/onboarding'
+    | '/_authenticated/page-builder'
     | '/_authenticated/payments'
     | '/_authenticated/preview'
     | '/_authenticated/professionals'
@@ -314,6 +351,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff'
     | '/_authenticated/stock'
     | '/api/chat'
+    | '/api/page-ai-suggest'
     | '/book/$slug'
     | '/invite/$token'
     | '/portal/bookings'
@@ -327,6 +365,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   PortalRoute: typeof PortalRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
+  ApiPageAiSuggestRoute: typeof ApiPageAiSuggestRoute
   BookSlugRoute: typeof BookSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
 }
@@ -396,6 +435,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BookSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/page-ai-suggest': {
+      id: '/api/page-ai-suggest'
+      path: '/api/page-ai-suggest'
+      fullPath: '/api/page-ai-suggest'
+      preLoaderRoute: typeof ApiPageAiSuggestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -459,6 +505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPaymentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/page-builder': {
+      id: '/_authenticated/page-builder'
+      path: '/page-builder'
+      fullPath: '/page-builder'
+      preLoaderRoute: typeof AuthenticatedPageBuilderRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/onboarding': {
       id: '/_authenticated/onboarding'
       path: '/onboarding'
@@ -501,6 +554,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/block-preview': {
+      id: '/_authenticated/block-preview'
+      path: '/block-preview'
+      fullPath: '/block-preview'
+      preLoaderRoute: typeof AuthenticatedBlockPreviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/assistant': {
       id: '/_authenticated/assistant'
       path: '/assistant'
@@ -513,12 +573,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
+  AuthenticatedBlockPreviewRoute: typeof AuthenticatedBlockPreviewRoute
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedPageBuilderRoute: typeof AuthenticatedPageBuilderRoute
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedPreviewRoute: typeof AuthenticatedPreviewRoute
   AuthenticatedProfessionalsRoute: typeof AuthenticatedProfessionalsRoute
@@ -531,12 +593,14 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
+  AuthenticatedBlockPreviewRoute: AuthenticatedBlockPreviewRoute,
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedCustomersRoute: AuthenticatedCustomersRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedPageBuilderRoute: AuthenticatedPageBuilderRoute,
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedPreviewRoute: AuthenticatedPreviewRoute,
   AuthenticatedProfessionalsRoute: AuthenticatedProfessionalsRoute,
@@ -571,6 +635,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   PortalRoute: PortalRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
+  ApiPageAiSuggestRoute: ApiPageAiSuggestRoute,
   BookSlugRoute: BookSlugRoute,
   InviteTokenRoute: InviteTokenRoute,
 }
