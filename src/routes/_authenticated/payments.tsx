@@ -40,6 +40,7 @@ function PaymentsPage() {
         .from("bookings")
         .select("id, customer_name, price_cents, payment_status, amount_paid_cents, starts_at, services(name)")
         .eq("business_id", bid!)
+        .neq("status", "cancelled")
         .order("starts_at", { ascending: false })
         .limit(100);
       if (error) throw error;

@@ -170,7 +170,7 @@ function InviteAcceptPage() {
     });
     if (acceptErr) throw acceptErr;
 
-    toast.success("You're in! Welcome to Luma.");
+    toast.success("You're in! Welcome to Bookzenvo.");
     await qc.invalidateQueries();
     navigate({ to: "/dashboard" });
   }
@@ -196,7 +196,7 @@ function InviteAcceptPage() {
           Join <span className="italic text-primary">{invite.salon?.name}</span> as an independent professional.
         </h1>
         <p className="text-sm text-muted-foreground mt-3 text-pretty">
-          You'll run your own business inside Luma — your services, prices, customers and payments
+          You'll run your own business inside Bookzenvo — your services, prices, customers and payments
           stay yours. You'll simply appear on the shared calendar and booking page.
         </p>
         {invite.message && (
@@ -260,7 +260,7 @@ function InviteAcceptPage() {
                 onClick={() => setMode("signin")}
                 className={`flex-1 px-3 py-1.5 rounded-full transition-colors ${mode === "signin" ? "bg-foreground text-background shadow-soft" : "text-muted-foreground hover:text-foreground"}`}
               >
-                Already have a Luma account
+                Already have a Bookzenvo account
               </button>
             </div>
             {mode === "signup" && (

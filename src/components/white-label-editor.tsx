@@ -71,7 +71,7 @@ export function WhiteLabelEditor({ business }: { business: any }) {
           className="h-10"
         />
         <p className="text-[11px] text-muted-foreground mt-2">
-          Point a CNAME from <span className="font-mono">{f.custom_domain || "book.yourdomain.com"}</span> to <span className="font-mono">cname.luma.app</span>. SSL is provisioned automatically.
+          Point a CNAME from <span className="font-mono">{f.custom_domain || "book.yourdomain.com"}</span> to <span className="font-mono">cname.bookzenvo.com</span>. SSL is provisioned automatically.
         </p>
       </div>
 

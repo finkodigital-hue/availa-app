@@ -131,7 +131,7 @@ function ProfessionalsPage() {
         <EmptyState
           icon={Armchair}
           title="No independent professionals yet"
-          description="Invite a self-employed pro by email. They'll create their own Luma account and business, then show up on your shared calendar and booking page."
+          description="Invite a self-employed pro by email. They'll create their own Bookzenvo account and business, then show up on your shared calendar and booking page."
           action={
             <Button onClick={() => setInviteOpen(true)}>
               <Plus className="h-4 w-4 mr-1" /> Invite first professional
@@ -487,6 +487,7 @@ function AddRentPaymentDialog({ link, onOpenChange, onSaved }: { link: any | nul
     if (!link) return;
     const cents = Math.round(parseFloat(amount || "0") * 100);
     if (!(cents > 0)) return toast.error("Enter an amount greater than $0");
+    if (periodEnd < periodStart) return toast.error("Period end must be on or after period start");
     setBusy(true);
     try {
       const { error } = await supabase.from("rent_payments").insert({
@@ -636,7 +637,7 @@ function InviteDialog({
           </DialogTitle>
           <DialogDescription>
             {createdToken
-              ? "Send this link to the professional. They'll create their own Luma account and business — nothing on your side changes until they accept."
+              ? "Send this link to the professional. They'll create their own Bookzenvo account and business — nothing on your side changes until they accept."
               : "They'll sign up and manage their own business. Your calendar and booking page will show them alongside your team."}
           </DialogDescription>
         </DialogHeader>
