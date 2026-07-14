@@ -18,6 +18,9 @@ import {
   Ban,
   CheckCircle2,
   TimerReset,
+  Package,
+  ChevronDown,
+  Armchair,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +29,8 @@ import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -127,27 +132,33 @@ function CalendarPage() {
   // Load business IDs whose staff/bookings should appear on this salon's
   // shared calendar: the salon itself + every actively linked independent
   // professional whose permissions allow calendar visibility.
-  const { data: linkedProBusinessIds } = useQuery({
+  const { data: linkedPros } = useQuery({
     queryKey: ["calendar-linked-pros", bid],
     enabled: !!bid,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("salon_professionals")
-        .select("pro_business_id, permissions")
+        .select("pro_business_id, chair_label, permissions")
         .eq("salon_business_id", bid!)
         .eq("status", "active");
       if (error) throw error;
-      return (data ?? [])
-        .filter((r: any) => (r.permissions?.salon_can_view_calendar ?? true) !== false)
-        .map((r: any) => r.pro_business_id as string);
+      return (data ?? []).filter(
+        (r: any) => (r.permissions?.salon_can_view_calendar ?? true) !== false,
+      ) as { pro_business_id: string; chair_label: string | null }[];
     },
   });
 
+  const linkedProBusinessIds = useMemo(() => (linkedPros ?? []).map((p) => p.pro_business_id), [linkedPros]);
+  const chairLabelByBizId = useMemo(
+    () => new Map((linkedPros ?? []).map((p) => [p.pro_business_id, p.chair_label])),
+    [linkedPros],
+  );
+
   const allBizIds = useMemo(
-    () => (bid ? [bid, ...(linkedProBusinessIds ?? [])] : []),
+    () => (bid ? [bid, ...linkedProBusinessIds] : []),
     [bid, linkedProBusinessIds],
   );
-  const linkedBizKey = linkedProBusinessIds?.join(",") ?? "";
+  const linkedBizKey = linkedProBusinessIds.join(",");
   const calendarQueryKey = useMemo(
     () => ["calendar", bid, linkedBizKey, range.start.toISOString(), range.end.toISOString()],
     [bid, linkedBizKey, range.start, range.end],
@@ -155,11 +166,11 @@ function CalendarPage() {
 
   const { data: staff } = useQuery({
     queryKey: ["calendar-staff", bid, linkedBizKey],
-    enabled: !!bid && !!linkedProBusinessIds,
+    enabled: !!bid && linkedPros !== undefined,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff")
-        .select("id, name, role, photo_url, business_id, businesses:business_id(name)")
+        .select("id, name, role, photo_url, business_id")
         .in("business_id", allBizIds)
         .eq("active", true)
         .order("name");
@@ -167,14 +178,14 @@ function CalendarPage() {
       return (data ?? []).map((s: any) => ({
         ...s,
         is_independent: s.business_id !== bid,
-        business_name: s.businesses?.name ?? null,
+        chair_label: chairLabelByBizId.get(s.business_id) ?? null,
       }));
     },
   });
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: calendarQueryKey,
-    enabled: !!bid && !!linkedProBusinessIds,
+    enabled: !!bid && linkedPros !== undefined,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
@@ -190,7 +201,7 @@ function CalendarPage() {
 
   const { data: blocked } = useQuery({
     queryKey: ["calendar-blocked", bid, linkedBizKey, range.start.toISOString(), range.end.toISOString()],
-    enabled: !!bid && !!linkedProBusinessIds,
+    enabled: !!bid && linkedPros !== undefined,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("blocked_dates")
@@ -202,6 +213,27 @@ function CalendarPage() {
       return data ?? [];
     },
   });
+
+  // Day view renders one column per staff member here. `staff` above is
+  // active-only (correct for "who can take a new booking today"), but an
+  // inactive/archived team member's existing bookings must stay visible —
+  // so add a read-only column for anyone with a booking in view who isn't
+  // already in the active list. New-booking clicks are disabled on those
+  // columns (see StaffColumn/_readOnly below); existing bookings remain
+  // fully viewable and editable.
+  const dayViewStaff = useMemo(() => {
+    const byId = new Map((staff ?? []).map((s: any) => [s.id, s]));
+    for (const b of bookings ?? []) {
+      if (b.status === "cancelled" || !b.staff || byId.has(b.staff.id)) continue;
+      byId.set(b.staff.id, {
+        ...b.staff,
+        is_independent: b.business_id !== bid,
+        chair_label: chairLabelByBizId.get(b.business_id) ?? null,
+        _readOnly: true,
+      });
+    }
+    return [...byId.values()];
+  }, [staff, bookings, bid, chairLabelByBizId]);
 
   const setStatus = async (id: string, status: BookingStatus) => {
     const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
@@ -429,7 +461,7 @@ function CalendarPage() {
 
       {view === "day" && (
         <DayView
-          staff={staff ?? []}
+          staff={dayViewStaff}
           bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
           blocked={blocked ?? []}
           date={anchor}
@@ -514,6 +546,9 @@ function CalendarPage() {
               )}
             </div>
           )}
+          {selected && selected.status === "completed" && (
+            <StockUsedPanel bookingId={selected.id} />
+          )}
           {selected && (
             <div className="space-y-2">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Change status</div>
@@ -579,6 +614,107 @@ function DetailRow({ label, value }: { label: string; value: any }) {
       <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       <span className="font-medium text-sm text-right">{value}</span>
     </div>
+  );
+}
+
+type StockDeduction = {
+  id: string;
+  inventory_item_id: string;
+  quantity: number;
+  inventory_items: { name: string; unit: string | null } | null;
+};
+
+function StockUsedPanel({ bookingId }: { bookingId: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const { data: deductions, isLoading, error } = useQuery({
+    queryKey: ["booking-stock-deductions", bookingId],
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("booking_stock_deductions")
+        .select("id, inventory_item_id, quantity, inventory_items(name, unit)")
+        .eq("booking_id", bookingId);
+      if (error) throw error;
+      return data as unknown as StockDeduction[];
+    },
+  });
+
+  const migrationMissing = /schema cache|could not find the table/i.test((error as any)?.message ?? "");
+
+  const save = async (d: StockDeduction) => {
+    const raw = drafts[d.id];
+    const next = Number(raw);
+    if (!Number.isFinite(next) || next < 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
+    if (next === Number(d.quantity)) return;
+    setSavingId(d.id);
+    const { error } = await supabase.rpc("adjust_booking_stock_deduction", {
+      p_deduction_id: d.id,
+      p_new_quantity: next,
+    });
+    setSavingId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Stock usage updated");
+    qc.invalidateQueries({ queryKey: ["booking-stock-deductions", bookingId] });
+    qc.invalidateQueries({ queryKey: ["inventory_items"] });
+  };
+
+  if (migrationMissing) {
+    return (
+      <div className="rounded-2xl border border-dashed bg-secondary/40 px-4 py-3 text-xs text-muted-foreground flex items-center gap-2">
+        <Package className="h-3.5 w-3.5 shrink-0" />
+        Apply the database migration to enable stock tracking on completed bookings.
+      </div>
+    );
+  }
+
+  if (error) return null;
+  if (!isLoading && (!deductions || deductions.length === 0)) return null;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-2xl border bg-secondary/40">
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm"
+        >
+          <span className="inline-flex items-center gap-2 text-muted-foreground">
+            <Package className="h-3.5 w-3.5" />
+            Stock used{deductions ? ` (${deductions.length} item${deductions.length === 1 ? "" : "s"})` : ""}
+          </span>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-4 pb-4 space-y-2">
+        {isLoading ? (
+          <Skeleton className="h-8 w-full" />
+        ) : (
+          (deductions ?? []).map((d) => (
+            <div key={d.id} className="flex items-center gap-2">
+              <span className="flex-1 text-sm truncate">{d.inventory_items?.name ?? "Item"}</span>
+              <Input
+                type="number"
+                className="w-20 h-8"
+                value={drafts[d.id] ?? String(Number(d.quantity))}
+                onChange={(e) => setDrafts((s) => ({ ...s, [d.id]: e.target.value }))}
+                onBlur={() => save(d)}
+                disabled={savingId === d.id}
+              />
+              <span className="text-xs text-muted-foreground w-10">{d.inventory_items?.unit || ""}</span>
+            </div>
+          ))
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -886,16 +1022,33 @@ function StaffColumnHeader({ staff, palette }: { staff: any; palette: StaffPalet
           style={{ background: "var(--confirmed)" }}
           title="Online"
         />
+        {!staff._readOnly && (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-card"
+            style={{ background: "oklch(0.68 0.16 155)" }}
+            title="Online"
+          />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold truncate tracking-tight flex items-center gap-1.5">
           <span className="truncate">{staff.name}</span>
+          {staff._readOnly && (
+            <span
+              className="shrink-0 text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground"
+              title="No longer an active team member — shown only because they have appointments here"
+            >
+              Inactive
+            </span>
+          )}
           {staff.is_independent && (
             <span
               className="shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[color:var(--pending-bg)] text-[color:var(--pending)]"
               title={staff.business_name ? `Independent · ${staff.business_name}` : "Independent professional"}
+              className="shrink-0 inline-grid place-items-center h-4 w-4 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300"
+              title={staff.chair_label ? `Independent · ${staff.chair_label}` : "Independent professional"}
             >
-              IP
+              <Armchair className="h-2.5 w-2.5" />
             </span>
           )}
         </div>
@@ -957,16 +1110,17 @@ function StaffColumn({
       {hours.map((_, i) => (
         <div
           key={i}
-          className="border-b border-border/40 hover:bg-secondary/30 cursor-pointer transition-colors group"
+          className={`border-b border-border/40 transition-colors group ${staff._readOnly ? "" : "hover:bg-secondary/30 cursor-pointer"}`}
           style={{ height: HOUR_PX }}
           onMouseMove={(e) => {
-            if (drag) return;
+            if (drag || staff._readOnly) return;
             const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
             const y = Math.round((i * HOUR_PX + (e.clientY - rect.top)) / SLOT_PX) * SLOT_PX;
             setHoverTop(y);
           }}
           onMouseLeave={() => setHoverTop(null)}
           onClick={(e) => {
+            if (staff._readOnly) return;
             const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
             const y = i * HOUR_PX + (e.clientY - rect.top);
             const minutes = Math.max(0, Math.round(y / SLOT_PX) * SLOT_MIN);

@@ -1,29 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { CalendarCheck, Search, Filter } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CalendarCheck, Search, Filter, Clock, User as UserIcon, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmtMoney, fmtTime, statusMeta } from "@/lib/format";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { fmtMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
   component: BookingsPage,
 });
 
-const STATUSES = ["all", "confirmed", "completed", "cancelled", "no_show"] as const;
+const STATUSES = ["all", ...BOOKING_STATUSES.map((s) => s.id)] as const;
 
 function BookingsPage() {
   const { data: biz } = useMyBusiness();
   const bid = biz?.id;
+  const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("all");
   const [period, setPeriod] = useState<"upcoming" | "past" | "all">("upcoming");
+  const [selected, setSelected] = useState<any | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["bookings-list", bid, status, period],
@@ -40,6 +47,14 @@ function BookingsPage() {
       return data ?? [];
     },
   });
+
+  const setBookingStatus = async (id: string, next: BookingStatus) => {
+    const { error } = await supabase.from("bookings").update({ status: next }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(`Marked as ${statusMeta(next).label}`);
+    setSelected((s: any) => (s && s.id === id ? { ...s, status: next } : s));
+    qc.invalidateQueries({ queryKey: ["bookings-list", bid] });
+  };
 
   const filtered = (data ?? []).filter((b: any) => {
     if (!q.trim()) return true;
@@ -72,7 +87,8 @@ function BookingsPage() {
         <Select value={status} onValueChange={(v: any) => setStatus(v)}>
           <SelectTrigger className="w-[150px] h-10"><Filter className="h-3.5 w-3.5 mr-1.5" /><SelectValue /></SelectTrigger>
           <SelectContent>
-            {STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s.replace("_", " ")}</SelectItem>)}
+            <SelectItem value="all">All</SelectItem>
+            {BOOKING_STATUSES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -91,6 +107,15 @@ function BookingsPage() {
             return (
               <div key={b.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/40 transition-colors">
                 <div className="w-1 h-10 rounded-[2px]" style={{ background: color }} />
+              <div
+                key={b.id}
+                onClick={() => setSelected(b)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && setSelected(b)}
+                className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/40 transition-colors cursor-pointer"
+              >
+                <div className="w-1 h-10 rounded-full" style={{ background: color }} />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="font-medium truncate">{b.customer_name}</div>
@@ -100,6 +125,10 @@ function BookingsPage() {
                       style={{ background: meta.tint, color: meta.color }}
                     >
                       {meta.label}
+                      className="text-[10px]"
+                      style={{ background: statusMeta(b.status).tint, color: statusMeta(b.status).color, borderColor: statusMeta(b.status).color }}
+                    >
+                      {statusMeta(b.status).label}
                     </Badge>
                     {b.source === "walkin" && <Badge variant="secondary" className="text-[10px]">Walk-in</Badge>}
                   </div>
@@ -113,6 +142,98 @@ function BookingsPage() {
           })}
         </div>
       )}
+
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">{selected?.customer_name}</DialogTitle>
+            <DialogDescription>
+              {selected && (
+                <span className="inline-flex items-center gap-1.5 text-xs">
+                  <Clock className="h-3 w-3" />
+                  {new Date(selected.starts_at).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })} · {fmtTime(selected.starts_at)} – {fmtTime(selected.ends_at)}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {selected && (
+            <div className="rounded-2xl border bg-secondary/40 p-4 space-y-2 text-sm">
+              <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">Service</span>
+                <span className="font-medium text-sm text-right">{selected.services?.name}</span>
+              </div>
+              <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">With</span>
+                <span className="font-medium text-sm text-right inline-flex items-center gap-1 justify-end">
+                  <UserIcon className="h-3 w-3" />
+                  {selected.staff?.name}
+                </span>
+              </div>
+              <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">Contact</span>
+                <span className="font-medium text-sm text-right">{selected.customer_email || selected.customer_phone || "—"}</span>
+              </div>
+              <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">Price</span>
+                <span className="font-medium text-sm text-right">{fmtMoney(selected.price_cents ?? 0)}</span>
+              </div>
+              {selected.source === "walkin" && (
+                <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">Source</span>
+                  <span className="text-right"><Badge variant="secondary">Walk-in</Badge></span>
+                </div>
+              )}
+              {selected.notes && (
+                <div className="pt-2 mt-2 border-t">
+                  <div className="text-xs text-muted-foreground mb-1">Notes</div>
+                  <p className="text-sm text-pretty">{selected.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          {selected && (
+            <div className="space-y-2">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Change status</div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {BOOKING_STATUSES.map((s) => {
+                  const on = selected.status === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setBookingStatus(selected.id, s.id)}
+                      className={`text-xs rounded-xl border px-2 py-1.5 transition-all ${on ? "ring-2 ring-offset-1 ring-offset-background font-medium" : "hover:bg-secondary/60"}`}
+                      style={
+                        on
+                          ? { background: s.tint, color: s.color, borderColor: s.color, ["--tw-ring-color" as any]: s.color }
+                          : { borderColor: "var(--color-border)" }
+                      }
+                    >
+                      <span className="inline-block h-1.5 w-1.5 rounded-full mr-1.5 align-middle" style={{ background: s.color }} />
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="flex-wrap gap-2">
+            {selected && selected.status !== "cancelled" && (
+              <ConfirmDialog
+                trigger={
+                  <Button variant="destructive" className="rounded-full">
+                    <XCircle className="h-4 w-4 mr-1.5" /> Cancel booking
+                  </Button>
+                }
+                title="Cancel this booking?"
+                description="The customer will be notified if reminders are enabled."
+                confirmLabel="Cancel booking"
+                onConfirm={async () => { await setBookingStatus(selected.id, "cancelled"); setSelected(null); }}
+              />
+            )}
+            <Button variant="ghost" onClick={() => setSelected(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -97,7 +97,9 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           ends_at: string
+          external_id: string | null
           id: string
+          import_batch_id: string | null
           is_custom: boolean
           notes: string | null
           notify_customer: boolean
@@ -125,7 +127,9 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           ends_at: string
+          external_id?: string | null
           id?: string
+          import_batch_id?: string | null
           is_custom?: boolean
           notes?: string | null
           notify_customer?: boolean
@@ -153,7 +157,9 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           ends_at?: string
+          external_id?: string | null
           id?: string
+          import_batch_id?: string | null
           is_custom?: boolean
           notes?: string | null
           notify_customer?: boolean
@@ -169,6 +175,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_business_id_fkey"
             columns: ["business_id"]
@@ -558,7 +571,9 @@ export type Database = {
           business_id: string
           created_at: string
           email: string | null
+          external_id: string | null
           id: string
+          import_batch_id: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -572,7 +587,9 @@ export type Database = {
           business_id: string
           created_at?: string
           email?: string | null
+          external_id?: string | null
           id?: string
+          import_batch_id?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -586,7 +603,9 @@ export type Database = {
           business_id?: string
           created_at?: string
           email?: string | null
+          external_id?: string | null
           id?: string
+          import_batch_id?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
@@ -594,6 +613,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "customers_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customers_business_id_fkey"
             columns: ["business_id"]
@@ -603,6 +629,75 @@ export type Database = {
           },
           {
             foreignKeyName: "customers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      import_batches: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          duplicate_count: number
+          entity_type: string
+          file_hash: string
+          id: string
+          imported_count: number
+          rolled_back_at: string | null
+          row_count: number
+          session_id: string
+          skipped_count: number
+          source: string
+          source_filename: string
+          status: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          duplicate_count?: number
+          entity_type: string
+          file_hash: string
+          id?: string
+          imported_count?: number
+          rolled_back_at?: string | null
+          row_count?: number
+          session_id: string
+          skipped_count?: number
+          source?: string
+          source_filename: string
+          status?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          duplicate_count?: number
+          entity_type?: string
+          file_hash?: string
+          id?: string
+          imported_count?: number
+          rolled_back_at?: string | null
+          row_count?: number
+          session_id?: string
+          skipped_count?: number
+          source?: string
+          source_filename?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_batches_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_batches_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "public_businesses"
@@ -702,6 +797,62 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_stock_deductions: {
+        Row: {
+          business_id: string
+          booking_id: string
+          created_at: string
+          id: string
+          inventory_item_id: string
+          quantity: number
+        }
+        Insert: {
+          business_id: string
+          booking_id: string
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          quantity: number
+        }
+        Update: {
+          business_id?: string
+          booking_id?: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_stock_deductions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_stock_deductions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_stock_deductions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_stock_deductions_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
         ]
@@ -1173,8 +1324,10 @@ export type Database = {
           currency: string
           description: string | null
           duration_minutes: number
+          external_id: string | null
           id: string
           image_url: string | null
+          import_batch_id: string | null
           name: string
           price_cents: number
           updated_at: string
@@ -1191,8 +1344,10 @@ export type Database = {
           currency?: string
           description?: string | null
           duration_minutes?: number
+          external_id?: string | null
           id?: string
           image_url?: string | null
+          import_batch_id?: string | null
           name: string
           price_cents?: number
           updated_at?: string
@@ -1209,13 +1364,22 @@ export type Database = {
           currency?: string
           description?: string | null
           duration_minutes?: number
+          external_id?: string | null
           id?: string
           image_url?: string | null
+          import_batch_id?: string | null
           name?: string
           price_cents?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "services_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "services_business_id_fkey"
             columns: ["business_id"]
@@ -1241,6 +1405,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          import_batch_id: string | null
           name: string
           phone: string | null
           photo_url: string | null
@@ -1255,6 +1420,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          import_batch_id?: string | null
           name: string
           phone?: string | null
           photo_url?: string | null
@@ -1269,6 +1435,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          import_batch_id?: string | null
           name?: string
           phone?: string | null
           photo_url?: string | null
@@ -1276,6 +1443,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "staff_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "staff_business_id_fkey"
             columns: ["business_id"]
@@ -1654,6 +1828,10 @@ export type Database = {
         Args: { _pro_business_id: string; _token: string }
         Returns: string
       }
+      adjust_booking_stock_deduction: {
+        Args: { p_deduction_id: string; p_new_quantity: number }
+        Returns: undefined
+      }
       create_public_booking: {
         Args: {
           p_business_id: string
@@ -1669,6 +1847,13 @@ export type Database = {
         Returns: string
       }
       current_user_email: { Args: never; Returns: string }
+      customer_visit_counts: {
+        Args: { _business_id: string }
+        Returns: {
+          customer_id: string
+          visits: number
+        }[]
+      }
       ensure_business_hours: {
         Args: { _business_id: string }
         Returns: undefined

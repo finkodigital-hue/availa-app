@@ -80,10 +80,10 @@ function BookingsPage() {
     const list = data ?? [];
     return {
       upcoming: list
-        .filter((b) => new Date(b.starts_at).getTime() >= now && b.status !== "cancelled")
+        .filter((b) => new Date(b.starts_at).getTime() >= now && b.status !== "cancelled" && b.status !== "completed")
         .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()),
       past: list
-        .filter((b) => new Date(b.starts_at).getTime() < now || b.status === "cancelled")
+        .filter((b) => new Date(b.starts_at).getTime() < now || b.status === "cancelled" || b.status === "completed")
         .sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime()),
     };
   }, [data]);
@@ -188,7 +188,7 @@ function statusBadge(status: string) {
 function BookingCard({ b, canManage, onReschedule, onCancel }: { b: Booking; canManage: boolean; onReschedule?: () => void; onCancel?: () => void }) {
   const brand = b.businesses?.brand_color ?? "hsl(var(--primary))";
   const start = new Date(b.starts_at);
-  const canModify = canManage && withinWindow(b) && b.status !== "cancelled";
+  const canModify = canManage && withinWindow(b) && b.status !== "cancelled" && b.status !== "completed";
 
   return (
     <div className="group rounded-2xl border bg-card p-5 sm:p-6 transition hover:shadow-elegant animate-rise">

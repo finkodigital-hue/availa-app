@@ -60,9 +60,57 @@ export const Route = createFileRoute("/book/$slug")({
   component: PublicBooking,
 });
 
-type Service = { id: string; name: string; duration_minutes: number; price_cents: number; description: string | null; buffer_before_min?: number | null; buffer_after_min?: number | null; color?: string | null };
-type Staff = { id: string; name: string; role: string | null };
+// A "service" here is always a specific business's variant (its own price,
+// duration, id) — the owning business_id is what routes the eventual booking
+// to the right business (the salon, or one of its independent pros).
+type Service = {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  price_cents: number;
+  description: string | null;
+  buffer_before_min?: number | null;
+  buffer_after_min?: number | null;
+  color?: string | null;
+  business_id: string;
+};
+type Staff = { id: string; name: string; role: string | null; business_id: string };
 type Step = "service" | "staff" | "time" | "info" | "done";
+
+// Services with the same (trimmed, case-insensitive) name across the salon
+// and its linked independent pros are shown as one card — customers pick a
+// person, not a business, on the next step. Independent pros stay invisible
+// as separate businesses throughout.
+type ServiceGroup = { key: string; name: string; description: string | null; variants: Service[] };
+
+function groupServices(services: Service[]): ServiceGroup[] {
+  const map = new Map<string, Service[]>();
+  for (const s of services) {
+    const key = s.name.trim().toLowerCase();
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(s);
+  }
+  return Array.from(map.entries())
+    .map(([key, variants]) => ({
+      key,
+      name: variants[0].name,
+      description: variants.find((v) => v.description)?.description ?? null,
+      variants,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function priceRange(variants: Service[]) {
+  const prices = variants.map((v) => v.price_cents);
+  const min = Math.min(...prices), max = Math.max(...prices);
+  return min === max ? fmtMoney(min) : `${fmtMoney(min)}–${fmtMoney(max)}`;
+}
+
+function durationRange(variants: Service[]) {
+  const durations = variants.map((v) => v.duration_minutes);
+  const min = Math.min(...durations), max = Math.max(...durations);
+  return min === max ? `${min} min` : `${min}–${max} min`;
+}
 
 const STEPS: { id: Step; label: string }[] = [
   { id: "service", label: "Service" },
@@ -74,6 +122,7 @@ const STEPS: { id: Step; label: string }[] = [
 function PublicBooking() {
   const biz = Route.useLoaderData();
   const [step, setStep] = useState<Step>("service");
+  const [serviceGroup, setServiceGroup] = useState<ServiceGroup | null>(null);
   const [service, setService] = useState<Service | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
   const [date, setDate] = useState<Date>(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
@@ -84,38 +133,107 @@ function PublicBooking() {
   const brand = biz.brand_color ?? "#8E2A38";
   const brandStyle = { ["--brand" as any]: brand } as React.CSSProperties;
 
-  const { data: services, isLoading: loadingServices } = useQuery({
-    queryKey: ["pub-services", biz.id],
+  // Independent professionals linked to this salon who allow public booking.
+  // They're deliberately invisible as separate businesses — this just
+  // widens which staff/services are pulled in below.
+  const { data: pros } = useQuery({
+    queryKey: ["pub-pros", biz.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("services").select("id, name, duration_minutes, price_cents, description, buffer_before_min, buffer_after_min, color").eq("business_id", biz.id).eq("active", true).order("name");
-      if (error) throw error; return data as Service[];
+      const { data, error } = await (supabase as any).rpc("get_public_salon_professionals", {
+        _salon_business_id: biz.id,
+      });
+      // Degrade to salon-only booking (this page's original behavior) if the
+      // RPC isn't available yet — e.g. its migration hasn't been applied —
+      // rather than getting the whole booking page stuck.
+      if (error) return [];
+      return (data ?? []) as { pro_business_id: string; chair_label: string | null; display_order: number }[];
     },
   });
 
-  const { data: allStaff, isLoading: loadingStaff } = useQuery({
-    queryKey: ["pub-staff", biz.id, service?.id],
-    enabled: !!service,
+  const proBusinessIds = useMemo(() => (pros ?? []).map((p) => p.pro_business_id), [pros]);
+  const bizIds = useMemo(() => [biz.id, ...proBusinessIds], [biz.id, proBusinessIds]);
+
+  const { data: services, isLoading: loadingServices } = useQuery({
+    queryKey: ["pub-services", biz.id, proBusinessIds.join(",")],
+    enabled: pros !== undefined,
     queryFn: async () => {
-      const linked = await supabase.from("service_staff").select("staff_id").eq("service_id", service!.id);
-      let q = (supabase as any).from("public_staff").select("id, name, role").eq("business_id", biz.id);
-      if (linked.data && linked.data.length > 0) q = q.in("id", linked.data.map((r) => r.staff_id));
-      const { data, error } = await q.order("name");
-      if (error) throw error; return data as Staff[];
+      const { data, error } = await supabase
+        .from("services")
+        .select("id, name, duration_minutes, price_cents, description, buffer_before_min, buffer_after_min, color, business_id")
+        .in("business_id", bizIds)
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data as Service[];
+    },
+  });
+
+  const serviceGroups = useMemo(() => groupServices(services ?? []), [services]);
+
+  const { data: allStaff, isLoading: loadingStaff } = useQuery({
+    queryKey: ["pub-staff", serviceGroup?.key, proBusinessIds.join(",")],
+    enabled: !!serviceGroup,
+    queryFn: async () => {
+      const variants = serviceGroup!.variants;
+      const variantIds = variants.map((v) => v.id);
+      const linkedRes = await supabase.from("service_staff").select("staff_id, service_id").in("service_id", variantIds);
+      const linkedByService = new Map<string, string[]>();
+      for (const row of linkedRes.data ?? []) {
+        const arr = linkedByService.get(row.service_id) ?? [];
+        arr.push(row.staff_id);
+        linkedByService.set(row.service_id, arr);
+      }
+      // A variant with no explicit service_staff links is bookable with any
+      // of that business's staff (existing single-business behavior),
+      // preserved per-business here.
+      const staffIds = new Set<string>();
+      const fallbackBizIds: string[] = [];
+      for (const v of variants) {
+        const linked = linkedByService.get(v.id);
+        if (linked && linked.length > 0) linked.forEach((id) => staffIds.add(id));
+        else fallbackBizIds.push(v.business_id);
+      }
+      const results: Staff[] = [];
+      if (staffIds.size > 0) {
+        const { data, error } = await (supabase as any)
+          .from("public_staff")
+          .select("id, name, role, business_id")
+          .in("id", Array.from(staffIds));
+        if (error) throw error;
+        results.push(...(data as Staff[]));
+      }
+      if (fallbackBizIds.length > 0) {
+        const { data, error } = await (supabase as any)
+          .from("public_staff")
+          .select("id, name, role, business_id")
+          .in("business_id", fallbackBizIds);
+        if (error) throw error;
+        results.push(...(data as Staff[]));
+      }
+      const dedup = Array.from(new Map(results.map((s) => [s.id, s])).values());
+      dedup.sort((a, b) => a.name.localeCompare(b.name));
+      return dedup;
     },
   });
 
   const { data: dayData, isLoading: loadingDay } = useQuery({
-    queryKey: ["pub-day", biz.id, staff?.id, date.toDateString()],
+    queryKey: ["pub-day", service?.business_id, staff?.id, date.toDateString()],
     enabled: !!staff && !!service,
     queryFn: async () => {
       const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
       const dayEnd = new Date(date); dayEnd.setHours(23, 59, 59, 999);
       const [hoursR, bookingsR, blockedR] = await Promise.all([
-        supabase.from("business_hours").select("*").eq("business_id", biz.id).eq("weekday", date.getDay()).maybeSingle(),
-        supabase.from("bookings").select("starts_at, ends_at, status").eq("business_id", biz.id).eq("staff_id", staff!.id).gte("starts_at", dayStart.toISOString()).lte("starts_at", dayEnd.toISOString()).neq("status", "cancelled"),
-        supabase.from("blocked_dates").select("starts_at, ends_at, staff_id").eq("business_id", biz.id).lt("starts_at", dayEnd.toISOString()).gt("ends_at", dayStart.toISOString()),
+        supabase.from("business_hours").select("*").eq("business_id", service!.business_id).eq("weekday", date.getDay()).maybeSingle(),
+        (supabase as any)
+          .from("public_booking_slots")
+          .select("starts_at, ends_at")
+          .eq("business_id", service!.business_id)
+          .eq("staff_id", staff!.id)
+          .gte("starts_at", dayStart.toISOString())
+          .lte("starts_at", dayEnd.toISOString()),
+        supabase.from("blocked_dates").select("*").eq("business_id", service!.business_id).lt("starts_at", dayEnd.toISOString()).gt("ends_at", dayStart.toISOString()),
       ]);
-      return { hours: hoursR.data, bookings: bookingsR.data ?? [], blocked: blockedR.data ?? [] };
+      return { hours: hoursR.data, bookings: (bookingsR.data ?? []) as { starts_at: string; ends_at: string }[], blocked: blockedR.data ?? [] };
     },
   });
 
@@ -134,7 +252,7 @@ function PublicBooking() {
     for (let t = new Date(open); t.getTime() + totalMin * 60000 <= close.getTime(); t = new Date(t.getTime() + slotMin * 60000)) {
       if (t < now) continue;
       const slotEnd = new Date(t.getTime() + totalMin * 60000);
-      const conflict = dayData.bookings.some((b: any) => new Date(b.starts_at) < slotEnd && new Date(b.ends_at) > t);
+      const conflict = dayData.bookings.some((b) => new Date(b.starts_at) < slotEnd && new Date(b.ends_at) > t);
       const blocked = dayData.blocked.some((b: any) => (!b.staff_id || b.staff_id === staff?.id) && new Date(b.starts_at) < slotEnd && new Date(b.ends_at) > t);
       if (!conflict && !blocked) {
         const start = new Date(t.getTime() + bufBefore * 60000);
@@ -168,6 +286,21 @@ function PublicBooking() {
   };
   const sanitizePhone = (v: string) => v.replace(/[^\d\s+()\-.]/g, "");
 
+  const pickGroup = (g: ServiceGroup) => {
+    setServiceGroup(g);
+    setService(null);
+    setStaff(null);
+    setTime(null);
+    setStep("staff");
+  };
+
+  const pickStaff = (p: Staff) => {
+    const variant = serviceGroup?.variants.find((v) => v.business_id === p.business_id);
+    if (!variant) return;
+    setService(variant);
+    setStaff(p);
+    setStep("time");
+  };
 
   const book = async () => {
     if (!service || !staff || !time) return;
@@ -188,7 +321,12 @@ function PublicBooking() {
     try {
       const starts_at = time;
       const ends_at = new Date(new Date(starts_at).getTime() + service.duration_minutes * 60000).toISOString();
-      const { data: clash } = await supabase.from("bookings").select("id").eq("staff_id", staff.id).neq("status", "cancelled").lt("starts_at", ends_at).gt("ends_at", starts_at);
+      const { data: clash } = await (supabase as any)
+        .from("public_booking_slots")
+        .select("staff_id")
+        .eq("staff_id", staff.id)
+        .lt("starts_at", ends_at)
+        .gt("ends_at", starts_at);
       if (clash && clash.length > 0) {
         toast.error("That slot was just taken — pick another.");
         setStep("time");
@@ -197,7 +335,7 @@ function PublicBooking() {
         return;
       }
       const { error } = await supabase.rpc("create_public_booking", {
-        p_business_id: biz.id,
+        p_business_id: service.business_id,
         p_service_id: service.id,
         p_staff_id: staff.id,
         p_customer_name: info.name,
@@ -222,7 +360,7 @@ function PublicBooking() {
   };
 
   const reset = () => {
-    setStep("service"); setService(null); setStaff(null); setTime(null);
+    setStep("service"); setServiceGroup(null); setService(null); setStaff(null); setTime(null);
     setInfo({ name: "", email: "", phone: "", notes: "" });
   };
 
@@ -269,9 +407,9 @@ function PublicBooking() {
         {step !== "done" && <Stepper step={step} brand={brand} />}
 
         {/* Selection summary */}
-        {(service || staff || time) && step !== "done" && (
+        {(serviceGroup || staff || time) && step !== "done" && (
           <div className="rounded-2xl border bg-card/60 backdrop-blur p-4 mb-6 flex flex-wrap gap-2 text-xs animate-rise">
-            {service && <Chip onClick={() => setStep("service")} icon={Sparkles} label={service.name} />}
+            {serviceGroup && <Chip onClick={() => setStep("service")} icon={Sparkles} label={serviceGroup.name} />}
             {staff && <Chip onClick={() => setStep("staff")} icon={User} label={staff.name} />}
             {time && (
               <Chip
@@ -287,28 +425,28 @@ function PublicBooking() {
         {step === "service" && (
           <div key="service" className="space-y-3 animate-rise">
             {loadingServices && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
-            {!loadingServices && services?.length === 0 && (
+            {!loadingServices && serviceGroups.length === 0 && (
               <div className="rounded-2xl border border-dashed bg-card/40 p-16 text-center text-muted-foreground">
                 No services available yet. Please check back soon.
               </div>
             )}
-            {services?.map((s, i) => (
+            {serviceGroups.map((g, i) => (
               <button
-                key={s.id}
-                onClick={() => { setService(s); setStep("staff"); }}
+                key={g.key}
+                onClick={() => pickGroup(g)}
                 className={`group w-full text-left rounded-2xl border bg-card p-5 card-hover animate-rise stagger-${(i % 6) + 1}`}
               >
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 items-start">
                   <div className="min-w-0">
-                    <h3 className="font-display text-xl">{s.name}</h3>
-                    {s.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2 text-pretty">{s.description}</p>}
+                    <h3 className="font-display text-xl">{g.name}</h3>
+                    {g.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2 text-pretty">{g.description}</p>}
                     <div className="text-xs text-muted-foreground mt-2 inline-flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> {s.duration_minutes} min
+                      <Clock className="h-3 w-3" /> {durationRange(g.variants)}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-display text-lg tabular-nums">{fmtMoney(s.price_cents)}</div>
-                    <div className="mt-2 inline-flex items-center justify-center h-7 w-7 rounded-full bg-secondary group-hover:bg-foreground group-hover:text-background transition-colors">
+                    <div className="font-display text-lg tabular-nums">{priceRange(g.variants)}</div>
+                    <div className="mt-2 inline-flex items-center justify-center h-7 w-7 rounded-full bg-secondary group-hover:bg-foreground group-hover:text-background transition-colors ml-auto">
                       <ChevronRight className="h-3.5 w-3.5" />
                     </div>
                   </div>
@@ -331,7 +469,7 @@ function PublicBooking() {
             {allStaff?.map((p, i) => (
               <button
                 key={p.id}
-                onClick={() => { setStaff(p); setStep("time"); }}
+                onClick={() => pickStaff(p)}
                 className={`group w-full text-left rounded-2xl border bg-card p-5 flex items-center gap-4 card-hover animate-rise stagger-${(i % 6) + 1}`}
               >
                 <div className="h-12 w-12 rounded-full bg-secondary grid place-items-center font-display text-lg shrink-0">
@@ -438,7 +576,7 @@ function PublicBooking() {
               style={{ background: `linear-gradient(135deg, ${brand}, color-mix(in oklab, ${brand} 70%, black))` }}
             >
               <div className="text-[11px] uppercase tracking-[0.2em] opacity-80">Almost there</div>
-              <div className="font-display text-xl mt-1">{service.name}</div>
+              <div className="font-display text-xl mt-1">{serviceGroup?.name ?? service.name}</div>
               <div className="text-sm opacity-90 mt-2 flex flex-wrap gap-x-3 gap-y-1">
                 <span className="inline-flex items-center gap-1"><User className="h-3 w-3" />{staff.name}</span>
                 <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(time).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
@@ -513,7 +651,7 @@ function PublicBooking() {
               {new Date(time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.
             </p>
             <div className="mt-8 mx-auto max-w-sm rounded-2xl border bg-card p-5 text-left text-sm">
-              <SummaryRow label="Service" value={service.name} />
+              <SummaryRow label="Service" value={serviceGroup?.name ?? service.name} />
               <SummaryRow label="With" value={staff.name} />
               <SummaryRow label="Total" value={fmtMoney(service.price_cents)} />
             </div>
