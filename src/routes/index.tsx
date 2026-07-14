@@ -1,16 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Bookzenvo — Fill the chair. Run the business." },
+      { title: "Bookzenvo — Booking software that works as hard as you do." },
       {
         name: "description",
         content:
           "A branded booking page, a calendar that refuses double-bookings, and a client book that remembers everyone — for salons, barbershops and rent-a-chair independents.",
       },
-      { property: "og:title", content: "Bookzenvo — Fill the chair. Run the business." },
+      { property: "og:title", content: "Bookzenvo — Booking software that works as hard as you do." },
       {
         property: "og:description",
         content:
@@ -23,142 +24,246 @@ export const Route = createFileRoute("/")({
 
 function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <span className={`font-display font-bold tracking-tight ${className}`}>
-      Bookzenvo<span className="text-[color:var(--brass)]">.</span>
+    <span className={`font-display font-semibold tracking-tight ${className}`}>
+      Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
     </span>
   );
 }
 
-function ChairSvg() {
+function Mark() {
   return (
-    <svg
-      viewBox="0 0 260 320"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      role="img"
-      aria-label="A salon chair"
-      className="w-full max-w-[360px] h-auto"
-      style={{ filter: "drop-shadow(0 30px 40px color-mix(in oklab, var(--primary) 30%, transparent))" }}
+    <span className="precision-mark" aria-hidden>
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center mb-4">
+      <Mark />
+      <span className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-[color:var(--gold-deep)]">
+        {children}
+      </span>
+    </div>
+  );
+}
+
+const NAV_ITEMS = ["Today", "Calendar", "Bookings", "Clients", "Staff", "Services", "Payments", "Settings"];
+
+const STATS = [
+  { target: 12, prefix: "", label: "Bookings today", delta: "+3 vs last Tuesday" },
+  { target: 1240, prefix: "£", label: "Revenue this week", delta: "+18%" },
+  { target: 9, prefix: "", label: "New clients this month", delta: "+2" },
+];
+
+const APPOINTMENTS = [
+  { time: "9:00", who: "Maya Richards", what: "Balayage · 150 min", withWhom: "Camille", status: "ok" as const },
+  { time: "11:45", who: "Daniel Reyes", what: "Signature cut · 60 min", withWhom: "Nora", status: "ok" as const },
+  { time: "13:30", who: "Chloe Bennett", what: "Gel set · 60 min", withWhom: "Jordan", status: "pend" as const },
+  { time: "15:00", who: "Sam Okafor", what: "Colour & gloss · 90 min", withWhom: "Camille", status: "ok" as const },
+];
+
+function CountUp({ target, prefix, active }: { target: number; prefix: string; active: boolean }) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (!active) return;
+    let raf = 0;
+    const start = performance.now();
+    const dur = 900;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setValue(Math.round(target * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [active, target]);
+
+  return (
+    <div className="font-display font-semibold text-[2.1rem] leading-none">
+      {prefix}
+      {value.toLocaleString()}
+    </div>
+  );
+}
+
+function DashboardPreview() {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setInView(true);
+            io.disconnect();
+          }
+        });
+      },
+      { threshold: 0.35 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={frameRef}
+      className={`bg-white border border-border rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(26,26,26,.03),0_40px_80px_-40px_rgba(26,26,26,.18)] transition-all duration-[800ms] ease-[cubic-bezier(.2,.7,.3,1)] ${
+        inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+      }`}
     >
-      <ellipse cx="130" cy="150" rx="118" ry="118" fill="#E7D6B4" opacity=".45" />
-      <rect x="84" y="34" width="92" height="132" rx="34" fill="#8E2A38" />
-      <rect x="84" y="34" width="92" height="132" rx="34" fill="url(#g1)" opacity=".25" />
-      <rect x="112" y="58" width="36" height="4" rx="2" fill="#6E1F2B" opacity=".5" />
-      <rect x="54" y="140" width="18" height="58" rx="9" fill="#6E1F2B" />
-      <rect x="188" y="140" width="18" height="58" rx="9" fill="#6E1F2B" />
-      <rect x="60" y="158" width="140" height="44" rx="20" fill="#8E2A38" />
-      <rect x="60" y="158" width="140" height="16" rx="8" fill="#A8394A" opacity=".7" />
-      <rect x="120" y="200" width="20" height="66" rx="6" fill="#1E1A17" />
-      <rect x="94" y="228" width="72" height="12" rx="6" fill="#B8863B" />
-      <rect x="122" y="228" width="16" height="12" rx="6" fill="#CFA05A" />
-      <ellipse cx="130" cy="272" rx="60" ry="16" fill="#6E1F2B" />
-      <ellipse cx="130" cy="268" rx="60" ry="16" fill="#8E2A38" />
-      <defs>
-        <linearGradient id="g1" x1="84" y1="34" x2="176" y2="166" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#fff" />
-          <stop offset="1" stopColor="#fff" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-    </svg>
+      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-border">
+        <span className="h-2.5 w-2.5 rounded-full bg-border" />
+        <span className="h-2.5 w-2.5 rounded-full bg-border" />
+        <span className="h-2.5 w-2.5 rounded-full bg-border" />
+        <span className="text-[.75rem] text-muted-foreground ml-2.5">bookzenvo.com/dashboard</span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-[210px_1fr] min-h-[520px]">
+        <aside className="hidden md:flex flex-col border-r border-border py-6">
+          <div className="font-display font-semibold text-xl px-6 pb-5">
+            Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
+          </div>
+          <nav className="flex flex-col">
+            {NAV_ITEMS.map((item, i) => (
+              <span
+                key={item}
+                className={`px-6 py-2.5 text-[.88rem] border-l-2 ${
+                  i === 0
+                    ? "text-foreground border-l-[color:var(--gold)] bg-gradient-to-r from-[color:var(--gold-wash)] to-transparent"
+                    : "text-muted-foreground border-l-transparent"
+                }`}
+              >
+                {item}
+              </span>
+            ))}
+          </nav>
+        </aside>
+        <div className="p-6 md:p-9">
+          <div className="flex justify-between items-end flex-wrap gap-4 mb-7">
+            <div>
+              <div className="text-[.8rem] text-muted-foreground uppercase tracking-[0.1em] mb-1.5">
+                Tuesday, July 7
+              </div>
+              <h3 className="font-display font-medium text-[2rem] leading-[1.05]">Good morning, Nora.</h3>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-[.85rem] font-semibold px-4 py-2.5">
+              New booking
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-9">
+            {STATS.map((s) => (
+              <div key={s.label} className="rounded-[10px] border border-border bg-background px-5 py-5">
+                <CountUp target={s.target} prefix={s.prefix} active={inView} />
+                <div className="text-[.7rem] text-muted-foreground uppercase tracking-[0.12em] mt-2">
+                  {s.label}
+                </div>
+                <div className="text-[.75rem] text-[color:var(--confirmed)] mt-1">{s.delta}</div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-muted-foreground">
+              Today's appointments
+            </span>
+            <span className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-[color:var(--gold-deep)]">
+              View calendar →
+            </span>
+          </div>
+          <div className="flex flex-col">
+            {APPOINTMENTS.map((a, i) => (
+              <div
+                key={a.who}
+                className={`grid grid-cols-[54px_1fr_auto_auto] sm:grid-cols-[76px_1fr_auto_auto] gap-3 sm:gap-4 items-center py-4 border-b border-border last:border-b-0 transition-all duration-500 ease-[cubic-bezier(.2,.7,.3,1)] ${
+                  inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2.5"
+                }`}
+                style={{ transitionDelay: inView ? `${200 + i * 110}ms` : "0ms" }}
+              >
+                <span className="text-[.85rem] font-semibold">{a.time}</span>
+                <span className="min-w-0">
+                  <span className="block text-[.92rem] font-semibold truncate">{a.who}</span>
+                  <span className="block text-[.8rem] text-muted-foreground truncate">{a.what}</span>
+                </span>
+                <span className="hidden sm:block text-[.8rem] text-muted-foreground">with {a.withWhom}</span>
+                <span
+                  className={`text-[.68rem] font-semibold px-2.5 py-1 rounded-[5px] tracking-[.03em] ${
+                    a.status === "ok"
+                      ? "bg-[color:var(--confirmed-bg)] text-[color:var(--confirmed)]"
+                      : "bg-[color:var(--pending-bg)] text-[color:var(--pending)]"
+                  }`}
+                >
+                  {a.status === "ok" ? "Confirmed" : "Pending"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
 function Landing() {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const steps = [
     {
-      n: 1,
+      n: "No. 1",
       title: "Build your page",
-      body:
-        "Add your services, your chairs, your hours. Pick your colour. It becomes a booking page at bookzenvo.app/your-name.",
+      body: "Your services, prices and hours — cuts, colour, sets, sessions. A booking page at your own link, in your own colours.",
     },
     {
-      n: 2,
-      title: "Share your link",
-      body:
-        "Drop it in your Instagram bio, your DMs, on the front desk. One link, everything bookable.",
+      n: "No. 2",
+      title: "Put the link everywhere",
+      body: "Instagram bio, Google listing, the reply to every “you free Saturday?” One link makes every channel bookable.",
     },
     {
-      n: 3,
-      title: "Get booked",
-      body:
-        "Bookings land in your calendar, every client saves to your book, and no one can double-book the same slot.",
+      n: "No. 3",
+      title: "Stay in the chair",
+      body: "Bookings land while you work. Every client is saved to your book automatically — visits, spend, notes.",
     },
   ];
 
-  const features: {
-    title: string;
-    body: string;
-    soon?: boolean;
-    icon: React.ReactNode;
-  }[] = [
+  const features: { title: string; body: string; soon?: boolean }[] = [
     {
-      title: "Branded booking page",
-      body:
-        "Your name, your colours, your services — a page clients actually want to use, no app to download.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4" />
-        </svg>
-      ),
+      title: "Your page, your brand",
+      body: "Your colours, your logo, your services — clients book without downloading anything.",
     },
     {
       title: "No-clash calendar",
-      body:
-        "Day, week and month views per chair. Two people can't grab the same slot — the calendar won't allow it.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M8 2v4M16 2v4M3 10h18" />
-          <circle cx="12" cy="16" r="2.4" />
-        </svg>
-      ),
+      body: "Per-chair schedules. Two clients can't take the same slot — blocked at the source.",
     },
     {
       title: "Client book",
-      body:
-        "Every booking builds a client record — visit history, spend, notes. Walk-in becomes a regular, automatically.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-        </svg>
-      ),
+      body: "Visit history, spend and notes build themselves from real bookings. Regulars, remembered.",
     },
     {
-      title: "Payments & deposits",
-      body:
-        "Take deposits to kill no-shows, and see what you've collected and what's still owed at a glance.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <rect x="2" y="5" width="20" height="14" rx="2" />
-          <path d="M2 10h20" />
-        </svg>
-      ),
+      title: "Deposits & payments",
+      body: "Take deposits on big appointments so Saturday no-shows stop costing you.",
     },
     {
-      title: "Staff & chairs",
-      body:
-        "Add stylists or rent-a-chair independents. Each keeps their own schedule, their own clients, their own page.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M12 2 4 7v10l8 5 8-5V7z" />
-          <path d="M12 22V12M4 7l8 5 8-5" />
-        </svg>
-      ),
+      title: "Chairs & renters",
+      body: "Employed stylists or rent-a-chair independents — each with their own diary and clients.",
     },
     {
       title: "Switch from Fresha",
       soon: true,
-      body:
-        "Bring your services, staff and client list across in one upload. Leaving the old system won't cost you a thing.",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M12 3v12M8 11l4 4 4-4" />
-          <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-        </svg>
-      ),
+      body: "Bring your client list and services across in one upload.",
     },
   ];
 
@@ -174,15 +279,15 @@ function Landing() {
     {
       name: "Solo",
       price: "Free",
-      desc: "For one chair, one you.",
+      desc: "One chair, one you.",
       features: ["One staff member", "Unlimited bookings", "Branded page & client book"],
       cta: "Start free",
     },
     {
       name: "Studio",
       price: "$29",
-      per: "/mo",
-      desc: "For a growing floor.",
+      per: "/month",
+      desc: "A growing floor.",
       features: ["Up to 10 chairs", "Deposits & payments", "Email reminders", "Analytics & insights"],
       cta: "Start free",
       featured: true,
@@ -190,7 +295,7 @@ function Landing() {
     {
       name: "Multi-site",
       price: "Let's talk",
-      desc: "For salons with locations.",
+      desc: "Salons with locations.",
       features: ["Unlimited chairs", "Multiple locations", "Priority support"],
       cta: "Get in touch",
     },
@@ -199,135 +304,100 @@ function Landing() {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/60">
-        <div className="max-w-6xl mx-auto px-6 h-[70px] flex items-center justify-between">
-          <Wordmark className="text-2xl" />
-          <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground font-medium">
+      <header
+        className={`sticky top-0 z-50 backdrop-blur-md bg-background/90 transition-colors ${
+          scrolled ? "border-b border-border" : "border-b border-transparent"
+        }`}
+      >
+        <div className="max-w-[1120px] mx-auto px-6 h-20 flex items-center justify-between">
+          <Wordmark className="text-[1.7rem]" />
+          <nav className="hidden md:flex items-center gap-10 text-[.9rem] font-medium text-muted-foreground">
             <a href="#how" className="hover:text-foreground transition-colors">How it works</a>
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
           </nav>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/auth"
-              className="hidden sm:inline-flex text-sm font-semibold text-foreground px-2 py-2 hover:opacity-80"
-            >
+          <div className="flex items-center gap-5">
+            <Link to="/auth" className="hidden sm:inline-flex text-[.9rem] font-semibold hover:opacity-70 transition-opacity">
               Sign in
             </Link>
             <Link
               to="/auth"
               search={{ mode: "signup" } as any}
-              className="group inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground font-semibold text-sm px-5 py-2.5 shadow-[0_10px_22px_-10px_color-mix(in_oklab,var(--primary)_70%,transparent)] hover:opacity-95 transition"
+              className="inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground font-semibold text-[.9rem] px-5 py-2.5 transition-all hover:-translate-y-px hover:shadow-[0_12px_24px_-12px_rgba(26,26,26,.4)]"
             >
               Start free
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(80% 120% at 88% -10%, color-mix(in oklab, var(--brass) 16%, transparent), transparent 55%), radial-gradient(70% 90% at 8% 8%, color-mix(in oklab, var(--primary) 7%, transparent), transparent 60%)",
-          }}
-        />
-        <div className="relative max-w-6xl mx-auto px-6 grid lg:grid-cols-[1.15fr_.85fr] gap-12 items-center py-16 lg:py-24">
-          <div>
-            <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-primary bg-[color:color-mix(in_oklab,var(--primary)_8%,var(--background))] border border-[color:color-mix(in_oklab,var(--primary)_16%,transparent)] rounded-full px-3 py-1.5 mb-6">
-              <span className="relative h-1.5 w-1.5 rounded-full bg-primary">
-                <span className="absolute -inset-1 rounded-full border border-primary/40 animate-ping" />
-              </span>
+      <section className="relative overflow-hidden pt-24 pb-16 md:pt-[110px] md:pb-24">
+        <div className="dot-grid" />
+        <div className="relative z-[1] max-w-[1120px] mx-auto px-6">
+          <div className="bz-reveal bz-reveal-1 flex items-center mb-8">
+            <Mark />
+            <span className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-[color:var(--gold-deep)]">
               Now onboarding the first salons
             </span>
-            <h1 className="font-display font-bold tracking-tight leading-[0.98] text-[clamp(2.9rem,6.5vw,4.9rem)] mb-6">
-              Fill the chair.
-              <span className="block text-primary">Run the business.</span>
-            </h1>
-            <p className="text-muted-foreground text-[clamp(1.05rem,1.6vw,1.22rem)] max-w-[33ch] mb-8">
-              A branded booking page, a calendar that refuses double-bookings, and a client book
-              that remembers everyone — whether you own the salon or rent one chair in it.
-            </p>
-            <div className="flex flex-wrap gap-3 items-center">
-              <Link
-                to="/auth"
-                search={{ mode: "signup" } as any}
-                className="group inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground font-semibold text-[.95rem] px-5 py-3 shadow-[0_10px_22px_-10px_color-mix(in_oklab,var(--primary)_70%,transparent)] hover:opacity-95 transition"
-              >
-                Create your booking page
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-              <a
-                href="#features"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-transparent text-foreground font-semibold text-[.95rem] px-5 py-3 hover:bg-card transition"
-              >
-                See a live example
-              </a>
-            </div>
-            <div className="mt-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>Free for one chair</span>
-              <span className="h-1 w-1 rounded-full bg-border" />
-              <span>No card needed</span>
-              <span className="h-1 w-1 rounded-full bg-border" />
-              <span>Live in minutes</span>
-            </div>
           </div>
-
-          <div className="relative grid place-items-center min-h-[340px]">
-            <ChairSvg />
-            <div
-              aria-hidden
-              className="absolute bottom-3 right-0 sm:-right-1 w-56 rounded-2xl border border-border bg-card p-4 shadow-[0_28px_60px_-22px_color-mix(in_oklab,var(--primary)_28%,transparent)]"
-              style={{ animation: "bookzenvo-float 5s ease-in-out infinite" }}
+          <h1 className="bz-reveal bz-reveal-2 font-display font-medium leading-[1.02] tracking-[-0.02em] text-[clamp(2.6rem,7.6vw,6rem)] max-w-[14ch]">
+            Booking software that works as hard{" "}
+            <em className="italic text-[color:var(--gold-deep)]">as you do.</em>
+          </h1>
+          <p className="bz-reveal bz-reveal-3 text-[1.15rem] text-[color:var(--charcoal-soft)] max-w-[44ch] my-8">
+            Built for salons, barbershops, nail studios and tattoo artists. Clients book straight into
+            your day — no DMs, no double-bookings, every regular remembered.
+          </p>
+          <div className="bz-reveal bz-reveal-4 flex items-center gap-6 flex-wrap">
+            <Link
+              to="/auth"
+              search={{ mode: "signup" } as any}
+              className="group inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground font-semibold text-[.95rem] px-7 py-4 transition-all hover:-translate-y-px hover:shadow-[0_12px_24px_-12px_rgba(26,26,26,.4)]"
             >
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-8 w-8 rounded-full grid place-items-center font-display font-bold text-sm bg-[#E7D6B4] text-[#6E1F2B]">
-                  R
-                </div>
-                <div>
-                  <div className="font-semibold text-sm leading-tight">Rosa booked in</div>
-                  <div className="text-[.72rem] text-muted-foreground">Signature Cut · Fri 2:00 PM</div>
-                </div>
-              </div>
-              <div className="flex justify-between items-center text-xs pt-2 border-t border-border">
-                <span className="text-muted-foreground">Chair 2 · Camille</span>
-                <span className="text-[.68rem] font-semibold rounded-full px-2 py-0.5 bg-[#e7f4ec] text-[#2c7a4b]">
-                  Confirmed
-                </span>
-              </div>
-            </div>
+              Create your booking page
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+            <span className="text-[.88rem] text-muted-foreground">Free for one chair · No card needed</span>
           </div>
         </div>
-        <style>{`@keyframes bookzenvo-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}`}</style>
       </section>
+
+      {/* Product shot */}
+      <div className="pb-16 md:pb-[100px]">
+        <div className="max-w-[1120px] mx-auto px-6">
+          <DashboardPreview />
+        </div>
+      </div>
+
+      {/* Made for */}
+      <div className="border-y border-border py-6 bg-white">
+        <div className="max-w-[1120px] mx-auto px-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-2 text-[.8rem] tracking-[0.1em] uppercase text-muted-foreground">
+          <b className="text-[color:var(--gold-deep)] font-semibold">Made for</b>
+          <span>Hair salons</span>
+          <span>Barbershops</span>
+          <span>Nail studios</span>
+          <span>Tattoo artists</span>
+          <span>Lash &amp; brow</span>
+          <span>Rent-a-chair</span>
+        </div>
+      </div>
 
       {/* How it works */}
       <section id="how" className="py-20 md:py-24">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-[.78rem] font-bold tracking-[0.14em] uppercase text-[color:var(--brass)] mb-3">
-            Up and running
+        <div className="max-w-[1120px] mx-auto px-6">
+          <div className="mb-14">
+            <SectionLabel>How it works</SectionLabel>
+            <div className="font-display font-medium text-[clamp(2rem,4.2vw,3.2rem)] tracking-[-0.015em] leading-[1.05] max-w-[20ch]">
+              Three steps, and the diary starts filling itself.
+            </div>
           </div>
-          <h2 className="font-display font-bold tracking-tight leading-[1.05] text-[clamp(1.9rem,3.6vw,2.7rem)] max-w-[20ch]">
-            Three steps from sign-up to your first booking.
-          </h2>
-          <div className="mt-12 grid md:grid-cols-3 gap-5">
+          <div className="grid md:grid-cols-3">
             {steps.map((s, i) => (
-              <div
-                key={s.n}
-                className="relative rounded-2xl border border-border bg-card p-7 shadow-[0_1px_2px_rgba(30,26,23,.04),0_12px_28px_-14px_rgba(30,26,23,.18)]"
-              >
-                <div className="font-display font-bold text-white bg-primary w-9 h-9 rounded-xl grid place-items-center mb-4">
-                  {s.n}
-                </div>
-                <h3 className="font-display font-semibold text-xl tracking-tight mb-2">{s.title}</h3>
-                <p className="text-muted-foreground text-[.96rem]">{s.body}</p>
-                {i < steps.length - 1 && (
-                  <span aria-hidden className="hidden md:block absolute top-11 -right-4 w-8 h-0.5 bg-border" />
-                )}
+              <div key={s.n} className={i > 0 ? "border-t md:border-t-0 md:border-l border-border pt-8 md:pt-0 md:pl-9 mt-8 md:mt-0" : ""}>
+                <div className="font-display italic text-[1.1rem] text-[color:var(--gold-deep)] mb-3.5">{s.n}</div>
+                <h3 className="font-display font-semibold text-[1.55rem] mb-2">{s.title}</h3>
+                <p className="text-[color:var(--charcoal-soft)] text-[.95rem]">{s.body}</p>
               </div>
             ))}
           </div>
@@ -335,36 +405,26 @@ function Landing() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-20 md:py-24 border-y border-border bg-[color:color-mix(in_oklab,var(--background)_92%,var(--foreground)_8%)]">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-[.78rem] font-bold tracking-[0.14em] uppercase text-[color:var(--brass)] mb-3">
-            What's inside
+      <section id="features" className="bg-white border-y border-border">
+        <div className="max-w-[1120px] mx-auto px-6 py-20 md:py-24">
+          <div className="mb-14">
+            <SectionLabel>What's inside</SectionLabel>
+            <div className="font-display font-medium text-[clamp(2rem,4.2vw,3.2rem)] tracking-[-0.015em] leading-[1.05] max-w-[20ch]">
+              Everything the chair needs. Nothing it doesn't.
+            </div>
           </div>
-          <h2 className="font-display font-bold tracking-tight leading-[1.05] text-[clamp(1.9rem,3.6vw,2.7rem)] max-w-[20ch]">
-            Everything the chair needs. Nothing it doesn't.
-          </h2>
-          <p className="text-muted-foreground text-lg max-w-[44ch] mt-4">
-            Built for one-chair independents and busy salon floors alike — the same tools, priced
-            for where you are.
-          </p>
-          <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-border">
             {features.map((f) => (
-              <div
-                key={f.title}
-                className="rounded-2xl border border-border bg-background p-6 transition hover:-translate-y-1 hover:shadow-[0_1px_2px_rgba(30,26,23,.04),0_12px_28px_-14px_rgba(30,26,23,.18)]"
-              >
-                <div className="w-11 h-11 rounded-xl grid place-items-center text-primary mb-4 bg-[color:color-mix(in_oklab,var(--primary)_10%,var(--background))]">
-                  {f.icon}
-                </div>
-                <h3 className="font-display font-semibold text-lg tracking-tight mb-1.5 flex items-center gap-2">
+              <div key={f.title} className="border-r border-b border-border p-8">
+                <h3 className="font-display font-semibold text-[1.35rem] mb-2 flex items-center gap-2">
                   {f.title}
                   {f.soon && (
-                    <span className="text-[.62rem] font-bold uppercase tracking-wider text-[color:var(--brass)] border border-[#E7D6B4] bg-[color:color-mix(in_oklab,var(--brass)_8%,transparent)] rounded px-1.5 py-0.5">
+                    <span className="font-sans text-[.58rem] font-bold tracking-[0.1em] uppercase text-[color:var(--gold-deep)] border border-[color:var(--gold)] rounded px-1.5 py-0.5">
                       Soon
                     </span>
                   )}
                 </h3>
-                <p className="text-muted-foreground text-[.93rem]">{f.body}</p>
+                <p className="text-[color:var(--charcoal-soft)] text-[.92rem]">{f.body}</p>
               </div>
             ))}
           </div>
@@ -373,65 +433,55 @@ function Landing() {
 
       {/* Pricing */}
       <section id="pricing" className="py-20 md:py-24">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-[.78rem] font-bold tracking-[0.14em] uppercase text-[color:var(--brass)] mb-3">
-            Pricing
+        <div className="max-w-[1120px] mx-auto px-6">
+          <div className="mb-14">
+            <SectionLabel>Pricing</SectionLabel>
+            <div className="font-display font-medium text-[clamp(2rem,4.2vw,3.2rem)] tracking-[-0.015em] leading-[1.05] max-w-[20ch]">
+              Free while it's just you and the chair.
+            </div>
           </div>
-          <h2 className="font-display font-bold tracking-tight leading-[1.05] text-[clamp(1.9rem,3.6vw,2.7rem)] max-w-[20ch]">
-            Free while it's just you. Fair when you grow.
-          </h2>
-          <div className="mt-12 grid md:grid-cols-3 gap-5 items-stretch max-w-[420px] md:max-w-none mx-auto">
+          <div className="grid md:grid-cols-3 gap-5 max-w-[440px] md:max-w-none mx-auto">
             {tiers.map((t) => {
               const featured = !!t.featured;
               return (
                 <div
                   key={t.name}
-                  className={`relative rounded-3xl p-8 flex flex-col border ${
-                    featured
-                      ? "bg-foreground text-background border-foreground shadow-[0_2px_6px_rgba(30,26,23,.05),0_28px_60px_-22px_color-mix(in_oklab,var(--primary)_28%,transparent)]"
-                      : "bg-card border-border"
+                  className={`relative rounded-xl p-8 flex flex-col ${
+                    featured ? "bg-primary text-primary-foreground" : "bg-white border border-border"
                   }`}
                 >
                   {featured && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[.68rem] font-bold uppercase tracking-wider bg-[color:var(--brass)] text-[#1E1A17] rounded-full px-3 py-1">
+                    <span className="absolute -top-[11px] left-8 bg-primary text-primary-foreground text-[.6rem] font-bold tracking-[0.12em] uppercase px-2.5 py-1 rounded-[4px] border border-[color:var(--gold)]">
                       Most popular
                     </span>
                   )}
-                  <div className="font-display font-semibold text-xl">{t.name}</div>
-                  <div className="font-display font-bold text-[2.5rem] tracking-tight leading-none mt-3 mb-1">
+                  <div className="font-display font-semibold text-[1.4rem]">{t.name}</div>
+                  <div className="font-display font-medium text-[2.8rem] leading-none mt-2">
                     {t.price}
                     {t.per && (
-                      <span
-                        className={`text-base font-medium ${
-                          featured ? "text-white/60" : "text-muted-foreground"
-                        }`}
-                      >
+                      <span className={`font-sans text-[.9rem] ${featured ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                         {t.per}
                       </span>
                     )}
                   </div>
-                  <div className={`text-sm mb-6 ${featured ? "text-white/65" : "text-muted-foreground"}`}>
+                  <div className={`text-[.88rem] mt-1 mb-7 ${featured ? "text-primary-foreground/65" : "text-muted-foreground"}`}>
                     {t.desc}
                   </div>
-                  <ul className="flex-1 space-y-2.5 mb-6">
+                  <ul className="flex-1 flex flex-col gap-2.5 mb-7">
                     {t.features.map((f) => (
-                      <li key={f} className="flex gap-2 items-start text-[.92rem]">
-                        <Check
-                          className={`h-4 w-4 shrink-0 mt-0.5 ${
-                            featured ? "text-[color:var(--brass)]" : "text-primary"
-                          }`}
-                        />
-                        <span>{f}</span>
+                      <li key={f} className="flex gap-2.5 text-[.9rem]">
+                        <Check className={`h-4 w-4 shrink-0 mt-0.5 ${featured ? "text-[color:var(--gold)]" : "text-[color:var(--gold-deep)]"}`} />
+                        <span className={featured ? "text-primary-foreground/90" : "text-[color:var(--charcoal-soft)]"}>{f}</span>
                       </li>
                     ))}
                   </ul>
                   <Link
                     to="/auth"
                     search={{ mode: "signup" } as any}
-                    className={`w-full inline-flex items-center justify-center rounded-full font-semibold text-[.95rem] px-5 py-3 transition ${
+                    className={`w-full inline-flex items-center justify-center rounded-[6px] font-semibold text-[.92rem] px-5 py-3 transition-all ${
                       featured
-                        ? "bg-background text-foreground hover:opacity-90"
-                        : "border border-border bg-transparent text-foreground hover:bg-background"
+                        ? "bg-background text-foreground hover:-translate-y-px"
+                        : "border border-border hover:border-foreground/60"
                     }`}
                   >
                     {t.cta}
@@ -445,50 +495,37 @@ function Landing() {
 
       {/* Final CTA */}
       <section className="pb-20 md:pb-24">
-        <div className="max-w-6xl mx-auto px-6">
-          <div
-            className="relative overflow-hidden rounded-[28px] text-white text-center px-8 py-16 md:px-10 md:py-20"
-            style={{
-              background:
-                "linear-gradient(135deg, var(--primary), color-mix(in oklab, var(--primary) 70%, black))",
-            }}
-          >
-            <div
+        <div className="max-w-[1120px] mx-auto px-6">
+          <div className="relative overflow-hidden rounded-xl bg-primary text-primary-foreground px-8 py-16 md:px-12 md:py-20">
+            <span
               aria-hidden
-              className="absolute -top-[40%] -right-[10%] w-[380px] h-[380px] rounded-full"
-              style={{
-                background:
-                  "radial-gradient(circle, color-mix(in oklab, var(--brass) 35%, transparent), transparent 70%)",
-              }}
+              className="absolute top-0 right-20 w-px h-full opacity-50"
+              style={{ background: "linear-gradient(var(--gold), transparent)" }}
             />
-            <div className="relative">
-              <h2 className="font-display font-bold tracking-tight text-[clamp(2rem,4vw,3rem)] mb-3">
-                Ready to fill the chair?
-              </h2>
-              <p className="text-white/80 text-lg mb-8">
-                Set up your booking page in a few minutes. Free for one chair, no card needed.
-              </p>
-              <Link
-                to="/auth"
-                search={{ mode: "signup" } as any}
-                className="inline-flex items-center gap-2 rounded-full bg-background text-foreground font-semibold text-[.95rem] px-6 py-3 hover:opacity-95 transition"
-              >
-                Create your booking page
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
+            <h2 className="font-display font-medium text-[clamp(2.2rem,4.4vw,3.4rem)] leading-[1.05] max-w-[16ch] mb-4">
+              Your next client could book <em className="italic text-[color:var(--gold)]">tonight.</em>
+            </h2>
+            <p className="text-primary-foreground/65 max-w-[40ch] mb-8">
+              Set up your booking page in minutes. Free for one chair, no card needed.
+            </p>
+            <Link
+              to="/auth"
+              search={{ mode: "signup" } as any}
+              className="inline-flex items-center gap-2 rounded-[6px] bg-background text-foreground font-semibold text-[.95rem] px-6 py-3.5 hover:opacity-90 transition"
+            >
+              Create your booking page
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-10">
-        <div className="max-w-6xl mx-auto px-6 flex flex-wrap items-center justify-between gap-5">
-          <Wordmark className="text-xl" />
-          <div className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Bookzenvo — made for people who work from a chair.
-          </div>
-          <div className="flex gap-6 text-sm text-muted-foreground">
+      <footer className="border-t border-border py-11">
+        <div className="max-w-[1120px] mx-auto px-6 flex flex-wrap items-center justify-between gap-4 text-[.85rem] text-muted-foreground">
+          <Wordmark className="text-[1.2rem]" />
+          <div>© {new Date().getFullYear()} Bookzenvo — made for people who work from a chair.</div>
+          <div className="flex gap-7">
             <a href="#" className="hover:text-foreground">Privacy</a>
             <a href="#" className="hover:text-foreground">Terms</a>
             <a href="#" className="hover:text-foreground">Contact</a>
