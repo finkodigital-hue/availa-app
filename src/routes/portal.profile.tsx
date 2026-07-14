@@ -25,10 +25,10 @@ function Profile() {
     queryKey: ["portal-customer-records", user?.email],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
-        .select("id, business_id, name, email, phone, businesses(name)")
-        .order("created_at", { ascending: false });
+      // customers SELECT RLS OR-combines the email-match policy with
+      // is_business_owner(), which can't use the email index — bypass the
+      // same way get_portal_bookings() does (see that migration for detail).
+      const { data, error } = await supabase.rpc("get_portal_customer_records");
       if (error) throw error;
       return data ?? [];
     },

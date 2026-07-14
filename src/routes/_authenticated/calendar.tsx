@@ -1043,8 +1043,6 @@ function StaffColumnHeader({ staff, palette }: { staff: any; palette: StaffPalet
           )}
           {staff.is_independent && (
             <span
-              className="shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[color:var(--pending-bg)] text-[color:var(--pending)]"
-              title={staff.business_name ? `Independent · ${staff.business_name}` : "Independent professional"}
               className="shrink-0 inline-grid place-items-center h-4 w-4 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300"
               title={staff.chair_label ? `Independent · ${staff.chair_label}` : "Independent professional"}
             >

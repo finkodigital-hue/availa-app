@@ -1858,6 +1858,35 @@ export type Database = {
         Args: { _business_id: string }
         Returns: undefined
       }
+      get_portal_bookings: {
+        Args: never
+        Returns: {
+          id: string
+          business_id: string
+          service_id: string
+          staff_id: string
+          customer_email: string
+          starts_at: string
+          ends_at: string
+          status: string
+          price_cents: number
+          notes: string
+          businesses: Json
+          services: Json
+          staff: Json
+        }[]
+      }
+      get_portal_customer_records: {
+        Args: never
+        Returns: {
+          id: string
+          business_id: string
+          name: string
+          email: string
+          phone: string
+          businesses: Json
+        }[]
+      }
       get_invitation_by_token: {
         Args: { _token: string }
         Returns: {

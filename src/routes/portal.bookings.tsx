@@ -49,15 +49,12 @@ function BookingsPage() {
     queryKey: ["portal-bookings", user?.email],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("bookings")
-        .select(`
-          id, business_id, service_id, staff_id, customer_email, starts_at, ends_at, status, price_cents, notes,
-          businesses ( id, name, slug, address, brand_color, cancellation_window_hours ),
-          services ( id, name, duration_minutes ),
-          staff ( id, name )
-        `)
-        .order("starts_at", { ascending: false });
+      // bookings SELECT RLS OR-combines the customer-email-match policy
+      // with is_business_owner()/salon_pro_permission() checks that can't
+      // use the customer_email index — querying the table directly here
+      // times out once it has real cross-tenant volume. This RPC applies
+      // the one correct restriction directly instead of going through RLS.
+      const { data, error } = await supabase.rpc("get_portal_bookings");
       if (error) throw error;
       return data as unknown as Booking[];
     },
