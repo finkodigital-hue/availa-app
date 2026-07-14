@@ -936,6 +936,84 @@ export type Database = {
           },
         ]
       }
+      page_edit_history: {
+        Row: {
+          blocks_after: Json | null
+          blocks_before: Json | null
+          business_id: string
+          created_at: string
+          id: string
+          prompt: string | null
+        }
+        Insert: {
+          blocks_after?: Json | null
+          blocks_before?: Json | null
+          business_id: string
+          created_at?: string
+          id?: string
+          prompt?: string | null
+        }
+        Update: {
+          blocks_after?: Json | null
+          blocks_before?: Json | null
+          business_id?: string
+          created_at?: string
+          id?: string
+          prompt?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_edit_history_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "page_edit_history_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      page_layouts: {
+        Row: {
+          blocks: Json
+          business_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          blocks?: Json
+          business_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          blocks?: Json
+          business_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_layouts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "page_layouts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "public_businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_invitations: {
         Row: {
           accepted_at: string | null

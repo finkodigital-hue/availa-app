@@ -25,9 +25,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fmtMoney } from "@/lib/format";
 import { toast } from "sonner";
+import { BlockRenderer, type PageBlock } from "@/components/page-blocks";
 
 export const Route = createFileRoute("/book/$slug")({
-  loader: async ({ params }) => {
+  loader: async ({ params, location }) => {
     const { data, error } = await (supabase as any)
       .from("public_businesses")
       .select("id, name, slug, description, brand_color, logo_url, address, phone, website, email, timezone, instagram, facebook, twitter")
@@ -35,7 +36,35 @@ export const Route = createFileRoute("/book/$slug")({
       .maybeSingle();
     if (error) throw error;
     if (!data) throw notFound();
-    return data;
+
+    // A preview request (used by the page builder's AI before/after and
+    // screenshot capture) supplies its own candidate blocks via query params
+    // instead of reading the saved layout — nothing is persisted by visiting
+    // this URL.
+    const search = location.search as { preview?: unknown; previewBlocks?: unknown };
+    if (search?.preview && search?.previewBlocks) {
+      try {
+        const raw = search.previewBlocks;
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (Array.isArray(parsed)) {
+          return { ...data, pageBlocks: parsed.filter((b) => b && b.type) as PageBlock[] };
+        }
+      } catch {
+        // fall through to the saved layout below
+      }
+    }
+
+    // Custom page layout is optional — if the owner never used the page
+    // builder (or the row can't be read for any reason), fall back to the
+    // page exactly as it's always looked.
+    const { data: layout } = await supabase
+      .from("page_layouts")
+      .select("blocks")
+      .eq("business_id", data.id)
+      .maybeSingle();
+    const pageBlocks = ((layout?.blocks as unknown as PageBlock[]) ?? []).filter((b) => b && b.type);
+
+    return { ...data, pageBlocks };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -364,40 +393,50 @@ function PublicBooking() {
     setInfo({ name: "", email: "", phone: "", notes: "" });
   };
 
+  const customBlocks: PageBlock[] = biz.pageBlocks ?? [];
+
   return (
     <div className="min-h-screen bg-background" style={brandStyle}>
-      {/* Branded header */}
-      <header
-        className="relative overflow-hidden"
-        style={{
-          background:
-            `linear-gradient(135deg, color-mix(in oklab, ${brand} 12%, transparent), transparent 70%)`,
-        }}
-      >
-        <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-12 flex items-center gap-4">
-          <div
-            className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-2xl grid place-items-center font-display text-2xl text-white shadow-elegant"
-            style={{ background: brand }}
-          >
-            {biz.name.charAt(0)}
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color: brand }}>
-              Book online
-            </div>
-            <h1 className="font-display text-2xl sm:text-3xl mt-0.5 truncate">{biz.name}</h1>
-            <div className="text-xs text-muted-foreground mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-              {biz.address && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{biz.address}</span>}
-              {biz.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{biz.phone}</span>}
-              {biz.website && (
-                <a href={biz.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
-                  <Globe className="h-3 w-3" />Website
-                </a>
-              )}
-            </div>
-          </div>
+      {customBlocks.length > 0 ? (
+        <div className="max-w-3xl mx-auto px-5 sm:px-6 pt-8 sm:pt-12 space-y-8 sm:space-y-10">
+          {customBlocks.map((block) => (
+            <BlockRenderer key={block.id} block={block} />
+          ))}
         </div>
-      </header>
+      ) : (
+        /* Branded header */
+        <header
+          className="relative overflow-hidden"
+          style={{
+            background:
+              `linear-gradient(135deg, color-mix(in oklab, ${brand} 12%, transparent), transparent 70%)`,
+          }}
+        >
+          <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-12 flex items-center gap-4">
+            <div
+              className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-2xl grid place-items-center font-display text-2xl text-white shadow-elegant"
+              style={{ background: brand }}
+            >
+              {biz.name.charAt(0)}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color: brand }}>
+                Book online
+              </div>
+              <h1 className="font-display text-2xl sm:text-3xl mt-0.5 truncate">{biz.name}</h1>
+              <div className="text-xs text-muted-foreground mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                {biz.address && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{biz.address}</span>}
+                {biz.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{biz.phone}</span>}
+                {biz.website && (
+                  <a href={biz.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
+                    <Globe className="h-3 w-3" />Website
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+      )}
 
       <main className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10 pb-32">
         {biz.description && step === "service" && (
