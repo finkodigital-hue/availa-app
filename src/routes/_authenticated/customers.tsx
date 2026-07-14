@@ -105,7 +105,7 @@ function CustomersPage() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-2xl border bg-card overflow-hidden">
+        <div className="rounded-xl border bg-card overflow-hidden">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="px-5 py-4 border-t first:border-t-0 flex items-center gap-4">
               <Skeleton className="h-10 w-10 rounded-full" />
@@ -132,7 +132,7 @@ function CustomersPage() {
           }
         />
       ) : (
-        <div className="rounded-2xl border bg-card overflow-hidden shadow-soft">
+        <div className="rounded-xl border bg-card overflow-hidden shadow-soft">
           <table className="hidden sm:table w-full text-sm">
             <thead className="text-left text-[11px] uppercase tracking-[0.12em] text-muted-foreground bg-muted/40">
               <tr>

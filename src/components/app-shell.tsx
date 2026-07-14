@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <div className="px-5 pt-6 pb-4">
         <Link to="/dashboard" className="font-display text-xl tracking-tight inline-block">
-          Bookzenvo<span className="text-primary">.</span>
+          Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
         </Link>
         {biz?.slug && (
           <a
@@ -111,7 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               )}
             >
               {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-primary" />
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-[color:var(--gold)]" />
               )}
               <Icon className="h-4 w-4" />
               <span>{n.label}</span>
@@ -131,7 +131,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           >
             {(path === "/import" || path.startsWith("/import")) && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-primary" />
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-[color:var(--gold)]" />
             )}
             <Upload className="h-4 w-4" />
             <span>Import</span>
@@ -203,7 +203,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile header */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4">
         <Link to="/dashboard" className="font-display text-lg">
-          Bookzenvo<span className="text-primary">.</span>
+          Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
         </Link>
         <button
           onClick={() => setMobileOpen(true)}

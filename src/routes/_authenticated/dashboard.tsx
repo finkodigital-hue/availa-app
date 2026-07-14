@@ -418,7 +418,7 @@ function Dashboard() {
         <div className="lg:col-span-2 rounded-2xl border bg-card p-6 shadow-soft">
           <div className="flex items-baseline justify-between">
             <div>
-              <h3 className="font-display text-xl flex items-center gap-2"><Target className="h-5 w-5 text-primary" /> Monthly goals</h3>
+              <h3 className="font-display text-xl flex items-center gap-2"><Target className="h-5 w-5 text-[color:var(--gold-deep)]" /> Monthly goals</h3>
               <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString([], { month: "long", year: "numeric" })}</p>
             </div>
             <Button variant="outline" size="sm" onClick={() => setGoalOpen(true)}>
@@ -490,7 +490,7 @@ function Dashboard() {
               <div key={i} className="rounded-2xl border bg-secondary/30 p-4">
                 <div className="flex items-center justify-between">
                   <div className="font-medium text-sm truncate">{s.name}</div>
-                  {i === 0 && <Trophy className="h-3.5 w-3.5 text-primary" />}
+                  {i === 0 && <Trophy className="h-3.5 w-3.5 text-[color:var(--gold-deep)]" />}
                 </div>
                 <div className="font-display text-2xl mt-1.5 tabular-nums">{fmtMoney(s.revenue)}</div>
                 <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] text-muted-foreground">
@@ -575,7 +575,7 @@ function Dashboard() {
       {/* Insights */}
       <div className="mt-6 rounded-2xl border bg-card p-6 shadow-soft">
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="h-5 w-5 text-primary" />
+          <Sparkles className="h-5 w-5 text-[color:var(--gold-deep)]" />
           <h3 className="font-display text-xl">Business insights</h3>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { fmtMoney, fmtTime, statusMeta } from "@/lib/format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { fmtMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
@@ -99,10 +100,13 @@ function BookingsPage() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={CalendarCheck} title="No bookings yet" description="They'll appear here as customers book." />
       ) : (
-        <div className="rounded-2xl border bg-card overflow-hidden divide-y">
+        <div className="rounded-xl border bg-card overflow-hidden divide-y">
           {filtered.map((b: any) => {
-            const color = b.services?.color || "var(--color-primary)";
+            const color = b.services?.color || "var(--gold-deep)";
+            const meta = statusMeta(b.status);
             return (
+              <div key={b.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/40 transition-colors">
+                <div className="w-1 h-10 rounded-[2px]" style={{ background: color }} />
               <div
                 key={b.id}
                 onClick={() => setSelected(b)}
@@ -116,6 +120,11 @@ function BookingsPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="font-medium truncate">{b.customer_name}</div>
                     <Badge
+                      variant="outline"
+                      className="capitalize text-[10px] border-transparent"
+                      style={{ background: meta.tint, color: meta.color }}
+                    >
+                      {meta.label}
                       className="text-[10px]"
                       style={{ background: statusMeta(b.status).tint, color: statusMeta(b.status).color, borderColor: statusMeta(b.status).color }}
                     >

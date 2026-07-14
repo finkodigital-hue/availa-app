@@ -13,17 +13,16 @@ export const slugify = (s: string) =>
 export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // Booking lifecycle. Stored as `bookings.status` (text). Order = workflow order.
-// Colors kept in oklch (same system as the rest of the app) at a calmer
-// saturation than stock Tailwind swatches, so status accents read as
-// considered rather than off-the-shelf.
+// Colors drawn from the Bookzenvo editorial palette (sage/amber/gold/charcoal)
+// so status accents read as considered rather than off-the-shelf.
 export const BOOKING_STATUSES = [
-  { id: "pending", label: "Pending", color: "oklch(0.6 0.02 260)", tint: "oklch(0.6 0.02 260 / 0.12)" },
-  { id: "confirmed", label: "Confirmed", color: "oklch(0.56 0.13 254)", tint: "oklch(0.56 0.13 254 / 0.12)" },
-  { id: "checked_in", label: "Checked in", color: "oklch(0.56 0.13 300)", tint: "oklch(0.56 0.13 300 / 0.12)" },
-  { id: "in_progress", label: "In progress", color: "oklch(0.68 0.13 70)", tint: "oklch(0.68 0.13 70 / 0.14)" },
-  { id: "completed", label: "Completed", color: "oklch(0.6 0.12 155)", tint: "oklch(0.6 0.12 155 / 0.12)" },
-  { id: "cancelled", label: "Cancelled", color: "oklch(0.58 0.17 25)", tint: "oklch(0.58 0.17 25 / 0.1)" },
-  { id: "no_show", label: "No-show", color: "oklch(0.52 0.015 260)", tint: "oklch(0.52 0.015 260 / 0.1)" },
+  { id: "pending", label: "Pending", color: "#A8813E", tint: "#F5E9D2" },
+  { id: "confirmed", label: "Confirmed", color: "#748563", tint: "#EAEDE5" },
+  { id: "checked_in", label: "Checked in", color: "#A98B5F", tint: "#F4EDE1" },
+  { id: "in_progress", label: "In progress", color: "#B26A45", tint: "#F3E2D8" },
+  { id: "completed", label: "Completed", color: "#5C7A6E", tint: "#E4EBE7" },
+  { id: "cancelled", label: "Cancelled", color: "#A8503E", tint: "#F5E5E1" },
+  { id: "no_show", label: "No-show", color: "#8B857B", tint: "#F3F1EB" },
 ] as const;
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number]["id"];

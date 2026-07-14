@@ -203,7 +203,7 @@ function ServicesPage() {
 
       {isLoading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
         </div>
       ) : services?.length === 0 ? (
         <EmptyState
@@ -223,7 +223,7 @@ function ServicesPage() {
             return (
               <div
                 key={s.id}
-                className={`group rounded-2xl border bg-card p-5 card-hover animate-rise stagger-${(i % 6) + 1} relative overflow-hidden ${isArchived ? "opacity-60" : ""}`}
+                className={`group rounded-xl border bg-card p-5 card-hover animate-rise stagger-${(i % 6) + 1} relative overflow-hidden ${isArchived ? "opacity-60" : ""}`}
               >
                 {s.color && <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: s.color }} />}
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">

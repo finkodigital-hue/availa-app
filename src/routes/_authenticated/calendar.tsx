@@ -413,7 +413,7 @@ function CalendarPage() {
         title="Calendar"
         subtitle={title}
         action={
-          <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow rounded-full">
+          <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow">
             <Plus className="h-4 w-4 mr-1.5" /> New booking
           </Button>
         }
@@ -424,12 +424,12 @@ function CalendarPage() {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4 mt-4">
-        <div className="inline-flex rounded-full border bg-card p-1 shadow-soft">
+        <div className="inline-flex rounded-[8px] border bg-card p-1 shadow-soft">
           {(["day", "week", "month"] as View[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-4 py-1.5 text-xs rounded-full capitalize transition-all duration-200 ${
+              className={`px-4 py-1.5 text-xs rounded-[6px] capitalize transition-all duration-200 ${
                 view === v
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -440,12 +440,12 @@ function CalendarPage() {
           ))}
         </div>
         <div className="flex items-center gap-1.5">
-          <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => navigate(-1)}>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => navigate(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
-            className="h-9 rounded-full"
+            className="h-9"
             onClick={() => {
               const d = new Date(); d.setHours(0, 0, 0, 0);
               setAnchor(d);
@@ -453,7 +453,7 @@ function CalendarPage() {
           >
             Today
           </Button>
-          <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => navigate(1)}>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => navigate(1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -578,7 +578,7 @@ function CalendarPage() {
             {selected && selected.status !== "cancelled" && (
               <ConfirmDialog
                 trigger={
-                  <Button variant="destructive" className="rounded-full">
+                  <Button variant="destructive">
                     <XCircle className="h-4 w-4 mr-1.5" /> Cancel booking
                   </Button>
                 }
@@ -735,11 +735,11 @@ function TodayStrip({ bookings, staff, date }: { bookings: any[]; staff: any[]; 
   const freeHours = (freeMinutes / 60).toFixed(1);
 
   const cards = [
-    { label: isToday ? "Today's revenue" : "Day revenue", value: fmtMoney(revenue), icon: CircleDollarSign, tint: "oklch(0.95 0.05 155)", ink: "oklch(0.35 0.1 155)" },
-    { label: "Bookings", value: String(active.length), icon: CalendarDays, tint: "oklch(0.94 0.05 295)", ink: "oklch(0.35 0.13 295)" },
-    { label: "Free time", value: `${freeHours}h`, icon: TimerReset, tint: "oklch(0.94 0.04 235)", ink: "oklch(0.32 0.1 235)" },
-    { label: "Check-ins", value: String(checkins), icon: CheckCircle2, tint: "oklch(0.95 0.06 95)", ink: "oklch(0.38 0.1 80)" },
-    { label: "Cancellations", value: String(cancellations), icon: Ban, tint: "oklch(0.94 0.045 25)", ink: "oklch(0.4 0.13 25)" },
+    { label: isToday ? "Today's revenue" : "Day revenue", value: fmtMoney(revenue), icon: CircleDollarSign, tint: "var(--confirmed-bg)", ink: "var(--confirmed)" },
+    { label: "Bookings", value: String(active.length), icon: CalendarDays, tint: "var(--gold-wash)", ink: "var(--gold-deep)" },
+    { label: "Free time", value: `${freeHours}h`, icon: TimerReset, tint: "#F3F1EB", ink: "var(--charcoal-soft)" },
+    { label: "Check-ins", value: String(checkins), icon: CheckCircle2, tint: "var(--pending-bg)", ink: "var(--pending)" },
+    { label: "Cancellations", value: String(cancellations), icon: Ban, tint: "#F5E5E1", ink: "#A8503E" },
   ];
 
   return (
@@ -1017,6 +1017,11 @@ function StaffColumnHeader({ staff, palette }: { staff: any; palette: StaffPalet
             {initialsOf(staff.name)}
           </div>
         )}
+        <span
+          className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-card"
+          style={{ background: "var(--confirmed)" }}
+          title="Online"
+        />
         {!staff._readOnly && (
           <span
             className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-card"
@@ -1038,6 +1043,8 @@ function StaffColumnHeader({ staff, palette }: { staff: any; palette: StaffPalet
           )}
           {staff.is_independent && (
             <span
+              className="shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[color:var(--pending-bg)] text-[color:var(--pending)]"
+              title={staff.business_name ? `Independent · ${staff.business_name}` : "Independent professional"}
               className="shrink-0 inline-grid place-items-center h-4 w-4 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300"
               title={staff.chair_label ? `Independent · ${staff.chair_label}` : "Independent professional"}
             >
@@ -1171,10 +1178,10 @@ function StaffColumn({
       {/* now line */}
       {nowTop !== null && (
         <div className="absolute left-0 right-0 z-10 pointer-events-none" style={{ top: nowTop }}>
-          <div className="h-px relative" style={{ background: "oklch(0.62 0.2 39)" }}>
+          <div className="h-px relative" style={{ background: "var(--gold-deep)" }}>
             <div
               className="absolute -left-1 -top-1 h-2 w-2 rounded-full animate-pulse-ring"
-              style={{ background: "oklch(0.62 0.2 39)" }}
+              style={{ background: "var(--gold-deep)" }}
             />
           </div>
         </div>
