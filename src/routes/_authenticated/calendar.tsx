@@ -44,6 +44,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { signedUrl } from "@/lib/image";
 import { fmtMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
 import { paletteFor, initialsOf, type StaffPalette } from "@/lib/staff-colors";
+import { layoutOverlaps, packedStyle, type LayoutSlot } from "@/lib/calendar-layout";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
@@ -411,7 +412,7 @@ function CalendarPage() {
       <PageHeader
         eyebrow="Schedule"
         title="Calendar"
-        subtitle={title}
+        subtitle="View and manage your team's bookings."
         action={
           <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow">
             <Plus className="h-4 w-4 mr-1.5" /> New booking
@@ -440,9 +441,6 @@ function CalendarPage() {
           ))}
         </div>
         <div className="flex items-center gap-1.5">
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => navigate(-1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
           <Button
             variant="outline"
             className="h-9"
@@ -453,9 +451,17 @@ function CalendarPage() {
           >
             Today
           </Button>
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => navigate(1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <div className="inline-flex items-center rounded-[8px] border bg-card shadow-soft">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none" onClick={() => navigate(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="min-w-[9.5rem] px-2 h-9 flex items-center justify-center border-x text-sm font-medium tabular-nums whitespace-nowrap">
+              {title}
+            </div>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-l-none" onClick={() => navigate(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1098,6 +1104,20 @@ function StaffColumn({
   const isDragTargetHere = drag?.mode === "move" && drag.currentStaffId === staff.id;
   const isForeignTarget = isDragTargetHere && drag!.originStaffId !== staff.id;
 
+  // Pack overlapping bookings into side-by-side columns so a busy day
+  // never renders appointments stacked directly on top of each other.
+  const slots = useMemo(
+    () =>
+      layoutOverlaps(
+        bookings.map((b: any) => ({
+          id: b.id,
+          startMs: new Date(b.starts_at).getTime(),
+          endMs: new Date(b.ends_at).getTime(),
+        })),
+      ),
+    [bookings],
+  );
+
   return (
     <div
       data-staff-col
@@ -1216,6 +1236,7 @@ function StaffColumn({
           palette={palette}
           date={date}
           staffId={staff.id}
+          slot={slots.get(b.id)}
           onSelect={onSelect}
           drag={drag}
           onDragStart={onDragStart}
@@ -1232,6 +1253,7 @@ function BookingCard({
   palette,
   date,
   staffId,
+  slot,
   onSelect,
   drag,
   onDragStart,
@@ -1242,6 +1264,7 @@ function BookingCard({
   palette: StaffPalette;
   date: Date;
   staffId: string;
+  slot: LayoutSlot | undefined;
   onSelect: (b: any) => void;
   drag: DragState | null;
   onDragStart: (b: any, mode: DragMode, staffId: string, top: number, height: number, clientY: number) => void;
@@ -1262,6 +1285,14 @@ function BookingCard({
 
   const top = isActive && !isElsewhere ? drag!.currentTop : baseTop;
   const height = isActive && !isElsewhere ? drag!.currentHeight : baseHeight;
+  // A small vertical inset so back-to-back bookings (touching in time, not
+  // overlapping) still show a hairline of breathing room instead of
+  // reading as one merged block. Skipped while actively dragging/resizing
+  // so the box always tracks the real occupied time precisely.
+  const displayHeight = isActive ? height : Math.max(28, height - 3);
+  // Widen to the full column while actively being dragged/resized, so it's
+  // easy to see and drop; otherwise sit in its packed side-by-side slot.
+  const { left, width } = packedStyle(isActive ? undefined : slot);
   const liveStartIso = isActive ? drag!.currentStartIso : b.starts_at;
   const liveEndIso = isActive ? drag!.currentEndIso : b.ends_at;
   const liveDurationMin = Math.round((new Date(liveEndIso).getTime() - new Date(liveStartIso).getTime()) / 60000);
@@ -1327,15 +1358,18 @@ function BookingCard({
           if (draggedRef.current) { draggedRef.current = false; return; }
           onSelect(b);
         }}
-        className={`group absolute left-1.5 right-1.5 rounded-2xl text-left overflow-hidden drag-lift shadow-soft hover:shadow-elegant hover:-translate-y-0.5 active:scale-[0.99] touch-none ${
+        className={`group absolute rounded-2xl text-left overflow-hidden drag-lift shadow-soft hover:shadow-elegant hover:-translate-y-0.5 active:scale-[0.99] touch-none transition-[left,width] duration-150 ${
           isMoving && !isElsewhere ? "is-dragging" : ""
         } ${isResizing ? "is-resizing" : ""} ${isElsewhere ? "opacity-35" : ""} ${justSettled ? "drop-snap" : ""}`}
         style={{
           top,
-          height,
+          height: displayHeight,
+          left,
+          width,
           background: palette.bg,
           border: `1px solid ${palette.border}`,
           color: palette.ink,
+          zIndex: isActive ? 30 : undefined,
         }}
       >
         {/* Left status accent bar */}
@@ -1488,11 +1522,20 @@ function WeekView({
                       <div className="h-1/2 border-b border-dashed border-border/25" />
                     </div>
                   ))}
-                  {dayBookings.map((b: any) => {
+                  {(() => {
+                    const daySlots = layoutOverlaps(
+                      dayBookings.map((b: any) => ({
+                        id: b.id,
+                        startMs: new Date(b.starts_at).getTime(),
+                        endMs: new Date(b.ends_at).getTime(),
+                      })),
+                    );
+                    return dayBookings.map((b: any) => {
                     const s = new Date(b.starts_at);
                     const e = new Date(b.ends_at);
                     const top = (s.getHours() - START_HOUR + s.getMinutes() / 60) * HOUR_PX;
-                    const height = Math.max(28, ((e.getTime() - s.getTime()) / 3600000) * HOUR_PX);
+                    const height = Math.max(28, ((e.getTime() - s.getTime()) / 3600000) * HOUR_PX - 3);
+                    const { left, width } = packedStyle(daySlots.get(b.id));
                     const palette = paletteFor(b.staff_id);
                     const isCustom = !!b.is_custom;
                     const bg = isCustom ? `color-mix(in oklab, ${b.custom_color || "#a78bfa"} 22%, white)` : palette.bg;
@@ -1501,9 +1544,9 @@ function WeekView({
                       <button
                         key={b.id}
                         onClick={(ev) => { ev.stopPropagation(); onSelect(b); }}
-                        className="absolute left-1 right-1 rounded-xl px-1.5 py-1 text-left overflow-hidden shadow-soft hover:shadow-elegant hover:-translate-y-0.5 transition-all"
+                        className="absolute rounded-xl px-1.5 py-1 text-left overflow-hidden shadow-soft hover:shadow-elegant hover:-translate-y-0.5 transition-all"
                         style={{
-                          top, height,
+                          top, height, left, width,
                           background: bg,
                           border: `1.5px ${isCustom ? "dashed" : "solid"} ${border}`,
                           color: palette.ink,
@@ -1516,7 +1559,8 @@ function WeekView({
                         {!isCustom && <div className="text-[10px] truncate opacity-80">{b.services?.name}</div>}
                       </button>
                     );
-                  })}
+                  });
+                  })()}
                 </div>
               );
             })}
