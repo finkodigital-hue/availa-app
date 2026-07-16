@@ -250,8 +250,9 @@ function StockPage() {
   }, [items, search, onlyAttention]);
 
   return (
-    <div className="space-y-6">
+    <div className="p-5 sm:p-8 md:p-10 max-w-6xl space-y-6">
       <PageHeader
+        eyebrow="Inventory"
         title="Stock"
         subtitle="What's on the shelf, at a glance."
         action={

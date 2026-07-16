@@ -8,7 +8,6 @@ export interface HeroConfig {
   ctaLabel?: string;
   ctaHref?: string;
   photoUrl?: string | null;
-  brandColor?: string;
 }
 
 export interface AboutConfig {
@@ -30,6 +29,12 @@ export interface StaffSpotlightConfig {
   staffIds?: string[];
 }
 
+// Renders real active services for `businessId` — never invent a service.
+export interface ServicesListConfig {
+  businessId: string;
+  heading?: string;
+}
+
 // Owner-entered only — never invent a quote, name, or role.
 export interface TestimonialConfig {
   quote: string;
@@ -44,12 +49,13 @@ export interface HoursLocationConfig {
 }
 
 export type BlockType =
-  "hero" | "about" | "gallery" | "staff-spotlight" | "testimonial" | "hours-location";
+  "hero" | "about" | "gallery" | "services-list" | "staff-spotlight" | "testimonial" | "hours-location";
 
 export const BLOCK_LABELS: Record<BlockType, string> = {
   hero: "Hero",
   about: "About",
   gallery: "Gallery",
+  "services-list": "Services",
   "staff-spotlight": "Staff spotlight",
   testimonial: "Testimonial",
   "hours-location": "Hours & location",
@@ -63,6 +69,7 @@ export type PageBlock =
   | { id: string; type: "hero"; config: HeroConfig }
   | { id: string; type: "about"; config: AboutConfig }
   | { id: string; type: "gallery"; config: GalleryConfig }
+  | { id: string; type: "services-list"; config: ServicesListConfig }
   | { id: string; type: "staff-spotlight"; config: StaffSpotlightConfig }
   | { id: string; type: "testimonial"; config: TestimonialConfig }
   | { id: string; type: "hours-location"; config: HoursLocationConfig };
@@ -75,6 +82,8 @@ export function defaultConfigForType(type: BlockType, businessId: string): PageB
       return { bio: "" };
     case "gallery":
       return { layout: 6, photos: [] };
+    case "services-list":
+      return { businessId };
     case "staff-spotlight":
       return { businessId };
     case "testimonial":

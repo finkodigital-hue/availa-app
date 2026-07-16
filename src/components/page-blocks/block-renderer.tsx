@@ -1,6 +1,7 @@
 import { Hero } from "./hero";
 import { About } from "./about";
 import { Gallery } from "./gallery";
+import { ServicesList } from "./services-list";
 import { StaffSpotlight } from "./staff-spotlight";
 import { Testimonial } from "./testimonial";
 import { HoursLocation } from "./hours-location";
@@ -17,6 +18,8 @@ export function BlockRenderer({ block }: { block: PageBlock }) {
       return <About config={block.config} />;
     case "gallery":
       return <Gallery config={block.config} />;
+    case "services-list":
+      return <ServicesList config={block.config} />;
     case "staff-spotlight":
       return <StaffSpotlight config={block.config} />;
     case "testimonial":

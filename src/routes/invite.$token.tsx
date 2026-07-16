@@ -33,7 +33,6 @@ function InviteAcceptPage() {
           id: row.salon_business_id,
           name: row.salon_name,
           logo_url: row.salon_logo_url,
-          brand_color: row.salon_brand_color,
         },
       } as any;
     },

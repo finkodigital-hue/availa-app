@@ -409,13 +409,10 @@ export type Database = {
       }
       businesses: {
         Row: {
-          accent_color: string | null
           address: string | null
           booking_instructions: string | null
-          border_radius: number
-          brand_color: string | null
           browser_title: string | null
-          button_style: string
+          business_type: string | null
           cancellation_policy: string | null
           cancellation_window_hours: number
           cover_image_url: string | null
@@ -432,17 +429,16 @@ export type Database = {
           facebook: string | null
           faq: Json
           favicon_url: string | null
-          font: string
           hide_powered_by: boolean
           id: string
           instagram: string | null
           logo_url: string | null
           name: string
           owner_id: string
+          page_theme: Json
           payment_mode: string
           phone: string | null
           plan: string
-          secondary_color: string | null
           show_durations: boolean
           show_prices: boolean
           show_staff: boolean
@@ -451,22 +447,19 @@ export type Database = {
           stripe_charges_enabled: boolean
           stripe_details_submitted: boolean
           terms: string | null
-          theme: string
           tiktok: string | null
           timezone: string
           twitter: string | null
           updated_at: string
           website: string | null
           welcome_message: string | null
+          wizard_completed: boolean
         }
         Insert: {
-          accent_color?: string | null
           address?: string | null
           booking_instructions?: string | null
-          border_radius?: number
-          brand_color?: string | null
           browser_title?: string | null
-          button_style?: string
+          business_type?: string | null
           cancellation_policy?: string | null
           cancellation_window_hours?: number
           cover_image_url?: string | null
@@ -483,17 +476,16 @@ export type Database = {
           facebook?: string | null
           faq?: Json
           favicon_url?: string | null
-          font?: string
           hide_powered_by?: boolean
           id?: string
           instagram?: string | null
           logo_url?: string | null
           name: string
           owner_id: string
+          page_theme?: Json
           payment_mode?: string
           phone?: string | null
           plan?: string
-          secondary_color?: string | null
           show_durations?: boolean
           show_prices?: boolean
           show_staff?: boolean
@@ -502,22 +494,19 @@ export type Database = {
           stripe_charges_enabled?: boolean
           stripe_details_submitted?: boolean
           terms?: string | null
-          theme?: string
           tiktok?: string | null
           timezone?: string
           twitter?: string | null
           updated_at?: string
           website?: string | null
           welcome_message?: string | null
+          wizard_completed?: boolean
         }
         Update: {
-          accent_color?: string | null
           address?: string | null
           booking_instructions?: string | null
-          border_radius?: number
-          brand_color?: string | null
           browser_title?: string | null
-          button_style?: string
+          business_type?: string | null
           cancellation_policy?: string | null
           cancellation_window_hours?: number
           cover_image_url?: string | null
@@ -534,17 +523,16 @@ export type Database = {
           facebook?: string | null
           faq?: Json
           favicon_url?: string | null
-          font?: string
           hide_powered_by?: boolean
           id?: string
           instagram?: string | null
           logo_url?: string | null
           name?: string
           owner_id?: string
+          page_theme?: Json
           payment_mode?: string
           phone?: string | null
           plan?: string
-          secondary_color?: string | null
           show_durations?: boolean
           show_prices?: boolean
           show_staff?: boolean
@@ -553,13 +541,13 @@ export type Database = {
           stripe_charges_enabled?: boolean
           stripe_details_submitted?: boolean
           terms?: string | null
-          theme?: string
           tiktok?: string | null
           timezone?: string
           twitter?: string | null
           updated_at?: string
           website?: string | null
           welcome_message?: string | null
+          wizard_completed?: boolean
         }
         Relationships: []
       }
@@ -1677,13 +1665,9 @@ export type Database = {
       }
       public_businesses: {
         Row: {
-          accent_color: string | null
           address: string | null
           booking_instructions: string | null
-          border_radius: number | null
-          brand_color: string | null
           browser_title: string | null
-          button_style: string | null
           cancellation_policy: string | null
           cancellation_window_hours: number | null
           cover_image_url: string | null
@@ -1697,21 +1681,19 @@ export type Database = {
           facebook: string | null
           faq: Json | null
           favicon_url: string | null
-          font: string | null
           hide_powered_by: boolean | null
           id: string | null
           instagram: string | null
           logo_url: string | null
           name: string | null
+          page_theme: Json | null
           payment_mode: string | null
           phone: string | null
-          secondary_color: string | null
           show_durations: boolean | null
           show_prices: boolean | null
           show_staff: boolean | null
           slug: string | null
           terms: string | null
-          theme: string | null
           tiktok: string | null
           timezone: string | null
           twitter: string | null
@@ -1719,13 +1701,9 @@ export type Database = {
           welcome_message: string | null
         }
         Insert: {
-          accent_color?: string | null
           address?: string | null
           booking_instructions?: string | null
-          border_radius?: number | null
-          brand_color?: string | null
           browser_title?: string | null
-          button_style?: string | null
           cancellation_policy?: string | null
           cancellation_window_hours?: number | null
           cover_image_url?: string | null
@@ -1739,21 +1717,19 @@ export type Database = {
           facebook?: string | null
           faq?: Json | null
           favicon_url?: string | null
-          font?: string | null
           hide_powered_by?: boolean | null
           id?: string | null
           instagram?: string | null
           logo_url?: string | null
           name?: string | null
+          page_theme?: Json | null
           payment_mode?: string | null
           phone?: string | null
-          secondary_color?: string | null
           show_durations?: boolean | null
           show_prices?: boolean | null
           show_staff?: boolean | null
           slug?: string | null
           terms?: string | null
-          theme?: string | null
           tiktok?: string | null
           timezone?: string | null
           twitter?: string | null
@@ -1761,13 +1737,9 @@ export type Database = {
           welcome_message?: string | null
         }
         Update: {
-          accent_color?: string | null
           address?: string | null
           booking_instructions?: string | null
-          border_radius?: number | null
-          brand_color?: string | null
           browser_title?: string | null
-          button_style?: string | null
           cancellation_policy?: string | null
           cancellation_window_hours?: number | null
           cover_image_url?: string | null
@@ -1781,21 +1753,19 @@ export type Database = {
           facebook?: string | null
           faq?: Json | null
           favicon_url?: string | null
-          font?: string | null
           hide_powered_by?: boolean | null
           id?: string | null
           instagram?: string | null
           logo_url?: string | null
           name?: string | null
+          page_theme?: Json | null
           payment_mode?: string | null
           phone?: string | null
-          secondary_color?: string | null
           show_durations?: boolean | null
           show_prices?: boolean | null
           show_staff?: boolean | null
           slug?: string | null
           terms?: string | null
-          theme?: string | null
           tiktok?: string | null
           timezone?: string | null
           twitter?: string | null
@@ -1979,7 +1949,6 @@ export type Database = {
           rent_amount_cents: number
           rent_due_day: number
           rent_mode: string
-          salon_brand_color: string
           salon_business_id: string
           salon_logo_url: string
           salon_name: string

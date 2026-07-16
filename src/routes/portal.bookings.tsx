@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { fmtMoney } from "@/lib/format";
 import { useAvailableSlots, buildDateStrip } from "@/lib/slots";
+import { parseTheme } from "@/lib/theme";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/portal/bookings")({
@@ -31,7 +32,7 @@ type Booking = {
   status: string;
   price_cents: number;
   notes: string | null;
-  businesses: { id: string; name: string; slug: string; address: string | null; brand_color: string | null; cancellation_window_hours: number } | null;
+  businesses: { id: string; name: string; slug: string; address: string | null; page_theme: unknown; cancellation_window_hours: number } | null;
   services: { id: string; name: string; duration_minutes: number } | null;
   staff: { id: string; name: string } | null;
 };
@@ -183,7 +184,7 @@ function statusBadge(status: string) {
 }
 
 function BookingCard({ b, canManage, onReschedule, onCancel }: { b: Booking; canManage: boolean; onReschedule?: () => void; onCancel?: () => void }) {
-  const brand = b.businesses?.brand_color ?? "hsl(var(--primary))";
+  const brand = b.businesses ? parseTheme(b.businesses.page_theme).colors.primary : "hsl(var(--primary))";
   const start = new Date(b.starts_at);
   const canModify = canManage && withinWindow(b) && b.status !== "cancelled" && b.status !== "completed";
 

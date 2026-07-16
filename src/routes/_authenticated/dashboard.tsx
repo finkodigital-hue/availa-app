@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { fmtMoney, fmtTime } from "@/lib/format";
+import { fetchBookingsInRange, aggregateStaffPerformance, aggregateServicePerformance, computeTotals, pctDelta } from "@/lib/reports";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -122,16 +123,15 @@ function Dashboard() {
     enabled: !!bid,
     queryFn: async () => {
       const { start, end, prevStart, prevEnd, bucket } = rangeFor(range);
-      const [cur, prev] = await Promise.all([
-        supabase.from("bookings").select("starts_at, price_cents, status, staff_id, service_id, customer_id, services(name, color, duration_minutes, price_cents), staff(name)").eq("business_id", bid!).gte("starts_at", start.toISOString()).lte("starts_at", end.toISOString()).neq("status", "cancelled"),
-        supabase.from("bookings").select("price_cents").eq("business_id", bid!).gte("starts_at", prevStart.toISOString()).lte("starts_at", prevEnd.toISOString()).neq("status", "cancelled"),
+      const [data, prevData] = await Promise.all([
+        fetchBookingsInRange(bid!, start, end),
+        fetchBookingsInRange(bid!, prevStart, prevEnd),
       ]);
 
-      const data = cur.data ?? [];
-      const total = data.reduce((a, b: any) => a + (b.price_cents ?? 0), 0);
-      const prevTotal = (prev.data ?? []).reduce((a, b: any) => a + (b.price_cents ?? 0), 0);
-      const trend = prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : total > 0 ? 100 : 0;
-      const bookingsTrend = prev.data?.length ? ((data.length - prev.data.length) / prev.data.length) * 100 : data.length > 0 ? 100 : 0;
+      const { revenue: total } = computeTotals(data);
+      const { revenue: prevTotal } = computeTotals(prevData);
+      const trend = pctDelta(total, prevTotal) ?? 0;
+      const bookingsTrend = pctDelta(data.length, prevData.length) ?? 0;
 
       // bucketize
       const buckets = new Map<string, { revenue: number; bookings: number; label: string; sortKey: string }>();
@@ -167,41 +167,15 @@ function Dashboard() {
       const chart = Array.from(buckets.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 
       // staff perf
-      const staffMap = new Map<string, { name: string; revenue: number; bookings: number; durationMin: number; customers: Set<string> }>();
-      data.forEach((b: any) => {
-        if (!b.staff_id) return;
-        const cur = staffMap.get(b.staff_id) ?? { name: b.staff?.name ?? "—", revenue: 0, bookings: 0, durationMin: 0, customers: new Set() };
-        cur.revenue += b.price_cents ?? 0;
-        cur.bookings += 1;
-        cur.durationMin += b.services?.duration_minutes ?? 0;
-        if (b.customer_id) cur.customers.add(b.customer_id);
-        staffMap.set(b.staff_id, cur);
-      });
       const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
-      const staff = Array.from(staffMap.values()).map((s) => ({
+      const staff = aggregateStaffPerformance(data).map((s) => ({
         ...s,
-        repeat: s.customers.size,
-        avg: s.bookings ? Math.round(s.revenue / s.bookings) : 0,
-        avgDuration: s.bookings ? Math.round(s.durationMin / s.bookings) : 0,
         utilisation: Math.min(100, Math.round((s.durationMin / (days * 8 * 60)) * 100)),
       }));
 
-      // service perf
-      const svcMap = new Map<string, { name: string; revenue: number; bookings: number; price: number; duration: number }>();
-      data.forEach((b: any) => {
-        if (!b.service_id) return;
-        const cur = svcMap.get(b.service_id) ?? {
-          name: b.services?.name ?? "—",
-          revenue: 0,
-          bookings: 0,
-          price: b.services?.price_cents ?? 0,
-          duration: b.services?.duration_minutes ?? 0,
-        };
-        cur.revenue += b.price_cents ?? 0;
-        cur.bookings += 1;
-        svcMap.set(b.service_id, cur);
-      });
-      const services = Array.from(svcMap.values()).sort((a, b) => b.bookings - a.bookings);
+      // service perf — dashboard's "Top services" ranks by booking volume
+      // rather than the revenue-desc order aggregateServicePerformance returns.
+      const services = [...aggregateServicePerformance(data)].sort((a, b) => b.bookings - a.bookings);
 
       // insights
       const dayCount = [0, 0, 0, 0, 0, 0, 0];

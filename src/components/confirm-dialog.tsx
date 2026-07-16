@@ -26,9 +26,10 @@ export function ConfirmDialog({
   destructive?: boolean;
   onConfirm: () => Promise<void> | void;
 }) {
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -41,9 +42,18 @@ export function ConfirmDialog({
             disabled={busy}
             className={destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
             onClick={async (e) => {
+              // Radix's AlertDialogAction only auto-closes on click if the
+              // default isn't prevented — but we need to await onConfirm
+              // first (it's async), so we take over closing explicitly via
+              // `open` instead of letting Radix decide synchronously.
               e.preventDefault();
               setBusy(true);
-              try { await onConfirm(); } finally { setBusy(false); }
+              try {
+                await onConfirm();
+                setOpen(false);
+              } finally {
+                setBusy(false);
+              }
             }}
           >
             {confirmLabel}

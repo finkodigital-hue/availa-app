@@ -198,12 +198,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-60 md:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen">
+      <aside className="hidden md:flex md:w-60 md:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen print:hidden">
         {SidebarContent}
       </aside>
 
       {/* Mobile header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4 print:hidden">
         <Link to="/dashboard" className="font-display text-lg">
           Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
         </Link>
@@ -236,20 +236,22 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <main className="flex-1 min-w-0 pt-14 md:pt-0 pb-28 md:pb-0">{children}</main>
+      <main className="flex-1 min-w-0 pt-14 md:pt-0 pb-28 md:pb-0 print:pt-0 print:pb-0">{children}</main>
 
-      <MobileBottomNav
-        onMore={() => setMobileOpen(true)}
-        onAdd={() => {
-          // Dispatch a global event the Calendar listens for. If we're not
-          // already on /calendar, navigate first so the listener is mounted.
-          if (path.startsWith("/calendar")) {
-            window.dispatchEvent(new CustomEvent("luma:new-booking"));
-          } else {
-            router.navigate({ to: "/calendar", search: { new: 1 } as any });
-          }
-        }}
-      />
+      <div className="print:hidden">
+        <MobileBottomNav
+          onMore={() => setMobileOpen(true)}
+          onAdd={() => {
+            // Dispatch a global event the Calendar listens for. If we're not
+            // already on /calendar, navigate first so the listener is mounted.
+            if (path.startsWith("/calendar")) {
+              window.dispatchEvent(new CustomEvent("luma:new-booking"));
+            } else {
+              router.navigate({ to: "/calendar", search: { new: 1 } as any });
+            }
+          }}
+        />
+      </div>
     </div>
   );
 }

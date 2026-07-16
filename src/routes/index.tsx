@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { CookieConsentBanner, CookieConsentProvider, CookieSettingsFooterLink } from "@/components/cookie-consent";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -302,6 +303,7 @@ function Landing() {
   ];
 
   return (
+    <CookieConsentProvider>
     <div className="min-h-screen bg-background text-foreground font-sans">
       {/* Header */}
       <header
@@ -529,9 +531,12 @@ function Landing() {
             <a href="#" className="hover:text-foreground">Privacy</a>
             <a href="#" className="hover:text-foreground">Terms</a>
             <a href="#" className="hover:text-foreground">Contact</a>
+            <CookieSettingsFooterLink />
           </div>
         </div>
       </footer>
     </div>
+    <CookieConsentBanner />
+    </CookieConsentProvider>
   );
 }
