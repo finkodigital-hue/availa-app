@@ -12,6 +12,7 @@ import {
   Sparkles,
   History,
   Pencil,
+  Palette,
 } from "lucide-react";
 import {
   DndContext,
@@ -59,6 +60,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DesignPanel } from "@/components/design-panel";
+import { SetupWizard } from "@/components/page-builder-wizard/setup-wizard";
 import {
   BLOCK_TYPES,
   BLOCK_LABELS,
@@ -69,6 +73,7 @@ import {
   type HeroConfig,
   type AboutConfig,
   type GalleryConfig,
+  type ServicesListConfig,
   type StaffSpotlightConfig,
   type TestimonialConfig,
   type HoursLocationConfig,
@@ -76,12 +81,16 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/page-builder")({
+  validateSearch: (search: Record<string, unknown>): { tab?: "sections" | "design" } => ({
+    tab: search.tab === "design" ? "design" : undefined,
+  }),
   component: PageBuilderPage,
 });
 
 function PageBuilderPage() {
   const qc = useQueryClient();
   const { data: biz } = useMyBusiness();
+  const { tab } = Route.useSearch();
 
   const { data: layout, isLoading } = useQuery({
     queryKey: ["page-layout", biz?.id],
@@ -286,6 +295,23 @@ function PageBuilderPage() {
 
   if (!biz) return null;
 
+  // wizard_completed is the sole gate — pre-existing businesses were
+  // backfilled to `true` (see migration), so this only fires for genuinely
+  // new businesses and for "Re-run setup wizard" (which explicitly flips it
+  // back to `false` regardless of whether a page already exists).
+  if (!biz.wizard_completed) {
+    return (
+      <SetupWizard
+        business={biz}
+        onComplete={() => {
+          toast.success("Your page is live!", {
+            description: "Tweak anything here. Your design settings live in the Design panel.",
+          });
+        }}
+      />
+    );
+  }
+
   return (
     <div className="p-5 sm:p-8 md:p-10">
       <PageHeader
@@ -299,6 +325,17 @@ function PageBuilderPage() {
         }
       />
 
+      <Tabs defaultValue={tab ?? "sections"} className="space-y-6">
+        <TabsList className="rounded-[10px] bg-card border p-1.5 shadow-soft">
+          <TabsTrigger value="sections" className="text-xs"><LayoutTemplate className="h-3.5 w-3.5 mr-1.5" /> Sections</TabsTrigger>
+          <TabsTrigger value="design" className="text-xs"><Palette className="h-3.5 w-3.5 mr-1.5" /> Design</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="design">
+          <DesignPanel business={biz} />
+        </TabsContent>
+
+        <TabsContent value="sections">
       <div className="rounded-2xl border-2 border-primary/15 bg-card p-6 sm:p-8 mb-8 shadow-soft">
         <div className="flex items-center gap-2 mb-1.5">
           <Sparkles className="h-5 w-5 text-primary" />
@@ -515,6 +552,8 @@ function PageBuilderPage() {
           </div>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -608,6 +647,9 @@ function BlockCard({
       {block.type === "hero" && <HeroFields config={block.config} onChange={onChange} />}
       {block.type === "about" && <AboutFields config={block.config} onChange={onChange} />}
       {block.type === "gallery" && <GalleryFields config={block.config} onChange={onChange} />}
+      {block.type === "services-list" && (
+        <ServicesListFields config={block.config} onChange={onChange} />
+      )}
       {block.type === "staff-spotlight" && (
         <StaffSpotlightFields config={block.config} onChange={onChange} businessId={businessId} />
       )}
@@ -712,15 +754,6 @@ function HeroFields({
           />
         </div>
       )}
-      <div>
-        <FieldLabel>Brand colour</FieldLabel>
-        <Input
-          className="mt-1.5"
-          value={config.brandColor ?? ""}
-          onChange={(e) => onChange({ ...config, brandColor: e.target.value })}
-          placeholder="#8E2A38"
-        />
-      </div>
     </div>
   );
 }
@@ -948,6 +981,31 @@ function TestimonialFields({
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function ServicesListFields({
+  config,
+  onChange,
+}: {
+  config: ServicesListConfig;
+  onChange: (c: ServicesListConfig) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <FieldLabel>Heading</FieldLabel>
+        <Input
+          className="mt-1.5"
+          value={config.heading ?? ""}
+          onChange={(e) => onChange({ ...config, heading: e.target.value })}
+          placeholder="Our services"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Services are pulled automatically from your active service list.
+      </p>
     </div>
   );
 }

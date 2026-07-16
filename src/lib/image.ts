@@ -31,3 +31,16 @@ export async function signedUrl(path: string, expiresIn = 3600): Promise<string>
   cache.set(path, { url: data.signedUrl, exp: now + expiresIn * 1000 });
   return data.signedUrl;
 }
+
+// business-public-assets is a genuinely public bucket (unlike business-assets,
+// whose anon read access was deliberately removed) — for assets rendered
+// directly on the public booking page, like the theme logo.
+export async function uploadPublicAsset(businessId: string, folder: string, file: File): Promise<string> {
+  const blob = await compressImage(file);
+  const path = `${businessId}/${folder}/${crypto.randomUUID()}.jpg`;
+  const { error } = await supabase.storage
+    .from("business-public-assets")
+    .upload(path, blob, { contentType: "image/jpeg", upsert: false });
+  if (error) throw error;
+  return supabase.storage.from("business-public-assets").getPublicUrl(path).data.publicUrl;
+}

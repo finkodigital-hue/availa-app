@@ -19,18 +19,21 @@ Each block has this shape:
 
 Fixed block types — never invent any other type:
 
-- "hero": { "variant": "text-only" | "text-photo" | "split-screen", "heading": string (required), "eyebrow"?: string, "subheading"?: string, "ctaLabel"?: string, "ctaHref"?: string, "photoUrl"?: string, "brandColor"?: string }
+- "hero": { "variant": "text-only" | "text-photo" | "split-screen", "heading": string (required), "eyebrow"?: string, "subheading"?: string, "ctaLabel"?: string, "ctaHref"?: string, "photoUrl"?: string }
 - "about": { "bio": string (required), "heading"?: string, "photoUrl"?: string }
 - "gallery": { "layout": 3 | 6 | 9, "photos": { "url": string, "alt"?: string }[] }
+- "services-list": { "heading"?: string } — this block always pulls the business's real active services automatically; never invent services or prices.
 - "staff-spotlight": { "heading"?: string, "staffIds"?: string[] } — never invent staff ids; only reuse ids already present in the current blocks, or omit staffIds to show every bookable staff member.
 - "testimonial": { "quote": string (required), "name": string (required), "role"?: string } — never invent a quote, name, or role that isn't already present in the current blocks or explicitly given in the owner's instruction.
 - "hours-location": { "heading"?: string } — this block always pulls the business's real hours and address automatically; never add address or phone fields.
 
+Styling (colors, fonts, button shape) is controlled globally by the business's Design panel, not per block — never add or invent per-block color/font fields.
+
 Rules:
 - Keep the "id" of any block you are not meaningfully changing exactly as given.
 - For a new block you are adding, use a short placeholder id like "new-1", "new-2".
-- Never output a block type other than the six listed above.
-- Never fabricate customer testimonials, staff members, or factual claims about the business.
+- Never output a block type other than the seven listed above.
+- Never fabricate customer testimonials, staff members, services, or factual claims about the business.
 - Output nothing but the JSON array — no leading or trailing text, no code fences.`;
 
 export async function suggestPageBlocks({

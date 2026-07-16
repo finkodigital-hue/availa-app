@@ -1,16 +1,14 @@
 import { cn } from "@/lib/utils";
 import type { HeroConfig } from "./types";
 
-export function Hero({ config }: { config: HeroConfig }) {
-  const brand = config.brandColor ?? "#8E2A38";
-  const brandStyle = { ["--brand" as any]: brand } as React.CSSProperties;
+// Color comes from the page-level theme (the --brand custom property set by
+// applyThemeVars on the page wrapper) — hero no longer carries its own color.
+const brand = "var(--brand)";
 
+export function Hero({ config }: { config: HeroConfig }) {
   if (config.variant === "split-screen") {
     return (
-      <section
-        style={brandStyle}
-        className="grid sm:grid-cols-2 min-h-[420px] rounded-2xl overflow-hidden border"
-      >
+      <section className="grid sm:grid-cols-2 min-h-[420px] rounded-2xl overflow-hidden border">
         <div className="flex flex-col justify-center p-8 sm:p-12">
           <HeroCopy config={config} brand={brand} />
         </div>
@@ -31,7 +29,7 @@ export function Hero({ config }: { config: HeroConfig }) {
             }}
           />
         </div>
-        <div style={brandStyle} className="p-8 sm:p-12 text-center">
+        <div className="p-8 sm:p-12 text-center">
           <HeroCopy config={config} brand={brand} centered />
         </div>
       </section>
@@ -42,7 +40,6 @@ export function Hero({ config }: { config: HeroConfig }) {
   return (
     <section
       style={{
-        ...brandStyle,
         background: `linear-gradient(135deg, color-mix(in oklab, ${brand} 12%, transparent), transparent 70%)`,
       }}
       className="rounded-2xl border p-10 sm:p-16 text-center"

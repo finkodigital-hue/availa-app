@@ -7,6 +7,7 @@ import {
   Hero,
   About,
   Gallery,
+  ServicesList,
   StaffSpotlight,
   Testimonial,
   HoursLocation,
@@ -34,7 +35,6 @@ const HERO_SAMPLES: Record<HeroVariant, HeroConfig> = {
     heading: "Look good. Feel great.",
     subheading: "Modern cuts, colour, and care — book your next appointment in under a minute.",
     ctaLabel: "Book now",
-    brandColor: "#8E2A38",
   },
   "text-photo": {
     variant: "text-photo",
@@ -43,7 +43,6 @@ const HERO_SAMPLES: Record<HeroVariant, HeroConfig> = {
     subheading: "Modern cuts, colour, and care — book your next appointment in under a minute.",
     ctaLabel: "Book now",
     photoUrl: "https://picsum.photos/seed/hero-text-photo/1200/600",
-    brandColor: "#8E2A38",
   },
   "split-screen": {
     variant: "split-screen",
@@ -52,7 +51,6 @@ const HERO_SAMPLES: Record<HeroVariant, HeroConfig> = {
     subheading: "Modern cuts, colour, and care — book your next appointment in under a minute.",
     ctaLabel: "Book now",
     photoUrl: "https://picsum.photos/seed/hero-split/900/1200",
-    brandColor: "#8E2A38",
   },
 };
 
@@ -150,13 +148,16 @@ function BlockPreviewPage() {
         {block === "gallery" && <Gallery config={gallerySample(galleryLayout)} />}
         {block === "testimonial" && <Testimonial config={TESTIMONIAL_SAMPLE} />}
 
-        {(block === "staff-spotlight" || block === "hours-location") && (
+        {(block === "services-list" || block === "staff-spotlight" || block === "hours-location") && (
           <>
             {bizLoading && <Skeleton className="h-40 rounded-2xl" />}
             {!bizLoading && !biz && (
               <div className="text-center text-sm text-muted-foreground py-10">
                 Finish onboarding to preview this block with real business data.
               </div>
+            )}
+            {!bizLoading && biz && block === "services-list" && (
+              <ServicesList config={{ businessId: biz.id, heading: "Our services" }} />
             )}
             {!bizLoading && biz && block === "staff-spotlight" && (
               <StaffSpotlight config={{ businessId: biz.id, heading: "Meet the team" }} />

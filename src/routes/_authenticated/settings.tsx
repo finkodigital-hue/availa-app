@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2 } from "lucide-react";
+import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
@@ -16,7 +16,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WEEKDAYS } from "@/lib/format";
 import { toast } from "sonner";
 import { GalleryManager } from "@/components/gallery-manager";
-import { BrandingEditor } from "@/components/branding-editor";
 import { PageContentEditor } from "@/components/page-content-editor";
 import { WhiteLabelEditor } from "@/components/white-label-editor";
 
@@ -26,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 
 function SettingsPage() {
   const { data: biz } = useMyBusiness();
+  const navigate = useNavigate();
 
   // A business is an "independent pro" if it's linked to at least one salon
   // as the pro side — that's what unlocks the chair-rentals tab below.
@@ -85,7 +85,15 @@ function SettingsPage() {
         </TabsContent>
         <TabsContent value="branding">
           <Section icon={Palette} title="Branding" description="Your logo, colours and the look of your booking page.">
-            <BrandingEditor business={biz} />
+            <div className="rounded-2xl border border-dashed bg-card/40 p-10 text-center">
+              <Palette className="h-6 w-6 mx-auto text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mt-3 max-w-sm mx-auto">
+                Your booking page design has moved. Customise everything — colors, fonts, buttons — in the Page Builder.
+              </p>
+              <Button className="mt-5" onClick={() => navigate({ to: "/page-builder", search: { tab: "design" } })}>
+                Open Page Builder <ArrowRight className="h-4 w-4 ml-1.5" />
+              </Button>
+            </div>
           </Section>
         </TabsContent>
         <TabsContent value="gallery">
