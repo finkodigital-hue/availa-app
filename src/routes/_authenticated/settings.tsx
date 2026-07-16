@@ -61,24 +61,48 @@ function SettingsPage() {
       <PageHeader eyebrow="Workspace" title="Settings" subtitle="Customise your brand, booking page and business details." />
 
       <Tabs defaultValue="profile" className="space-y-5">
-        <TabsList className="flex flex-wrap h-auto bg-card border p-1">
-          <TabsTrigger value="profile"><Building2 className="h-3.5 w-3.5 mr-1.5" /> Business</TabsTrigger>
-          <TabsTrigger value="hours"><Clock className="h-3.5 w-3.5 mr-1.5" /> Hours</TabsTrigger>
-          <TabsTrigger value="branding"><Palette className="h-3.5 w-3.5 mr-1.5" /> Branding</TabsTrigger>
-          <TabsTrigger value="gallery"><ImageIcon className="h-3.5 w-3.5 mr-1.5" /> Gallery</TabsTrigger>
-          <TabsTrigger value="page"><FileText className="h-3.5 w-3.5 mr-1.5" /> Page content</TabsTrigger>
-          <TabsTrigger value="whitelabel"><Crown className="h-3.5 w-3.5 mr-1.5" /> White-label</TabsTrigger>
+        <TabsList className="flex flex-wrap h-auto justify-start gap-1 rounded-[10px] bg-card border p-1.5 shadow-soft">
+          <TabsTrigger value="profile" className={TAB_CLS}><Building2 className="h-3.5 w-3.5 mr-1.5" /> Business</TabsTrigger>
+          <TabsTrigger value="hours" className={TAB_CLS}><Clock className="h-3.5 w-3.5 mr-1.5" /> Hours</TabsTrigger>
+          <TabsTrigger value="branding" className={TAB_CLS}><Palette className="h-3.5 w-3.5 mr-1.5" /> Branding</TabsTrigger>
+          <TabsTrigger value="gallery" className={TAB_CLS}><ImageIcon className="h-3.5 w-3.5 mr-1.5" /> Gallery</TabsTrigger>
+          <TabsTrigger value="page" className={TAB_CLS}><FileText className="h-3.5 w-3.5 mr-1.5" /> Page content</TabsTrigger>
+          <TabsTrigger value="whitelabel" className={TAB_CLS}><Crown className="h-3.5 w-3.5 mr-1.5" /> White-label</TabsTrigger>
           {isIndependentPro && (
-            <TabsTrigger value="chairs"><Armchair className="h-3.5 w-3.5 mr-1.5" /> Chair rentals</TabsTrigger>
+            <TabsTrigger value="chairs" className={TAB_CLS}><Armchair className="h-3.5 w-3.5 mr-1.5" /> Chair rentals</TabsTrigger>
           )}
         </TabsList>
 
-        <TabsContent value="profile"><Section><ProfileEditor biz={biz} /></Section></TabsContent>
-        <TabsContent value="hours"><Section><HoursEditor biz={biz} /></Section></TabsContent>
-        <TabsContent value="branding"><Section><BrandingEditor business={biz} /></Section></TabsContent>
-        <TabsContent value="gallery"><Section><GalleryManager businessId={biz.id} /></Section></TabsContent>
-        <TabsContent value="page"><Section><PageContentEditor business={biz} /></Section></TabsContent>
-        <TabsContent value="whitelabel"><Section><WhiteLabelEditor business={biz} /></Section></TabsContent>
+        <TabsContent value="profile">
+          <Section icon={Building2} title="Business profile" description="The core details customers and staff see across the app.">
+            <ProfileEditor biz={biz} />
+          </Section>
+        </TabsContent>
+        <TabsContent value="hours">
+          <Section icon={Clock} title="Opening hours" description="Your weekly schedule, split shifts and holiday closures.">
+            <HoursEditor biz={biz} />
+          </Section>
+        </TabsContent>
+        <TabsContent value="branding">
+          <Section icon={Palette} title="Branding" description="Your logo, colours and the look of your booking page.">
+            <BrandingEditor business={biz} />
+          </Section>
+        </TabsContent>
+        <TabsContent value="gallery">
+          <Section icon={ImageIcon} title="Gallery" description="Photos shown on your public booking page.">
+            <GalleryManager businessId={biz.id} />
+          </Section>
+        </TabsContent>
+        <TabsContent value="page">
+          <Section icon={FileText} title="Page content" description="Customise the text and layout of your booking page.">
+            <PageContentEditor business={biz} />
+          </Section>
+        </TabsContent>
+        <TabsContent value="whitelabel">
+          <Section icon={Crown} title="White-label" description="Remove Bookzenvo branding for your customers.">
+            <WhiteLabelEditor business={biz} />
+          </Section>
+        </TabsContent>
         {isIndependentPro && (
           <TabsContent value="chairs"><ChairRentalsEditor businessId={biz.id} links={salonLinks ?? []} /></TabsContent>
         )}
@@ -87,8 +111,39 @@ function SettingsPage() {
   );
 }
 
-function Section({ children }: { children: React.ReactNode }) {
-  return <section className="rounded-2xl border bg-card p-5 sm:p-6 shadow-soft animate-rise">{children}</section>;
+const TAB_CLS =
+  "rounded-[7px] px-3.5 py-2 text-xs font-medium text-muted-foreground transition-all duration-200 " +
+  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold";
+
+function Section({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: {
+  icon?: typeof Building2;
+  title?: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border bg-card p-5 sm:p-6 shadow-soft animate-rise">
+      {(title || description) && (
+        <div className="flex items-start gap-3 mb-5 pb-5 border-b">
+          {Icon && (
+            <span className="h-9 w-9 shrink-0 rounded-xl grid place-items-center bg-secondary text-foreground">
+              <Icon className="h-4.5 w-4.5" />
+            </span>
+          )}
+          <div className="min-w-0">
+            {title && <h2 className="font-display text-lg leading-tight">{title}</h2>}
+            {description && <p className="text-sm text-muted-foreground mt-0.5 text-pretty">{description}</p>}
+          </div>
+        </div>
+      )}
+      {children}
+    </section>
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

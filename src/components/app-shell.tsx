@@ -18,6 +18,7 @@ import {
   UserPlus,
   Upload,
   Package,
+  LayoutTemplate,
 } from "lucide-react";
 
 import { useState, type ReactNode } from "react";
@@ -50,6 +51,7 @@ const NAV = [
   { to: "/payments", icon: CreditCard, label: "Payments" },
   { to: "/reports", icon: BarChart3, label: "Reports" },
   { to: "/assistant", icon: Sparkles, label: "Assistant" },
+  { to: "/page-builder", icon: LayoutTemplate, label: "Page Builder" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 
