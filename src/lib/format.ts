@@ -13,16 +13,20 @@ export const slugify = (s: string) =>
 export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // Booking lifecycle. Stored as `bookings.status` (text). Order = workflow order.
-// Colors drawn from the Bookzenvo editorial palette (sage/amber/gold/charcoal)
-// so status accents read as considered rather than off-the-shelf.
+// Colors are the single source of status meaning across the app — the
+// Calendar's booking blocks, the Bookings list, Customers page, and the
+// import wizard all read status from this palette. Each hue is deliberately
+// distinct (spaced around the wheel, skipping the sickly yellow/lime band)
+// and vivid enough to read at a glance, while "completed" is intentionally
+// desaturated so finished bookings recede rather than compete for attention.
 export const BOOKING_STATUSES = [
-  { id: "pending", label: "Pending", color: "#A8813E", tint: "#F5E9D2" },
-  { id: "confirmed", label: "Confirmed", color: "#748563", tint: "#EAEDE5" },
-  { id: "checked_in", label: "Checked in", color: "#A98B5F", tint: "#F4EDE1" },
-  { id: "in_progress", label: "In progress", color: "#B26A45", tint: "#F3E2D8" },
-  { id: "completed", label: "Completed", color: "#5C7A6E", tint: "#E4EBE7" },
-  { id: "cancelled", label: "Cancelled", color: "#A8503E", tint: "#F5E5E1" },
-  { id: "no_show", label: "No-show", color: "#8B857B", tint: "#F3F1EB" },
+  { id: "pending", label: "Pending", color: "oklch(0.58 0.15 58)", tint: "oklch(0.94 0.045 58)" },
+  { id: "confirmed", label: "Confirmed", color: "oklch(0.52 0.14 150)", tint: "oklch(0.93 0.045 150)" },
+  { id: "checked_in", label: "Checked in", color: "oklch(0.52 0.15 235)", tint: "oklch(0.93 0.04 235)" },
+  { id: "in_progress", label: "In progress", color: "oklch(0.50 0.17 300)", tint: "oklch(0.93 0.045 300)" },
+  { id: "completed", label: "Completed", color: "oklch(0.45 0.035 150)", tint: "oklch(0.94 0.012 150)" },
+  { id: "cancelled", label: "Cancelled", color: "oklch(0.55 0.18 25)", tint: "oklch(0.94 0.045 25)" },
+  { id: "no_show", label: "No-show", color: "oklch(0.48 0.13 40)", tint: "oklch(0.93 0.04 40)" },
 ] as const;
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number]["id"];
