@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Clock,
   User as UserIcon,
@@ -71,26 +71,7 @@ function CalendarPage() {
   const [selected, setSelected] = useState<any | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [prefill, setPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
-  const calendarRef = useRef<HTMLDivElement>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  useEffect(() => {
-    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === calendarRef.current);
-    document.addEventListener("fullscreenchange", syncFullscreen);
-    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
-  }, []);
-
-  const toggleFullscreen = async () => {
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else {
-        await calendarRef.current?.requestFullscreen();
-      }
-    } catch {
-      toast.error("Full screen isn't available in this browser.");
-    }
-  };
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   const range = useMemo(() => {
     if (view === "day") {
@@ -391,20 +372,22 @@ function CalendarPage() {
 
   return (
     <HoursContext.Provider value={hoursWindow}>
-    <div ref={calendarRef} className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${isFullscreen ? "h-screen max-w-none overflow-y-auto bg-background" : ""}`}>
+    <div className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${isFocusMode ? "pt-3 sm:pt-4 md:pt-5" : ""}`}>
 
-      <PageHeader
-        eyebrow="Schedule"
-        title="Calendar"
-        subtitle="View and manage your team's bookings."
-        action={
-          <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow">
-            <Plus className="h-4 w-4 mr-1.5" /> New booking
-          </Button>
-        }
-      />
+      {!isFocusMode && (
+        <PageHeader
+          eyebrow="Schedule"
+          title="Calendar"
+          subtitle="View and manage your team's bookings."
+          action={
+            <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow">
+              <Plus className="h-4 w-4 mr-1.5" /> New booking
+            </Button>
+          }
+        />
+      )}
 
-      {view === "day" && (
+      {!isFocusMode && view === "day" && (
         <TodayStrip bookings={bookings ?? []} staff={staff ?? []} date={anchor} />
       )}
 
@@ -415,8 +398,8 @@ function CalendarPage() {
         title={title}
         onToday={goToToday}
         onNavigate={navigate}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={toggleFullscreen}
+        isFocusMode={isFocusMode}
+        onToggleFocusMode={() => setIsFocusMode((current) => !current)}
       />
 
       {view === "day" && (
