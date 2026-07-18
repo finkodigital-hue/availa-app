@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { paletteFor } from "@/lib/staff-colors";
+import type { DayPeriod } from "@/lib/staff-hours";
 import { useHours, HOUR_PX, SLOT_PX, SLOT_MIN } from "./hours-context";
 import { useNow } from "./use-now";
 import { StaffColumnHeader } from "./staff-column-header";
@@ -10,6 +11,7 @@ import type { DragMode, DragState } from "./types";
 
 export function DayView({
   staff,
+  availability,
   bookings,
   blocked,
   date,
@@ -21,6 +23,7 @@ export function DayView({
   fullscreen = false,
 }: {
   staff: any[];
+  availability?: Map<string, { periods: DayPeriod[]; dayOff: boolean }>;
   bookings: any[];
   blocked: any[];
   date: Date;
@@ -179,7 +182,8 @@ export function DayView({
             <div className="bg-muted/30" />
             {staff.map((s) => {
               const palette = paletteFor(s.id);
-              return <StaffColumnHeader key={s.id} staff={s} palette={palette} />;
+              const avail = availability?.get(s.id);
+              return <StaffColumnHeader key={s.id} staff={s} palette={palette} dayOff={avail?.dayOff} />;
             })}
           </div>
 
@@ -201,6 +205,7 @@ export function DayView({
 
             {staff.map((s) => {
               const palette = paletteFor(s.id);
+              const avail = availability?.get(s.id);
               return (
                 <StaffColumn
                   key={s.id}
@@ -208,6 +213,8 @@ export function DayView({
                   palette={palette}
                   date={date}
                   hours={hours}
+                  periods={avail?.periods}
+                  dayOff={avail?.dayOff ?? false}
                   bookings={bookings.filter((b: any) => b.staff_id === s.id)}
                   blocked={blocked.filter((b: any) => !b.staff_id || b.staff_id === s.id)}
                   onSelect={onSelect}

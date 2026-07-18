@@ -29,6 +29,7 @@ import {
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { fmtMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
+import { resolveDayPeriods, isMinuteWithinPeriods, type DayPeriod } from "@/lib/staff-hours";
 import {
   HoursContext,
   DEFAULT_START_HOUR,
@@ -211,6 +212,100 @@ function CalendarPage() {
     return [...byId.values()];
   }, [staff, bookings, bid, chairLabelByBizId]);
 
+  // Day-view-only: resolve each visible staff member's working periods for
+  // the anchor date, so their column can show they're not working (day off,
+  // or outside their hours) instead of looking bookable when they aren't.
+  // Only fetched for the Day view since Week/Month pool bookings by date,
+  // not by staff column.
+  const dayWeekday = anchor.getDay();
+  const dayStaffIds = useMemo(() => dayViewStaff.map((s: any) => s.id), [dayViewStaff]);
+  const dayStaffIdsKey = dayStaffIds.join(",");
+  const dayBizIdsKey = allBizIds.join(",");
+
+  const { data: dayStaffHours } = useQuery({
+    queryKey: ["calendar-day-staff-hours", dayStaffIdsKey, dayWeekday],
+    enabled: view === "day" && dayStaffIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_hours")
+        .select("staff_id, closed, open_time, close_time")
+        .in("staff_id", dayStaffIds)
+        .eq("weekday", dayWeekday);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: dayBizPeriods } = useQuery({
+    queryKey: ["calendar-day-biz-periods", dayBizIdsKey, dayWeekday],
+    enabled: view === "day" && allBizIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("business_hour_periods")
+        .select("business_id, open_time, close_time")
+        .in("business_id", allBizIds)
+        .eq("weekday", dayWeekday);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: dayBizHours } = useQuery({
+    queryKey: ["calendar-day-biz-hours", dayBizIdsKey, dayWeekday],
+    enabled: view === "day" && allBizIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("business_hours")
+        .select("business_id, closed, open_time, close_time")
+        .in("business_id", allBizIds)
+        .eq("weekday", dayWeekday);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const staffAvailability = useMemo(() => {
+    const map = new Map<string, { periods: DayPeriod[]; dayOff: boolean }>();
+    if (view !== "day") return map;
+    const staffHoursByStaff = new Map((dayStaffHours ?? []).map((r: any) => [r.staff_id, r]));
+    const bizPeriodsByBiz = new Map<string, DayPeriod[]>();
+    for (const p of dayBizPeriods ?? []) {
+      const list = bizPeriodsByBiz.get((p as any).business_id) ?? [];
+      list.push({ open_time: (p as any).open_time, close_time: (p as any).close_time });
+      bizPeriodsByBiz.set((p as any).business_id, list);
+    }
+    const bizHoursByBiz = new Map((dayBizHours ?? []).map((r: any) => [r.business_id, r]));
+    for (const s of dayViewStaff) {
+      const periods = resolveDayPeriods({
+        weekday: dayWeekday,
+        staffHours: staffHoursByStaff.get(s.id) as any,
+        bizPeriods: bizPeriodsByBiz.get(s.business_id) ?? [],
+        bizHours: bizHoursByBiz.get(s.business_id) as any,
+      });
+      map.set(s.id, { periods, dayOff: periods.length === 0 });
+    }
+    return map;
+  }, [view, dayStaffHours, dayBizPeriods, dayBizHours, dayViewStaff, dayWeekday]);
+
+  // Shared guard for moves/resizes landing outside a staff member's working
+  // hours or on top of a time-off block — the Day view grid already blocks
+  // these interactions visually, but drag/resize can still commit a change
+  // that bypasses the cell click handler, so re-check here too.
+  const isMoveAllowed = (staffId: string, newStart: Date, newEnd: Date) => {
+    const avail = staffAvailability.get(staffId);
+    if (avail) {
+      const startMin = newStart.getHours() * 60 + newStart.getMinutes();
+      const endMin = startMin + Math.round((newEnd.getTime() - newStart.getTime()) / 60000);
+      if (!isMinuteWithinPeriods(avail.periods, startMin) || !isMinuteWithinPeriods(avail.periods, Math.max(startMin, endMin - 1))) {
+        return false;
+      }
+    }
+    const overlapsBlock = (blocked ?? []).some(
+      (b: any) => (!b.staff_id || b.staff_id === staffId) && new Date(b.starts_at) < newEnd && new Date(b.ends_at) > newStart,
+    );
+    return !overlapsBlock;
+  };
+
   const setStatus = async (id: string, status: BookingStatus) => {
     const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
     if (error) return toast.error(error.message);
@@ -249,6 +344,10 @@ function CalendarPage() {
     }
     const duration = new Date(b.ends_at).getTime() - new Date(b.starts_at).getTime();
     const newEnd = new Date(newStart.getTime() + duration);
+    if (!isMoveAllowed(newStaffId, newStart, newEnd)) {
+      toast.error(`${destinationStaff?.name ?? "This staff member"} isn't working then.`);
+      return;
+    }
     const prev = { staff_id: b.staff_id, starts_at: b.starts_at, ends_at: b.ends_at };
 
     qc.setQueryData<any[]>(
@@ -300,6 +399,10 @@ function CalendarPage() {
     const prev = { starts_at: b.starts_at, ends_at: b.ends_at };
     const next = edge === "start" ? { starts_at: newIso, ends_at: b.ends_at } : { starts_at: b.starts_at, ends_at: newIso };
     if (new Date(next.ends_at).getTime() - new Date(next.starts_at).getTime() < SLOT_MIN * 60000) return;
+    if (!isMoveAllowed(b.staff_id, new Date(next.starts_at), new Date(next.ends_at))) {
+      toast.error("Outside working hours.");
+      return;
+    }
 
     qc.setQueryData<any[]>(
       calendarQueryKey,
@@ -421,6 +524,7 @@ function CalendarPage() {
       {view === "day" && (
         <DayView
           staff={dayViewStaff}
+          availability={staffAvailability}
           bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
           blocked={blocked ?? []}
           date={anchor}

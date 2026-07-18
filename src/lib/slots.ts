@@ -1,19 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveDayPeriods } from "@/lib/staff-hours";
 
 export type SlotService = {
   duration_minutes: number;
   buffer_before_min?: number | null;
   buffer_after_min?: number | null;
 };
-
-// Sensible default hours for a brand-new business that hasn't configured
-// anything yet — Monday to Saturday, 9 am to 6 pm; Sunday closed.
-function defaultPeriodsFor(weekday: number): Array<{ open_time: string; close_time: string }> {
-  if (weekday === 0) return [];
-  return [{ open_time: "09:00", close_time: "18:00" }];
-}
 
 export function useAvailableSlots(opts: {
   businessId: string | undefined;
@@ -39,21 +33,12 @@ export function useAvailableSlots(opts: {
         supabase.from("bookings").select("id, starts_at, ends_at, status").eq("business_id", businessId!).eq("staff_id", staffId!).gte("starts_at", dayStart.toISOString()).lte("starts_at", dayEnd.toISOString()).neq("status", "cancelled"),
         supabase.from("blocked_dates").select("starts_at, ends_at, staff_id").eq("business_id", businessId!).lt("starts_at", dayEnd.toISOString()).gt("ends_at", dayStart.toISOString()),
       ]);
-      const staffH: any = staffHoursR.data;
-      const bizH: any = bizHoursR.data;
-      // Staff override wins if they have explicit open hours (single period).
-      let periods: Array<{ open_time: string; close_time: string }>;
-      if (staffH && !staffH.closed && staffH.open_time && staffH.close_time) {
-        periods = [{ open_time: staffH.open_time, close_time: staffH.close_time }];
-      } else if ((periodsR.data ?? []).length > 0) {
-        periods = periodsR.data as any;
-      } else if (bizH && !bizH.closed && bizH.open_time && bizH.close_time) {
-        periods = [{ open_time: bizH.open_time, close_time: bizH.close_time }];
-      } else if (!bizH && !staffH) {
-        periods = defaultPeriodsFor(wd);
-      } else {
-        periods = [];
-      }
+      const periods = resolveDayPeriods({
+        weekday: wd,
+        staffHours: staffHoursR.data as any,
+        bizPeriods: (periodsR.data ?? []) as any,
+        bizHours: bizHoursR.data as any,
+      });
       return { periods, bookings: bookingsR.data ?? [], blocked: blockedR.data ?? [] };
     },
   });
