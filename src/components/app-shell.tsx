@@ -136,7 +136,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-[color:var(--gold)]" />
             )}
             <Upload className="h-4 w-4" />
-            <span>Import</span>
+            <span>Import data</span>
           </Link>
         </div>
 
