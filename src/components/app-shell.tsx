@@ -39,6 +39,7 @@ import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { DevUserSwitcher } from "@/components/dev-user-switcher";
 import { GlobalSearch } from "@/components/global-search";
 import { FeedbackDialog } from "@/components/feedback-dialog";
+import { ContactSupportDialog } from "@/components/contact-support-dialog";
 
 const NAV = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -196,6 +197,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </DropdownMenuContent>
         </DropdownMenu>
         <FeedbackDialog />
+        <ContactSupportDialog />
         <DevUserSwitcher />
       </div>
     </>
