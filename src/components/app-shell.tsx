@@ -40,6 +40,7 @@ import { DevUserSwitcher } from "@/components/dev-user-switcher";
 import { GlobalSearch } from "@/components/global-search";
 import { FeedbackDialog } from "@/components/feedback-dialog";
 import { ContactSupportDialog } from "@/components/contact-support-dialog";
+import { NotificationsBell } from "@/components/notifications-bell";
 
 const NAV = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -102,6 +103,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div className="px-1 pb-3">
           <GlobalSearch />
+        </div>
+        <div className="px-1 pb-3">
+          <NotificationsBell />
         </div>
         {NAV.map((n) => {
           const active = path === n.to || (n.to !== "/dashboard" && path.startsWith(n.to));
@@ -215,13 +219,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link to="/dashboard" className="font-display text-lg">
           Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
         </Link>
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="h-9 w-9 grid place-items-center rounded-lg hover:bg-card"
-          aria-label="Open menu"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationsBell variant="icon" />
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="h-9 w-9 grid place-items-center rounded-lg hover:bg-card"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}
