@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const search = z
-  .object({ mode: z.enum(["signin", "signup", "reset"]).optional() })
+  .object({ mode: z.enum(["signin", "signup", "reset", "update"]).optional() })
   .optional();
 
 export const Route = createFileRoute("/auth")({
@@ -29,8 +29,17 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (user) navigate({ to: "/dashboard", replace: true });
-  }, [user, navigate]);
+    if (user && mode !== "update") navigate({ to: "/dashboard", replace: true });
+  }, [user, mode, navigate]);
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        navigate({ to: "/auth", search: { mode: "update" } });
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [navigate]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +62,11 @@ function AuthPage() {
         });
         if (error) throw error;
         toast.success("Password reset email sent.");
+      } else if (mode === "update") {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        toast.success("Password updated.");
+        navigate({ to: "/dashboard", replace: true });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -65,19 +79,26 @@ function AuthPage() {
   };
 
   const heading =
-    mode === "signup" ? "Create your workspace" : mode === "reset" ? "Reset password" : "Welcome back";
+    mode === "signup" ? "Create your workspace"
+      : mode === "reset" ? "Reset password"
+      : mode === "update" ? "Set new password"
+      : "Welcome back";
   const sub =
     mode === "signup"
       ? "Start free. Set up in minutes."
       : mode === "reset"
         ? "We'll email you a secure link."
-        : "Sign in to your dashboard.";
+        : mode === "update"
+          ? "Choose a new password for your account."
+          : "Sign in to your dashboard.";
   const cta =
-    mode === "signup" ? "Create account" : mode === "reset" ? "Send reset link" : "Sign in";
+    mode === "signup" ? "Create account"
+      : mode === "reset" ? "Send reset link"
+      : mode === "update" ? "Update password"
+      : "Sign in";
 
   return (
     <div className="min-h-screen grid md:grid-cols-2 bg-background">
-      {/* Editorial panel */}
       <div className="hidden md:flex relative overflow-hidden bg-foreground text-background">
         <div className="absolute inset-0 mesh-bg opacity-70 pointer-events-none" />
         <div className="absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-primary/30 blur-3xl animate-float" />
@@ -110,7 +131,6 @@ function AuthPage() {
         </div>
       </div>
 
-      {/* Form */}
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm animate-rise">
           <Link
@@ -138,26 +158,28 @@ function AuthPage() {
                 />
               </div>
             )}
-            <div>
-              <Label htmlFor="email" className="text-xs uppercase tracking-wide text-muted-foreground">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="you@studio.com"
-                className="mt-1.5 h-11"
-              />
-            </div>
-            {mode !== "reset" && (
+            {mode !== "update" && (
+              <div>
+                <Label htmlFor="email" className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="you@studio.com"
+                  className="mt-1.5 h-11"
+                />
+              </div>
+            )}
+            {(mode === "signin" || mode === "signup" || mode === "update") && (
               <div>
                 <div className="flex items-baseline justify-between">
                   <Label htmlFor="password" className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Password
+                    {mode === "update" ? "New password" : "Password"}
                   </Label>
                   {mode === "signin" && (
                     <Link to="/auth" search={{ mode: "reset" }} className="text-xs text-muted-foreground hover:text-foreground">
@@ -169,7 +191,7 @@ function AuthPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                    autoComplete={mode === "signup" || mode === "update" ? "new-password" : "current-password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
