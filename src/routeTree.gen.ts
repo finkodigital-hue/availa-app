@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StatusRouteImport } from './routes/status'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -38,6 +39,11 @@ import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBlockPreviewRouteImport } from './routes/_authenticated/block-preview'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortalRoute = PortalRouteImport.update({
   id: '/portal',
   path: '/portal',
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/portal': typeof PortalRouteWithChildren
+  '/status': typeof StatusRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/bookings': typeof AuthenticatedBookingsRoute
@@ -213,6 +220,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/status': typeof StatusRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/bookings': typeof AuthenticatedBookingsRoute
@@ -244,6 +252,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/portal': typeof PortalRouteWithChildren
+  '/status': typeof StatusRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
@@ -275,6 +284,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/portal'
+    | '/status'
     | '/assistant'
     | '/block-preview'
     | '/bookings'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/status'
     | '/assistant'
     | '/block-preview'
     | '/bookings'
@@ -333,6 +344,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/portal'
+    | '/status'
     | '/_authenticated/assistant'
     | '/_authenticated/block-preview'
     | '/_authenticated/bookings'
@@ -364,6 +376,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   PortalRoute: typeof PortalRouteWithChildren
+  StatusRoute: typeof StatusRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiPageAiSuggestRoute: typeof ApiPageAiSuggestRoute
   BookSlugRoute: typeof BookSlugRoute
@@ -372,6 +385,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portal': {
       id: '/portal'
       path: '/portal'
@@ -634,6 +654,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   PortalRoute: PortalRouteWithChildren,
+  StatusRoute: StatusRoute,
   ApiChatRoute: ApiChatRoute,
   ApiPageAiSuggestRoute: ApiPageAiSuggestRoute,
   BookSlugRoute: BookSlugRoute,
