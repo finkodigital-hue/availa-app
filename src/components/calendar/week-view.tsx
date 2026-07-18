@@ -77,12 +77,14 @@ export function WeekView({
   isLoading,
   onSelect,
   onCellClick,
+  fullscreen = false,
 }: {
   bookings: any[];
   weekStart: Date;
   isLoading: boolean;
   onSelect: (b: any) => void;
   onCellClick: (date: Date, isoTime: string) => void;
+  fullscreen?: boolean;
 }) {
   const { START_HOUR, END_HOUR } = useHours();
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -97,7 +99,7 @@ export function WeekView({
 
   return (
     <div className="rounded-3xl border bg-card overflow-hidden shadow-soft">
-      <div className="overflow-auto max-h-[calc(100vh-260px)] scroll-smooth">
+      <div className={`overflow-auto scroll-smooth ${fullscreen ? "max-h-[calc(100dvh-64px)]" : "max-h-[calc(100vh-260px)]"}`}>
         <div className="min-w-[1184px]">
           <div className="grid sticky top-0 z-20 bg-card/85 backdrop-blur-xl border-b" style={{ gridTemplateColumns: "64px repeat(7, minmax(160px, 1fr))" }}>
             <div className="border-r bg-muted/30 py-2" />
