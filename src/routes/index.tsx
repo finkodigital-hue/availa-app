@@ -531,6 +531,7 @@ function Landing() {
             <a href="#" className="hover:text-foreground">Privacy</a>
             <a href="#" className="hover:text-foreground">Terms</a>
             <a href="#" className="hover:text-foreground">Contact</a>
+            <Link to="/status" className="hover:text-foreground">Status</Link>
             <CookieSettingsFooterLink />
           </div>
         </div>
