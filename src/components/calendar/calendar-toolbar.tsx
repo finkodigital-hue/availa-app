@@ -11,8 +11,8 @@ export function CalendarToolbar({
   title,
   onToday,
   onNavigate,
-  isFocusMode = false,
-  onToggleFocusMode,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: {
   view: View;
   onViewChange: (v: View) => void;
@@ -20,8 +20,8 @@ export function CalendarToolbar({
   title: string;
   onToday: () => void;
   onNavigate: (dir: -1 | 1) => void;
-  isFocusMode?: boolean;
-  onToggleFocusMode?: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }) {
   // Driven by the shared clock, not a one-shot `new Date()`, so this stays
   // correct even if the tab has been open since before midnight.
@@ -29,7 +29,7 @@ export function CalendarToolbar({
   const isOnToday = anchor.toDateString() === now.toDateString();
 
   return (
-    <div className={`flex flex-wrap items-center justify-between gap-2 mb-4 ${isFocusMode ? "mt-0" : "mt-4"}`}>
+    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 mt-4">
       <div className="inline-flex rounded-[8px] border bg-card p-1 shadow-soft">
         {(["day", "week", "month"] as View[]).map((v) => (
           <button
@@ -44,16 +44,16 @@ export function CalendarToolbar({
         ))}
       </div>
       <div className="flex items-center gap-1.5">
-        {onToggleFocusMode && (
+        {onToggleFullscreen && (
           <Button
             variant="outline"
             size="icon"
             className="h-9 w-9"
-            onClick={onToggleFocusMode}
-            aria-label={isFocusMode ? "Show calendar summary" : "Focus on calendar"}
-            title={isFocusMode ? "Show calendar summary" : "Focus on calendar"}
+            onClick={onToggleFullscreen}
+            aria-label={isFullscreen ? "Exit calendar full screen" : "Open calendar full screen"}
+            title={isFullscreen ? "Exit full screen" : "Full screen"}
           >
-            {isFocusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
         )}
         <Button

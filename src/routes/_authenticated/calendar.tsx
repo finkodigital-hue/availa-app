@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Clock,
   User as UserIcon,
@@ -71,7 +71,23 @@ function CalendarPage() {
   const [selected, setSelected] = useState<any | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [prefill, setPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
-  const [isFocusMode, setIsFocusMode] = useState(false);
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === calendarRef.current);
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await calendarRef.current?.requestFullscreen();
+    } catch {
+      toast.error("Full screen isn't available in this browser.");
+    }
+  };
 
   const range = useMemo(() => {
     if (view === "day") {
@@ -372,9 +388,9 @@ function CalendarPage() {
 
   return (
     <HoursContext.Provider value={hoursWindow}>
-    <div className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${isFocusMode ? "pt-3 sm:pt-4 md:pt-5" : ""}`}>
+    <div ref={calendarRef} className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${isFullscreen ? "h-[100dvh] max-w-none overflow-hidden bg-background" : ""}`}>
 
-      {!isFocusMode && (
+      {!isFullscreen && (
         <PageHeader
           eyebrow="Schedule"
           title="Calendar"
@@ -387,7 +403,7 @@ function CalendarPage() {
         />
       )}
 
-      {!isFocusMode && view === "day" && (
+      {!isFullscreen && view === "day" && (
         <TodayStrip bookings={bookings ?? []} staff={staff ?? []} date={anchor} />
       )}
 
@@ -398,8 +414,8 @@ function CalendarPage() {
         title={title}
         onToday={goToToday}
         onNavigate={navigate}
-        isFocusMode={isFocusMode}
-        onToggleFocusMode={() => setIsFocusMode((current) => !current)}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
       />
 
       {view === "day" && (
@@ -413,6 +429,7 @@ function CalendarPage() {
           onCellClick={(staffId, isoTime) => openNewBooking({ staffId, isoTime, date: anchor })}
           onMove={dropMove}
           onResize={resizeBooking}
+          fullscreen={isFullscreen}
         />
       )}
 
@@ -423,6 +440,7 @@ function CalendarPage() {
           isLoading={isLoading}
           onSelect={setSelected}
           onCellClick={(date, isoTime) => openNewBooking({ isoTime, date })}
+          fullscreen={isFullscreen}
         />
       )}
 

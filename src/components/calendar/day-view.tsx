@@ -18,6 +18,7 @@ export function DayView({
   onCellClick,
   onMove,
   onResize,
+  fullscreen = false,
 }: {
   staff: any[];
   bookings: any[];
@@ -28,6 +29,7 @@ export function DayView({
   onCellClick: (staffId: string, isoTime: string) => void;
   onMove: (id: string, newStaffId: string, newStart: Date) => void;
   onResize: (id: string, edge: "start" | "end", newIso: string) => void;
+  fullscreen?: boolean;
 }) {
   const { START_HOUR, END_HOUR } = useHours();
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
@@ -170,7 +172,7 @@ export function DayView({
 
   return (
     <div className="rounded-3xl border bg-card overflow-hidden shadow-soft">
-      <div ref={scrollRef} className="overflow-auto max-h-[calc(100vh-280px)] scroll-smooth">
+      <div ref={scrollRef} className={`overflow-auto scroll-smooth ${fullscreen ? "max-h-[calc(100dvh-64px)]" : "max-h-[calc(100vh-280px)]"}`}>
         <div style={{ minWidth: 64 + staff.length * 180 }}>
           {/* Sticky staff header */}
           <div className="grid sticky top-0 z-20 bg-card/85 backdrop-blur-xl border-b" style={{ gridTemplateColumns: gridTemplate }}>
