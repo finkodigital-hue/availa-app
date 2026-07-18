@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useNow } from "./use-now";
@@ -11,6 +11,8 @@ export function CalendarToolbar({
   title,
   onToday,
   onNavigate,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: {
   view: View;
   onViewChange: (v: View) => void;
@@ -18,6 +20,8 @@ export function CalendarToolbar({
   title: string;
   onToday: () => void;
   onNavigate: (dir: -1 | 1) => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }) {
   // Driven by the shared clock, not a one-shot `new Date()`, so this stays
   // correct even if the tab has been open since before midnight.
@@ -40,6 +44,18 @@ export function CalendarToolbar({
         ))}
       </div>
       <div className="flex items-center gap-1.5">
+        {onToggleFullscreen && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9"
+            onClick={onToggleFullscreen}
+            aria-label={isFullscreen ? "Exit full screen" : "Open calendar in full screen"}
+            title={isFullscreen ? "Exit full screen" : "Full screen"}
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
+        )}
         <Button
           variant={isOnToday ? "default" : "outline"}
           className={`h-9 ${isOnToday ? "shadow-glow" : ""}`}
