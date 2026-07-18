@@ -4,7 +4,7 @@ import { Armchair } from "lucide-react";
 import { signedUrl } from "@/lib/image";
 import { initialsOf, type StaffPalette } from "@/lib/staff-colors";
 
-export function StaffColumnHeader({ staff, palette }: { staff: any; palette: StaffPalette }) {
+export function StaffColumnHeader({ staff, palette, dayOff }: { staff: any; palette: StaffPalette; dayOff?: boolean }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!staff.photo_url) return setUrl(null);
@@ -12,7 +12,7 @@ export function StaffColumnHeader({ staff, palette }: { staff: any; palette: Sta
   }, [staff.photo_url]);
 
   return (
-    <div className="border-r last:border-r-0 px-3 py-3.5 flex items-center gap-3 min-w-0">
+    <div className={`border-r last:border-r-0 px-3 py-3.5 flex items-center gap-3 min-w-0 ${dayOff ? "opacity-60" : ""}`}>
       <div className="relative shrink-0">
         {url ? (
           <img
@@ -51,6 +51,14 @@ export function StaffColumnHeader({ staff, palette }: { staff: any; palette: Sta
               title="No longer an active team member — shown only because they have appointments here"
             >
               Inactive
+            </span>
+          )}
+          {!staff._readOnly && dayOff && (
+            <span
+              className="shrink-0 text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground"
+              title="Not scheduled to work today"
+            >
+              Off today
             </span>
           )}
           {staff.is_independent && (
