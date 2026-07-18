@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { DevUserSwitcher } from "@/components/dev-user-switcher";
+import { GlobalSearch } from "@/components/global-search";
 
 const NAV = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -96,6 +97,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav className="flex flex-col gap-0.5 px-3 flex-1 overflow-y-auto">
         <div className="px-2 pb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           Workspace
+        </div>
+        <div className="px-1 pb-3">
+          <GlobalSearch />
         </div>
         {NAV.map((n) => {
           const active = path === n.to || (n.to !== "/dashboard" && path.startsWith(n.to));
