@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight } from "lucide-react";
+import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight, UserRound, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
+import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/app-shell";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 
 function SettingsPage() {
   const { data: biz } = useMyBusiness();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   // A business is an "independent pro" if it's linked to at least one salon
@@ -62,6 +65,7 @@ function SettingsPage() {
 
       <Tabs defaultValue="profile" className="space-y-5">
         <TabsList className="flex flex-wrap h-auto justify-start gap-1 rounded-[10px] bg-card border p-1.5 shadow-soft">
+          <TabsTrigger value="account" className={TAB_CLS}><UserRound className="h-3.5 w-3.5 mr-1.5" /> Account</TabsTrigger>
           <TabsTrigger value="profile" className={TAB_CLS}><Building2 className="h-3.5 w-3.5 mr-1.5" /> Business</TabsTrigger>
           <TabsTrigger value="hours" className={TAB_CLS}><Clock className="h-3.5 w-3.5 mr-1.5" /> Hours</TabsTrigger>
           <TabsTrigger value="branding" className={TAB_CLS}><Palette className="h-3.5 w-3.5 mr-1.5" /> Branding</TabsTrigger>
@@ -73,6 +77,11 @@ function SettingsPage() {
           )}
         </TabsList>
 
+        <TabsContent value="account">
+          <Section icon={UserRound} title="Your account" description="Manage the details associated with your Bookzenvo sign-in.">
+            {user && <AccountEditor user={user} />}
+          </Section>
+        </TabsContent>
         <TabsContent value="profile">
           <Section icon={Building2} title="Business profile" description="The core details customers and staff see across the app.">
             <ProfileEditor biz={biz} />
@@ -115,6 +124,111 @@ function SettingsPage() {
           <TabsContent value="chairs"><ChairRentalsEditor businessId={biz.id} links={salonLinks ?? []} /></TabsContent>
         )}
       </Tabs>
+    </div>
+  );
+}
+
+function AccountEditor({ user }: { user: { id: string; email?: string } }) {
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["my-profile", user.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const qc = useQueryClient();
+  const [fullName, setFullName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
+
+  useEffect(() => {
+    setFullName(profile?.full_name ?? "");
+    setAvatarUrl(profile?.avatar_url ?? "");
+  }, [profile]);
+
+  const initials = (fullName || user.email || "U")
+    .split(/\s+|@/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
+  const save = async () => {
+    if (!fullName.trim()) return toast.error("Your name is required");
+    setSaving(true);
+    try {
+      const [profileResult, authResult] = await Promise.all([
+        supabase.from("profiles").upsert({
+          id: user.id,
+          full_name: fullName.trim(),
+          avatar_url: avatarUrl.trim() || null,
+        }),
+        supabase.auth.updateUser({ data: { full_name: fullName.trim() } }),
+      ]);
+      if (profileResult.error) throw profileResult.error;
+      if (authResult.error) throw authResult.error;
+      qc.invalidateQueries({ queryKey: ["my-profile", user.id] });
+      toast.success("Account details saved");
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not save account details");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sendPasswordReset = async () => {
+    if (!user.email) return toast.error("This account has no email address");
+    setSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+      redirectTo: `${window.location.origin}/auth`,
+    });
+    setSendingReset(false);
+    if (error) return toast.error(error.message);
+    toast.success("Password reset email sent");
+  };
+
+  if (isLoading) return <Skeleton className="h-56 w-full" />;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-4 rounded-xl border bg-background p-4">
+        <Avatar className="h-14 w-14 border">
+          {avatarUrl && <AvatarImage src={avatarUrl} alt="Your avatar" />}
+          <AvatarFallback className="bg-secondary text-sm font-semibold">{initials}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <p className="font-medium truncate">{fullName || "Your account"}</p>
+          <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Full name"><Input value={fullName} onChange={(e) => setFullName(e.target.value)} className="h-10" autoComplete="name" /></Field>
+        <Field label="Sign-in email"><Input value={user.email ?? ""} className="h-10" readOnly /></Field>
+      </div>
+      <Field label="Avatar image URL"><Input type="url" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} className="h-10" placeholder="https://" /></Field>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
+        <div>
+          <p className="text-sm font-medium">Password</p>
+          <p className="text-xs text-muted-foreground mt-0.5">We’ll send a secure reset link to your sign-in email.</p>
+        </div>
+        <Button type="button" variant="outline" onClick={sendPasswordReset} disabled={sendingReset}>
+          {sendingReset ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
+          Reset password
+        </Button>
+      </div>
+      <div className="flex justify-end">
+        <Button onClick={save} disabled={saving}>
+          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Save account
+        </Button>
+      </div>
     </div>
   );
 }
