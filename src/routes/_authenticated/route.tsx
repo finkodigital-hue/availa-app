@@ -1,8 +1,10 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useMyBusiness } from "@/lib/business";
 import { AppShell } from "@/components/app-shell";
+import { supabase } from "@/integrations/supabase/client";
+import { MfaChallengeGate } from "@/components/mfa-challenge-gate";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -10,9 +12,10 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function Layout() {
-  const { user, loading } = useAuth();
+  const { user, loading, session } = useAuth();
   const navigate = useNavigate();
   const { data: biz, isLoading: bizLoading } = useMyBusiness();
+  const [needsMfa, setNeedsMfa] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
@@ -24,7 +27,18 @@ function Layout() {
     }
   }, [loading, user, biz, bizLoading, navigate]);
 
-  if (loading || !user || bizLoading) {
+  // A verified TOTP factor requires the session to step up to aal2 before
+  // the app unlocks — a fresh password sign-in only reaches aal1. Checked
+  // per session (not per navigation) since it doesn't change mid-session.
+  useEffect(() => {
+    if (loading || !user) return;
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data, error }) => {
+      if (error) return setNeedsMfa(false);
+      setNeedsMfa(data.nextLevel === "aal2" && data.currentLevel !== "aal2");
+    });
+  }, [loading, user, session?.access_token]);
+
+  if (loading || !user || bizLoading || needsMfa === null) {
     return (
       <div className="min-h-screen grid place-items-center bg-background">
         <div className="flex flex-col items-center gap-3 animate-rise">
@@ -35,6 +49,9 @@ function Layout() {
         </div>
       </div>
     );
+  }
+  if (needsMfa) {
+    return <MfaChallengeGate onVerified={() => setNeedsMfa(false)} />;
   }
   if (!biz) {
     return <Outlet />;
