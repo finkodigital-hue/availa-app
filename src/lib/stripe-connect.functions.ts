@@ -8,6 +8,19 @@ type StripeAccount = {
   details_submitted: boolean;
 };
 
+type CheckoutInput = {
+  businessId: string;
+  serviceId: string;
+  staffId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  startsAt: string;
+  endsAt: string;
+  notes: string;
+  returnPath: string;
+};
+
 function stripeSecretKey() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("Stripe is not configured yet. Add STRIPE_SECRET_KEY to the server environment first.");
@@ -115,4 +128,71 @@ export const refreshStripeAccount = createServerFn({ method: "POST" })
       .eq("id", business.id);
     if (updateError) throw updateError;
     return { chargesEnabled: account.charges_enabled, detailsSubmitted: account.details_submitted };
+  });
+
+export const startBookingCheckout = createServerFn({ method: "POST" })
+  .validator((data: CheckoutInput) => {
+    if (!data.businessId || !data.serviceId || !data.staffId || !data.customerName.trim() || !data.customerEmail.trim()) {
+      throw new Error("Please complete your booking details first.");
+    }
+    if (data.customerName.length > 200 || data.customerEmail.length > 254 || data.customerPhone.length > 40 || data.notes.length > 500) {
+      throw new Error("One of the booking details is too long.");
+    }
+    if (!/^\/book\/[a-z0-9-]+$/i.test(data.returnPath)) throw new Error("Invalid booking return path.");
+    if (Number.isNaN(Date.parse(data.startsAt)) || Number.isNaN(Date.parse(data.endsAt))) throw new Error("Invalid booking time.");
+    return data;
+  })
+  .handler(async ({ data }): Promise<{ checkoutUrl: string | null }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: business, error: businessError } = await supabaseAdmin
+      .from("businesses")
+      .select("id, name, currency, payment_mode, deposit_percent, stripe_account_id, stripe_charges_enabled")
+      .eq("id", data.businessId)
+      .maybeSingle();
+    if (businessError) throw businessError;
+    if (!business) throw new Error("This business is no longer available.");
+    if (business.payment_mode === "none") return { checkoutUrl: null };
+    if (!business.stripe_account_id || !business.stripe_charges_enabled) throw new Error("Online payment is not available for this business yet.");
+
+    const [{ data: service, error: serviceError }, { data: staff, error: staffError }] = await Promise.all([
+      supabaseAdmin.from("services").select("id, name, price_cents, active").eq("id", data.serviceId).eq("business_id", business.id).maybeSingle(),
+      supabaseAdmin.from("staff").select("id").eq("id", data.staffId).eq("business_id", business.id).maybeSingle(),
+    ]);
+    if (serviceError) throw serviceError;
+    if (staffError) throw staffError;
+    if (!service?.active || !staff) throw new Error("That service or team member is no longer available.");
+
+    const amount = business.payment_mode === "deposit" ? Math.round(service.price_cents * (business.deposit_percent / 100)) : service.price_cents;
+    if (amount < 50) throw new Error("This booking amount is too small for online payment.");
+
+    const origin = appOrigin();
+    const paymentLabel = business.payment_mode === "deposit" ? `Deposit for ${service.name}` : service.name;
+    const session = await stripeRequest<{ url: string }>("/v1/checkout/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "Stripe-Account": business.stripe_account_id },
+      body: formBody({
+        mode: "payment",
+        customer_email: data.customerEmail.trim(),
+        success_url: `${origin}${data.returnPath}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}${data.returnPath}?payment=cancelled`,
+        "line_items[0][price_data][currency]": business.currency.toLowerCase(),
+        "line_items[0][price_data][product_data][name]": paymentLabel,
+        "line_items[0][price_data][unit_amount]": String(amount),
+        "line_items[0][quantity]": "1",
+        "metadata[business_id]": business.id,
+        "metadata[service_id]": data.serviceId,
+        "metadata[staff_id]": data.staffId,
+        "metadata[customer_name]": data.customerName.trim(),
+        "metadata[customer_email]": data.customerEmail.trim(),
+        "metadata[customer_phone]": data.customerPhone.trim(),
+        "metadata[starts_at]": data.startsAt,
+        "metadata[ends_at]": data.endsAt,
+        "metadata[notes]": data.notes.trim(),
+        "metadata[payment_mode]": business.payment_mode,
+        "payment_intent_data[metadata][business_id]": business.id,
+        "payment_intent_data[metadata][service_id]": data.serviceId,
+        "payment_intent_data[metadata][staff_id]": data.staffId,
+      }),
+    });
+    return { checkoutUrl: session.url };
   });
