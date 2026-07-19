@@ -14,6 +14,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Dropzone, StepShell, UploadIcon } from "./dropzone";
+import { ColumnMapper } from "./column-mapper";
 import { useEntityUpload } from "./use-entity-upload";
 import { describeImportError } from "./errors";
 import { mapCustomerRow, type ParsedCustomerRow } from "@/lib/import/fresha";
@@ -74,7 +75,7 @@ export function CustomersStep({
       index={2}
       icon={<UserRound className="h-4 w-4" />}
       title="Clients"
-      subtitle="Fresha's client list export"
+      subtitle="Your client list export"
       done={!!result}
     >
       {result ? (
@@ -93,7 +94,7 @@ export function CustomersStep({
           onRemove={upload.reset}
           icon={<UploadIcon />}
           label="Drop your client list export here"
-          hint="or click to browse — Fresha's client list CSV"
+          hint="or click to browse — a CSV of your clients, from any booking system"
         />
       ) : (
         <div className="space-y-4">
@@ -112,14 +113,18 @@ export function CustomersStep({
               <AlertDescription>{upload.parseError}</AlertDescription>
             </Alert>
           )}
-          {upload.headerMismatch && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                This doesn't look like a Fresha client list export — double-check you picked the
-                right file.
-              </AlertDescription>
-            </Alert>
+          {upload.headers.length > 0 && (
+            <ColumnMapper
+              fields={upload.fields}
+              headers={upload.headers}
+              mapping={upload.mapping}
+              onChange={upload.setMapping}
+              problem={
+                upload.missingName
+                  ? "We couldn't find a name column — pick which column has each client's name below."
+                  : null
+              }
+            />
           )}
           {upload.existingBatch && !upload.overrideDuplicate && (
             <Alert variant="destructive">
@@ -186,6 +191,7 @@ export function CustomersStep({
                   disabled={
                     committing ||
                     !!upload.parseError ||
+                    upload.missingName ||
                     (!!upload.existingBatch && !upload.overrideDuplicate)
                   }
                 >

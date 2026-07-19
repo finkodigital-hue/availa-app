@@ -125,11 +125,58 @@ function atTime(base: Date, hour: number, minute: number): Date {
   return d;
 }
 
-// Combines a date-bearing timestamp with an exact 24h slot range (preferred,
-// unambiguous) or falls back to the timestamp's own time + a duration.
+// Parses whatever date/time format a booking system's export uses: Fresha's
+// own "17 Dec 2026, 11:30am" style, ISO 8601 (what most modern systems
+// export), and slash-separated dates with an optional time. When a slash
+// date's day/month order is ambiguous (both parts are <= 12) this assumes
+// month/day — if appointment dates come in shifted after an import, that's
+// the first thing to check, and the fix is to re-export with day/month
+// reversed or unambiguous (e.g. "05 Jan 2026") if the source system allows it.
+export function parseGenericDateTime(raw: string | null | undefined): Date | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (!s) return null;
+
+  const fresha = parseFreshaDateTime(s);
+  if (fresha) return fresha;
+
+  if (/^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?/.test(s)) {
+    const iso = new Date(s.replace(" ", "T"));
+    if (!isNaN(iso.getTime())) return iso;
+  }
+
+  const slash = s.match(
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:[,\s]+(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?)?$/i,
+  );
+  if (slash) {
+    const [, a, b, yRaw, hRaw, mRaw, ampm] = slash;
+    let year = parseInt(yRaw, 10);
+    if (year < 100) year += 2000;
+    const first = parseInt(a, 10);
+    const second = parseInt(b, 10);
+    const [month, day] = first > 12 ? [second, first] : [first, second];
+    let hour = hRaw ? parseInt(hRaw, 10) % 12 : 0;
+    const minute = mRaw ? parseInt(mRaw, 10) : 0;
+    if (ampm?.toLowerCase() === "pm") hour += 12;
+    const d = new Date(year, month - 1, day, hour, minute, 0, 0);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  if (/\d{4}/.test(s)) {
+    const native = new Date(s);
+    if (!isNaN(native.getTime())) return native;
+  }
+
+  return null;
+}
+
+// Combines a date-bearing timestamp with, in order of preference: an exact
+// 24h slot range (Fresha-style, unambiguous), an explicit end date/time
+// column, or a duration in minutes.
 export function resolveApptTimes(
   scheduled: Date | null,
   slot: { start: [number, number]; end: [number, number] } | null,
+  explicitEnd: Date | null,
   durationMinutes: number,
 ): { startsAt: Date; endsAt: Date } | null {
   if (!scheduled) return null;
@@ -138,6 +185,9 @@ export function resolveApptTimes(
       startsAt: atTime(scheduled, slot.start[0], slot.start[1]),
       endsAt: atTime(scheduled, slot.end[0], slot.end[1]),
     };
+  }
+  if (explicitEnd && explicitEnd.getTime() > scheduled.getTime()) {
+    return { startsAt: scheduled, endsAt: explicitEnd };
   }
   const startsAt = scheduled;
   const endsAt = new Date(scheduled.getTime() + durationMinutes * 60000);

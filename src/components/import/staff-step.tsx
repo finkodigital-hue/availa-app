@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dropzone, StepShell, UploadIcon } from "./dropzone";
+import { ColumnMapper } from "./column-mapper";
 import { useEntityUpload } from "./use-entity-upload";
 import { describeImportError } from "./errors";
 import { mapStaffRow, type ParsedStaffRow } from "@/lib/import/fresha";
@@ -67,7 +68,7 @@ export function StaffStep({
       index={1}
       icon={<Users className="h-4 w-4" />}
       title="Team"
-      subtitle="Fresha's team/staff export"
+      subtitle="Your staff/team export"
       done={!!result}
     >
       {result ? (
@@ -86,7 +87,7 @@ export function StaffStep({
           onRemove={upload.reset}
           icon={<UploadIcon />}
           label="Drop your team export here"
-          hint="or click to browse — the CSV from Fresha's team/staff export"
+          hint="or click to browse — a CSV of your staff/team, from any booking system"
         />
       ) : (
         <div className="space-y-4">
@@ -105,14 +106,18 @@ export function StaffStep({
               <AlertDescription>{upload.parseError}</AlertDescription>
             </Alert>
           )}
-          {upload.headerMismatch && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                This doesn't look like a Fresha team export — double-check you picked the right
-                file.
-              </AlertDescription>
-            </Alert>
+          {upload.headers.length > 0 && (
+            <ColumnMapper
+              fields={upload.fields}
+              headers={upload.headers}
+              mapping={upload.mapping}
+              onChange={upload.setMapping}
+              problem={
+                upload.missingName
+                  ? "We couldn't find a name column — pick which column has each team member's name below."
+                  : null
+              }
+            />
           )}
           {upload.existingBatch && !upload.overrideDuplicate && (
             <Alert variant="destructive">
@@ -176,6 +181,7 @@ export function StaffStep({
                   disabled={
                     committing ||
                     !!upload.parseError ||
+                    upload.missingName ||
                     (!!upload.existingBatch && !upload.overrideDuplicate)
                   }
                 >
