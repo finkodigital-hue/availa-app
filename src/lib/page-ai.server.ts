@@ -8,6 +8,11 @@ import { captureScreenshot } from "./screenshot.server";
 // can show it as a validation error rather than a generic server failure.
 export class PageAiError extends Error {}
 
+// Thrown when a free-plan business calls this endpoint — the route maps
+// this to a 402 so the client can show an upgrade prompt distinct from a
+// validation or server error.
+export class PlanRequiredError extends Error {}
+
 const SYSTEM_PROMPT = `You are editing the block-based layout of a small service business's public booking page.
 
 You will be given a screenshot of how the page currently renders (if available), the page's CURRENT blocks as a JSON array, and an instruction from the business owner describing what they want changed. Use the screenshot only to understand the current visual design — you cannot add arbitrary CSS or free-form visual elements outside the fixed block library below.
@@ -59,11 +64,14 @@ export async function suggestPageBlocks({
 
   const { data: business } = await supabase
     .from("businesses")
-    .select("id, slug")
+    .select("id, slug, plan")
     .eq("id", businessId)
     .eq("owner_id", userData.user.id)
     .maybeSingle();
   if (!business) throw new Error("Not found");
+  if ((business.plan ?? "free") === "free") {
+    throw new PlanRequiredError("The AI page editor is a Studio feature. Upgrade to Studio to use it.");
+  }
 
   const currentBlocks = blocks as PageBlock[];
   const beforeUrl = buildPreviewUrl(siteOrigin, business.slug, currentBlocks);

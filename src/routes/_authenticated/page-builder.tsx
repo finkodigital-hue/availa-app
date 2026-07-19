@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -13,6 +13,7 @@ import {
   History,
   Pencil,
   Palette,
+  Crown,
 } from "lucide-react";
 import {
   DndContext,
@@ -336,32 +337,50 @@ function PageBuilderPage() {
         </TabsContent>
 
         <TabsContent value="sections">
-      <div className="rounded-2xl border-2 border-primary/15 bg-card p-6 sm:p-8 mb-8 shadow-soft">
-        <div className="flex items-center gap-2 mb-1.5">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <h2 className="font-display text-xl">Describe what you want to change</h2>
+      {(biz.plan ?? "free") === "free" ? (
+        <div className="rounded-2xl border-2 border-dashed bg-card/40 p-6 sm:p-8 mb-8 text-center">
+          <Crown className="h-5 w-5 text-[color:var(--gold-deep)] mx-auto" />
+          <h2 className="font-display text-xl mt-2">AI page editing is a Studio feature</h2>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-md mx-auto">
+            Upgrade to Studio (£22/month) to describe changes in plain English and get a
+            before/after preview. Manual editing below is available on every plan.
+          </p>
+          <Link
+            to="/settings"
+            search={{ tab: "plan" } as any}
+            className="inline-flex items-center gap-1.5 mt-4 rounded-[6px] bg-primary text-primary-foreground font-semibold text-sm px-5 py-2.5 hover:-translate-y-px transition-all"
+          >
+            Upgrade to Studio
+          </Link>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          Nothing is saved until you review a before/after and approve it.
-        </p>
-        <Textarea
-          value={aiPrompt}
-          onChange={(e) => setAiPrompt(e.target.value)}
-          placeholder="e.g. Make the hero punchier, add a gallery of my work, and feature Jen and Leanne"
-          rows={3}
-          className="text-base"
-        />
-        <div className="flex justify-end mt-3">
-          <Button size="lg" onClick={runAiSuggest} disabled={aiLoading || !aiPrompt.trim()}>
-            {aiLoading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
-            )}
-            Suggest changes
-          </Button>
+      ) : (
+        <div className="rounded-2xl border-2 border-primary/15 bg-card p-6 sm:p-8 mb-8 shadow-soft">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h2 className="font-display text-xl">Describe what you want to change</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Nothing is saved until you review a before/after and approve it.
+          </p>
+          <Textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder="e.g. Make the hero punchier, add a gallery of my work, and feature Jen and Leanne"
+            rows={3}
+            className="text-base"
+          />
+          <div className="flex justify-end mt-3">
+            <Button size="lg" onClick={runAiSuggest} disabled={aiLoading || !aiPrompt.trim()}>
+              {aiLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Suggest changes
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       <button
         type="button"

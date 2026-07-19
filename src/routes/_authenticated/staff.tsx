@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ChangeEvent } from "react";
-import { Plus, Pencil, Trash2, Users, Upload, Loader2, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Upload, Loader2, Image as ImageIcon, Crown } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
@@ -54,6 +55,12 @@ function StaffPage() {
 
   const [reassign, setReassign] = useState<{ staff: Staff; futureCount: number } | null>(null);
 
+  // Free plan is limited to one staff member (see plan-settings.tsx +
+  // the enforce_staff_plan_limit DB trigger, which is the real backstop —
+  // this is just so the owner sees why "Add staff" is disabled instead of
+  // hitting a raw error from the trigger).
+  const atFreeLimit = (biz?.plan ?? "free") === "free" && (staff?.length ?? 0) >= 1;
+
   const del = async (s: Staff) => {
     const { count } = await supabase
       .from("bookings")
@@ -87,11 +94,28 @@ function StaffPage() {
         title="Staff"
         subtitle="The people who take bookings. Customers can choose between them on your booking page."
         action={
-          <Button onClick={() => setEdit({ bookable: true, active: true })} className="shadow-glow">
+          <Button
+            onClick={() => setEdit({ bookable: true, active: true })}
+            className="shadow-glow"
+            disabled={atFreeLimit}
+            title={atFreeLimit ? "Free plan is limited to one staff member" : undefined}
+          >
             <Plus className="h-4 w-4 mr-1" /> Add staff
           </Button>
         }
       />
+
+      {atFreeLimit && (
+        <div className="mb-5 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            <Crown className="h-4 w-4 text-[color:var(--gold-deep)]" />
+            The free plan is limited to one staff member.
+          </div>
+          <Link to="/settings" search={{ tab: "plan" } as any} className="text-sm font-medium text-primary hover:underline">
+            Upgrade to Studio
+          </Link>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
