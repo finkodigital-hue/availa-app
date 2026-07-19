@@ -19,6 +19,7 @@ import { Route as PortalProfileRouteImport } from './routes/portal.profile'
 import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
 import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-suggest'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
@@ -86,6 +87,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
 const BookSlugRoute = BookSlugRouteImport.update({
   id: '/book/$slug',
   path: '/book/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPageAiSuggestRoute = ApiPageAiSuggestRouteImport.update({
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
@@ -240,6 +247,7 @@ export interface FileRoutesByTo {
   '/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/_authenticated/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/stock'
     | '/api/chat'
     | '/api/page-ai-suggest'
+    | '/api/stripe-webhook'
     | '/book/$slug'
     | '/invite/$token'
     | '/portal/bookings'
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
     | '/stock'
     | '/api/chat'
     | '/api/page-ai-suggest'
+    | '/api/stripe-webhook'
     | '/book/$slug'
     | '/invite/$token'
     | '/portal/bookings'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/_authenticated/stock'
     | '/api/chat'
     | '/api/page-ai-suggest'
+    | '/api/stripe-webhook'
     | '/book/$slug'
     | '/invite/$token'
     | '/portal/bookings'
@@ -379,6 +391,7 @@ export interface RootRouteChildren {
   StatusRoute: typeof StatusRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiPageAiSuggestRoute: typeof ApiPageAiSuggestRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   BookSlugRoute: typeof BookSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
 }
@@ -453,6 +466,13 @@ declare module '@tanstack/react-router' {
       path: '/book/$slug'
       fullPath: '/book/$slug'
       preLoaderRoute: typeof BookSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/page-ai-suggest': {
@@ -657,6 +677,7 @@ const rootRouteChildren: RootRouteChildren = {
   StatusRoute: StatusRoute,
   ApiChatRoute: ApiChatRoute,
   ApiPageAiSuggestRoute: ApiPageAiSuggestRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   BookSlugRoute: BookSlugRoute,
   InviteTokenRoute: InviteTokenRoute,
 }

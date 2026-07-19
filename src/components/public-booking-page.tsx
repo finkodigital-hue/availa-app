@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
@@ -26,6 +26,7 @@ import { fmtMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { BlockRenderer, type PageBlock } from "@/components/page-blocks";
 import { applyThemeVars, themeFontOverrideCss, themedButtonStyle, type Theme } from "@/lib/theme";
+import { startBookingCheckout } from "@/lib/stripe-connect.functions";
 
 // The real public booking page renderer — used both at /book/$slug and,
 // embedded/scaled/non-interactive, as the live preview in the setup wizard
@@ -130,6 +131,12 @@ export function PublicBookingPage({
   const [time, setTime] = useState<string | null>(null);
   const [info, setInfo] = useState({ name: "", email: "", phone: "", notes: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [paymentReturn, setPaymentReturn] = useState<"success" | "cancelled" | null>(null);
+
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get("payment");
+    if (value === "success" || value === "cancelled") setPaymentReturn(value);
+  }, []);
 
   const brand = theme.colors.primary;
   const brandStyle = applyThemeVars(theme);
@@ -335,6 +342,24 @@ export function PublicBookingPage({
         setSubmitting(false);
         return;
       }
+      const checkout = await startBookingCheckout({
+        data: {
+          businessId: service.business_id,
+          serviceId: service.id,
+          staffId: staff.id,
+          customerName: info.name,
+          customerEmail: info.email,
+          customerPhone: info.phone,
+          startsAt: starts_at,
+          endsAt: ends_at,
+          notes: info.notes,
+          returnPath: window.location.pathname,
+        },
+      });
+      if (checkout.checkoutUrl) {
+        window.location.assign(checkout.checkoutUrl);
+        return;
+      }
       const { error } = await supabase.rpc("create_public_booking", {
         p_business_id: service.business_id,
         p_service_id: service.id,
@@ -422,6 +447,16 @@ export function PublicBookingPage({
       )}
 
       <main className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10 pb-32">
+        {paymentReturn === "success" && (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm mb-6">
+            Payment received. Your booking is being confirmed now.
+          </div>
+        )}
+        {paymentReturn === "cancelled" && (
+          <div className="rounded-2xl border bg-secondary/50 p-4 text-sm mb-6">
+            Payment cancelled — no money was taken. You can choose a time and try again whenever you’re ready.
+          </div>
+        )}
         {biz.description && step === "service" && (
           <p className="text-muted-foreground mb-8 text-pretty">{biz.description}</p>
         )}
@@ -644,10 +679,10 @@ export function PublicBookingPage({
             >
               {submitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Booking…
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparing secure checkout…
                 </>
               ) : (
-                <>Confirm booking · {fmtMoney(service.price_cents)}</>
+                <>Continue to secure payment</>
               )}
             </Button>
             <p className="text-[11px] text-muted-foreground text-center">
