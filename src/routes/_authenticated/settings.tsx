@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight, UserRound, KeyRound, ShieldCheck, Sparkles } from "lucide-react";
+import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight, UserRound, KeyRound, ShieldCheck, Sparkles, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { useAuth } from "@/lib/auth";
@@ -22,8 +22,9 @@ import { PageContentEditor } from "@/components/page-content-editor";
 import { WhiteLabelEditor } from "@/components/white-label-editor";
 import { TwoFactorSettings } from "@/components/two-factor-settings";
 import { PlanSettings } from "@/components/plan-settings";
+import { StripeSettings } from "@/components/stripe-settings";
 
-const SETTINGS_TABS = ["account", "plan", "profile", "hours", "branding", "gallery", "page", "whitelabel", "chairs"] as const;
+const SETTINGS_TABS = ["account", "plan", "profile", "payments", "hours", "branding", "gallery", "page", "whitelabel", "chairs"] as const;
 
 export const Route = createFileRoute("/_authenticated/settings")({
   validateSearch: (search: Record<string, unknown>): { tab?: (typeof SETTINGS_TABS)[number] } => ({
@@ -76,6 +77,7 @@ function SettingsPage() {
           <TabsTrigger value="account" className={TAB_CLS}><UserRound className="h-3.5 w-3.5 mr-1.5" /> Account</TabsTrigger>
           <TabsTrigger value="plan" className={TAB_CLS}><Sparkles className="h-3.5 w-3.5 mr-1.5" /> Plan</TabsTrigger>
           <TabsTrigger value="profile" className={TAB_CLS}><Building2 className="h-3.5 w-3.5 mr-1.5" /> Business</TabsTrigger>
+          <TabsTrigger value="payments" className={TAB_CLS}><CreditCard className="h-3.5 w-3.5 mr-1.5" /> Payments</TabsTrigger>
           <TabsTrigger value="hours" className={TAB_CLS}><Clock className="h-3.5 w-3.5 mr-1.5" /> Hours</TabsTrigger>
           <TabsTrigger value="branding" className={TAB_CLS}><Palette className="h-3.5 w-3.5 mr-1.5" /> Branding</TabsTrigger>
           <TabsTrigger value="gallery" className={TAB_CLS}><ImageIcon className="h-3.5 w-3.5 mr-1.5" /> Gallery</TabsTrigger>
@@ -102,6 +104,11 @@ function SettingsPage() {
         <TabsContent value="profile">
           <Section icon={Building2} title="Business profile" description="The core details customers and staff see across the app.">
             <ProfileEditor biz={biz} />
+          </Section>
+        </TabsContent>
+        <TabsContent value="payments">
+          <Section icon={CreditCard} title="Payments" description="Connect Stripe, then choose whether bookings take a deposit or payment in full.">
+            <StripeSettings business={biz} />
           </Section>
         </TabsContent>
         <TabsContent value="hours">
