@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight, UserRound, KeyRound, ShieldCheck } from "lucide-react";
+import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight, UserRound, KeyRound, ShieldCheck, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { useAuth } from "@/lib/auth";
@@ -21,8 +21,14 @@ import { GalleryManager } from "@/components/gallery-manager";
 import { PageContentEditor } from "@/components/page-content-editor";
 import { WhiteLabelEditor } from "@/components/white-label-editor";
 import { TwoFactorSettings } from "@/components/two-factor-settings";
+import { PlanSettings } from "@/components/plan-settings";
+
+const SETTINGS_TABS = ["account", "plan", "profile", "hours", "branding", "gallery", "page", "whitelabel", "chairs"] as const;
 
 export const Route = createFileRoute("/_authenticated/settings")({
+  validateSearch: (search: Record<string, unknown>): { tab?: (typeof SETTINGS_TABS)[number] } => ({
+    tab: SETTINGS_TABS.includes(search.tab as any) ? (search.tab as (typeof SETTINGS_TABS)[number]) : undefined,
+  }),
   component: SettingsPage,
 });
 
@@ -30,6 +36,7 @@ function SettingsPage() {
   const { data: biz } = useMyBusiness();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { tab } = Route.useSearch();
 
   // A business is an "independent pro" if it's linked to at least one salon
   // as the pro side — that's what unlocks the chair-rentals tab below.
@@ -64,9 +71,10 @@ function SettingsPage() {
     <div className="p-5 sm:p-8 md:p-10 max-w-4xl">
       <PageHeader eyebrow="Workspace" title="Settings" subtitle="Customise your brand, booking page and business details." />
 
-      <Tabs defaultValue="profile" className="space-y-5">
+      <Tabs defaultValue={tab ?? "profile"} className="space-y-5">
         <TabsList className="flex flex-wrap h-auto justify-start gap-1 rounded-[10px] bg-card border p-1.5 shadow-soft">
           <TabsTrigger value="account" className={TAB_CLS}><UserRound className="h-3.5 w-3.5 mr-1.5" /> Account</TabsTrigger>
+          <TabsTrigger value="plan" className={TAB_CLS}><Sparkles className="h-3.5 w-3.5 mr-1.5" /> Plan</TabsTrigger>
           <TabsTrigger value="profile" className={TAB_CLS}><Building2 className="h-3.5 w-3.5 mr-1.5" /> Business</TabsTrigger>
           <TabsTrigger value="hours" className={TAB_CLS}><Clock className="h-3.5 w-3.5 mr-1.5" /> Hours</TabsTrigger>
           <TabsTrigger value="branding" className={TAB_CLS}><Palette className="h-3.5 w-3.5 mr-1.5" /> Branding</TabsTrigger>
@@ -84,6 +92,11 @@ function SettingsPage() {
           </Section>
           <Section icon={ShieldCheck} title="Security" description="Extra protection for your sign-in.">
             <TwoFactorSettings />
+          </Section>
+        </TabsContent>
+        <TabsContent value="plan">
+          <Section icon={Sparkles} title="Plan" description="Free for one staff member — upgrade to Studio for unlimited staff and AI features.">
+            <PlanSettings business={biz} />
           </Section>
         </TabsContent>
         <TabsContent value="profile">

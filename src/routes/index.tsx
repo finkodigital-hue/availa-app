@@ -285,19 +285,18 @@ function Landing() {
     },
     {
       name: "Studio",
-      price: "$29",
+      price: "£22",
       per: "/month",
       desc: "A growing floor.",
-      features: ["Up to 10 chairs", "Deposits & payments", "Email reminders", "Analytics & insights"],
+      features: [
+        "Unlimited staff",
+        "Deposits & payments",
+        "Email reminders",
+        "Analytics & insights",
+        "AI assistant & AI page editor",
+      ],
       cta: "Start free",
       featured: true,
-    },
-    {
-      name: "Multi-site",
-      price: "Let's talk",
-      desc: "Salons with locations.",
-      features: ["Unlimited chairs", "Multiple locations", "Priority support"],
-      cta: "Get in touch",
     },
   ];
 
@@ -441,7 +440,7 @@ function Landing() {
               Free while it's just you and the chair.
             </div>
           </div>
-          <div className="grid md:grid-cols-3 gap-5 max-w-[440px] md:max-w-none mx-auto">
+          <div className="grid md:grid-cols-2 gap-5 max-w-[440px] md:max-w-[720px] mx-auto">
             {tiers.map((t) => {
               const featured = !!t.featured;
               return (

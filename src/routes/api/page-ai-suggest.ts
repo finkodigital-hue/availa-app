@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { suggestPageBlocks, PageAiError } from "@/lib/page-ai.server";
+import { suggestPageBlocks, PageAiError, PlanRequiredError } from "@/lib/page-ai.server";
 
 export const Route = createFileRoute("/api/page-ai-suggest")({
   server: {
@@ -40,6 +40,9 @@ export const Route = createFileRoute("/api/page-ai-suggest")({
 
           return Response.json(result);
         } catch (err) {
+          if (err instanceof PlanRequiredError) {
+            return new Response(err.message, { status: 402 });
+          }
           if (err instanceof PageAiError) {
             return new Response(err.message, { status: 422 });
           }

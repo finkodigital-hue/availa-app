@@ -23,6 +23,9 @@ export const Route = createFileRoute("/api/chat")({
 
           const { business, summary } = await buildAssistantContext(token);
           if (!business) return new Response("No workspace", { status: 400 });
+          if (((business as { plan?: string }).plan ?? "free") === "free") {
+            return new Response("The AI assistant is a Studio feature. Upgrade to Studio to use it.", { status: 402 });
+          }
 
           const gateway = createLovableAiGatewayProvider(key);
           const system = `You are the in-app AI business assistant for "${business.name}", a service booking business using this platform.
