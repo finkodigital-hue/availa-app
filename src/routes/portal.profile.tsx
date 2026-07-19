@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, User as UserIcon, Mail, Phone, ShieldCheck } from "lucide-react";
+import { Loader2, User as UserIcon, Mail, Phone, ShieldCheck, Download, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/portal/profile")({
@@ -37,6 +38,24 @@ function Profile() {
   const primary = rows?.[0];
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [requesting, setRequesting] = useState<"export" | "deletion" | null>(null);
+
+  const requestDataAction = async (kind: "export" | "deletion") => {
+    setRequesting(kind);
+    try {
+      const { error } = await supabase.rpc("request_customer_data_action", { p_kind: kind });
+      if (error) throw error;
+      toast.success(
+        kind === "export"
+          ? "Request sent — the business will email you your data."
+          : "Deletion request sent — the business will action it shortly.",
+      );
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not send request");
+    } finally {
+      setRequesting(null);
+    }
+  };
 
   useEffect(() => {
     if (primary) { setName(primary.name ?? ""); setPhone(primary.phone ?? ""); }
@@ -126,6 +145,38 @@ function Profile() {
           </form>
         )}
       </div>
+
+      {primary && (
+        <div className="rounded-2xl border bg-card p-6 sm:p-8 mt-6">
+          <h2 className="font-display text-lg">Your data</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Ask the business{rows && rows.length > 1 ? "es" : ""} you've booked with for a copy of your
+            data, or to delete it.
+          </p>
+          <div className="flex flex-wrap gap-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => requestDataAction("export")}
+              disabled={requesting !== null}
+            >
+              {requesting === "export" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Request my data
+            </Button>
+            <ConfirmDialog
+              trigger={
+                <Button type="button" variant="outline" className="text-destructive hover:text-destructive" disabled={requesting !== null}>
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete my account
+                </Button>
+              }
+              title="Request account deletion?"
+              description="This sends a deletion request to every business you've booked with. They'll remove your personal details from their records."
+              confirmLabel="Send request"
+              onConfirm={() => requestDataAction("deletion")}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
