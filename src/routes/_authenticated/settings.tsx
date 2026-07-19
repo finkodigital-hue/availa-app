@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight, UserRound, KeyRound } from "lucide-react";
+import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight, UserRound, KeyRound, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { useAuth } from "@/lib/auth";
@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { GalleryManager } from "@/components/gallery-manager";
 import { PageContentEditor } from "@/components/page-content-editor";
 import { WhiteLabelEditor } from "@/components/white-label-editor";
+import { TwoFactorSettings } from "@/components/two-factor-settings";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -77,9 +78,12 @@ function SettingsPage() {
           )}
         </TabsList>
 
-        <TabsContent value="account">
+        <TabsContent value="account" className="space-y-5">
           <Section icon={UserRound} title="Your account" description="Manage the details associated with your Bookzenvo sign-in.">
             {user && <AccountEditor user={user} />}
+          </Section>
+          <Section icon={ShieldCheck} title="Security" description="Extra protection for your sign-in.">
+            <TwoFactorSettings />
           </Section>
         </TabsContent>
         <TabsContent value="profile">
