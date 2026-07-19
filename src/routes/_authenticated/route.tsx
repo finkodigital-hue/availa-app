@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useMyBusiness } from "@/lib/business";
 import { AppShell } from "@/components/app-shell";
+import { EmailVerifyGate } from "@/components/email-verify-gate";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -35,6 +36,9 @@ function Layout() {
         </div>
       </div>
     );
+  }
+  if (!user.email_confirmed_at && user.app_metadata?.provider === "email") {
+    return <EmailVerifyGate email={user.email} />;
   }
   if (!biz) {
     return <Outlet />;
