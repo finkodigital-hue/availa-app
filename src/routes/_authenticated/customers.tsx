@@ -94,6 +94,7 @@ function CustomersPage() {
           </Button>
         }
       />
+      {bid && <DataRequestsBanner businessId={bid} onView={setOpenId} />}
       <div className="relative mb-5 max-w-md">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -233,6 +234,59 @@ function CustomersPage() {
         onDone={() => { setMergeFor(null); qc.invalidateQueries({ queryKey: ["customers"] }); }}
         businessId={bid}
       />
+    </div>
+  );
+}
+
+function DataRequestsBanner({ businessId, onView }: { businessId: string; onView: (customerId: string) => void }) {
+  const qc = useQueryClient();
+  const { data: requests } = useQuery({
+    queryKey: ["customer-data-requests", businessId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("customer_data_requests")
+        .select("id, customer_id, email, kind, created_at")
+        .eq("business_id", businessId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: true });
+      // Degrade quietly if the migration hasn't been applied yet.
+      if (error) return [];
+      return data ?? [];
+    },
+  });
+
+  const resolve = async (id: string) => {
+    const { error } = await (supabase as any)
+      .from("customer_data_requests")
+      .update({ status: "completed", resolved_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    qc.invalidateQueries({ queryKey: ["customer-data-requests", businessId] });
+  };
+
+  if (!requests || requests.length === 0) return null;
+
+  return (
+    <div className="mb-5 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-400">
+        {requests.length} pending data request{requests.length === 1 ? "" : "s"}
+      </p>
+      <ul className="space-y-1.5">
+        {requests.map((r: any) => (
+          <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span>
+              <span className="font-medium">{r.email}</span> requested{" "}
+              {r.kind === "deletion" ? "account deletion" : "a data export"}
+            </span>
+            <div className="flex gap-1.5">
+              {r.customer_id && (
+                <Button variant="outline" size="sm" onClick={() => onView(r.customer_id)}>View</Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => resolve(r.id)}>Mark handled</Button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
