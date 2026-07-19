@@ -262,9 +262,8 @@ function Landing() {
       body: "Employed stylists or rent-a-chair independents — each with their own diary and clients.",
     },
     {
-      title: "Switch from Fresha",
-      soon: true,
-      body: "Bring your client list and services across in one upload.",
+      title: "Switch from any booking system",
+      body: "Bring your team, clients, services and appointment history across — from Fresha, Square, Vagaro, Booksy and more.",
     },
   ];
 

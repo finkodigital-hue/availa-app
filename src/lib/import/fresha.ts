@@ -1,11 +1,14 @@
-// Fresha-specific CSV shapes: which columns each export has, how to detect
-// which file is which, and how to turn a raw row into a normalized record.
+// Turns a normalized, canonical-keyed row (produced by mapping.ts's
+// applyMapping, from whatever CSV columns the owner's booking system export
+// used) into the shape each entity needs. Free of any particular source
+// system's column names — Fresha is simply the system whose exports we
+// recognise out of the box (see schema.ts's aliases).
 import type { BookingStatus } from "@/lib/format";
 import {
   cleanPhoneDisplay,
   cleanText,
   parseDuration,
-  parseFreshaDateTime,
+  parseGenericDateTime,
   parsePrice,
   parseSlotTimes,
   resolveApptTimes,
@@ -20,27 +23,8 @@ export const ENTITY_LABELS: Record<ImportEntity, string> = {
   bookings: "Appointments",
 };
 
-// Columns we key off for each file. Used only to warn "this doesn't look
-// like a Fresha X export" — not a strict schema requirement, since Fresha
-// adds/removes columns between export versions.
-const ENTITY_SIGNATURES: Record<ImportEntity, string[]> = {
-  staff: ["First Name", "Job Title", "Status"],
-  customers: ["Client ID", "Full Name", "Mobile Number"],
-  services: ["Service Name", "Retail Price", "Duration"],
-  bookings: ["Appt. ref.", "Client", "Team member", "Scheduled date"],
-};
-
-export function detectEntityMismatch(entity: ImportEntity, headers: string[]): boolean {
-  const required = ENTITY_SIGNATURES[entity];
-  const have = new Set(headers.map((h) => h.trim()));
-  const missing = required.filter((h) => !have.has(h));
-  return missing.length > required.length / 2;
-}
-
-function normalizeRow(row: Record<string, string>): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(row)) out[k.trim()] = (v ?? "").trim();
-  return out;
+function fullNameOf(r: Record<string, string>): string {
+  return r.fullName || `${r.firstName ?? ""} ${r.lastName ?? ""}`.trim();
 }
 
 export type ParsedStaffRow = {
@@ -51,18 +35,15 @@ export type ParsedStaffRow = {
   sourceStatus: string | null;
 };
 
-export function mapStaffRow(raw: Record<string, string>): ParsedStaffRow | null {
-  const r = normalizeRow(raw);
-  const first = r["First Name"] ?? "";
-  const last = r["Last Name"] ?? "";
-  const name = `${first} ${last}`.trim();
+export function mapStaffRow(r: Record<string, string>): ParsedStaffRow | null {
+  const name = fullNameOf(r);
   if (!name) return null;
   return {
     name,
-    email: cleanText(r["Email"]),
-    phone: cleanPhoneDisplay(r["Phone Number"]),
-    role: cleanText(r["Job Title"]),
-    sourceStatus: cleanText(r["Status"]),
+    email: cleanText(r.email),
+    phone: cleanPhoneDisplay(r.phone),
+    role: cleanText(r.role),
+    sourceStatus: cleanText(r.status),
   };
 }
 
@@ -74,23 +55,19 @@ export type ParsedCustomerRow = {
   notes: string | null;
 };
 
-export function mapCustomerRow(raw: Record<string, string>): ParsedCustomerRow | null {
-  const r = normalizeRow(raw);
-  const externalId = r["Client ID"] ?? "";
-  const name = r["Full Name"] || `${r["First Name"] ?? ""} ${r["Last Name"] ?? ""}`.trim();
-  if (!name || !externalId) return null;
-  const phone = cleanPhoneDisplay(r["Mobile Number"]) ?? cleanPhoneDisplay(r["Telephone"]);
-  const referral = cleanText(r["Referral Source"]);
-  const note = cleanText(r["Note"]);
-  const notes =
-    [note, referral ? `Referral source: ${referral}` : null].filter(Boolean).join("\n") || null;
-  return {
-    externalId,
-    name,
-    email: cleanText(r["Email"]),
-    phone,
-    notes,
-  };
+export function mapCustomerRow(r: Record<string, string>): ParsedCustomerRow | null {
+  const name = fullNameOf(r);
+  if (!name) return null;
+  const phone = cleanPhoneDisplay(r.phone);
+  const referral = cleanText(r.referralSource);
+  const note = cleanText(r.notes);
+  const notes = [note, referral ? `Referral source: ${referral}` : null].filter(Boolean).join("\n") || null;
+  // Not every system exports a client ID. Dedup keys off external_id further
+  // down the pipeline, so a missing one is synthesized per-row rather than
+  // left blank — otherwise every no-ID row would collide as "duplicates" of
+  // each other and only the first would import.
+  const externalId = cleanText(r.externalId) ?? `row:${crypto.randomUUID()}`;
+  return { externalId, name, email: cleanText(r.email), phone, notes };
 }
 
 export type ParsedServiceRow = {
@@ -103,20 +80,19 @@ export type ParsedServiceRow = {
   description: string | null;
 };
 
-export function mapServiceRow(raw: Record<string, string>): ParsedServiceRow | null {
-  const r = normalizeRow(raw);
-  const name = cleanText(r["Service Name"]);
+export function mapServiceRow(r: Record<string, string>): ParsedServiceRow | null {
+  const name = cleanText(r.name);
   if (!name) return null;
-  const dur = parseDuration(r["Duration"]);
-  const price = parsePrice(r["Retail Price"]);
+  const dur = parseDuration(r.duration);
+  const price = parsePrice(r.price);
   return {
-    externalId: cleanText(r["Service ID"]),
+    externalId: cleanText(r.externalId),
     name,
     durationMinutes: dur.minutes,
     durationGuessed: !dur.ok,
     priceCents: price.cents,
-    category: cleanText(r["Category Name"]),
-    description: cleanText(r["Description"]),
+    category: cleanText(r.category),
+    description: cleanText(r.description),
   };
 }
 
@@ -145,29 +121,31 @@ export type ParsedApptRow = {
   createdAt: Date | null;
 };
 
-export function mapApptRow(raw: Record<string, string>): ParsedApptRow | null {
-  const r = normalizeRow(raw);
-  const externalId = r["Appt. ref."] ?? "";
-  const clientName = r["Client"] ?? "";
-  const staffName = r["Team member"] ?? "";
-  const serviceName = r["Service"] ?? "";
-  if (!externalId || !clientName || !staffName || !serviceName) return null;
+export function mapApptRow(r: Record<string, string>): ParsedApptRow | null {
+  const clientName = r.clientName ?? "";
+  const staffName = r.staffName ?? "";
+  const serviceName = r.serviceName ?? "";
+  if (!clientName || !staffName || !serviceName) return null;
 
-  const scheduled = parseFreshaDateTime(r["Scheduled date"]);
-  const slot = parseSlotTimes(r["Appt. slot"]);
-  const dur = parseDuration(r["Duration (mins)"]);
-  const times = resolveApptTimes(scheduled, slot, dur.minutes);
-  const price = parsePrice(r["Net sales"]);
+  const scheduled = parseGenericDateTime(r.scheduledDate);
+  const slot = parseSlotTimes(r.apptSlot);
+  const explicitEnd = parseGenericDateTime(r.endDateTime);
+  const dur = parseDuration(r.duration);
+  const times = resolveApptTimes(scheduled, slot, explicitEnd, dur.minutes);
+  const price = parsePrice(r.price);
+  // Not every system exports a booking reference — synthesized per-row like
+  // the customer external_id above, for the same duplicate-collision reason.
+  const externalId = cleanText(r.externalId) ?? `row:${crypto.randomUUID()}`;
 
   return {
     externalId,
     clientName,
     staffName,
-    status: mapApptStatus(r["Status"]),
+    status: mapApptStatus(r.status),
     serviceName,
     startsAt: times?.startsAt ?? null,
     endsAt: times?.endsAt ?? null,
     priceCents: price.cents,
-    createdAt: parseFreshaDateTime(r["Created date"]),
+    createdAt: parseGenericDateTime(r.createdDate),
   };
 }

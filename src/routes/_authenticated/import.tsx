@@ -92,17 +92,17 @@ function ImportGuide() {
       </div>
       <div className="grid gap-3 sm:grid-cols-3 mt-5">
         <GuideStep icon={FileSpreadsheet} title="1. Export your data">
-          In your previous system, export separate CSV files for staff, clients, services and appointments. Keep the original column headings.
+          In your previous system, export separate CSV files for staff, clients, services and appointments — look for "Export" or "Download" in its settings or reports area. Keep the original column headings.
         </GuideStep>
         <GuideStep icon={CheckCircle2} title="2. Import in order">
           Start with staff, then clients and services. Import appointments last so Bookzenvo can match each booking to the right records.
         </GuideStep>
         <GuideStep icon={ShieldCheck} title="3. Review, then confirm">
-          We show a preview before saving. You can correct issues first, and imports remain reversible from the history section below.
+          We show a preview before saving. Each step also shows how we matched your file's columns — adjust it there if anything looks off. Imports remain reversible from the history section below.
         </GuideStep>
       </div>
       <p className="mt-5 rounded-xl bg-secondary/60 px-3 py-2.5 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">Currently supported:</span> Fresha CSV exports. Exported files from other booking systems vary, so support for them is being added carefully rather than risking a bad import.
+        <span className="font-medium text-foreground">Works with any booking system:</span> Fresha's CSV exports are matched automatically. Exports from Square, Vagaro, Booksy, Acuity/Squarespace Scheduling, Timely, GlossGenius, Mindbody, SimplyBook.me, Setmore and similar tools usually match automatically too — if a column isn't recognised, each step lets you pick the right one manually before anything is imported.
       </p>
     </section>
   );

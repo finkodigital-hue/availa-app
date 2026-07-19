@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dropzone, StepShell, UploadIcon } from "./dropzone";
+import { ColumnMapper } from "./column-mapper";
 import { useEntityUpload } from "./use-entity-upload";
 import { describeImportError } from "./errors";
 import { mapServiceRow, type ParsedServiceRow } from "@/lib/import/fresha";
@@ -66,7 +67,7 @@ export function ServicesStep({
       index={3}
       icon={<Scissors className="h-4 w-4" />}
       title="Services"
-      subtitle="Fresha's service list export"
+      subtitle="Your service list export"
       done={!!result}
     >
       {result ? (
@@ -85,7 +86,7 @@ export function ServicesStep({
           onRemove={upload.reset}
           icon={<UploadIcon />}
           label="Drop your service list export here"
-          hint="or click to browse — Fresha's service list CSV"
+          hint="or click to browse — a CSV of your services, from any booking system"
         />
       ) : (
         <div className="space-y-4">
@@ -104,14 +105,18 @@ export function ServicesStep({
               <AlertDescription>{upload.parseError}</AlertDescription>
             </Alert>
           )}
-          {upload.headerMismatch && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                This doesn't look like a Fresha service list export — double-check you picked the
-                right file.
-              </AlertDescription>
-            </Alert>
+          {upload.headers.length > 0 && (
+            <ColumnMapper
+              fields={upload.fields}
+              headers={upload.headers}
+              mapping={upload.mapping}
+              onChange={upload.setMapping}
+              problem={
+                upload.missingRequired.length > 0
+                  ? `We couldn't find: ${upload.missingRequired.join(", ")}. Pick the right column below.`
+                  : null
+              }
+            />
           )}
           {upload.existingBatch && !upload.overrideDuplicate && (
             <Alert variant="destructive">
@@ -182,6 +187,7 @@ export function ServicesStep({
                   disabled={
                     committing ||
                     !!upload.parseError ||
+                    upload.missingRequired.length > 0 ||
                     (!!upload.existingBatch && !upload.overrideDuplicate)
                   }
                 >
