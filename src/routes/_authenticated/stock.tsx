@@ -92,6 +92,7 @@ const STATE_META: Record<StockState, { label: string; barClass: string; pillClas
 
 function StockPage() {
   const { data: biz } = useMyBusiness();
+  const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
   const bid = biz?.id;
   const qc = useQueryClient();
   const [edit, setEdit] = useState<Partial<InventoryItem> | null>(null);

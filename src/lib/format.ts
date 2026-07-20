@@ -1,5 +1,7 @@
-export const fmtMoney = (cents: number, currency = "USD") =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency }).format((cents || 0) / 100);
+export const DEFAULT_CURRENCY = "GBP";
+
+export const fmtMoney = (cents: number, currency = DEFAULT_CURRENCY) =>
+  new Intl.NumberFormat("en-GB", { style: "currency", currency: currency || DEFAULT_CURRENCY }).format((cents || 0) / 100);
 
 export const fmtTime = (d: Date | string) =>
   new Date(d).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });

@@ -89,9 +89,9 @@ export async function buildAssistantContext(accessToken: string) {
   });
   const quietDays = Object.entries(slotsByDay).sort((a, b) => a[1] - b[1]).slice(0, 5);
 
-  const currency = business.currency ?? "USD";
+  const currency = business.currency ?? "GBP";
   const fmt = (cents: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
+    new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(cents / 100);
 
   const summary = [
     `Business: ${business.name} (${business.timezone ?? "UTC"}, ${currency}).`,

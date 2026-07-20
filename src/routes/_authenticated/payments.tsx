@@ -10,7 +10,7 @@ import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney as formatMoney } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/payments")({
   component: PaymentsPage,
@@ -28,6 +28,7 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
 
 function PaymentsPage() {
   const { data: biz } = useMyBusiness();
+  const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
   const bid = biz?.id;
   const [selected, setSelected] = useState<any | null>(null);
 

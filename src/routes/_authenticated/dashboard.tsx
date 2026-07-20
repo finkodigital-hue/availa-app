@@ -22,7 +22,7 @@ import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
-import { fmtMoney, fmtTime } from "@/lib/format";
+import { fmtMoney as formatMoney, fmtTime } from "@/lib/format";
 import { fetchBookingsInRange, aggregateStaffPerformance, aggregateServicePerformance, computeTotals, pctDelta } from "@/lib/reports";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,7 @@ function rangeFor(r: Range): { start: Date; end: Date; prevStart: Date; prevEnd:
 
 function Dashboard() {
   const { data: biz } = useMyBusiness();
+  const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
   const bid = biz?.id;
   const qc = useQueryClient();
   const [range, setRange] = useState<Range>("month");

@@ -82,9 +82,11 @@ function groupServices(services: Service[]): ServiceGroup[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function priceRange(variants: Service[]) {
+function priceRange(variants: Service[], currency: string) {
   const prices = variants.map((v) => v.price_cents);
   const min = Math.min(...prices), max = Math.max(...prices);
+  if (min === max) return fmtMoney(min, currency);
+  return `${fmtMoney(min, currency)} to ${fmtMoney(max, currency)}`;
   return min === max ? fmtMoney(min) : `${fmtMoney(min)}–${fmtMoney(max)}`;
 }
 
@@ -123,6 +125,7 @@ export function PublicBookingPage({
   footerExtra?: React.ReactNode;
 }) {
   const biz = business;
+  const currency = business.currency ?? "GBP";
   const [step, setStep] = useState<Step>("service");
   const [serviceGroup, setServiceGroup] = useState<ServiceGroup | null>(null);
   const [service, setService] = useState<Service | null>(null);
@@ -502,7 +505,7 @@ export function PublicBookingPage({
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-display text-lg tabular-nums">{priceRange(g.variants)}</div>
+                    <div className="font-display text-lg tabular-nums">{priceRange(g.variants, currency)}</div>
                     <div className="mt-2 inline-flex items-center justify-center h-7 w-7 rounded-full bg-secondary group-hover:bg-foreground group-hover:text-background transition-colors ml-auto">
                       <ChevronRight className="h-3.5 w-3.5" />
                     </div>
@@ -637,7 +640,7 @@ export function PublicBookingPage({
               <div className="text-sm opacity-90 mt-2 flex flex-wrap gap-x-3 gap-y-1">
                 <span className="inline-flex items-center gap-1"><User className="h-3 w-3" />{staff.name}</span>
                 <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(time).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
-                <span>· {fmtMoney(service.price_cents)}</span>
+                <span>· {fmtMoney(service.price_cents, currency)}</span>
               </div>
             </div>
             <div>
@@ -710,7 +713,7 @@ export function PublicBookingPage({
             <div className="mt-8 mx-auto max-w-sm rounded-2xl border bg-card p-5 text-left text-sm">
               <SummaryRow label="Service" value={serviceGroup?.name ?? service.name} />
               <SummaryRow label="With" value={staff.name} />
-              <SummaryRow label="Total" value={fmtMoney(service.price_cents)} />
+              <SummaryRow label="Total" value={fmtMoney(service.price_cents, currency)} />
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button variant="outline" onClick={reset}>Book another</Button>

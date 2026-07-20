@@ -30,7 +30,7 @@ import {
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { startBalanceCheckout, takeSavedBalancePayment } from "@/lib/stripe-connect.functions";
-import { fmtMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
+import { fmtMoney as formatMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
 import { resolveDayPeriods, isMinuteWithinPeriods, type DayPeriod } from "@/lib/staff-hours";
 import {
   HoursContext,
@@ -62,6 +62,7 @@ function startOfMonth(d: Date) {
 
 function CalendarPage() {
   const { data: biz } = useMyBusiness();
+  const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
   const bid = biz?.id;
   const qc = useQueryClient();
 

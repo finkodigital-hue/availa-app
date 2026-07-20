@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney as formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ const COLORS = ["#C2410C", "#0EA5E9", "#10B981", "#A855F7", "#F59E0B", "#EC4899"
 
 function ServicesPage() {
   const { data: biz } = useMyBusiness();
+  const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
   const bid = biz?.id;
   const qc = useQueryClient();
   const [edit, setEdit] = useState<Partial<Service> | null>(null);
@@ -139,6 +140,7 @@ function ServicesPage() {
       color: edit.color ?? null,
       category: edit.category?.trim() || null,
       active: edit.active ?? true,
+      currency: biz?.currency ?? "GBP",
     };
     const { data, error } = edit.id
       ? await supabase.from("services").update(payload).eq("id", edit.id).select("id").single()
@@ -335,7 +337,7 @@ function ServicesPage() {
                 <Input type="number" min={5} step={5} value={edit?.duration_minutes ?? 60} onChange={(e) => setEdit({ ...edit, duration_minutes: Number(e.target.value) })} className="mt-1.5 h-10" />
               </div>
               <div>
-                <Label>Price ($)</Label>
+                <Label>Price ({biz?.currency ?? "GBP"})</Label>
                 <Input type="number" min={0} step="0.01" value={(edit?.price_cents ?? 0) / 100} onChange={(e) => setEdit({ ...edit, price_cents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1.5 h-10" />
                 <p className="text-[11px] text-muted-foreground mt-1">{fmtMoney(Number(edit?.price_cents) || 0)}</p>
               </div>

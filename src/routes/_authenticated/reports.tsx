@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/reports")({
 function ReportsPage() {
   const { data: biz } = useMyBusiness();
   const bid = biz?.id;
-  const currency = biz?.currency ?? "USD";
+  const currency = biz?.currency ?? "GBP";
 
   const [{ from, to, preset }, setRange] = useState<{ from: Date; to: Date; preset: DatePreset }>(() => ({
     ...presetRange("this_month"),
