@@ -401,7 +401,7 @@ function Dashboard() {
             </Button>
           </div>
           <div className="mt-5 grid sm:grid-cols-3 gap-4">
-            <GoalBar label="Revenue" cur={goal?.progress.revenue ?? 0} target={goal?.target?.revenue_cents_target ?? 0} money />
+            <GoalBar label="Revenue" cur={goal?.progress.revenue ?? 0} target={goal?.target?.revenue_cents_target ?? 0} money currency={biz?.currency ?? "GBP"} />
             <GoalBar label="Bookings" cur={goal?.progress.bookings ?? 0} target={goal?.target?.bookings_target ?? 0} />
             <GoalBar label="New customers" cur={goal?.progress.customers ?? 0} target={goal?.target?.customers_target ?? 0} />
           </div>
@@ -606,9 +606,9 @@ function Insight({ icon: Icon, label, value }: { icon: any; label: string; value
   );
 }
 
-function GoalBar({ label, cur, target, money }: { label: string; cur: number; target: number; money?: boolean }) {
+function GoalBar({ label, cur, target, money, currency = "GBP" }: { label: string; cur: number; target: number; money?: boolean; currency?: string }) {
   const pct = target > 0 ? Math.min(100, Math.round((cur / target) * 100)) : 0;
-  const fmt = (n: number) => (money ? fmtMoney(n) : n.toLocaleString());
+  const fmt = (n: number) => (money ? formatMoney(n, currency) : n.toLocaleString());
   return (
     <div className="rounded-xl border bg-secondary/30 p-4">
       <div className="flex items-baseline justify-between text-xs text-muted-foreground"><span>{label}</span><span>{pct}%</span></div>

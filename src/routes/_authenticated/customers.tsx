@@ -213,6 +213,7 @@ function CustomersPage() {
       <CustomerDetailDialog
         customerId={openId}
         businessId={bid}
+        currency={biz?.currency ?? "GBP"}
         onClose={() => setOpenId(null)}
         onEdit={(c) => { setOpenId(null); setEditing(c); }}
         onDelete={() => { setOpenId(null); qc.invalidateQueries({ queryKey: ["customers"] }); }}
@@ -433,9 +434,10 @@ function CustomerEditDialog({ editing, businessId, onClose, onSaved }: {
   );
 }
 
-function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelete, onBook }: {
+function CustomerDetailDialog({ customerId, businessId, currency = "GBP", onClose, onEdit, onDelete, onBook }: {
   customerId: string | null;
   businessId: string | undefined;
+  currency?: string;
   onClose: () => void;
   onEdit: (c: any) => void;
   onDelete: () => void;
@@ -511,8 +513,8 @@ function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelet
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
               <Stat icon={Calendar} label="Visits" value={String(stats.visits)} />
-              <Stat icon={DollarSign} label="Spent" value={fmtMoney(stats.spent)} />
-              <Stat icon={Sparkles} label="Avg" value={fmtMoney(stats.avg)} />
+              <Stat icon={DollarSign} label="Spent" value={formatMoney(stats.spent, currency)} />
+              <Stat icon={Sparkles} label="Avg" value={formatMoney(stats.avg, currency)} />
               <Stat icon={Star} label="Favourite" value={stats.favService ?? "—"} />
             </div>
 
@@ -526,14 +528,14 @@ function CustomerDetailDialog({ customerId, businessId, onClose, onEdit, onDelet
                 {stats.upcoming.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">No upcoming bookings.</p>
                 ) : (
-                  <BookingList items={stats.upcoming} />
+                  <BookingList items={stats.upcoming} currency={currency} />
                 )}
               </TabsContent>
               <TabsContent value="past" className="mt-3">
                 {stats.past.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">No past bookings yet.</p>
                 ) : (
-                  <BookingList items={stats.past} />
+                  <BookingList items={stats.past} currency={currency} />
                 )}
                 {stats.favStaff && (
                   <p className="text-xs text-muted-foreground mt-3">
@@ -580,7 +582,7 @@ function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: s
   );
 }
 
-function BookingList({ items }: { items: any[] }) {
+function BookingList({ items, currency = "GBP" }: { items: any[]; currency?: string }) {
   return (
     <ul className="divide-y rounded-xl border bg-card">
       {items.map((b) => {
@@ -601,7 +603,7 @@ function BookingList({ items }: { items: any[] }) {
               <Badge variant="outline" className="capitalize text-[10px]" style={{ background: m.tint, color: m.color, borderColor: m.color }}>
                 {m.label}
               </Badge>
-              <div className="text-xs text-muted-foreground tabular-nums mt-1">{fmtMoney(b.price_cents ?? 0)}</div>
+              <div className="text-xs text-muted-foreground tabular-nums mt-1">{formatMoney(b.price_cents ?? 0, currency)}</div>
             </div>
           </li>
         );

@@ -43,6 +43,7 @@ export interface PublicBookingBusiness {
   address: string | null;
   phone: string | null;
   website: string | null;
+  currency?: string | null;
 }
 
 // A "service" here is always a specific business's variant (its own price,
