@@ -65,6 +65,14 @@ export function ContactSupportDialog() {
             </DialogTitle>
             <DialogDescription>
               {user?.email ? `We'll reply to ${user.email}.` : "We'll reply to your account email."}
+              <br />
+              Prefer email?{" "}
+              <a
+                href="mailto:help@finkodigital.com"
+                className="underline underline-offset-4 hover:text-foreground"
+              >
+                help@finkodigital.com
+              </a>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
