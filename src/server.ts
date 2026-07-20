@@ -9,6 +9,22 @@ type ServerEntry = {
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
+/**
+ * Cloudflare Workers passes bindings to the fetch handler rather than adding
+ * them to `process.env`. The TanStack/Supabase code uses `process.env`, so
+ * make string bindings available there before handling the first request.
+ */
+function installRuntimeEnvironment(env: unknown) {
+  if (!env || typeof env !== "object") return;
+
+  const runtimeEnv = process.env;
+  for (const [name, value] of Object.entries(env as Record<string, unknown>)) {
+    if (typeof value === "string" && !runtimeEnv[name]) {
+      runtimeEnv[name] = value;
+    }
+  }
+}
+
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
@@ -40,6 +56,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      installRuntimeEnvironment(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

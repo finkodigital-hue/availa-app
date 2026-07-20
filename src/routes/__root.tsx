@@ -80,10 +80,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const publicEnvironment =
+    typeof window === "undefined"
+      ? JSON.stringify({
+          supabaseUrl: process.env.SUPABASE_URL,
+          supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
+        }).replace(/</g, "\\u003c")
+      : null;
+
   return (
     <html lang="en">
       <head><HeadContent /></head>
-      <body>{children}<Scripts /></body>
+      <body>
+        {publicEnvironment && (
+          <script dangerouslySetInnerHTML={{ __html: `window.__BOOKZENVO_ENV__=${publicEnvironment};` }} />
+        )}
+        {children}
+        <Scripts />
+      </body>
     </html>
   );
 }
