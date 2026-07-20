@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { compressImage, signedUrl } from "@/lib/image";
-import { fmtDate, fmtMoney, fmtTime, statusMeta } from "@/lib/format";
+import { fmtDate, fmtMoney as formatMoney, fmtTime, statusMeta } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/customers")({
@@ -41,6 +41,7 @@ type Customer = {
 
 function CustomersPage() {
   const { data: biz } = useMyBusiness();
+  const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
   const bid = biz?.id;
   const qc = useQueryClient();
   const [q, setQ] = useState("");

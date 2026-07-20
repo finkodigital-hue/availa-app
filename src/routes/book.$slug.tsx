@@ -11,7 +11,7 @@ export const Route = createFileRoute("/book/$slug")({
   loader: async ({ params, location }) => {
     const { data, error } = await (supabase as any)
       .from("public_businesses")
-      .select("id, name, slug, description, page_theme, address, phone, website, email, timezone, instagram, facebook, twitter")
+      .select("id, name, slug, description, page_theme, address, phone, website, email, timezone, instagram, facebook, twitter, currency")
       .eq("slug", params.slug)
       .maybeSingle();
     if (error) throw error;

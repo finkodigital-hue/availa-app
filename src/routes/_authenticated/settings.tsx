@@ -447,7 +447,7 @@ function ProfileEditor({ biz }: { biz: any }) {
     const { error } = await supabase.from("businesses").update({
       name: form.name.trim(), description: form.description,
       address: form.address, phone: form.phone, email: form.email, website: form.website,
-      timezone: form.timezone,
+      timezone: form.timezone, currency: form.currency || "GBP",
       instagram: form.instagram, facebook: form.facebook, tiktok: form.tiktok, twitter: form.twitter,
     }).eq("id", biz.id);
     setSaving(false);
@@ -461,6 +461,20 @@ function ProfileEditor({ biz }: { biz: any }) {
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label="Name"><Input value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-10" /></Field>
         <Field label="Timezone"><Input value={form.timezone ?? ""} onChange={(e) => setForm({ ...form, timezone: e.target.value })} className="h-10" /></Field>
+        <Field label="Currency">
+          <select
+            value={form.currency ?? "GBP"}
+            onChange={(e) => setForm({ ...form, currency: e.target.value })}
+            className="mt-1.5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="GBP">British pound (GBP £)</option>
+            <option value="USD">US dollar (USD $)</option>
+            <option value="EUR">Euro (EUR €)</option>
+            <option value="AUD">Australian dollar (AUD A$)</option>
+            <option value="CAD">Canadian dollar (CAD C$)</option>
+            <option value="NZD">New Zealand dollar (NZD NZ$)</option>
+          </select>
+        </Field>
         <Field label="Email"><Input type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} className="h-10" /></Field>
         <Field label="Phone"><Input value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="h-10" /></Field>
         <Field label="Website"><Input value={form.website ?? ""} onChange={(e) => setForm({ ...form, website: e.target.value })} className="h-10" placeholder="https://" /></Field>
