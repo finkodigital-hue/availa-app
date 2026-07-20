@@ -75,6 +75,7 @@ export const Route = createFileRoute("/api/stripe-webhook")({
             p_currency: session.currency,
             p_stripe_payment_intent_id: session.payment_intent,
             p_stripe_charge_id: null,
+            p_stripe_customer_id: typeof session.customer === "string" ? session.customer : "",
           });
           if (error) throw error;
         } catch (error) {
