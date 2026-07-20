@@ -95,6 +95,14 @@ function RootShell({ children }: { children: ReactNode }) {
         {publicEnvironment && (
           <script dangerouslySetInnerHTML={{ __html: `window.__BOOKZENVO_ENV__=${publicEnvironment};` }} />
         )}
+        <script
+          dangerouslySetInnerHTML={{
+            // Supabase recovery links use a URL hash. If a project-level redirect
+            // sends one to the site root, preserve that hash and send the visitor
+            // straight to the password form before the app boots.
+            __html: `if (window.location.pathname === '/' && /(?:^|&)type=recovery(?:&|$)/.test(window.location.hash.slice(1))) { window.location.replace('/auth?mode=update' + window.location.hash); }`,
+          }}
+        />
         {children}
         <Scripts />
       </body>
