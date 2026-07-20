@@ -82,7 +82,6 @@ export const startStripeOnboarding = createServerFn({ method: "POST" })
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: formBody({
-          type: "express",
           country: "GB",
           "capabilities[card_payments][requested]": "true",
           "capabilities[transfers][requested]": "true",
