@@ -1,6 +1,5 @@
 import "./lib/error-capture";
 
-import { env as cloudflareBindings } from "cloudflare:workers";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
@@ -9,13 +8,33 @@ type ServerEntry = {
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+let cloudflareBindingsPromise: Promise<Record<string, unknown>> | undefined;
+
+/**
+ * "cloudflare:workers" is injected by the actual Cloudflare Workers runtime —
+ * it doesn't exist under `vite dev` (plain Node.js), so it must stay a lazy
+ * dynamic import here rather than a static one. A static import is resolved
+ * eagerly by Vite's SSR module graph and crashes dev with "Cannot find
+ * module" before a single request is handled; a dynamic import only runs
+ * when actually called, and its rejection is catchable. In production this
+ * still resolves normally — vite.config.ts marks the module `external` so
+ * Cloudflare's own runtime supplies it.
+ */
+async function getCloudflareBindings(): Promise<Record<string, unknown>> {
+  if (!cloudflareBindingsPromise) {
+    cloudflareBindingsPromise = import("cloudflare:workers")
+      .then((m) => (m as { env?: Record<string, unknown> }).env ?? {})
+      .catch(() => ({}));
+  }
+  return cloudflareBindingsPromise;
+}
 
 /**
  * Cloudflare Workers passes bindings to the fetch handler rather than adding
  * them to `process.env`. The TanStack/Supabase code uses `process.env`, so
  * make string bindings available there before handling the first request.
  */
-function installRuntimeEnvironment(env: unknown) {
+async function installRuntimeEnvironment(env: unknown) {
   const handlerBindings = env && typeof env === "object" ? env : {};
   // Nitro's Cloudflare adapter stores the request bindings here before it
   // invokes TanStack's SSR handler. The SSR handler itself only receives the
@@ -23,7 +42,7 @@ function installRuntimeEnvironment(env: unknown) {
   const nitroBindings =
     globalThis.__env__ && typeof globalThis.__env__ === "object" ? globalThis.__env__ : {};
   const bindings = {
-    ...(cloudflareBindings as Record<string, unknown>),
+    ...(await getCloudflareBindings()),
     ...(nitroBindings as Record<string, unknown>),
     ...(handlerBindings as Record<string, unknown>),
   };
@@ -67,7 +86,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
-      installRuntimeEnvironment(env);
+      await installRuntimeEnvironment(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
