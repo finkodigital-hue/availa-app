@@ -14,12 +14,18 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
  * them to `process.env`. The TanStack/Supabase code uses `process.env`, so
  * make string bindings available there before handling the first request.
  */
-function installRuntimeEnvironment(env: unknown) {
-  const cloudflareEnv = (globalThis as typeof globalThis & { __env__?: unknown }).__env__;
+async function installRuntimeEnvironment(env: unknown) {
+  let cloudflareBindings: unknown = {};
+  try {
+    const cloudflare = await import(/* @vite-ignore */ "cloudflare:workers");
+    cloudflareBindings = cloudflare.env;
+  } catch {
+    // Local development runs outside Cloudflare and uses process.env directly.
+  }
+
   const handlerBindings = env && typeof env === "object" ? env : {};
-  const workerBindings = cloudflareEnv && typeof cloudflareEnv === "object" ? cloudflareEnv : {};
   const bindings = {
-    ...(workerBindings as Record<string, unknown>),
+    ...(cloudflareBindings as Record<string, unknown>),
     ...(handlerBindings as Record<string, unknown>),
   };
 
@@ -62,7 +68,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
-      installRuntimeEnvironment(env);
+      await installRuntimeEnvironment(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
