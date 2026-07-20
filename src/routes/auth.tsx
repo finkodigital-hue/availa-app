@@ -58,7 +58,9 @@ function AuthPage() {
         toast.success("Account created. Welcome!");
       } else if (mode === "reset") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth`,
+          // The recovery session can already be active when the page opens. Include
+          // the mode in the redirect itself so we always show the new-password form.
+          redirectTo: `${window.location.origin}/auth?mode=update`,
         });
         if (error) throw error;
         toast.success("Password reset email sent.");

@@ -211,7 +211,7 @@ function AccountEditor({ user }: { user: { id: string; email?: string } }) {
     if (!user.email) return toast.error("This account has no email address");
     setSendingReset(true);
     const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-      redirectTo: `${window.location.origin}/auth`,
+      redirectTo: `${window.location.origin}/auth?mode=update`,
     });
     setSendingReset(false);
     if (error) return toast.error(error.message);
