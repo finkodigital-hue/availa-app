@@ -6,16 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
-const FREE_FEATURES = ["One staff member", "Unlimited bookings", "Branded booking page & client book"];
+const FREE_FEATURES = ["One staff member", "Unlimited bookings", "Deposits & online payments", "Branded booking page & client book"];
 const STUDIO_FEATURES = [
   "Unlimited staff",
-  "Deposits & payments",
   "Email reminders",
   "Analytics & insights",
   "AI assistant & AI page editor",
 ];
 
-// Card payments for the Studio plan aren't wired up yet (no Stripe account
+// Subscription billing for the Studio plan isn't wired up yet (no Stripe account
 // connected for billing Bookzenvo itself). Rather than fake a checkout flow,
 // "Upgrade" files a support request so it can be actioned manually — same
 // mechanism as Contact support, just pre-filled.

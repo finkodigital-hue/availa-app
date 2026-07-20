@@ -280,7 +280,7 @@ function Landing() {
       name: "Solo",
       price: "Free",
       desc: "One chair, one you.",
-      features: ["One staff member", "Unlimited bookings", "Branded page & client book"],
+      features: ["One staff member", "Unlimited bookings", "Deposits & online payments", "Branded page & client book"],
       cta: "Start free",
     },
     {
@@ -290,7 +290,6 @@ function Landing() {
       desc: "A growing floor.",
       features: [
         "Unlimited staff",
-        "Deposits & payments",
         "Email reminders",
         "Analytics & insights",
         "AI assistant & AI page editor",
