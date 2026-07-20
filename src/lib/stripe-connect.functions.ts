@@ -21,6 +21,10 @@ type CheckoutInput = {
   returnPath: string;
 };
 
+type BalanceCheckoutInput = {
+  bookingId: string;
+};
+
 function stripeSecretKey() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("Stripe is not configured yet. Add STRIPE_SECRET_KEY to the server environment first.");
@@ -192,6 +196,63 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
         "payment_intent_data[metadata][service_id]": data.serviceId,
         "payment_intent_data[metadata][staff_id]": data.staffId,
       }),
+    });
+    return { checkoutUrl: session.url };
+  });
+
+export const startBalanceCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: BalanceCheckoutInput) => {
+    if (!data.bookingId) throw new Error("Choose a booking first.");
+    return data;
+  })
+  .handler(async ({ data, context }): Promise<{ checkoutUrl: string }> => {
+    const { data: business, error: businessError } = await context.supabase
+      .from("businesses")
+      .select("id, slug, name, currency, stripe_account_id, stripe_charges_enabled")
+      .eq("owner_id", context.userId)
+      .maybeSingle();
+    if (businessError) throw businessError;
+    if (!business?.stripe_account_id || !business.stripe_charges_enabled) {
+      throw new Error("Connect Stripe before taking a balance payment.");
+    }
+
+    const { data: booking, error: bookingError } = await context.supabase
+      .from("bookings")
+      .select("id, customer_name, customer_email, price_cents, amount_paid_cents, payment_status, services(name)")
+      .eq("id", data.bookingId)
+      .eq("business_id", business.id)
+      .maybeSingle();
+    if (bookingError) throw bookingError;
+    if (!booking) throw new Error("Booking not found.");
+    if (booking.payment_status === "paid") throw new Error("This booking is already paid in full.");
+
+    const amount = Math.max(0, (booking.price_cents ?? 0) - (booking.amount_paid_cents ?? 0));
+    if (amount < 50) throw new Error("There is no remaining balance to collect.");
+
+    const origin = appOrigin();
+    const serviceName = (booking.services as { name?: string } | null)?.name ?? "Booking";
+    const checkoutFields: Record<string, string> = {
+      mode: "payment",
+      success_url: `${origin}/book/${business.slug}?payment=balance-success`,
+      cancel_url: `${origin}/book/${business.slug}?payment=cancelled`,
+      "line_items[0][price_data][currency]": business.currency.toLowerCase(),
+      "line_items[0][price_data][product_data][name]": `Remaining balance for ${serviceName}`,
+      "line_items[0][price_data][unit_amount]": String(amount),
+      "line_items[0][quantity]": "1",
+      "metadata[checkout_flow]": "balance_payment",
+      "metadata[business_id]": business.id,
+      "metadata[booking_id]": booking.id,
+      "payment_intent_data[metadata][checkout_flow]": "balance_payment",
+      "payment_intent_data[metadata][business_id]": business.id,
+      "payment_intent_data[metadata][booking_id]": booking.id,
+    };
+    if (booking.customer_email) checkoutFields.customer_email = booking.customer_email;
+
+    const session = await stripeRequest<{ url: string }>("/v1/checkout/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "Stripe-Account": business.stripe_account_id },
+      body: formBody(checkoutFields),
     });
     return { checkoutUrl: session.url };
   });
