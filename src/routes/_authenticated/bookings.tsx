@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { fmtMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
-import { startBalanceCheckout } from "@/lib/stripe-connect.functions";
+import { startBalanceCheckout, takeSavedBalancePayment } from "@/lib/stripe-connect.functions";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
   component: BookingsPage,
@@ -59,9 +59,16 @@ function BookingsPage() {
   const collectBalance = async () => {
     if (!selected) return;
     try {
+      const savedCardPayment = await takeSavedBalancePayment({ data: { bookingId: selected.id } });
+      if (savedCardPayment.charged) {
+        toast.success("The saved card was charged successfully.");
+        setSelected(null);
+        qc.invalidateQueries({ queryKey: ["bookings-list", bid] });
+        return;
+      }
       const { checkoutUrl } = await startBalanceCheckout({ data: { bookingId: selected.id } });
       window.open(checkoutUrl, "_blank", "noopener,noreferrer");
-      toast.success("Balance checkout opened in a new tab.");
+      toast.message("The card needs approval or isn't saved yet, so Stripe Checkout opened in a new tab.");
     } catch (error: any) {
       toast.error(error.message ?? "Could not start the balance payment.");
     }

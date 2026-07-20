@@ -25,6 +25,15 @@ type BalanceCheckoutInput = {
   bookingId: string;
 };
 
+type StripePaymentMethods = {
+  data: Array<{ id: string }>;
+};
+
+type StripePaymentIntent = {
+  id: string;
+  status: string;
+};
+
 function stripeSecretKey() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("Stripe is not configured yet. Add STRIPE_SECRET_KEY to the server environment first.");
@@ -175,6 +184,7 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
       headers: { "Content-Type": "application/x-www-form-urlencoded", "Stripe-Account": business.stripe_account_id },
       body: formBody({
         mode: "payment",
+        customer_creation: "always",
         customer_email: data.customerEmail.trim(),
         success_url: `${origin}${data.returnPath}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}${data.returnPath}?payment=cancelled`,
@@ -195,6 +205,7 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
         "payment_intent_data[metadata][business_id]": business.id,
         "payment_intent_data[metadata][service_id]": data.serviceId,
         "payment_intent_data[metadata][staff_id]": data.staffId,
+        "payment_intent_data[setup_future_usage]": "off_session",
       }),
     });
     return { checkoutUrl: session.url };
@@ -255,4 +266,97 @@ export const startBalanceCheckout = createServerFn({ method: "POST" })
       body: formBody(checkoutFields),
     });
     return { checkoutUrl: session.url };
+  });
+
+// Charges a card previously saved by Stripe Checkout. We never receive or store
+// a card number in Bookzenvo; if the card needs bank authentication we return
+// the owner to Stripe Checkout instead.
+export const takeSavedBalancePayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: BalanceCheckoutInput) => {
+    if (!data.bookingId) throw new Error("Choose a booking first.");
+    return data;
+  })
+  .handler(async ({ data, context }): Promise<{ charged: boolean }> => {
+    const { data: business, error: businessError } = await context.supabase
+      .from("businesses")
+      .select("id, currency, stripe_account_id, stripe_charges_enabled")
+      .eq("owner_id", context.userId)
+      .maybeSingle();
+    if (businessError) throw businessError;
+    if (!business?.stripe_account_id || !business.stripe_charges_enabled) {
+      throw new Error("Connect Stripe before taking a balance payment.");
+    }
+
+    const { data: booking, error: bookingError } = await context.supabase
+      .from("bookings")
+      .select("id, customer_id, price_cents, amount_paid_cents, payment_status")
+      .eq("id", data.bookingId)
+      .eq("business_id", business.id)
+      .maybeSingle();
+    if (bookingError) throw bookingError;
+    if (!booking) throw new Error("Booking not found.");
+    if (booking.payment_status === "paid") throw new Error("This booking is already paid in full.");
+
+    const amount = Math.max(0, (booking.price_cents ?? 0) - (booking.amount_paid_cents ?? 0));
+    if (amount < 50) throw new Error("There is no remaining balance to collect.");
+    if (!booking.customer_id) return { charged: false };
+
+    const { data: customer, error: customerError } = await context.supabase
+      .from("customers")
+      .select("stripe_customer_id")
+      .eq("id", booking.customer_id)
+      .eq("business_id", business.id)
+      .maybeSingle();
+    if (customerError) throw customerError;
+    if (!customer?.stripe_customer_id) return { charged: false };
+
+    const stripeHeaders = {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Stripe-Account": business.stripe_account_id,
+    };
+    const savedMethods = await stripeRequest<StripePaymentMethods>(
+      `/v1/payment_methods?customer=${encodeURIComponent(customer.stripe_customer_id)}&type=card`,
+      { headers: { "Stripe-Account": business.stripe_account_id } },
+    );
+    const paymentMethod = savedMethods.data[0];
+    if (!paymentMethod) return { charged: false };
+
+    let intent: StripePaymentIntent;
+    try {
+      intent = await stripeRequest<StripePaymentIntent>("/v1/payment_intents", {
+        method: "POST",
+        headers: {
+          ...stripeHeaders,
+          "Idempotency-Key": `bookzenvo-balance-${booking.id}-${amount}`,
+        },
+        body: formBody({
+          amount: String(amount),
+          currency: business.currency.toLowerCase(),
+          customer: customer.stripe_customer_id,
+          payment_method: paymentMethod.id,
+          off_session: "true",
+          confirm: "true",
+          "metadata[checkout_flow]": "balance_payment",
+          "metadata[business_id]": business.id,
+          "metadata[booking_id]": booking.id,
+        }),
+      });
+    } catch {
+      // A decline or required bank authentication is handled through Checkout.
+      return { charged: false };
+    }
+    if (intent.status !== "succeeded") return { charged: false };
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: fulfilmentError } = await (supabaseAdmin as any).rpc("fulfill_stripe_balance_payment", {
+      p_booking_id: booking.id,
+      p_business_id: business.id,
+      p_amount_cents: amount,
+      p_currency: business.currency,
+      p_stripe_payment_intent_id: intent.id,
+      p_stripe_charge_id: null,
+    });
+    if (fulfilmentError) throw fulfilmentError;
+    return { charged: true };
   });
