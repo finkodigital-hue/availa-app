@@ -27,6 +27,9 @@ import { toast } from "sonner";
 import { BlockRenderer, type PageBlock } from "@/components/page-blocks";
 import { applyThemeVars, themeFontOverrideCss, themedButtonStyle, type Theme } from "@/lib/theme";
 import { startBookingCheckout } from "@/lib/stripe-connect.functions";
+import { useAuth } from "@/lib/auth";
+import { usePortalCustomer } from "@/lib/portal-customer";
+import { BookingSignIn } from "@/components/booking-sign-in";
 
 // The real public booking page renderer — used both at /book/$slug and,
 // embedded/scaled/non-interactive, as the live preview in the setup wizard
@@ -133,13 +136,30 @@ export function PublicBookingPage({
   const [date, setDate] = useState<Date>(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const [time, setTime] = useState<string | null>(null);
   const [info, setInfo] = useState({ name: "", email: "", phone: "", notes: "" });
+  const [infoTouched, setInfoTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [paymentReturn, setPaymentReturn] = useState<"success" | "cancelled" | null>(null);
+  const { user: signedInUser } = useAuth();
+  const { profile: myProfile } = usePortalCustomer(biz.id);
 
   useEffect(() => {
     const value = new URLSearchParams(window.location.search).get("payment");
     if (value === "success" || value === "cancelled") setPaymentReturn(value);
   }, []);
+
+  // Prefill from the signed-in visitor's saved details — but only until they
+  // start typing themselves, so this never overwrites something they've
+  // already edited (e.g. signing in mid-way through, or a slow profile
+  // fetch landing after they've already filled the form in as a guest).
+  useEffect(() => {
+    if (infoTouched || !signedInUser) return;
+    setInfo((prev) => ({
+      name: prev.name || myProfile?.name || "",
+      email: prev.email || signedInUser.email || "",
+      phone: prev.phone || myProfile?.phone || "",
+      notes: prev.notes,
+    }));
+  }, [signedInUser, myProfile, infoTouched]);
 
   const brand = theme.colors.primary;
   const brandStyle = applyThemeVars(theme);
@@ -393,6 +413,7 @@ export function PublicBookingPage({
   const reset = () => {
     setStep("service"); setServiceGroup(null); setService(null); setStaff(null); setTime(null);
     setInfo({ name: "", email: "", phone: "", notes: "" });
+    setInfoTouched(false);
   };
 
   const customBlocks: PageBlock[] = pageBlocks ?? [];
@@ -643,14 +664,34 @@ export function PublicBookingPage({
                 <span>· {fmtMoney(service.price_cents, currency)}</span>
               </div>
             </div>
+            {signedInUser ? (
+              <div className="flex items-center justify-between gap-2 rounded-xl border bg-secondary/20 px-4 py-3 text-sm">
+                <span className="text-muted-foreground">
+                  Signed in as <span className="text-foreground font-medium">{signedInUser.email}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    setInfo({ name: "", email: "", phone: "", notes: info.notes });
+                    setInfoTouched(false);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 shrink-0"
+                >
+                  Not you?
+                </button>
+              </div>
+            ) : (
+              <BookingSignIn onSignedIn={() => setInfoTouched(false)} />
+            )}
             <div>
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Your name</Label>
-              <Input value={info.name} onChange={(e) => setInfo({ ...info, name: e.target.value })} className="mt-1.5 h-11" required autoFocus />
+              <Input value={info.name} onChange={(e) => { setInfoTouched(true); setInfo({ ...info, name: e.target.value }); }} className="mt-1.5 h-11" required autoFocus />
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Email</Label>
-                <Input type="email" value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} className="mt-1.5 h-11" placeholder="you@email.com" />
+                <Input type="email" value={info.email} onChange={(e) => { setInfoTouched(true); setInfo({ ...info, email: e.target.value }); }} className="mt-1.5 h-11" placeholder="you@email.com" />
                 {info.email.length > 0 && !isValidEmail(info.email) && (
                   <p className="mt-1 text-xs text-destructive">Please enter a valid email address.</p>
                 )}
@@ -659,7 +700,7 @@ export function PublicBookingPage({
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Phone</Label>
                 <Input
                   value={info.phone}
-                  onChange={(e) => setInfo({ ...info, phone: sanitizePhone(e.target.value) })}
+                  onChange={(e) => { setInfoTouched(true); setInfo({ ...info, phone: sanitizePhone(e.target.value) }); }}
                   className="mt-1.5 h-11"
                   placeholder="(555) 000-0000"
                   inputMode="tel"
