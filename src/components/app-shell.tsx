@@ -19,6 +19,7 @@ import {
   Upload,
   Package,
   LayoutTemplate,
+  HelpCircle,
 } from "lucide-react";
 
 import { useState, type ReactNode } from "react";
@@ -147,6 +148,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
             <Upload className="h-4 w-4" />
             <span>Import data</span>
+          </Link>
+          <Link
+            to="/help"
+            onClick={() => setMobileOpen(false)}
+            className="relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-card/60"
+          >
+            <HelpCircle className="h-4 w-4" />
+            <span>Help Centre</span>
           </Link>
         </div>
 

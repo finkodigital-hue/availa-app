@@ -11,13 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as PortalRouteImport } from './routes/portal'
+import { Route as HelpRouteImport } from './routes/help'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
+import { Route as HelpIndexRouteImport } from './routes/help.index'
 import { Route as PortalProfileRouteImport } from './routes/portal.profile'
 import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
 import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-suggest'
@@ -50,6 +53,11 @@ const PortalRoute = PortalRouteImport.update({
   path: '/portal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -69,6 +77,11 @@ const PortalIndexRoute = PortalIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PortalRoute,
 } as any)
+const HelpIndexRoute = HelpIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => HelpRoute,
+} as any)
 const PortalProfileRoute = PortalProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -83,6 +96,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
   path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const HelpSlugRoute = HelpSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => HelpRoute,
 } as any)
 const BookSlugRoute = BookSlugRouteImport.update({
   id: '/book/$slug',
@@ -196,6 +214,7 @@ const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/help': typeof HelpRouteWithChildren
   '/portal': typeof PortalRouteWithChildren
   '/status': typeof StatusRoute
   '/assistant': typeof AuthenticatedAssistantRoute
@@ -219,9 +238,11 @@ export interface FileRoutesByFullPath {
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
+  '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/help/': typeof HelpIndexRoute
   '/portal/': typeof PortalIndexRoute
 }
 export interface FileRoutesByTo {
@@ -249,9 +270,11 @@ export interface FileRoutesByTo {
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
+  '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/help': typeof HelpIndexRoute
   '/portal': typeof PortalIndexRoute
 }
 export interface FileRoutesById {
@@ -259,6 +282,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/help': typeof HelpRouteWithChildren
   '/portal': typeof PortalRouteWithChildren
   '/status': typeof StatusRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
@@ -282,9 +306,11 @@ export interface FileRoutesById {
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
+  '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/help/': typeof HelpIndexRoute
   '/portal/': typeof PortalIndexRoute
 }
 export interface FileRouteTypes {
@@ -292,6 +318,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/help'
     | '/portal'
     | '/status'
     | '/assistant'
@@ -315,9 +342,11 @@ export interface FileRouteTypes {
     | '/api/page-ai-suggest'
     | '/api/stripe-webhook'
     | '/book/$slug'
+    | '/help/$slug'
     | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
+    | '/help/'
     | '/portal/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -345,15 +374,18 @@ export interface FileRouteTypes {
     | '/api/page-ai-suggest'
     | '/api/stripe-webhook'
     | '/book/$slug'
+    | '/help/$slug'
     | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
+    | '/help'
     | '/portal'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/help'
     | '/portal'
     | '/status'
     | '/_authenticated/assistant'
@@ -377,9 +409,11 @@ export interface FileRouteTypes {
     | '/api/page-ai-suggest'
     | '/api/stripe-webhook'
     | '/book/$slug'
+    | '/help/$slug'
     | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
+    | '/help/'
     | '/portal/'
   fileRoutesById: FileRoutesById
 }
@@ -387,6 +421,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  HelpRoute: typeof HelpRouteWithChildren
   PortalRoute: typeof PortalRouteWithChildren
   StatusRoute: typeof StatusRoute
   ApiChatRoute: typeof ApiChatRoute
@@ -410,6 +445,13 @@ declare module '@tanstack/react-router' {
       path: '/portal'
       fullPath: '/portal'
       preLoaderRoute: typeof PortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -440,6 +482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalIndexRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/help/': {
+      id: '/help/'
+      path: '/'
+      fullPath: '/help/'
+      preLoaderRoute: typeof HelpIndexRouteImport
+      parentRoute: typeof HelpRoute
+    }
     '/portal/profile': {
       id: '/portal/profile'
       path: '/profile'
@@ -460,6 +509,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/invite/$token'
       preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/help/$slug': {
+      id: '/help/$slug'
+      path: '/$slug'
+      fullPath: '/help/$slug'
+      preLoaderRoute: typeof HelpSlugRouteImport
+      parentRoute: typeof HelpRoute
     }
     '/book/$slug': {
       id: '/book/$slug'
@@ -654,6 +710,18 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface HelpRouteChildren {
+  HelpSlugRoute: typeof HelpSlugRoute
+  HelpIndexRoute: typeof HelpIndexRoute
+}
+
+const HelpRouteChildren: HelpRouteChildren = {
+  HelpSlugRoute: HelpSlugRoute,
+  HelpIndexRoute: HelpIndexRoute,
+}
+
+const HelpRouteWithChildren = HelpRoute._addFileChildren(HelpRouteChildren)
+
 interface PortalRouteChildren {
   PortalBookingsRoute: typeof PortalBookingsRoute
   PortalProfileRoute: typeof PortalProfileRoute
@@ -673,6 +741,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  HelpRoute: HelpRouteWithChildren,
   PortalRoute: PortalRouteWithChildren,
   StatusRoute: StatusRoute,
   ApiChatRoute: ApiChatRoute,
