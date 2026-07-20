@@ -8,6 +8,7 @@ import {
   XCircle,
   Package,
   ChevronDown,
+  CreditCard,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { startBalanceCheckout } from "@/lib/stripe-connect.functions";
 import { fmtMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
 import { resolveDayPeriods, isMinuteWithinPeriods, type DayPeriod } from "@/lib/staff-hours";
 import {
@@ -74,6 +76,17 @@ function CalendarPage() {
   const [prefill, setPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const calendarRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const collectBalance = async () => {
+    if (!selected) return;
+    try {
+      const { checkoutUrl } = await startBalanceCheckout({ data: { bookingId: selected.id } });
+      window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+      toast.success("Balance checkout opened in a new tab.");
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not start the balance payment.");
+    }
+  };
 
   useEffect(() => {
     const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === calendarRef.current);
@@ -584,6 +597,8 @@ function CalendarPage() {
               />
               <DetailRow label="Contact" value={selected.customer_email || selected.customer_phone || "—"} />
               <DetailRow label="Price" value={fmtMoney(selected.price_cents ?? 0)} />
+              <DetailRow label="Paid" value={fmtMoney(selected.amount_paid_cents ?? 0)} />
+              <DetailRow label="Balance" value={fmtMoney(Math.max(0, (selected.price_cents ?? 0) - (selected.amount_paid_cents ?? 0)))} />
               <DetailRow
                 label="Status"
                 value={
@@ -640,6 +655,11 @@ function CalendarPage() {
             </div>
           )}
           <DialogFooter className="flex-wrap gap-2">
+            {selected && selected.business_id === bid && selected.payment_status !== "paid" && (selected.price_cents ?? 0) > (selected.amount_paid_cents ?? 0) && (
+              <Button onClick={collectBalance}>
+                <CreditCard className="h-4 w-4 mr-1.5" /> Take remaining payment
+              </Button>
+            )}
             {selected && selected.status !== "cancelled" && (
               <ConfirmDialog
                 trigger={
