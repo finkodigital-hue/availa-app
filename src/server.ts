@@ -17,8 +17,14 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
  */
 function installRuntimeEnvironment(env: unknown) {
   const handlerBindings = env && typeof env === "object" ? env : {};
+  // Nitro's Cloudflare adapter stores the request bindings here before it
+  // invokes TanStack's SSR handler. The SSR handler itself only receives the
+  // Request, so `env` above can be undefined in production.
+  const nitroBindings =
+    globalThis.__env__ && typeof globalThis.__env__ === "object" ? globalThis.__env__ : {};
   const bindings = {
     ...(cloudflareBindings as Record<string, unknown>),
+    ...(nitroBindings as Record<string, unknown>),
     ...(handlerBindings as Record<string, unknown>),
   };
 
