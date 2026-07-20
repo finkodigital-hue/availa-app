@@ -16,11 +16,15 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
  */
 function installRuntimeEnvironment(env: unknown) {
   const cloudflareEnv = (globalThis as typeof globalThis & { __env__?: unknown }).__env__;
-  const bindings = env && typeof env === "object" ? env : cloudflareEnv;
-  if (!bindings || typeof bindings !== "object") return;
+  const handlerBindings = env && typeof env === "object" ? env : {};
+  const workerBindings = cloudflareEnv && typeof cloudflareEnv === "object" ? cloudflareEnv : {};
+  const bindings = {
+    ...(workerBindings as Record<string, unknown>),
+    ...(handlerBindings as Record<string, unknown>),
+  };
 
   const runtimeEnv = process.env;
-  for (const [name, value] of Object.entries(bindings as Record<string, unknown>)) {
+  for (const [name, value] of Object.entries(bindings)) {
     if (typeof value === "string" && !runtimeEnv[name]) {
       runtimeEnv[name] = value;
     }
