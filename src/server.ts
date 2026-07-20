@@ -15,10 +15,12 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
  * make string bindings available there before handling the first request.
  */
 function installRuntimeEnvironment(env: unknown) {
-  if (!env || typeof env !== "object") return;
+  const cloudflareEnv = (globalThis as typeof globalThis & { __env__?: unknown }).__env__;
+  const bindings = env && typeof env === "object" ? env : cloudflareEnv;
+  if (!bindings || typeof bindings !== "object") return;
 
   const runtimeEnv = process.env;
-  for (const [name, value] of Object.entries(env as Record<string, unknown>)) {
+  for (const [name, value] of Object.entries(bindings as Record<string, unknown>)) {
     if (typeof value === "string" && !runtimeEnv[name]) {
       runtimeEnv[name] = value;
     }
