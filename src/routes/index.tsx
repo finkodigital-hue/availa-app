@@ -107,6 +107,250 @@ const APPOINTMENTS = [
   },
 ];
 
+const PREVIEW_DATA = {
+  Calendar: {
+    eyebrow: "Tuesday, July 7",
+    title: "Your calendar",
+    action: "New booking",
+  },
+  Bookings: {
+    eyebrow: "All bookings",
+    title: "Bookings at a glance",
+    action: "New booking",
+  },
+  Clients: {
+    eyebrow: "Your client book",
+    title: "Clients who keep coming back",
+    action: "Add client",
+  },
+  Staff: {
+    eyebrow: "Your team",
+    title: "Everyone in one place",
+    action: "Add staff",
+  },
+  Services: {
+    eyebrow: "Your menu",
+    title: "Services and prices",
+    action: "Add service",
+  },
+  Payments: {
+    eyebrow: "Money",
+    title: "Payments made simple",
+    action: "Take payment",
+  },
+  Settings: {
+    eyebrow: "Your studio",
+    title: "Make it yours",
+    action: "Save changes",
+  },
+} as const;
+
+function TodayPreview({ inView }: { inView: boolean }) {
+  return (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-9">
+        {STATS.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-[10px] border border-border bg-background px-5 py-5"
+          >
+            <CountUp target={s.target} prefix={s.prefix} active={inView} />
+            <div className="text-[.7rem] text-muted-foreground uppercase tracking-[0.12em] mt-2">
+              {s.label}
+            </div>
+            <div className="text-[.75rem] text-[color:var(--confirmed)] mt-1">{s.delta}</div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-muted-foreground">
+          Today&apos;s appointments
+        </span>
+        <span className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-[color:var(--gold-deep)]">
+          View calendar →
+        </span>
+      </div>
+      <div className="flex flex-col">
+        {APPOINTMENTS.map((a, i) => (
+          <div
+            key={a.who}
+            className={`grid grid-cols-[54px_1fr_auto_auto] sm:grid-cols-[76px_1fr_auto_auto] gap-3 sm:gap-4 items-center py-4 border-b border-border last:border-b-0 transition-all duration-500 ease-[cubic-bezier(.2,.7,.3,1)] ${
+              inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2.5"
+            }`}
+            style={{ transitionDelay: inView ? `${200 + i * 110}ms` : "0ms" }}
+          >
+            <span className="text-[.85rem] font-semibold">{a.time}</span>
+            <span className="min-w-0">
+              <span className="block text-[.92rem] font-semibold truncate">{a.who}</span>
+              <span className="block text-[.8rem] text-muted-foreground truncate">{a.what}</span>
+            </span>
+            <span className="hidden sm:block text-[.8rem] text-muted-foreground">
+              with {a.withWhom}
+            </span>
+            <span
+              className={`text-[.68rem] font-semibold px-2.5 py-1 rounded-[5px] tracking-[.03em] ${
+                a.status === "ok"
+                  ? "bg-[color:var(--confirmed-bg)] text-[color:var(--confirmed)]"
+                  : "bg-[color:var(--pending-bg)] text-[color:var(--pending)]"
+              }`}
+            >
+              {a.status === "ok" ? "Confirmed" : "Pending"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function ProductPreview({ section }: { section: Exclude<(typeof NAV_ITEMS)[number], "Today"> }) {
+  if (section === "Calendar") {
+    return (
+      <div className="rounded-[10px] border border-border overflow-hidden">
+        <div className="grid grid-cols-[64px_repeat(5,minmax(0,1fr))] bg-background border-b border-border text-[.68rem] uppercase tracking-[.1em] text-muted-foreground">
+          <span className="p-3" />
+          {["Mon 6", "Tue 7", "Wed 8", "Thu 9", "Fri 10"].map((day) => (
+            <span key={day} className="p-3 text-center">
+              {day}
+            </span>
+          ))}
+        </div>
+        {["9:00", "10:30", "12:00", "1:30", "3:00"].map((time, row) => (
+          <div
+            key={time}
+            className="grid grid-cols-[64px_repeat(5,minmax(0,1fr))] min-h-14 border-b border-border last:border-b-0"
+          >
+            <span className="p-3 text-[.72rem] text-muted-foreground">{time}</span>
+            {[0, 1, 2, 3, 4].map((day) => {
+              const booked =
+                (row === 0 && day === 1) || (row === 2 && day === 3) || (row === 3 && day === 0);
+              return (
+                <span
+                  key={day}
+                  className={`border-l border-border p-1.5 ${booked ? "bg-[color:var(--gold-wash)]" : ""}`}
+                >
+                  {booked && (
+                    <span className="block rounded bg-[color:var(--gold)] px-1.5 py-1 text-[.62rem] font-semibold text-foreground">
+                      {day === 1 ? "Maya · 9:00" : "Booked"}
+                    </span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (section === "Bookings") {
+    return (
+      <PreviewList
+        rows={APPOINTMENTS.map((a) => [a.who, a.what, a.status === "ok" ? "Confirmed" : "Pending"])}
+      />
+    );
+  }
+
+  if (section === "Clients") {
+    return (
+      <PreviewList
+        rows={[
+          ["Maya Richards", "8 visits · £620 spent", "Regular"],
+          ["Daniel Reyes", "5 visits · £210 spent", "Regular"],
+          ["Chloe Bennett", "First visit booked", "New"],
+        ]}
+      />
+    );
+  }
+
+  if (section === "Staff") {
+    return (
+      <PreviewList
+        rows={[
+          ["Nora", "Colour specialist · Working today", "Available"],
+          ["Camille", "Stylist · 4 bookings today", "Busy"],
+          ["Jordan", "Nail artist · Working today", "Available"],
+        ]}
+      />
+    );
+  }
+
+  if (section === "Services") {
+    return (
+      <PreviewList
+        rows={[
+          ["Balayage", "150 min", "£135"],
+          ["Signature cut", "60 min", "£55"],
+          ["Gel set", "60 min", "£42"],
+        ]}
+      />
+    );
+  }
+
+  if (section === "Payments") {
+    return (
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="rounded-[10px] border border-border bg-background p-5">
+          <div className="text-[.7rem] uppercase tracking-[.12em] text-muted-foreground">
+            Collected this month
+          </div>
+          <div className="font-display text-[2.5rem] mt-4">£4,280</div>
+          <div className="text-[.8rem] text-[color:var(--confirmed)] mt-2">
+            +18% from last month
+          </div>
+        </div>
+        <PreviewList
+          rows={[
+            ["Maya Richards", "Balayage deposit", "£45"],
+            ["Daniel Reyes", "Signature cut", "£55"],
+          ]}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid sm:grid-cols-[1fr_1.2fr] gap-4">
+      <PreviewList
+        rows={[
+          ["Business", "Nora Studio", ""],
+          ["Booking page", "bookzenvo.com/nora", ""],
+          ["Payments", "Stripe connected", ""],
+        ]}
+      />
+      <div className="rounded-[10px] border border-border p-5">
+        <div className="h-3 rounded bg-border/70 w-24 mb-5" />
+        <div className="h-10 rounded border border-border bg-background mb-3" />
+        <div className="h-10 rounded border border-border bg-background" />
+      </div>
+    </div>
+  );
+}
+
+function PreviewList({ rows }: { rows: string[][] }) {
+  return (
+    <div className="rounded-[10px] border border-border overflow-hidden">
+      {rows.map(([title, subtitle, status]) => (
+        <div
+          key={title}
+          className="flex items-center gap-3 p-4 border-b border-border last:border-b-0"
+        >
+          <span className="h-8 w-8 rounded-full bg-[color:var(--gold-wash)] shrink-0" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[.9rem] font-semibold">{title}</span>
+            <span className="block text-[.75rem] text-muted-foreground truncate">{subtitle}</span>
+          </span>
+          {status && (
+            <span className="text-[.68rem] font-semibold text-[color:var(--confirmed)] bg-[color:var(--confirmed-bg)] px-2 py-1 rounded-[5px]">
+              {status}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CountUp({ target, prefix, active }: { target: number; prefix: string; active: boolean }) {
   const [value, setValue] = useState(0);
 
@@ -136,6 +380,7 @@ function CountUp({ target, prefix, active }: { target: number; prefix: string; a
 function DashboardPreview() {
   const frameRef = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
+  const [activeItem, setActiveItem] = useState<(typeof NAV_ITEMS)[number]>("Today");
 
   useEffect(() => {
     const el = frameRef.current;
@@ -168,23 +413,41 @@ function DashboardPreview() {
         <span className="h-2.5 w-2.5 rounded-full bg-border" />
         <span className="text-[.75rem] text-muted-foreground ml-2.5">bookzenvo.com/dashboard</span>
       </div>
+      <nav className="md:hidden flex overflow-x-auto border-b border-border bg-background">
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setActiveItem(item)}
+            className={`shrink-0 px-4 py-3 text-[.75rem] font-medium border-b-2 ${
+              activeItem === item
+                ? "text-foreground border-[color:var(--gold)]"
+                : "text-muted-foreground border-transparent"
+            }`}
+          >
+            {item}
+          </button>
+        ))}
+      </nav>
       <div className="grid grid-cols-1 md:grid-cols-[210px_1fr] min-h-[520px]">
         <aside className="hidden md:flex flex-col border-r border-border py-6">
           <div className="font-display font-semibold text-xl px-6 pb-5">
             Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
           </div>
           <nav className="flex flex-col">
-            {NAV_ITEMS.map((item, i) => (
-              <span
+            {NAV_ITEMS.map((item) => (
+              <button
+                type="button"
                 key={item}
+                onClick={() => setActiveItem(item)}
                 className={`px-6 py-2.5 text-[.88rem] border-l-2 ${
-                  i === 0
+                  activeItem === item
                     ? "text-foreground border-l-[color:var(--gold)] bg-gradient-to-r from-[color:var(--gold-wash)] to-transparent"
-                    : "text-muted-foreground border-l-transparent"
+                    : "text-muted-foreground border-l-transparent hover:text-foreground hover:bg-background/70"
                 }`}
               >
                 {item}
-              </span>
+              </button>
             ))}
           </nav>
         </aside>
@@ -192,69 +455,80 @@ function DashboardPreview() {
           <div className="flex justify-between items-end flex-wrap gap-4 mb-7">
             <div>
               <div className="text-[.8rem] text-muted-foreground uppercase tracking-[0.1em] mb-1.5">
-                Tuesday, July 7
+                {activeItem === "Today" ? "Tuesday, July 7" : PREVIEW_DATA[activeItem].eyebrow}
               </div>
               <h3 className="font-display font-medium text-[2rem] leading-[1.05]">
-                Good morning, Nora.
+                {activeItem === "Today" ? "Good morning, Nora." : PREVIEW_DATA[activeItem].title}
               </h3>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-[.85rem] font-semibold px-4 py-2.5">
-              New booking
-            </span>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-[.85rem] font-semibold px-4 py-2.5"
+            >
+              {activeItem === "Today" ? "New booking" : PREVIEW_DATA[activeItem].action}
+            </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-9">
-            {STATS.map((s) => (
-              <div
-                key={s.label}
-                className="rounded-[10px] border border-border bg-background px-5 py-5"
-              >
-                <CountUp target={s.target} prefix={s.prefix} active={inView} />
-                <div className="text-[.7rem] text-muted-foreground uppercase tracking-[0.12em] mt-2">
-                  {s.label}
-                </div>
-                <div className="text-[.75rem] text-[color:var(--confirmed)] mt-1">{s.delta}</div>
+          {activeItem === "Today" ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-9">
+                {STATS.map((s) => (
+                  <div
+                    key={s.label}
+                    className="rounded-[10px] border border-border bg-background px-5 py-5"
+                  >
+                    <CountUp target={s.target} prefix={s.prefix} active={inView} />
+                    <div className="text-[.7rem] text-muted-foreground uppercase tracking-[0.12em] mt-2">
+                      {s.label}
+                    </div>
+                    <div className="text-[.75rem] text-[color:var(--confirmed)] mt-1">
+                      {s.delta}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-muted-foreground">
-              Today's appointments
-            </span>
-            <span className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-[color:var(--gold-deep)]">
-              View calendar →
-            </span>
-          </div>
-          <div className="flex flex-col">
-            {APPOINTMENTS.map((a, i) => (
-              <div
-                key={a.who}
-                className={`grid grid-cols-[54px_1fr_auto_auto] sm:grid-cols-[76px_1fr_auto_auto] gap-3 sm:gap-4 items-center py-4 border-b border-border last:border-b-0 transition-all duration-500 ease-[cubic-bezier(.2,.7,.3,1)] ${
-                  inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2.5"
-                }`}
-                style={{ transitionDelay: inView ? `${200 + i * 110}ms` : "0ms" }}
-              >
-                <span className="text-[.85rem] font-semibold">{a.time}</span>
-                <span className="min-w-0">
-                  <span className="block text-[.92rem] font-semibold truncate">{a.who}</span>
-                  <span className="block text-[.8rem] text-muted-foreground truncate">
-                    {a.what}
-                  </span>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-muted-foreground">
+                  Today's appointments
                 </span>
-                <span className="hidden sm:block text-[.8rem] text-muted-foreground">
-                  with {a.withWhom}
-                </span>
-                <span
-                  className={`text-[.68rem] font-semibold px-2.5 py-1 rounded-[5px] tracking-[.03em] ${
-                    a.status === "ok"
-                      ? "bg-[color:var(--confirmed-bg)] text-[color:var(--confirmed)]"
-                      : "bg-[color:var(--pending-bg)] text-[color:var(--pending)]"
-                  }`}
-                >
-                  {a.status === "ok" ? "Confirmed" : "Pending"}
+                <span className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-[color:var(--gold-deep)]">
+                  View calendar →
                 </span>
               </div>
-            ))}
-          </div>
+              <div className="flex flex-col">
+                {APPOINTMENTS.map((a, i) => (
+                  <div
+                    key={a.who}
+                    className={`grid grid-cols-[54px_1fr_auto_auto] sm:grid-cols-[76px_1fr_auto_auto] gap-3 sm:gap-4 items-center py-4 border-b border-border last:border-b-0 transition-all duration-500 ease-[cubic-bezier(.2,.7,.3,1)] ${
+                      inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2.5"
+                    }`}
+                    style={{ transitionDelay: inView ? `${200 + i * 110}ms` : "0ms" }}
+                  >
+                    <span className="text-[.85rem] font-semibold">{a.time}</span>
+                    <span className="min-w-0">
+                      <span className="block text-[.92rem] font-semibold truncate">{a.who}</span>
+                      <span className="block text-[.8rem] text-muted-foreground truncate">
+                        {a.what}
+                      </span>
+                    </span>
+                    <span className="hidden sm:block text-[.8rem] text-muted-foreground">
+                      with {a.withWhom}
+                    </span>
+                    <span
+                      className={`text-[.68rem] font-semibold px-2.5 py-1 rounded-[5px] tracking-[.03em] ${
+                        a.status === "ok"
+                          ? "bg-[color:var(--confirmed-bg)] text-[color:var(--confirmed)]"
+                          : "bg-[color:var(--pending-bg)] text-[color:var(--pending)]"
+                      }`}
+                    >
+                      {a.status === "ok" ? "Confirmed" : "Pending"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <ProductPreview section={activeItem} />
+          )}
         </div>
       </div>
     </div>
