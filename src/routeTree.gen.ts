@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -43,9 +45,19 @@ import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBlockPreviewRouteImport } from './routes/_authenticated/block-preview'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalRoute = PortalRouteImport.update({
@@ -216,7 +228,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/help': typeof HelpRouteWithChildren
   '/portal': typeof PortalRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/status': typeof StatusRoute
+  '/terms': typeof TermsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/bookings': typeof AuthenticatedBookingsRoute
@@ -248,7 +262,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/status': typeof StatusRoute
+  '/terms': typeof TermsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/bookings': typeof AuthenticatedBookingsRoute
@@ -284,7 +300,9 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/help': typeof HelpRouteWithChildren
   '/portal': typeof PortalRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/status': typeof StatusRoute
+  '/terms': typeof TermsRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
@@ -320,7 +338,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/help'
     | '/portal'
+    | '/privacy'
     | '/status'
+    | '/terms'
     | '/assistant'
     | '/block-preview'
     | '/bookings'
@@ -352,7 +372,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/privacy'
     | '/status'
+    | '/terms'
     | '/assistant'
     | '/block-preview'
     | '/bookings'
@@ -387,7 +409,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/help'
     | '/portal'
+    | '/privacy'
     | '/status'
+    | '/terms'
     | '/_authenticated/assistant'
     | '/_authenticated/block-preview'
     | '/_authenticated/bookings'
@@ -423,7 +447,9 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   HelpRoute: typeof HelpRouteWithChildren
   PortalRoute: typeof PortalRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
   StatusRoute: typeof StatusRoute
+  TermsRoute: typeof TermsRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiPageAiSuggestRoute: typeof ApiPageAiSuggestRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
@@ -433,11 +459,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/status': {
       id: '/status'
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal': {
@@ -743,7 +783,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   HelpRoute: HelpRouteWithChildren,
   PortalRoute: PortalRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
   StatusRoute: StatusRoute,
+  TermsRoute: TermsRoute,
   ApiChatRoute: ApiChatRoute,
   ApiPageAiSuggestRoute: ApiPageAiSuggestRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
