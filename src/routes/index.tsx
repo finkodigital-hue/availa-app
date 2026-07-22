@@ -203,7 +203,173 @@ function TodayPreview({ inView }: { inView: boolean }) {
   );
 }
 
+function CalendarBooking({
+  top,
+  height,
+  tone,
+  name,
+  service,
+}: {
+  top: string;
+  height: string;
+  tone: "gold" | "peach" | "blue" | "sage" | "lilac" | "rose";
+  name: string;
+  service: string;
+}) {
+  const tones = {
+    gold: "border-[#c9a875] bg-[#f5ead7] text-[#684b28]",
+    peach: "border-[#d99c75] bg-[#f9e5d8] text-[#73442c]",
+    blue: "border-[#8da1c7] bg-[#e6ecf7] text-[#405477]",
+    sage: "border-[#8eae99] bg-[#e4f0e6] text-[#355a40]",
+    lilac: "border-[#b29ac4] bg-[#eee7f4] text-[#5c476d]",
+    rose: "border-[#c894a5] bg-[#f5e4e9] text-[#70404e]",
+  };
+
+  return (
+    <div
+      className={`absolute left-1.5 right-1.5 overflow-hidden rounded-[5px] border-l-[3px] px-2 py-1 ${tones[tone]}`}
+      style={{ top, height }}
+    >
+      <div className="truncate text-[.67rem] font-bold">{name}</div>
+      <div className="truncate text-[.58rem] opacity-75">{service}</div>
+    </div>
+  );
+}
+
+function CalendarPreview() {
+  const team = [
+    ["N", "Nora", "Colour", "bg-[#f5e8d0] text-[#9a6b2e]"],
+    ["C", "Camille", "Cut & style", "bg-[#e8edf7] text-[#5c6d9c]"],
+    ["J", "Jordan", "Nails", "bg-[#f0e7ee] text-[#966480]"],
+  ];
+
+  return (
+    <div className="rounded-[12px] border border-border overflow-hidden bg-white shadow-[0_12px_32px_-28px_rgba(26,26,26,.45)]">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background">
+        <div className="inline-flex rounded-[7px] border border-border bg-white p-1 text-[.7rem] font-semibold">
+          <span className="rounded-[4px] bg-primary px-3 py-1.5 text-primary-foreground">Day</span>
+          <span className="px-3 py-1.5 text-muted-foreground">Week</span>
+          <span className="hidden sm:inline px-3 py-1.5 text-muted-foreground">Month</span>
+        </div>
+        <div className="flex items-center gap-2 text-[.72rem] font-semibold">
+          <span className="hidden sm:inline rounded-[6px] border border-border bg-white px-3 py-2 text-muted-foreground">
+            ‹
+          </span>
+          <span className="rounded-[6px] bg-primary px-3 py-2 text-primary-foreground">Today</span>
+          <span className="hidden sm:inline rounded-[6px] border border-border bg-white px-3 py-2 text-muted-foreground">
+            ›
+          </span>
+        </div>
+      </div>
+      <div className="grid grid-cols-[48px_repeat(3,minmax(0,1fr))] border-b border-border bg-background">
+        <span />
+        {team.map(([initial, name, role, colour], index) => (
+          <div
+            key={name}
+            className={`flex items-center gap-2 px-2.5 py-3 ${index ? "border-l border-border" : ""}`}
+          >
+            <span
+              className={`grid h-7 w-7 place-items-center rounded-full text-[.68rem] font-bold ${colour}`}
+            >
+              {initial}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[.75rem] font-semibold">{name}</span>
+              <span className="hidden sm:block truncate text-[.62rem] text-muted-foreground">
+                {role}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="relative grid grid-cols-[48px_repeat(3,minmax(0,1fr))] h-[300px] overflow-hidden">
+        <div className="border-r border-border bg-background/50">
+          {["9 AM", "10 AM", "11 AM", "12 PM", "1 PM", "2 PM"].map((time) => (
+            <div
+              key={time}
+              className="h-[50px] border-b border-border px-2 pt-1.5 text-[.62rem] text-muted-foreground"
+            >
+              {time}
+            </div>
+          ))}
+        </div>
+        <div
+          className="relative border-r border-border"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(to bottom, transparent 0, transparent 49px, var(--border) 50px)",
+          }}
+        >
+          <CalendarBooking
+            top="14px"
+            height="72px"
+            tone="gold"
+            name="Maya Richards"
+            service="Balayage · 9:15"
+          />
+          <CalendarBooking
+            top="178px"
+            height="48px"
+            tone="peach"
+            name="Ella Jones"
+            service="Root touch-up"
+          />
+        </div>
+        <div
+          className="relative border-r border-border"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(to bottom, transparent 0, transparent 49px, var(--border) 50px)",
+          }}
+        >
+          <CalendarBooking
+            top="62px"
+            height="48px"
+            tone="blue"
+            name="Daniel Reyes"
+            service="Signature cut · 10:00"
+          />
+          <CalendarBooking
+            top="142px"
+            height="72px"
+            tone="sage"
+            name="Olivia Stone"
+            service="Colour & blow dry"
+          />
+        </div>
+        <div
+          className="relative"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(to bottom, transparent 0, transparent 49px, var(--border) 50px)",
+          }}
+        >
+          <CalendarBooking
+            top="34px"
+            height="48px"
+            tone="lilac"
+            name="Chloe Bennett"
+            service="Gel set · 9:40"
+          />
+          <CalendarBooking
+            top="228px"
+            height="48px"
+            tone="rose"
+            name="Ava Murphy"
+            service="BIAB infill"
+          />
+        </div>
+        <span className="absolute left-[48px] right-0 top-[132px] border-t border-dashed border-[color:var(--gold-deep)]/50">
+          <span className="absolute -left-[5px] -top-[4px] h-2 w-2 rounded-full bg-[color:var(--gold-deep)]" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function ProductPreview({ section }: { section: Exclude<(typeof NAV_ITEMS)[number], "Today"> }) {
+  if (section === "Calendar") return <CalendarPreview />;
+
   if (section === "Calendar") {
     return (
       <div className="rounded-[10px] border border-border overflow-hidden">
