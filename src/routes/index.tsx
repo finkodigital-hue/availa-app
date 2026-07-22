@@ -1064,6 +1064,12 @@ function Landing() {
               <Link to="/terms" className="hover:text-foreground">
                 Terms
               </Link>
+              <Link to="/cookie-policy" className="hover:text-foreground">
+                Cookies
+              </Link>
+              <Link to="/faq" className="hover:text-foreground">
+                FAQ
+              </Link>
               <Link to="/help" className="hover:text-foreground">
                 Contact
               </Link>
