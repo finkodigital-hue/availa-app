@@ -34,18 +34,22 @@ async function getCloudflareBindings(): Promise<Record<string, unknown>> {
  * them to `process.env`. The TanStack/Supabase code uses `process.env`, so
  * make string bindings available there before handling the first request.
  */
-async function installRuntimeEnvironment(env: unknown) {
+async function getRuntimeBindings(env: unknown): Promise<Record<string, unknown>> {
   const handlerBindings = env && typeof env === "object" ? env : {};
   // Nitro's Cloudflare adapter stores the request bindings here before it
   // invokes TanStack's SSR handler. The SSR handler itself only receives the
   // Request, so `env` above can be undefined in production.
   const nitroBindings =
     globalThis.__env__ && typeof globalThis.__env__ === "object" ? globalThis.__env__ : {};
-  const bindings = {
+  return {
     ...(await getCloudflareBindings()),
     ...(nitroBindings as Record<string, unknown>),
     ...(handlerBindings as Record<string, unknown>),
   };
+}
+
+async function installRuntimeEnvironment(env: unknown) {
+  const bindings = await getRuntimeBindings(env);
 
   const runtimeEnv = process.env;
   for (const [name, value] of Object.entries(bindings)) {
@@ -53,6 +57,23 @@ async function installRuntimeEnvironment(env: unknown) {
       runtimeEnv[name] = value;
     }
   }
+}
+
+/**
+ * Nitro's generated public-asset manifest only includes files copied from
+ * `public/`; Vite's built `/assets/*` files are not included in that map.
+ * Serve those through Cloudflare's ASSETS binding before React SSR runs.
+ */
+async function serveBuiltAsset(request: Request, env: unknown): Promise<Response | undefined> {
+  const pathname = new URL(request.url).pathname;
+  if (!pathname.startsWith("/assets/")) return undefined;
+
+  const bindings = await getRuntimeBindings(env);
+  const assets = bindings.ASSETS as { fetch?: (request: Request) => Promise<Response> } | undefined;
+  if (!assets?.fetch) return undefined;
+
+  const response = await assets.fetch(request);
+  return response.status === 404 ? undefined : response;
 }
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -99,6 +120,9 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const assetResponse = await serveBuiltAsset(request, env);
+      if (assetResponse) return assetResponse;
+
       await installRuntimeEnvironment(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
