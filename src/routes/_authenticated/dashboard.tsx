@@ -84,7 +84,7 @@ function rangeFor(r: Range): { start: Date; end: Date; prevStart: Date; prevEnd:
 
 function Dashboard() {
   const { data: biz } = useMyBusiness();
-  const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
+  const formatBusinessMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
   const bid = biz?.id;
   const qc = useQueryClient();
   const [range, setRange] = useState<Range>("month");
@@ -306,12 +306,12 @@ function Dashboard() {
 
       {/* Today's overview */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
-        <StatCard accent loading={tLoading} icon={DollarSign} label="Revenue today" value={fmtMoney(today?.revenue ?? 0)} />
+        <StatCard accent loading={tLoading} icon={DollarSign} label="Revenue today" value={formatBusinessMoney(today?.revenue ?? 0)} />
         <StatCard loading={tLoading} icon={CalendarCheck} label="Bookings today" value={today?.bookings ?? 0} />
         <StatCard loading={tLoading} icon={Clock} label="Upcoming" value={today?.upcoming ?? 0} />
         <StatCard loading={tLoading} icon={XCircle} label="Cancelled" value={today?.cancelled ?? 0} />
         <StatCard loading={tLoading} icon={Users} label="New customers" value={today?.newCustomers ?? 0} />
-        <StatCard loading={tLoading} icon={TrendingUp} label="Avg value" value={fmtMoney(today?.avg ?? 0)} />
+        <StatCard loading={tLoading} icon={TrendingUp} label="Avg value" value={formatBusinessMoney(today?.avg ?? 0)} />
       </div>
 
       {/* Range toggle */}
@@ -339,7 +339,7 @@ function Dashboard() {
             <div>
               <h3 className="font-display text-xl">Revenue</h3>
               <p className="text-xs text-muted-foreground">
-                {fmtMoney(trends?.total ?? 0)} · {typeof trends?.trend === "number" ? `${trends.trend >= 0 ? "+" : ""}${trends.trend.toFixed(0)}% vs prev` : "—"}
+                {formatBusinessMoney(trends?.total ?? 0)} · {typeof trends?.trend === "number" ? `${trends.trend >= 0 ? "+" : ""}${trends.trend.toFixed(0)}% vs prev` : "—"}
               </p>
             </div>
           </div>
@@ -467,10 +467,10 @@ function Dashboard() {
                   <div className="font-medium text-sm truncate">{s.name}</div>
                   {i === 0 && <Trophy className="h-3.5 w-3.5 text-[color:var(--gold-deep)]" />}
                 </div>
-                <div className="font-display text-2xl mt-1.5 tabular-nums">{fmtMoney(s.revenue)}</div>
+                <div className="font-display text-2xl mt-1.5 tabular-nums">{formatBusinessMoney(s.revenue)}</div>
                 <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] text-muted-foreground">
                   <span>Bookings <span className="text-foreground font-medium ml-1">{s.bookings}</span></span>
-                  <span>Avg <span className="text-foreground font-medium ml-1">{fmtMoney(s.avg)}</span></span>
+                  <span>Avg <span className="text-foreground font-medium ml-1">{formatBusinessMoney(s.avg)}</span></span>
                   <span>Duration <span className="text-foreground font-medium ml-1">{s.avgDuration}m</span></span>
                   <span>Repeat <span className="text-foreground font-medium ml-1">{s.repeat}</span></span>
                 </div>
@@ -498,12 +498,12 @@ function Dashboard() {
                 <div key={i}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="font-medium truncate">{s.name}</span>
-                    <span className="text-xs text-muted-foreground">{fmtMoney(s.revenue)} · {s.bookings}</span>
+                    <span className="text-xs text-muted-foreground">{formatBusinessMoney(s.revenue)} · {s.bookings}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
                     <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${(s.bookings / max) * 100}%` }} />
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">{s.duration}m · {fmtMoney(s.price)} list</div>
+                  <div className="text-[10px] text-muted-foreground mt-1">{s.duration}m · {formatBusinessMoney(s.price)} list</div>
                 </div>
               );
             })}
@@ -517,7 +517,7 @@ function Dashboard() {
           <div className="grid grid-cols-3 gap-3 mt-4">
             <Mini label="New" value={customers?.newCount ?? 0} />
             <Mini label="Returning" value={customers?.returningCount ?? 0} />
-            <Mini label="Avg LTV" value={fmtMoney(customers?.ltv ?? 0)} />
+            <Mini label="Avg LTV" value={formatBusinessMoney(customers?.ltv ?? 0)} />
           </div>
           <div className="mt-5">
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Top spenders</div>
@@ -525,7 +525,7 @@ function Dashboard() {
               {(customers?.top ?? []).map((c, i) => (
                 <li key={i} className="flex items-center justify-between text-sm">
                   <span className="truncate">{c.name}</span>
-                  <span className="tabular-nums text-muted-foreground">{fmtMoney(c.spend)} · {c.count} visits</span>
+                  <span className="tabular-nums text-muted-foreground">{formatBusinessMoney(c.spend)} · {c.count} visits</span>
                 </li>
               ))}
               {(customers?.top.length ?? 0) === 0 && <li className="text-xs text-muted-foreground">No data yet.</li>}
@@ -606,9 +606,13 @@ function Insight({ icon: Icon, label, value }: { icon: any; label: string; value
   );
 }
 
+function formatGoalValue(value: number, money: boolean | undefined, currency: string) {
+  return money ? formatMoney(value, currency) : value.toLocaleString();
+}
+
 function GoalBar({ label, cur, target, money, currency = "GBP" }: { label: string; cur: number; target: number; money?: boolean; currency?: string }) {
   const pct = target > 0 ? Math.min(100, Math.round((cur / target) * 100)) : 0;
-  const fmt = (n: number) => (money ? formatMoney(n, currency) : n.toLocaleString());
+  const fmt = (n: number) => formatGoalValue(n, money, currency);
   return (
     <div className="rounded-xl border bg-secondary/30 p-4">
       <div className="flex items-baseline justify-between text-xs text-muted-foreground"><span>{label}</span><span>{pct}%</span></div>
