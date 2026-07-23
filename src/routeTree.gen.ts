@@ -46,6 +46,13 @@ import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
 import { Route as AuthenticatedBlockPreviewRouteImport } from './routes/_authenticated/block-preview'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
+import { Route as BookingActionRescheduleTokenRouteImport } from './routes/booking-action.reschedule.$token'
+import { Route as BookingActionActionTokenRouteImport } from './routes/booking-action.$action.$token'
+import { Route as ApiCronSendRemindersRouteImport } from './routes/api/cron/send-reminders'
+import { Route as ApiBookingsSendConfirmationRouteImport } from './routes/api/bookings/send-confirmation'
+import { Route as ApiBookingActionsReschedulePeekRouteImport } from './routes/api/booking-actions/reschedule-peek'
+import { Route as ApiBookingActionsRescheduleCommitRouteImport } from './routes/api/booking-actions/reschedule-commit'
+import { Route as ApiBookingActionsActRouteImport } from './routes/api/booking-actions/act'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -234,6 +241,46 @@ const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const BookingActionRescheduleTokenRoute =
+  BookingActionRescheduleTokenRouteImport.update({
+    id: '/booking-action/reschedule/$token',
+    path: '/booking-action/reschedule/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BookingActionActionTokenRoute =
+  BookingActionActionTokenRouteImport.update({
+    id: '/booking-action/$action/$token',
+    path: '/booking-action/$action/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiCronSendRemindersRoute = ApiCronSendRemindersRouteImport.update({
+  id: '/api/cron/send-reminders',
+  path: '/api/cron/send-reminders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBookingsSendConfirmationRoute =
+  ApiBookingsSendConfirmationRouteImport.update({
+    id: '/api/bookings/send-confirmation',
+    path: '/api/bookings/send-confirmation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiBookingActionsReschedulePeekRoute =
+  ApiBookingActionsReschedulePeekRouteImport.update({
+    id: '/api/booking-actions/reschedule-peek',
+    path: '/api/booking-actions/reschedule-peek',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiBookingActionsRescheduleCommitRoute =
+  ApiBookingActionsRescheduleCommitRouteImport.update({
+    id: '/api/booking-actions/reschedule-commit',
+    path: '/api/booking-actions/reschedule-commit',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiBookingActionsActRoute = ApiBookingActionsActRouteImport.update({
+  id: '/api/booking-actions/act',
+  path: '/api/booking-actions/act',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -272,6 +319,13 @@ export interface FileRoutesByFullPath {
   '/portal/profile': typeof PortalProfileRoute
   '/help/': typeof HelpIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/api/booking-actions/act': typeof ApiBookingActionsActRoute
+  '/api/booking-actions/reschedule-commit': typeof ApiBookingActionsRescheduleCommitRoute
+  '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
+  '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
+  '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
+  '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -308,6 +362,13 @@ export interface FileRoutesByTo {
   '/portal/profile': typeof PortalProfileRoute
   '/help': typeof HelpIndexRoute
   '/portal': typeof PortalIndexRoute
+  '/api/booking-actions/act': typeof ApiBookingActionsActRoute
+  '/api/booking-actions/reschedule-commit': typeof ApiBookingActionsRescheduleCommitRoute
+  '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
+  '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
+  '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
+  '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -348,6 +409,13 @@ export interface FileRoutesById {
   '/portal/profile': typeof PortalProfileRoute
   '/help/': typeof HelpIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/api/booking-actions/act': typeof ApiBookingActionsActRoute
+  '/api/booking-actions/reschedule-commit': typeof ApiBookingActionsRescheduleCommitRoute
+  '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
+  '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
+  '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
+  '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -388,6 +456,13 @@ export interface FileRouteTypes {
     | '/portal/profile'
     | '/help/'
     | '/portal/'
+    | '/api/booking-actions/act'
+    | '/api/booking-actions/reschedule-commit'
+    | '/api/booking-actions/reschedule-peek'
+    | '/api/bookings/send-confirmation'
+    | '/api/cron/send-reminders'
+    | '/booking-action/$action/$token'
+    | '/booking-action/reschedule/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -424,6 +499,13 @@ export interface FileRouteTypes {
     | '/portal/profile'
     | '/help'
     | '/portal'
+    | '/api/booking-actions/act'
+    | '/api/booking-actions/reschedule-commit'
+    | '/api/booking-actions/reschedule-peek'
+    | '/api/bookings/send-confirmation'
+    | '/api/cron/send-reminders'
+    | '/booking-action/$action/$token'
+    | '/booking-action/reschedule/$token'
   id:
     | '__root__'
     | '/'
@@ -463,6 +545,13 @@ export interface FileRouteTypes {
     | '/portal/profile'
     | '/help/'
     | '/portal/'
+    | '/api/booking-actions/act'
+    | '/api/booking-actions/reschedule-commit'
+    | '/api/booking-actions/reschedule-peek'
+    | '/api/bookings/send-confirmation'
+    | '/api/cron/send-reminders'
+    | '/booking-action/$action/$token'
+    | '/booking-action/reschedule/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -481,6 +570,13 @@ export interface RootRouteChildren {
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   BookSlugRoute: typeof BookSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  ApiBookingActionsActRoute: typeof ApiBookingActionsActRoute
+  ApiBookingActionsRescheduleCommitRoute: typeof ApiBookingActionsRescheduleCommitRoute
+  ApiBookingActionsReschedulePeekRoute: typeof ApiBookingActionsReschedulePeekRoute
+  ApiBookingsSendConfirmationRoute: typeof ApiBookingsSendConfirmationRoute
+  ApiCronSendRemindersRoute: typeof ApiCronSendRemindersRoute
+  BookingActionActionTokenRoute: typeof BookingActionActionTokenRoute
+  BookingActionRescheduleTokenRoute: typeof BookingActionRescheduleTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -744,6 +840,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssistantRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/booking-action/reschedule/$token': {
+      id: '/booking-action/reschedule/$token'
+      path: '/booking-action/reschedule/$token'
+      fullPath: '/booking-action/reschedule/$token'
+      preLoaderRoute: typeof BookingActionRescheduleTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking-action/$action/$token': {
+      id: '/booking-action/$action/$token'
+      path: '/booking-action/$action/$token'
+      fullPath: '/booking-action/$action/$token'
+      preLoaderRoute: typeof BookingActionActionTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/send-reminders': {
+      id: '/api/cron/send-reminders'
+      path: '/api/cron/send-reminders'
+      fullPath: '/api/cron/send-reminders'
+      preLoaderRoute: typeof ApiCronSendRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/bookings/send-confirmation': {
+      id: '/api/bookings/send-confirmation'
+      path: '/api/bookings/send-confirmation'
+      fullPath: '/api/bookings/send-confirmation'
+      preLoaderRoute: typeof ApiBookingsSendConfirmationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/booking-actions/reschedule-peek': {
+      id: '/api/booking-actions/reschedule-peek'
+      path: '/api/booking-actions/reschedule-peek'
+      fullPath: '/api/booking-actions/reschedule-peek'
+      preLoaderRoute: typeof ApiBookingActionsReschedulePeekRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/booking-actions/reschedule-commit': {
+      id: '/api/booking-actions/reschedule-commit'
+      path: '/api/booking-actions/reschedule-commit'
+      fullPath: '/api/booking-actions/reschedule-commit'
+      preLoaderRoute: typeof ApiBookingActionsRescheduleCommitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/booking-actions/act': {
+      id: '/api/booking-actions/act'
+      path: '/api/booking-actions/act'
+      fullPath: '/api/booking-actions/act'
+      preLoaderRoute: typeof ApiBookingActionsActRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -833,6 +978,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   BookSlugRoute: BookSlugRoute,
   InviteTokenRoute: InviteTokenRoute,
+  ApiBookingActionsActRoute: ApiBookingActionsActRoute,
+  ApiBookingActionsRescheduleCommitRoute:
+    ApiBookingActionsRescheduleCommitRoute,
+  ApiBookingActionsReschedulePeekRoute: ApiBookingActionsReschedulePeekRoute,
+  ApiBookingsSendConfirmationRoute: ApiBookingsSendConfirmationRoute,
+  ApiCronSendRemindersRoute: ApiCronSendRemindersRoute,
+  BookingActionActionTokenRoute: BookingActionActionTokenRoute,
+  BookingActionRescheduleTokenRoute: BookingActionRescheduleTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

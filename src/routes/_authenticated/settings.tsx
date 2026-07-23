@@ -439,17 +439,24 @@ function ProfileEditor({ biz }: { biz: any }) {
   const qc = useQueryClient();
   const [form, setForm] = useState<any>(biz);
   const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
   useEffect(() => { setForm(biz); }, [biz?.id]);
+
+  const premium = (form.plan ?? "free") !== "free";
 
   const save = async () => {
     if (!form.name?.trim()) return toast.error("Business name is required");
     setSaving(true);
+    // reminder_hours_before is cast via `as any` — the generated Supabase
+    // types haven't been regenerated to include it yet (see the migration
+    // that adds the column; types regenerate once it's applied).
     const { error } = await supabase.from("businesses").update({
       name: form.name.trim(), description: form.description,
       address: form.address, phone: form.phone, email: form.email, website: form.website,
       timezone: form.timezone, currency: form.currency || "GBP",
       instagram: form.instagram, facebook: form.facebook, tiktok: form.tiktok, twitter: form.twitter,
-    }).eq("id", biz.id);
+      reminder_hours_before: premium ? (Number(form.reminder_hours_before) || 24) : (biz.reminder_hours_before ?? 24),
+    } as any).eq("id", biz.id);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Profile saved");
@@ -481,6 +488,32 @@ function ProfileEditor({ biz }: { biz: any }) {
         <Field label="Address"><Input value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} className="h-10" /></Field>
       </div>
       <Field label="Description"><Textarea value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="A short pitch for your booking page" /></Field>
+
+      <div className={`rounded-xl border p-4 ${premium ? "" : "opacity-70"}`}>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-sm font-medium">Reminder emails</span>
+          {!premium && <Badge variant="secondary" className="text-[10px]">Studio</Badge>}
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Send clients an email reminder before their appointment, with one-tap confirm, cancel and reschedule.
+        </p>
+        {premium ? (
+          <Field label="Hours before appointment">
+            <Input
+              type="number"
+              min={1}
+              max={168}
+              value={form.reminder_hours_before ?? 24}
+              onChange={(e) => setForm({ ...form, reminder_hours_before: e.target.value })}
+              className="h-10 max-w-[140px]"
+            />
+          </Field>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/settings", search: { tab: "plan" } as any })}>
+            Upgrade to Studio
+          </Button>
+        )}
+      </div>
       <div className="grid sm:grid-cols-4 gap-3">
         <Field label="Instagram"><Input value={form.instagram ?? ""} onChange={(e) => setForm({ ...form, instagram: e.target.value })} className="h-10" placeholder="@handle" /></Field>
         <Field label="Facebook"><Input value={form.facebook ?? ""} onChange={(e) => setForm({ ...form, facebook: e.target.value })} className="h-10" /></Field>

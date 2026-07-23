@@ -384,7 +384,7 @@ export function PublicBookingPage({
         window.location.assign(checkout.checkoutUrl);
         return;
       }
-      const { error } = await supabase.rpc("create_public_booking", {
+      const { data: bookingId, error } = await supabase.rpc("create_public_booking", {
         p_business_id: service.business_id,
         p_service_id: service.id,
         p_staff_id: staff.id,
@@ -397,6 +397,16 @@ export function PublicBookingPage({
       });
       if (error) throw error;
       setStep("done");
+      if (bookingId) {
+        // Best-effort — a dropped/failed call here doesn't lose the
+        // confirmation email, the sweep backstop in /api/cron/send-reminders
+        // picks up anything still unsent a few minutes later.
+        fetch("/api/bookings/send-confirmation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ booking_id: bookingId }),
+        }).catch(() => {});
+      }
     } catch (e: any) {
       const msg = e?.message ?? "";
       if (msg.includes("SLOT_TAKEN")) {
