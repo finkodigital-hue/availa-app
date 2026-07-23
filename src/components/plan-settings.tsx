@@ -9,7 +9,7 @@ import { toast } from "sonner";
 const FREE_FEATURES = ["One staff member", "Unlimited bookings", "Deposits & online payments", "Branded booking page & client book"];
 const STUDIO_FEATURES = [
   "Unlimited staff",
-  "Email reminders",
+  "Automated appointment reminders with one-tap confirm, cancel & reschedule",
   "Analytics & insights",
   "AI assistant & AI page editor",
 ];

@@ -14,6 +14,10 @@ const QUESTIONS = [
     "Yes. Connect Stripe from Settings > Payments, then choose whether bookings take no online payment, a deposit, or the full amount. Card details are handled by Stripe, not Bookzenvo.",
   ],
   [
+    "Do I need a card reader or other hardware to take payments?",
+    "No. Payments run through Stripe on whatever device you already have — phone, tablet or laptop. No proprietary hardware to buy or carry around.",
+  ],
+  [
     "Can I add more staff?",
     "Solo includes one staff member. Studio includes unlimited staff, each with their own availability, services and diary.",
   ],
@@ -24,6 +28,14 @@ const QUESTIONS = [
   [
     "Can clients cancel or reschedule?",
     "Clients can manage eligible bookings from their client account. You control your cancellation policy and can still manage any booking directly from your dashboard.",
+  ],
+  [
+    "Will Bookzenvo block dates on my calendar automatically?",
+    "No. Every block on your calendar — holidays, time off, breaks — is one you create yourself. Bookzenvo never assumes a date is closed and never blocks time on your behalf.",
+  ],
+  [
+    "Is support only for paying customers?",
+    "No. Support is available on every plan, including the free Solo plan. Getting help from us is never behind a paywall.",
   ],
   [
     "Is my data safe?",
