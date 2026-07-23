@@ -9,7 +9,6 @@ import { toast } from "sonner";
 const FREE_FEATURES = ["One staff member", "Unlimited bookings", "Deposits & online payments", "Branded booking page & client book"];
 const STUDIO_FEATURES = [
   "Unlimited staff",
-  "Email reminders",
   "Analytics & insights",
   "AI assistant & AI page editor",
 ];
@@ -31,7 +30,7 @@ export function PlanSettings({ business }: { business: { id: string; plan: strin
       const { error } = await (supabase as any).from("support_requests").insert({
         business_id: business.id,
         user_id: user.id,
-        subject: "Upgrade to Studio plan",
+        subject: "Request Studio access",
         message: `${business.name} would like to upgrade from Free to Studio (£22/month).`,
         urgency: "normal",
         contact_email: user.email ?? null,
@@ -95,7 +94,7 @@ export function PlanSettings({ business }: { business: { id: string; plan: strin
             ) : requested ? (
               <Check className="h-4 w-4 mr-2" />
             ) : null}
-            {requested ? "Request sent" : "Request upgrade"}
+            {requested ? "Request sent" : "Request Studio access"}
           </Button>
         )}
         {isFree && (

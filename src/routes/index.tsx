@@ -784,7 +784,6 @@ function Landing() {
       desc: "A growing floor.",
       features: [
         "Unlimited staff",
-        "Email reminders",
         "Analytics & insights",
         "AI assistant & AI page editor",
       ],
