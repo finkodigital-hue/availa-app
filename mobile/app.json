@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Bookzenvo",
+    "slug": "bookzenvo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "bookzenvo",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.finkodigital.bookzenvo"
+    },
+    "android": {
+      "package": "com.finkodigital.bookzenvo",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font"
+    ]
+  }
+}
