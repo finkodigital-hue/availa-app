@@ -477,6 +477,11 @@ export async function commitAppointments(params: {
       payment_status: isPaid ? "paid" : "unpaid",
       source: "manual",
       notify_customer: false,
+      // Pre-claimed so the confirmation-email sweep backstop can never pick
+      // these up — created_at isn't a reliable guard here (it reflects
+      // import time, not the historical appointment date), so we suppress
+      // the confirmation outright rather than relying on a time window.
+      confirmation_sent_at: new Date().toISOString(),
       created_at: r.createdAt ? r.createdAt.toISOString() : undefined,
       import_batch_id: batch.id,
     });

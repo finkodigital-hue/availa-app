@@ -626,6 +626,16 @@ function CalendarPage() {
               {selected.source === "walkin" && (
                 <DetailRow label="Source" value={<Badge variant="secondary">Walk-in</Badge>} />
               )}
+              {selected.client_confirmed_at && (
+                <DetailRow
+                  label="Client confirmed"
+                  value={
+                    <Badge variant="outline" className="text-[color:var(--confirmed)] border-[color:var(--confirmed)]">
+                      {new Date(selected.client_confirmed_at).toLocaleDateString([], { month: "short", day: "numeric" })}
+                    </Badge>
+                  }
+                />
+              )}
               {selected.notes && (
                 <div className="pt-2 mt-2 border-t">
                   <div className="text-xs text-muted-foreground mb-1">Notes</div>

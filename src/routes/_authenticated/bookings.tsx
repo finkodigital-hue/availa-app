@@ -144,6 +144,11 @@ function BookingsPage() {
                       {meta.label}
                     </Badge>
                     {b.source === "walkin" && <Badge variant="secondary" className="text-[10px]">Walk-in</Badge>}
+                    {b.client_confirmed_at && (
+                      <Badge variant="outline" className="text-[10px] text-[color:var(--confirmed)] border-[color:var(--confirmed)]">
+                        Client confirmed
+                      </Badge>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
                     {b.services?.name} · {b.staff?.name} · {new Date(b.starts_at).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} {fmtTime(b.starts_at)}

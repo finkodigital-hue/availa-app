@@ -200,7 +200,7 @@ export function NewBookingDialog({
         // so it belongs in amount_paid_cents, not amount_due_cents.
         const amountPaid = paymentStatus === "paid" ? service!.price_cents : paymentStatus === "deposit_paid" ? (depositCents || 0) : 0;
         const amountDue = Math.max(0, service!.price_cents - amountPaid);
-        const { error } = await supabase.from("bookings").insert({
+        const { data: ins, error } = await supabase.from("bookings").insert({
           business_id: targetBiz,
           service_id: service!.id,
           staff_id: staff!.id,
@@ -217,8 +217,17 @@ export function NewBookingDialog({
           amount_paid_cents: amountPaid,
           amount_due_cents: amountDue,
           payment_status: paymentStatus,
-        } as any);
+        } as any).select("id").single();
         if (error) throw error;
+        if (notify && custEmail && ins?.id) {
+          // Best-effort — the sweep backstop in /api/cron/send-reminders
+          // catches it if this call is dropped.
+          fetch("/api/bookings/send-confirmation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ booking_id: ins.id }),
+          }).catch(() => {});
+        }
       }
       toast.success(isCustom ? "Time blocked" : "Booking created");
       onCreated?.();
