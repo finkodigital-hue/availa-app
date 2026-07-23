@@ -784,7 +784,7 @@ function Landing() {
       desc: "A growing floor.",
       features: [
         "Unlimited staff",
-        "Email reminders",
+        "Automated appointment reminders with one-tap confirm, cancel & reschedule",
         "Analytics & insights",
         "AI assistant & AI page editor",
       ],
@@ -1019,6 +1019,9 @@ function Landing() {
                 );
               })}
             </div>
+            <p className="text-center text-[.88rem] text-muted-foreground mt-8">
+              Export your full client list any time — on every plan, no lock-in.
+            </p>
           </div>
         </section>
 
