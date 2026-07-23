@@ -35,6 +35,10 @@ if (missing.length) {
 }
 
 config.name = "availa-app";
+// Cloudflare rejects dates newer than the current platform date. Nitro may
+// generate tomorrow's date around UTC midnight, so pin to today's supported
+// compatibility date for reliable manual and Git deployments.
+config.compatibility_date = "2026-07-23";
 config.keep_vars = true;
 config.vars = { ...(config.vars ?? {}), ...publicVariables };
 
