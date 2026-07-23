@@ -3,6 +3,10 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  InputAccessoryView,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -48,6 +52,8 @@ const PALETTE = {
   red: "#ba4b43",
   white: "#ffffff",
 };
+
+const AUTH_KEYBOARD_ACCESSORY_ID = "bookzenvo-auth-keyboard";
 
 function formatMoney(cents: number, currency = "GBP") {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format((cents || 0) / 100);
@@ -148,21 +154,24 @@ function NewPasswordScreen({ onComplete }: { onComplete: () => void }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
-      <View style={styles.authShell}>
-        <View style={styles.resetHero}><Wordmark /><Text style={styles.resetHeadline}>Choose a new password.</Text></View>
+      <KeyboardAvoidingView style={styles.authShell} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={styles.authScrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={styles.resetHero}><Wordmark /><Text style={styles.resetHeadline}>Choose a new password.</Text></View>
         <View style={styles.authForm}>
           <Text style={styles.eyebrow}>SECURE ACCOUNT</Text>
           <Text style={styles.authTitle}>Reset password</Text>
           <Text style={styles.authSubtitle}>Use a strong password you have not used elsewhere.</Text>
           <Text style={styles.label}>NEW PASSWORD</Text>
-          <TextInput value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" style={styles.input} placeholder="At least 8 characters" placeholderTextColor={PALETTE.muted} />
+          <TextInput value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" style={styles.input} placeholder="At least 8 characters" placeholderTextColor={PALETTE.muted} inputAccessoryViewID={Platform.OS === "ios" ? AUTH_KEYBOARD_ACCESSORY_ID : undefined} />
           <Text style={[styles.label, { marginTop: 17 }]}>CONFIRM PASSWORD</Text>
-          <TextInput value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry autoComplete="new-password" style={styles.input} placeholder="Repeat password" placeholderTextColor={PALETTE.muted} onSubmitEditing={updatePassword} />
+          <TextInput value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry autoComplete="new-password" style={styles.input} placeholder="Repeat password" placeholderTextColor={PALETTE.muted} inputAccessoryViewID={Platform.OS === "ios" ? AUTH_KEYBOARD_ACCESSORY_ID : undefined} onSubmitEditing={updatePassword} />
           <Pressable style={[styles.primaryButton, working && styles.dimmed]} onPress={updatePassword} disabled={working}>
             {working ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.primaryButtonText}>Save new password</Text>}
           </Pressable>
         </View>
-      </View>
+        </ScrollView>
+        <KeyboardDoneAccessory />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -201,6 +210,20 @@ function Wordmark() {
   return <Text style={styles.wordmark}>Bookzenvo.</Text>;
 }
 
+function KeyboardDoneAccessory() {
+  if (Platform.OS !== "ios") return null;
+
+  return (
+    <InputAccessoryView nativeID={AUTH_KEYBOARD_ACCESSORY_ID}>
+      <View style={styles.keyboardAccessory}>
+        <Pressable onPress={Keyboard.dismiss} hitSlop={12}>
+          <Text style={styles.keyboardDone}>Done</Text>
+        </Pressable>
+      </View>
+    </InputAccessoryView>
+  );
+}
+
 function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -237,7 +260,8 @@ function SignInScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
-      <View style={styles.authShell}>
+      <KeyboardAvoidingView style={styles.authShell} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={styles.authScrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.authHero}>
           <Wordmark />
           <Text style={styles.authHeadline}>Your studio,{"\n"}in your pocket.</Text>
@@ -258,6 +282,7 @@ function SignInScreen() {
             placeholder="you@studio.com"
             placeholderTextColor={PALETTE.muted}
             style={styles.input}
+            inputAccessoryViewID={Platform.OS === "ios" ? AUTH_KEYBOARD_ACCESSORY_ID : undefined}
           />
           <View style={styles.labelRow}>
             <Text style={styles.label}>PASSWORD</Text>
@@ -273,6 +298,7 @@ function SignInScreen() {
             placeholder="Your password"
             placeholderTextColor={PALETTE.muted}
             style={styles.input}
+            inputAccessoryViewID={Platform.OS === "ios" ? AUTH_KEYBOARD_ACCESSORY_ID : undefined}
             onSubmitEditing={signIn}
           />
           {resetSent && <Text style={styles.successText}>Reset link sent — check your email.</Text>}
@@ -281,7 +307,9 @@ function SignInScreen() {
           </Pressable>
           <Text style={styles.authFootnote}>New studios are set up on bookzenvo.com.</Text>
         </View>
-      </View>
+        </ScrollView>
+        <KeyboardDoneAccessory />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -486,12 +514,13 @@ const styles = StyleSheet.create({
   codeCard: { marginTop: 22, padding: 16, borderRadius: 14, backgroundColor: "#302d29", width: "100%" },
   codeText: { fontFamily: "monospace", color: "#e9dfd1", fontSize: 11, marginVertical: 3 },
   authShell: { flex: 1, backgroundColor: PALETTE.cream },
-  authHero: { flex: 0.85, backgroundColor: PALETTE.ink, padding: 28, justifyContent: "space-between", paddingBottom: 34 },
+  authHero: { minHeight: 300, backgroundColor: PALETTE.ink, padding: 28, justifyContent: "space-between", paddingBottom: 34 },
   resetHero: { flex: 0.55, backgroundColor: PALETTE.ink, padding: 28, justifyContent: "space-between", paddingBottom: 34 },
   authHeadline: { color: PALETTE.white, fontFamily: "serif", fontSize: 43, lineHeight: 47, letterSpacing: -1, marginTop: 45 },
   resetHeadline: { color: PALETTE.white, fontFamily: "serif", fontSize: 37, lineHeight: 42, letterSpacing: -0.7, marginTop: 30 },
   authLead: { color: "#cbc4bb", fontSize: 15, lineHeight: 23, maxWidth: 300 },
-  authForm: { flex: 1.25, paddingHorizontal: 28, paddingTop: 30 },
+  authScrollContent: { flexGrow: 1 },
+  authForm: { paddingHorizontal: 28, paddingTop: 30, paddingBottom: 34 },
   eyebrow: { fontSize: 11, letterSpacing: 2.2, color: PALETTE.gold, fontWeight: "700" },
   authTitle: { fontFamily: "serif", fontSize: 37, color: PALETTE.ink, marginTop: 11 },
   authSubtitle: { color: PALETTE.muted, fontSize: 15, marginTop: 6, marginBottom: 28 },
@@ -504,6 +533,8 @@ const styles = StyleSheet.create({
   dimmed: { opacity: 0.6 },
   successText: { color: PALETTE.green, marginTop: 12, fontSize: 13 },
   authFootnote: { color: PALETTE.muted, textAlign: "center", fontSize: 13, marginTop: 20 },
+  keyboardAccessory: { alignItems: "flex-end", paddingHorizontal: 20, paddingVertical: 10, backgroundColor: PALETTE.white, borderTopWidth: 1, borderColor: PALETTE.line },
+  keyboardDone: { color: PALETTE.ink, fontSize: 16, fontWeight: "700" },
   appShell: { flex: 1, backgroundColor: PALETTE.cream },
   topBar: { paddingHorizontal: 22, paddingTop: 18, paddingBottom: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   appTitle: { color: PALETTE.ink, fontFamily: "serif", fontSize: 28, marginTop: 4 },
