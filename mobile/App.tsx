@@ -20,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { Session } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
 import { useFonts } from "expo-font";
+import { WebView } from "react-native-webview";
 import {
   CormorantGaramond_500Medium,
   CormorantGaramond_600SemiBold,
@@ -86,12 +87,9 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
 }
 
-function dayBounds() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start: start.toISOString(), end: end.toISOString() };
+function isSameDay(iso: string, date = new Date()) {
+  const value = new Date(iso);
+  return value.toDateString() === date.toDateString();
 }
 
 export default function App() {
@@ -150,7 +148,65 @@ export default function App() {
   if (resettingPassword) return <NewPasswordScreen onComplete={() => setResettingPassword(false)} />;
   if (!session) return <SignInScreen />;
 
-  return <OwnerApp session={session} />;
+  // Keep the mobile app on the same workspace as the website. This gives owners
+  // the complete, live dashboard (including editing, payments, stock, reports,
+  // settings and help) instead of a second, partial implementation.
+  return <WebWorkspace session={session} />;
+}
+
+function WebWorkspace({ session }: { session: Session }) {
+  const [failed, setFailed] = useState(false);
+  const appUrl = process.env.EXPO_PUBLIC_APP_URL || "https://bookzenvo.com";
+  const projectRef = (process.env.EXPO_PUBLIC_SUPABASE_URL || "").match(/^https?:\/\/([^.]+)\./)?.[1] || "";
+  const storageKey = projectRef ? `sb-${projectRef}-auth-token` : "";
+  const sessionJson = JSON.stringify(session);
+  const injectedJavaScriptBeforeContentLoaded = storageKey
+    ? `(function(){try{localStorage.setItem(${JSON.stringify(storageKey)},${JSON.stringify(sessionJson)});}catch(e){}})();true;`
+    : "true;";
+
+  if (failed) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.webError}>
+          <Text style={styles.webErrorWordmark}>Bookzenvo.</Text>
+          <Text style={styles.webErrorTitle}>Bookzenvo could not load</Text>
+          <Text style={styles.webErrorText}>Check your connection, then try opening the workspace again.</Text>
+          <Pressable style={styles.webRetry} onPress={() => setFailed(false)}>
+            <Text style={styles.primaryButtonText}>Try again</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.webSafeArea}>
+      <StatusBar barStyle="dark-content" />
+      <WebView
+        source={{ uri: `${appUrl.replace(/\/$/, "")}/dashboard` }}
+        style={styles.webView}
+        javaScriptEnabled
+        domStorageEnabled
+        sharedCookiesEnabled
+        thirdPartyCookiesEnabled
+        setSupportMultipleWindows={false}
+        startInLoadingState
+        injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
+        renderLoading={() => (
+          <View style={styles.webLoading}>
+            <Text style={styles.webLoadingWordmark}>Bookzenvo.</Text>
+            <ActivityIndicator color={PALETTE.goldDeep} size="large" style={{ marginTop: 28 }} />
+            <Text style={styles.loadingText}>Opening your workspace</Text>
+          </View>
+        )}
+        onError={() => setFailed(true)}
+        onHttpError={({ nativeEvent }) => {
+          if (nativeEvent.statusCode >= 500) setFailed(true);
+        }}
+      />
+    </SafeAreaView>
+  );
 }
 
 function NewPasswordScreen({ onComplete }: { onComplete: () => void }) {
@@ -372,14 +428,11 @@ function OwnerApp({ session }: { session: Session }) {
     setBusiness(activeBusiness);
 
     if (activeBusiness) {
-      const bounds = dayBounds();
       const [bookingResult, customerResult, staffResult, serviceResult] = await Promise.all([
         supabase
         .from("bookings")
         .select("id, customer_name, starts_at, ends_at, status, payment_status, amount_due_cents, amount_paid_cents")
         .eq("business_id", activeBusiness.id)
-        .gte("starts_at", bounds.start)
-        .lt("starts_at", bounds.end)
         .neq("status", "cancelled")
         .order("starts_at", { ascending: true }),
         supabase.from("customers").select("id, name, email, phone, notes").eq("business_id", activeBusiness.id).order("name"),
@@ -401,7 +454,8 @@ function OwnerApp({ session }: { session: Session }) {
     load();
   }, [session.user.id]);
 
-  const collected = useMemo(() => bookings.reduce((sum, booking) => sum + booking.amount_paid_cents, 0), [bookings]);
+  const todayBookings = useMemo(() => bookings.filter((booking) => isSameDay(booking.starts_at)), [bookings]);
+  const collected = useMemo(() => todayBookings.reduce((sum, booking) => sum + booking.amount_paid_cents, 0), [todayBookings]);
 
   if (loading) return <LoadingScreen label="Loading your studio" />;
 
@@ -412,10 +466,10 @@ function OwnerApp({ session }: { session: Session }) {
         <View style={styles.topBar}>
           <View style={styles.topTitleBlock}>
             <View style={styles.brandRow}>
-              <Text style={styles.brandWordmark}>BOOKZENVO</Text>
+              <Text style={styles.brandWordmark}>Bookzenvo<Text style={styles.brandDot}>.</Text></Text>
               <Text style={styles.brandStudio} numberOfLines={1}>{business?.name ?? "Your studio"}</Text>
             </View>
-            {isRootScreen(screen) ? <Text style={styles.eyebrow}>{screen === "Today" ? "TODAY" : screen.toUpperCase()}</Text> : <Pressable style={styles.backButton} onPress={() => setScreen("More")}><Ionicons name="chevron-back" size={17} color={PALETTE.ink} /><Text style={styles.backText}>More</Text></Pressable>}
+            {!isRootScreen(screen) && <Pressable style={styles.backButton} onPress={() => setScreen("More")}><Ionicons name="chevron-back" size={17} color={PALETTE.ink} /><Text style={styles.backText}>More</Text></Pressable>}
             {!isRootScreen(screen) && <Text style={styles.appTitle}>{screen}</Text>}
           </View>
           <Pressable style={styles.refreshButton} onPress={() => load(true)} disabled={refreshing}>
@@ -432,9 +486,9 @@ function OwnerApp({ session }: { session: Session }) {
         {!business ? (
           <EmptyStudio />
         ) : screen === "Today" ? (
-          <TodayView business={business} bookings={bookings} collected={collected} />
+          <TodayView business={business} bookings={todayBookings} collected={collected} />
         ) : screen === "Calendar" ? (
-          <CalendarView bookings={bookings} />
+          <CalendarView bookings={bookings} currency={business.currency} />
         ) : screen === "Bookings" ? (
           <BookingsView bookings={bookings} currency={business.currency} />
         ) : screen === "More" ? <MoreView email={session.user.email ?? ""} onNavigate={setScreen} onSignOut={() => supabase?.auth.signOut()} />
@@ -465,7 +519,8 @@ function TodayView({ business, bookings, collected }: { business: Business; book
   const today = new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
   return (
     <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
-      <Text style={styles.dateText}>{today}</Text>
+      <Text style={styles.dateText}>TODAY</Text>
+      <Text style={styles.dayDate}>{today}</Text>
       <Text style={styles.greeting}>Good morning.</Text>
       <View style={styles.summaryRow}>
         <MetricCard value={String(bookings.length)} label="BOOKINGS TODAY" />
@@ -480,25 +535,75 @@ function TodayView({ business, bookings, collected }: { business: Business; book
   );
 }
 
-function CalendarView({ bookings }: { bookings: Booking[] }) {
+const CALENDAR_START_HOUR = 7;
+const CALENDAR_END_HOUR = 21;
+const CALENDAR_HOUR_HEIGHT = 76;
+
+function minutesFromMidnight(iso: string) {
+  const date = new Date(iso);
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function CalendarView({ bookings, currency }: { bookings: Booking[]; currency: string }) {
+  const [view, setView] = useState<"Day" | "Week" | "Month">("Day");
+  const [anchor, setAnchor] = useState(() => new Date());
+  const hours = Array.from({ length: CALENDAR_END_HOUR - CALENDAR_START_HOUR }, (_, index) => CALENDAR_START_HOUR + index);
+  const dateLabel = anchor.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  const isToday = anchor.toDateString() === new Date().toDateString();
+  const visibleBookings = bookings.filter((booking) => new Date(booking.starts_at).toDateString() === anchor.toDateString());
+
+  const moveDay = (amount: number) => {
+    setAnchor((current) => {
+      const next = new Date(current);
+      next.setDate(next.getDate() + amount);
+      return next;
+    });
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
-      <Text style={styles.dateText}>{new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</Text>
-      <Text style={styles.greeting}>Your calendar</Text>
-      <View style={styles.timeline}>
-        {bookings.length ? bookings.map((booking) => <TimelineRow key={booking.id} booking={booking} />) : <NoBookings />}
+      <Text style={styles.dateText}>YOUR CALENDAR</Text>
+      <Text style={styles.greeting}>Calendar</Text>
+      <View style={styles.calendarToolbar}>
+        <Pressable style={styles.calendarArrow} onPress={() => moveDay(-1)}><Ionicons name="chevron-back" size={18} color={PALETTE.ink} /></Pressable>
+        <Pressable style={styles.todayButton} onPress={() => setAnchor(new Date())}><Text style={styles.todayButtonText}>{isToday ? "Today" : "Go to today"}</Text></Pressable>
+        <Pressable style={styles.calendarArrow} onPress={() => moveDay(1)}><Ionicons name="chevron-forward" size={18} color={PALETTE.ink} /></Pressable>
       </View>
+      <View style={styles.calendarDateRow}><Text style={styles.calendarDate}>{dateLabel}</Text><Text style={styles.calendarCount}>{visibleBookings.length} scheduled</Text></View>
+      <View style={styles.calendarSegments}>{(["Day", "Week", "Month"] as const).map((item) => <Pressable key={item} onPress={() => setView(item)} style={[styles.calendarSegment, view === item && styles.calendarSegmentActive]}><Text style={[styles.calendarSegmentText, view === item && styles.calendarSegmentTextActive]}>{item}</Text></Pressable>)}</View>
+
+      {view !== "Day" ? (
+        <View style={styles.calendarComingSoon}><Ionicons name="calendar-outline" size={24} color={PALETTE.goldDeep} /><Text style={styles.calendarComingSoonTitle}>{view} view</Text><Text style={styles.calendarComingSoonText}>Use the day view to see every appointment clearly on your phone. Week and month navigation is available on the full web calendar.</Text><Pressable style={styles.webButton} onPress={() => Linking.openURL("https://bookzenvo.com/calendar")}><Text style={styles.webButtonText}>Open full calendar</Text><Ionicons name="open-outline" size={16} color={PALETTE.white} /></Pressable></View>
+      ) : visibleBookings.length === 0 ? (
+        <NoBookings />
+      ) : (
+        <View style={styles.calendarGrid}>
+          <View style={styles.calendarTimeColumn}>{hours.map((hour) => <View key={hour} style={[styles.calendarHourLabel, { height: CALENDAR_HOUR_HEIGHT }]}><Text style={styles.calendarHourText}>{hour % 12 || 12}{hour < 12 ? " AM" : " PM"}</Text></View>)}</View>
+          <View style={styles.calendarBody}>
+            {hours.map((hour) => <View key={hour} style={[styles.calendarHourLine, { top: (hour - CALENDAR_START_HOUR) * CALENDAR_HOUR_HEIGHT }]} />)}
+            {visibleBookings.map((booking) => {
+              const start = minutesFromMidnight(booking.starts_at);
+              const end = Math.max(start + 30, minutesFromMidnight(booking.ends_at));
+              const top = Math.max(0, (start - CALENDAR_START_HOUR * 60) / 60 * CALENDAR_HOUR_HEIGHT);
+              const height = Math.max(54, (end - start) / 60 * CALENDAR_HOUR_HEIGHT - 6);
+              return <View key={booking.id} style={[styles.calendarEvent, { top, height }]}><View style={styles.calendarEventBar} /><View style={styles.calendarEventCopy}><Text style={styles.calendarEventTitle}>{booking.customer_name}</Text><Text style={styles.calendarEventMeta}>{formatTime(booking.starts_at)} - {formatTime(booking.ends_at)}</Text><Text style={styles.calendarEventMeta}>{booking.status.replace("_", " ")}</Text></View><Text style={styles.calendarEventAmount}>{formatMoney(booking.amount_due_cents, currency)}</Text></View>;
+            })}
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
 
 function BookingsView({ bookings, currency }: { bookings: Booking[]; currency: string }) {
+  const [filter, setFilter] = useState<"All" | "Pending" | "Confirmed">("All");
+  const filtered = filter === "All" ? bookings : bookings.filter((booking) => booking.status.toLowerCase() === filter.toLowerCase());
   return (
     <FlatList
-      data={bookings}
+      data={filtered}
       keyExtractor={(item) => item.id}
       contentContainerStyle={styles.screenContent}
-      ListHeaderComponent={<><Text style={styles.dateText}>TODAY</Text><Text style={styles.greeting}>Bookings</Text></>}
+      ListHeaderComponent={<><Text style={styles.dateText}>TODAY'S BOOKINGS</Text><Text style={styles.greeting}>Bookings</Text><View style={styles.bookingSummary}><Text style={styles.bookingSummaryValue}>{bookings.length}</Text><View><Text style={styles.bookingSummaryLabel}>ALL BOOKINGS</Text><Text style={styles.bookingSummaryHint}>{formatMoney(bookings.reduce((sum, booking) => sum + booking.amount_due_cents, 0), currency)} scheduled</Text></View></View><View style={styles.filterRow}>{(["All", "Pending", "Confirmed"] as const).map((item) => <Pressable key={item} onPress={() => setFilter(item)} style={[styles.filterChip, filter === item && styles.filterChipActive]}><Text style={[styles.filterChipText, filter === item && styles.filterChipTextActive]}>{item}</Text></Pressable>)}</View></>}
       ListEmptyComponent={<NoBookings />}
       renderItem={({ item }) => <BookingRow booking={item} currency={currency} />}
     />
@@ -612,15 +717,11 @@ function BookingRow({ booking, currency }: { booking: Booking; currency: string 
       <Text style={styles.time}>{formatTime(booking.starts_at)}</Text>
       <View style={styles.bookingMain}>
         <Text style={styles.customerName}>{booking.customer_name}</Text>
-        <Text style={styles.bookingMeta}>{booking.status.replace("_", " ")} · {paid ? "Payment received" : "Payment due"}</Text>
+        <Text style={styles.bookingMeta}>{booking.status.replace("_", " ")} - {paid ? "Payment received" : "Payment due"}</Text>
       </View>
       <Text style={styles.bookingAmount}>{formatMoney(booking.amount_due_cents, currency)}</Text>
     </View>
   );
-}
-
-function TimelineRow({ booking }: { booking: Booking }) {
-  return <View style={styles.timelineRow}><Text style={styles.timelineTime}>{formatTime(booking.starts_at)}</Text><View style={styles.timelineDot} /><View style={styles.timelineCard}><Text style={styles.customerName}>{booking.customer_name}</Text><Text style={styles.bookingMeta}>{formatTime(booking.starts_at)} – {formatTime(booking.ends_at)}</Text></View></View>;
 }
 
 function NoBookings() {
@@ -634,6 +735,15 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => voi
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: PALETTE.cream },
+  webSafeArea: { flex: 1, backgroundColor: PALETTE.cream },
+  webView: { flex: 1, backgroundColor: PALETTE.cream },
+  webLoading: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: PALETTE.ink },
+  webLoadingWordmark: { color: PALETTE.white, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 31 },
+  webError: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30, backgroundColor: PALETTE.cream },
+  webErrorWordmark: { color: PALETTE.ink, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 31 },
+  webErrorTitle: { color: PALETTE.ink, fontFamily: "CormorantGaramond_500Medium", fontSize: 34, marginTop: 28, textAlign: "center" },
+  webErrorText: { color: PALETTE.muted, fontFamily: "DMSans_400Regular", fontSize: 15, lineHeight: 22, marginTop: 10, maxWidth: 320, textAlign: "center" },
+  webRetry: { minWidth: 150, height: 52, borderRadius: 10, backgroundColor: PALETTE.ink, alignItems: "center", justifyContent: "center", marginTop: 25 },
   centered: { flex: 1, padding: 32, justifyContent: "center", alignItems: "center", backgroundColor: PALETTE.ink },
   wordmark: { fontSize: 27, fontFamily: "CormorantGaramond_600SemiBold", color: PALETTE.white },
   loadingText: { marginTop: 16, color: "#d8d0c6", fontSize: 15 },
@@ -664,20 +774,22 @@ const styles = StyleSheet.create({
   keyboardAccessory: { alignItems: "flex-end", paddingHorizontal: 20, paddingVertical: 10, backgroundColor: PALETTE.white, borderTopWidth: 1, borderColor: PALETTE.line },
   keyboardDone: { color: PALETTE.ink, fontSize: 16, fontWeight: "700" },
   appShell: { flex: 1, backgroundColor: PALETTE.cream },
-  topBar: { paddingHorizontal: 22, paddingTop: 16, paddingBottom: 8, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", backgroundColor: PALETTE.cream },
+  topBar: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", backgroundColor: PALETTE.cream, borderBottomWidth: 1, borderBottomColor: PALETTE.line },
   topTitleBlock: { flex: 1 },
-  brandRow: { alignItems: "flex-start", marginBottom: 13 },
-  brandWordmark: { color: PALETTE.goldDeep, fontFamily: "DMSans_700Bold", fontSize: 11, letterSpacing: 3.7 },
-  brandStudio: { color: PALETTE.ink, fontFamily: "CormorantGaramond_500Medium", fontSize: 44, lineHeight: 46, letterSpacing: -0.8, marginTop: 4, maxWidth: 280 },
+  brandRow: { alignItems: "flex-start", marginBottom: 9 },
+  brandWordmark: { color: PALETTE.ink, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 25, lineHeight: 28, letterSpacing: -0.4 },
+  brandDot: { color: PALETTE.goldDeep },
+  brandStudio: { color: PALETTE.muted, fontFamily: "DMSans_500Medium", fontSize: 12, lineHeight: 16, marginTop: 1, maxWidth: 230 },
   backButton: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", marginBottom: 5, marginLeft: -5 },
   backText: { fontFamily: "DMSans_600SemiBold", color: PALETTE.muted, fontSize: 13 },
   appTitle: { color: PALETTE.ink, fontFamily: "CormorantGaramond_500Medium", fontSize: 36, lineHeight: 39, marginTop: 4 },
   refreshButton: { height: 42, width: 42, borderRadius: 21, backgroundColor: PALETTE.sand, justifyContent: "center", alignItems: "center", marginTop: 1 },
   errorBanner: { marginHorizontal: 22, padding: 12, backgroundColor: "#f6e3e0", borderRadius: 10 },
   errorText: { color: PALETTE.red, fontSize: 13 },
-  screenContent: { paddingHorizontal: 22, paddingTop: 22, paddingBottom: 112 },
+  screenContent: { paddingHorizontal: 22, paddingTop: 24, paddingBottom: 112 },
   dateText: { color: PALETTE.goldDeep, fontFamily: "DMSans_700Bold", fontSize: 11, letterSpacing: 1.8 },
-  greeting: { color: PALETTE.ink, fontFamily: "CormorantGaramond_500Medium", fontSize: 41, lineHeight: 43, marginTop: 8, letterSpacing: -0.6 },
+  dayDate: { color: PALETTE.goldDeep, fontFamily: "DMSans_500Medium", fontSize: 12, letterSpacing: 1.1, marginTop: 17 },
+  greeting: { color: PALETTE.ink, fontFamily: "CormorantGaramond_500Medium", fontSize: 43, lineHeight: 45, marginTop: 8, letterSpacing: -0.7 },
   summaryRow: { flexDirection: "row", gap: 12, marginTop: 24 },
   metricCard: { flex: 1, padding: 16, backgroundColor: PALETTE.white, borderRadius: 14, borderWidth: 1, borderColor: PALETTE.line, minHeight: 112, justifyContent: "space-between" },
   metricValue: { color: PALETTE.ink, fontSize: 32, fontFamily: "CormorantGaramond_500Medium" },
@@ -685,6 +797,15 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 31, marginBottom: 10 },
   sectionTitle: { color: PALETTE.ink, fontSize: 18, fontFamily: "DMSans_700Bold" },
   sectionHint: { color: PALETTE.muted, fontSize: 13, fontFamily: "DMSans_400Regular" },
+  bookingSummary: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 23, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: PALETTE.line, backgroundColor: PALETTE.white },
+  bookingSummaryValue: { color: PALETTE.ink, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 38, lineHeight: 40 },
+  bookingSummaryLabel: { color: PALETTE.goldDeep, fontFamily: "DMSans_700Bold", fontSize: 10, letterSpacing: 1.4 },
+  bookingSummaryHint: { color: PALETTE.muted, fontFamily: "DMSans_400Regular", fontSize: 12, marginTop: 3 },
+  filterRow: { flexDirection: "row", gap: 7, marginTop: 17, marginBottom: 9 },
+  filterChip: { borderRadius: 18, borderWidth: 1, borderColor: PALETTE.line, backgroundColor: PALETTE.white, paddingHorizontal: 13, paddingVertical: 8 },
+  filterChipActive: { backgroundColor: PALETTE.ink, borderColor: PALETTE.ink },
+  filterChipText: { color: PALETTE.muted, fontFamily: "DMSans_600SemiBold", fontSize: 12 },
+  filterChipTextActive: { color: PALETTE.white },
   bookingRow: { minHeight: 76, flexDirection: "row", alignItems: "center", paddingVertical: 13, borderBottomWidth: 1, borderColor: PALETTE.line },
   time: { color: PALETTE.ink, fontSize: 14, fontFamily: "DMSans_700Bold", width: 68 },
   bookingMain: { flex: 1, paddingRight: 8 },
@@ -694,11 +815,35 @@ const styles = StyleSheet.create({
   noBookings: { borderRadius: 14, borderWidth: 1, borderStyle: "dashed", borderColor: "#d7cebf", padding: 24, marginTop: 12, alignItems: "center" },
   noBookingsTitle: { color: PALETTE.ink, fontSize: 15, fontWeight: "700" },
   noBookingsText: { color: PALETTE.muted, textAlign: "center", lineHeight: 19, fontSize: 13, marginTop: 7 },
-  timeline: { marginTop: 28 },
-  timelineRow: { minHeight: 88, flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  timelineTime: { width: 56, color: PALETTE.muted, fontFamily: "DMSans_600SemiBold", fontSize: 12 },
-  timelineDot: { height: 10, width: 10, borderRadius: 5, backgroundColor: PALETTE.gold, marginHorizontal: 12 },
-  timelineCard: { flex: 1, backgroundColor: PALETTE.white, borderRadius: 14, padding: 15, borderWidth: 1, borderColor: PALETTE.line, shadowColor: PALETTE.ink, shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
+  calendarToolbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 22 },
+  calendarArrow: { width: 40, height: 40, borderRadius: 20, backgroundColor: PALETTE.sand, alignItems: "center", justifyContent: "center" },
+  todayButton: { borderWidth: 1, borderColor: PALETTE.line, backgroundColor: PALETTE.white, borderRadius: 9, paddingHorizontal: 18, height: 40, alignItems: "center", justifyContent: "center" },
+  todayButtonText: { color: PALETTE.ink, fontFamily: "DMSans_600SemiBold", fontSize: 13 },
+  calendarDateRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginTop: 23 },
+  calendarDate: { color: PALETTE.ink, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 27 },
+  calendarCount: { color: PALETTE.muted, fontFamily: "DMSans_400Regular", fontSize: 12 },
+  calendarSegments: { flexDirection: "row", padding: 4, borderRadius: 11, backgroundColor: PALETTE.sand, marginTop: 16 },
+  calendarSegment: { flex: 1, height: 34, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  calendarSegmentActive: { backgroundColor: PALETTE.ink },
+  calendarSegmentText: { color: PALETTE.muted, fontFamily: "DMSans_600SemiBold", fontSize: 12 },
+  calendarSegmentTextActive: { color: PALETTE.white },
+  calendarGrid: { flexDirection: "row", marginTop: 20, minHeight: CALENDAR_HOUR_HEIGHT * (CALENDAR_END_HOUR - CALENDAR_START_HOUR), borderWidth: 1, borderColor: PALETTE.line, borderRadius: 14, overflow: "hidden", backgroundColor: PALETTE.white },
+  calendarTimeColumn: { width: 58, backgroundColor: PALETTE.sand },
+  calendarHourLabel: { alignItems: "flex-end", paddingTop: 7, paddingRight: 6 },
+  calendarHourText: { color: PALETTE.muted, fontFamily: "DMSans_500Medium", fontSize: 10 },
+  calendarBody: { flex: 1, position: "relative" },
+  calendarHourLine: { position: "absolute", left: 0, right: 0, borderTopWidth: 1, borderTopColor: PALETTE.line },
+  calendarEvent: { position: "absolute", left: 8, right: 8, borderRadius: 11, backgroundColor: PALETTE.confirmedBg, borderLeftWidth: 4, borderLeftColor: PALETTE.goldDeep, flexDirection: "row", padding: 10, overflow: "hidden" },
+  calendarEventBar: { width: 0 },
+  calendarEventCopy: { flex: 1 },
+  calendarEventTitle: { color: PALETTE.ink, fontFamily: "DMSans_700Bold", fontSize: 13 },
+  calendarEventMeta: { color: PALETTE.muted, fontFamily: "DMSans_400Regular", fontSize: 10, marginTop: 3, textTransform: "capitalize" },
+  calendarEventAmount: { color: PALETTE.ink, fontFamily: "DMSans_700Bold", fontSize: 12, marginLeft: 5 },
+  calendarComingSoon: { marginTop: 20, borderWidth: 1, borderColor: PALETTE.line, borderRadius: 14, backgroundColor: PALETTE.white, padding: 22, alignItems: "center" },
+  calendarComingSoonTitle: { color: PALETTE.ink, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 25, marginTop: 9 },
+  calendarComingSoonText: { color: PALETTE.muted, fontFamily: "DMSans_400Regular", fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: 7 },
+  webButton: { flexDirection: "row", gap: 8, backgroundColor: PALETTE.ink, borderRadius: 9, paddingHorizontal: 15, paddingVertical: 11, alignItems: "center", marginTop: 17 },
+  webButtonText: { color: PALETTE.white, fontFamily: "DMSans_700Bold", fontSize: 12 },
   accountCard: { marginTop: 25, backgroundColor: PALETTE.white, borderWidth: 1, borderColor: PALETTE.line, borderRadius: 14, padding: 17 },
   accountEmail: { color: PALETTE.ink, fontSize: 16, fontWeight: "700" },
   accountText: { color: PALETTE.muted, fontSize: 13, marginTop: 5 },
