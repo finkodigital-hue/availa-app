@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import {
   Search, UserCircle, Mail, Phone, Merge, Loader2, Plus, Pencil, Trash2,
-  MapPin, Upload, Image as ImageIcon, Calendar, DollarSign, Star, Sparkles,
+  MapPin, Upload, Image as ImageIcon, Calendar, DollarSign, Star, Sparkles, Download,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
@@ -21,7 +21,17 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { compressImage, signedUrl } from "@/lib/image";
 import { fmtDate, fmtMoney as formatMoney, fmtTime, statusMeta } from "@/lib/format";
+import { downloadCsv } from "@/lib/csv";
 import { toast } from "sonner";
+
+// PostgREST caps any single response at 1000 rows regardless of .limit() —
+// a business the size of a real Fresha import (~1,000+ customers) needs
+// this paginated, same reasoning as src/lib/import/commit.ts's PAGE_SIZE.
+const EXPORT_PAGE_SIZE = 1000;
+
+function isoDateOnly(d: string | null | undefined): string {
+  return d ? new Date(d).toISOString().slice(0, 10) : "";
+}
 
 export const Route = createFileRoute("/_authenticated/customers")({
   component: CustomersPage,
@@ -49,6 +59,7 @@ function CustomersPage() {
   const [editing, setEditing] = useState<Partial<Customer> | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [bookingFor, setBookingFor] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers", bid, q],
@@ -83,6 +94,81 @@ function CustomersPage() {
     },
   });
 
+  // Not plan-gated on purpose — being able to take your client list with
+  // you works identically on Free and Studio. Exports whatever the current
+  // search matches (unpaginated — the on-screen table caps at 200 rows,
+  // this must not inherit that cap), never testshop-scale data structures
+  // left unhandled.
+  const exportClients = async () => {
+    if (!bid) return;
+    setExporting(true);
+    try {
+      const term = q.trim();
+
+      const allCustomers: { id: string; name: string; email: string | null; phone: string | null; address: string | null; notes: string | null; created_at: string }[] = [];
+      for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
+        let req = supabase
+          .from("customers")
+          .select("id, name, email, phone, address, notes, created_at")
+          .eq("business_id", bid)
+          .order("created_at", { ascending: false })
+          .range(from, from + EXPORT_PAGE_SIZE - 1);
+        if (term) req = req.or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`);
+        const { data, error } = await req;
+        if (error) throw error;
+        allCustomers.push(...(data ?? []));
+        if (!data || data.length < EXPORT_PAGE_SIZE) break;
+      }
+
+      const statsMap = new Map<string, { visits: number; spent: number; first: string | null; last: string | null }>();
+      for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
+        const { data, error } = await (supabase as any)
+          .rpc("customer_export_stats", { _business_id: bid })
+          .range(from, from + EXPORT_PAGE_SIZE - 1);
+        if (error) throw error;
+        for (const row of (data ?? []) as any[]) {
+          statsMap.set(row.customer_id, {
+            visits: Number(row.visits),
+            spent: Number(row.total_spent_cents),
+            first: row.first_visit,
+            last: row.last_visit,
+          });
+        }
+        if (!data || data.length < EXPORT_PAGE_SIZE) break;
+      }
+
+      const rows = allCustomers.map((c) => {
+        const stats = statsMap.get(c.id);
+        return {
+          Name: c.name ?? "",
+          Email: c.email ?? "",
+          Phone: c.phone ?? "",
+          Address: c.address ?? "",
+          "Total Visits": stats?.visits ?? 0,
+          "Total Spend": fmtMoney(stats?.spent ?? 0),
+          "First Visit": isoDateOnly(stats?.first),
+          "Last Visit": isoDateOnly(stats?.last),
+          "Date Added": isoDateOnly(c.created_at),
+          Notes: c.notes ?? "",
+        };
+      });
+
+      const bizSlug = (biz?.name ?? "clients").trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "clients";
+      const today = new Date().toISOString().slice(0, 10);
+      downloadCsv(`${bizSlug}-clients-${today}.csv`, rows);
+
+      toast.success(
+        term
+          ? `Exported ${rows.length} filtered client${rows.length === 1 ? "" : "s"}`
+          : `Exported ${rows.length} client${rows.length === 1 ? "" : "s"}`,
+      );
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not export clients");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
       <PageHeader
@@ -90,9 +176,15 @@ function CustomersPage() {
         title="Customers"
         subtitle="Everyone who's ever booked with you, with their full history."
         action={
-          <Button onClick={() => setEditing({})} className="shadow-glow">
-            <Plus className="h-4 w-4 mr-1" /> Add customer
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={exportClients} disabled={exporting || !bid}>
+              {exporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
+              {q.trim() ? "Export filtered clients" : "Export clients"}
+            </Button>
+            <Button onClick={() => setEditing({})} className="shadow-glow">
+              <Plus className="h-4 w-4 mr-1" /> Add customer
+            </Button>
+          </div>
         }
       />
       {bid && <DataRequestsBanner businessId={bid} onView={setOpenId} />}
