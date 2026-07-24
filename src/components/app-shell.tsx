@@ -255,8 +255,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="flex-1 min-w-0 pt-14 md:pt-0 pb-28 md:pb-0 print:pt-0 print:pb-0">{children}</main>
 
       <div className="print:hidden">
-        <MobileBottomNav
-          onMore={() => setMobileOpen(true)}
+          <MobileBottomNav
+            menuOpen={mobileOpen}
+            onMore={() => setMobileOpen(true)}
           onAdd={() => {
             // Dispatch a global event the Calendar listens for. If we're not
             // already on /calendar, navigate first so the listener is mounted.
