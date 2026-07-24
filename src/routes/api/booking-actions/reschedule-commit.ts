@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/booking-actions/reschedule-commit")({
 
         const { data: booking } = await (supabaseAdmin as any)
           .from("bookings")
-          .select("id, staff_id, status, services(duration_minutes)")
+          .select("id, status")
           .eq("id", result.bookingId)
           .maybeSingle();
 
@@ -30,25 +30,21 @@ export const Route = createFileRoute("/api/booking-actions/reschedule-commit")({
           return Response.json({ ok: false, reason: "invalid" });
         }
 
-        const ends_at = new Date(new Date(starts_at).getTime() + (booking.services?.duration_minutes ?? 30) * 60000).toISOString();
-
-        const { data: clash } = await (supabaseAdmin as any)
-          .from("bookings")
-          .select("id")
-          .eq("staff_id", booking.staff_id)
-          .neq("status", "cancelled")
-          .neq("id", booking.id)
-          .lt("starts_at", ends_at)
-          .gt("ends_at", starts_at);
-        if (clash && clash.length > 0) {
-          return Response.json({ ok: false, reason: "slot_taken" });
-        }
-
-        const { error } = await (supabaseAdmin as any)
-          .from("bookings")
-          .update({ starts_at, ends_at })
-          .eq("id", booking.id);
+        // reschedule_booking preserves the booking's existing total duration
+        // (ends_at - starts_at) rather than recomputing it from the service —
+        // for a gap service, services.duration_minutes is only the first
+        // segment, so recomputing here would silently truncate the
+        // appointment. It also does the conflict check + advisory lock + the
+        // actual update atomically, closing the race between this handler's
+        // separate check-then-update calls.
+        const { error } = await (supabaseAdmin as any).rpc("reschedule_booking", {
+          p_booking_id: booking.id,
+          p_new_starts_at: starts_at,
+        });
         if (error) {
+          if (typeof error.message === "string" && error.message.includes("SLOT_TAKEN")) {
+            return Response.json({ ok: false, reason: "slot_taken" });
+          }
           return Response.json({ ok: false, reason: "invalid" });
         }
 

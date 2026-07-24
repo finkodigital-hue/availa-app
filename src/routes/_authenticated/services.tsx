@@ -28,6 +28,7 @@ type Service = {
   active: boolean; image_url: string | null;
   buffer_before_min: number; buffer_after_min: number; color: string | null;
   category: string | null; archived_at: string | null;
+  gap_min: number | null; active_after_min: number | null;
 };
 type Staff = { id: string; name: string };
 type InventoryItem = { id: string; name: string; unit: string | null; cost_cents: number | null };
@@ -129,6 +130,10 @@ function ServicesPage() {
     if (!edit || !bid) return;
     if (!edit.name) return toast.error("Name is required");
     if (!(Number(edit.duration_minutes) > 0)) return toast.error("Duration must be greater than 0 minutes");
+    const hasGap = !!edit.gap_min;
+    if (hasGap && !(Number(edit.gap_min) > 0 && Number(edit.active_after_min) > 0)) {
+      return toast.error("Gap and second segment must both be greater than 0 minutes");
+    }
     const payload: any = {
       business_id: bid,
       name: edit.name,
@@ -137,6 +142,8 @@ function ServicesPage() {
       price_cents: Math.round(Number(edit.price_cents) || 0),
       buffer_before_min: Number(edit.buffer_before_min) || 0,
       buffer_after_min: Number(edit.buffer_after_min) || 0,
+      gap_min: hasGap ? Number(edit.gap_min) : null,
+      active_after_min: hasGap ? Number(edit.active_after_min) : null,
       color: edit.color ?? null,
       category: edit.category?.trim() || null,
       active: edit.active ?? true,
@@ -239,7 +246,10 @@ function ServicesPage() {
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1.5">
-                      <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{s.duration_minutes} min</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {s.gap_min ? `${s.duration_minutes}m + ${s.gap_min}m gap + ${s.active_after_min}m` : `${s.duration_minutes} min`}
+                      </span>
                       <span className="inline-flex items-center gap-1"><DollarSign className="h-3 w-3" />{fmtMoney(s.price_cents)}</span>
                       {(s.buffer_before_min > 0 || s.buffer_after_min > 0) && (
                         <span className="text-muted-foreground/80">+{s.buffer_before_min}/{s.buffer_after_min}m buffer</span>
@@ -333,7 +343,7 @@ function ServicesPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Duration (min)</Label>
+                <Label>{edit?.gap_min ? "First segment (min)" : "Duration (min)"}</Label>
                 <Input type="number" min={5} step={5} value={edit?.duration_minutes ?? 60} onChange={(e) => setEdit({ ...edit, duration_minutes: Number(e.target.value) })} className="mt-1.5 h-10" />
               </div>
               <div>
@@ -342,6 +352,32 @@ function ServicesPage() {
                 <p className="text-[11px] text-muted-foreground mt-1">{fmtMoney(Number(edit?.price_cents) || 0)}</p>
               </div>
             </div>
+
+            <div className="rounded-xl border bg-secondary/30 p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm">Gap / processing time</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">The client is away (e.g. colour developing) but the chair is free — bookable by someone else.</p>
+                </div>
+                <Switch
+                  checked={!!edit?.gap_min}
+                  onCheckedChange={(v) => setEdit({ ...edit, gap_min: v ? 30 : null, active_after_min: v ? 15 : null })}
+                />
+              </div>
+              {!!edit?.gap_min && (
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <Label>Gap (min)</Label>
+                    <Input type="number" min={5} step={5} value={edit?.gap_min ?? 30} onChange={(e) => setEdit({ ...edit, gap_min: Number(e.target.value) })} className="mt-1.5 h-10" />
+                  </div>
+                  <div>
+                    <Label>Second segment (min)</Label>
+                    <Input type="number" min={5} step={5} value={edit?.active_after_min ?? 15} onChange={(e) => setEdit({ ...edit, active_after_min: Number(e.target.value) })} className="mt-1.5 h-10" />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Buffer before (min)</Label>

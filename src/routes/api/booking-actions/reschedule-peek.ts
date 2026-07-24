@@ -23,7 +23,7 @@ export const Route = createFileRoute("/api/booking-actions/reschedule-peek")({
 
         const { data: booking } = await (supabaseAdmin as any)
           .from("bookings")
-          .select("id, business_id, staff_id, status, starts_at, services(name, duration_minutes, buffer_before_min, buffer_after_min), staff(name), businesses(name, timezone, page_theme)")
+          .select("id, business_id, staff_id, status, starts_at, services(name, duration_minutes, buffer_before_min, buffer_after_min, gap_min, active_after_min), staff(name), businesses(name, timezone, page_theme)")
           .eq("id", result.bookingId)
           .maybeSingle();
 
@@ -45,6 +45,8 @@ export const Route = createFileRoute("/api/booking-actions/reschedule-peek")({
             duration_minutes: booking.services?.duration_minutes ?? 30,
             buffer_before_min: booking.services?.buffer_before_min ?? null,
             buffer_after_min: booking.services?.buffer_after_min ?? null,
+            gap_min: booking.services?.gap_min ?? null,
+            active_after_min: booking.services?.active_after_min ?? null,
           },
         });
       },
