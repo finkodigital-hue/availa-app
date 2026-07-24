@@ -87,7 +87,7 @@ async function getServerEntry(): Promise<ServerEntry> {
 
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
-async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
+async function normalizeCatastrophicSsrResponse(response: Response, env: unknown): Promise<Response> {
   // Nitro can occasionally return a successful response with an empty stream
   // (notably after a Cloudflare build/runtime restart). Keep the application
   // usable by returning the normal client shell; the TanStack client router
@@ -95,8 +95,19 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   if (response.status >= 200 && response.status < 300) {
     const body = await response.clone().text();
     if (!body.trim()) {
+      // The browser client needs these public values before it can initialise
+      // Supabase. The normal SSR document adds them in RootShell, but an empty
+      // Nitro stream skips RootShell entirely. Without this script the fallback
+      // looks successful in a browser, then immediately crashes into a blank
+      // page while the client starts.
+      const bindings = await getRuntimeBindings(env);
+      const publicEnvironment = JSON.stringify({
+        supabaseUrl: process.env.SUPABASE_URL ?? bindings.SUPABASE_URL,
+        supabasePublishableKey:
+          process.env.SUPABASE_PUBLISHABLE_KEY ?? bindings.SUPABASE_PUBLISHABLE_KEY,
+      }).replace(/</g, "\\u003c");
       return new Response(
-        `<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><link rel="stylesheet" href="/assets/styles-C-6GbtVN.css"/><title>Bookzenvo</title></head><body><div id="root"></div><script type="module" src="/assets/index-CQ2nr3th.js"></script></body></html>`,
+        `<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><link rel="stylesheet" href="/assets/styles-C-6GbtVN.css"/><title>Bookzenvo</title></head><body><script>window.__BOOKZENVO_ENV__=${publicEnvironment};</script><div id="root"></div><script type="module" src="/assets/index-DXDEI5_h.js"></script></body></html>`,
         { status: response.status, headers: { "content-type": "text/html; charset=utf-8" } },
       );
     }
@@ -126,7 +137,7 @@ export default {
       await installRuntimeEnvironment(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return await normalizeCatastrophicSsrResponse(response, env);
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
