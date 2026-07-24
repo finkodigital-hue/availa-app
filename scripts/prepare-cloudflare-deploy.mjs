@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 // Nitro generates this file during every production build. Cloudflare's Git
@@ -43,3 +43,19 @@ config.keep_vars = true;
 config.vars = { ...(config.vars ?? {}), ...publicVariables };
 
 await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+// The emergency client shell in src/server.ts must use a stable URL. Vite
+// fingerprints its entry bundle on every build, so create a tiny stable module
+// that imports the current fingerprinted bundle from the deployed assets.
+const assetDirectoryUrl = new URL("../.output/public/assets/", import.meta.url);
+const assetNames = await readdir(fileURLToPath(assetDirectoryUrl));
+const clientBundle = assetNames.find((name) => /^index-[A-Za-z0-9_-]+\.js$/.test(name));
+
+if (!clientBundle) {
+  throw new Error("Cloudflare build is missing the Vite client entry bundle.");
+}
+
+await writeFile(
+  fileURLToPath(new URL("../.output/public/client-entry.js", import.meta.url)),
+  `import "/assets/${clientBundle}";\n`,
+);

@@ -66,14 +66,13 @@ async function installRuntimeEnvironment(env: unknown) {
  */
 async function serveBuiltAsset(request: Request, env: unknown): Promise<Response | undefined> {
   const pathname = new URL(request.url).pathname;
-  if (!pathname.startsWith("/assets/")) return undefined;
+  if (!pathname.startsWith("/assets/") && pathname !== "/client-entry.js") return undefined;
 
   const bindings = await getRuntimeBindings(env);
   const assets = bindings.ASSETS as { fetch?: (request: Request) => Promise<Response> } | undefined;
   if (!assets?.fetch) return undefined;
 
-  const response = await assets.fetch(request);
-  return response.status === 404 ? undefined : response;
+  return assets.fetch(request);
 }
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -107,7 +106,7 @@ async function normalizeCatastrophicSsrResponse(response: Response, env: unknown
           process.env.SUPABASE_PUBLISHABLE_KEY ?? bindings.SUPABASE_PUBLISHABLE_KEY,
       }).replace(/</g, "\\u003c");
       return new Response(
-        `<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><link rel="stylesheet" href="/assets/styles-C-6GbtVN.css"/><title>Bookzenvo</title></head><body><script>window.__BOOKZENVO_ENV__=${publicEnvironment};</script><div id="root"></div><script type="module" src="/assets/index-DXDEI5_h.js"></script></body></html>`,
+        `<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Bookzenvo</title></head><body><script>window.__BOOKZENVO_ENV__=${publicEnvironment};</script><div id="root"></div><script type="module" src="/client-entry.js"></script></body></html>`,
         { status: response.status, headers: { "content-type": "text/html; charset=utf-8" } },
       );
     }
