@@ -34,7 +34,3 @@ dist-ssr
 # Environment variables
 .env
 test-data/
-echo "src/routeTree.gen.ts" >> .gitignore
-git rm --cached src/routeTree.gen.ts
-git commit -m "stop tracking generated route tree"
-git pull
