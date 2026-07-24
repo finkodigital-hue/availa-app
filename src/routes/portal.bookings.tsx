@@ -33,7 +33,7 @@ type Booking = {
   price_cents: number;
   notes: string | null;
   businesses: { id: string; name: string; slug: string; address: string | null; page_theme: unknown; cancellation_window_hours: number } | null;
-  services: { id: string; name: string; duration_minutes: number } | null;
+  services: { id: string; name: string; duration_minutes: number; gap_min: number | null; active_after_min: number | null } | null;
   staff: { id: string; name: string } | null;
 };
 
@@ -284,7 +284,9 @@ function RescheduleDialog({ booking, onClose, onDone }: { booking: Booking | nul
   const { slots, isLoading } = useAvailableSlots({
     businessId: booking?.business_id,
     staffId: booking?.staff_id,
-    service: booking?.services ? { duration_minutes: booking.services.duration_minutes } : undefined,
+    service: booking?.services
+      ? { duration_minutes: booking.services.duration_minutes, gap_min: booking.services.gap_min, active_after_min: booking.services.active_after_min }
+      : undefined,
     date,
     excludeBookingId: booking?.id,
   });
@@ -295,16 +297,22 @@ function RescheduleDialog({ booking, onClose, onDone }: { booking: Booking | nul
     if (!booking || !picking) return;
     setSubmitting(true);
     try {
-      const starts_at = picking;
-      const ends_at = new Date(new Date(starts_at).getTime() + (booking.services?.duration_minutes ?? 30) * 60000).toISOString();
-      const { data: clash } = await supabase.from("bookings").select("id").eq("staff_id", booking.staff_id).neq("status", "cancelled").neq("id", booking.id).lt("starts_at", ends_at).gt("ends_at", starts_at);
-      if (clash && clash.length > 0) { toast.error("Slot just taken — pick another"); setPicking(null); return; }
-      const { error } = await supabase.from("bookings").update({ starts_at, ends_at }).eq("id", booking.id);
+      // reschedule_booking preserves the booking's own existing total
+      // duration (ends_at - starts_at) rather than recomputing it from the
+      // service — for a gap service, services.duration_minutes is only the
+      // first segment. It also does the conflict check + advisory lock +
+      // the update atomically, closing the race this dialog's separate
+      // check-then-update calls used to leave open.
+      const { error } = await supabase.rpc("reschedule_booking", {
+        p_booking_id: booking.id,
+        p_new_starts_at: picking,
+      });
       if (error) throw error;
       toast.success("Booking rescheduled");
       onDone();
     } catch (e: any) {
-      toast.error(e.message ?? "Could not reschedule");
+      toast.error(e.message?.includes("SLOT_TAKEN") ? "Slot just taken — pick another" : e.message ?? "Could not reschedule");
+      if (e.message?.includes("SLOT_TAKEN")) setPicking(null);
     } finally {
       setSubmitting(false);
     }

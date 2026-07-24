@@ -5,7 +5,7 @@ import { parseTheme, applyThemeVars, themedButtonStyle, defaultTheme, googleFont
 import { useAvailableSlots, buildDateStrip } from "@/lib/slots";
 
 type Peek =
-  | { ok: true; businessId: string; staffId: string; businessName: string; theme: unknown; timezone: string; serviceName: string; staffName: string; currentStartsAtIso: string; service: { duration_minutes: number; buffer_before_min: number | null; buffer_after_min: number | null } }
+  | { ok: true; businessId: string; staffId: string; businessName: string; theme: unknown; timezone: string; serviceName: string; staffName: string; currentStartsAtIso: string; service: { duration_minutes: number; buffer_before_min: number | null; buffer_after_min: number | null; gap_min: number | null; active_after_min: number | null } }
   | { ok: false; reason: "invalid" | "expired" | "used" };
 
 export const Route = createFileRoute("/booking-action/reschedule/$token")({

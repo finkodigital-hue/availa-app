@@ -85,6 +85,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          active_after_min: number | null
           amount_due_cents: number
           amount_paid_cents: number
           amount_refunded_cents: number
@@ -98,6 +99,7 @@ export type Database = {
           customer_phone: string | null
           ends_at: string
           external_id: string | null
+          gap_min: number | null
           id: string
           import_batch_id: string | null
           is_custom: boolean
@@ -115,6 +117,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_after_min?: number | null
           amount_due_cents?: number
           amount_paid_cents?: number
           amount_refunded_cents?: number
@@ -128,6 +131,7 @@ export type Database = {
           customer_phone?: string | null
           ends_at: string
           external_id?: string | null
+          gap_min?: number | null
           id?: string
           import_batch_id?: string | null
           is_custom?: boolean
@@ -145,6 +149,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_after_min?: number | null
           amount_due_cents?: number
           amount_paid_cents?: number
           amount_refunded_cents?: number
@@ -158,6 +163,7 @@ export type Database = {
           customer_phone?: string | null
           ends_at?: string
           external_id?: string | null
+          gap_min?: number | null
           id?: string
           import_batch_id?: string | null
           is_custom?: boolean
@@ -1380,6 +1386,7 @@ export type Database = {
       services: {
         Row: {
           active: boolean
+          active_after_min: number | null
           archived_at: string | null
           buffer_after_min: number
           buffer_before_min: number
@@ -1391,6 +1398,7 @@ export type Database = {
           description: string | null
           duration_minutes: number
           external_id: string | null
+          gap_min: number | null
           id: string
           image_url: string | null
           import_batch_id: string | null
@@ -1400,6 +1408,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          active_after_min?: number | null
           archived_at?: string | null
           buffer_after_min?: number
           buffer_before_min?: number
@@ -1411,6 +1420,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           external_id?: string | null
+          gap_min?: number | null
           id?: string
           image_url?: string | null
           import_batch_id?: string | null
@@ -1420,6 +1430,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          active_after_min?: number | null
           archived_at?: string | null
           buffer_after_min?: number
           buffer_before_min?: number
@@ -1431,6 +1442,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           external_id?: string | null
+          gap_min?: number | null
           id?: string
           image_url?: string | null
           import_batch_id?: string | null
@@ -1891,8 +1903,61 @@ export type Database = {
           p_service_id: string
           p_staff_id: string
           p_starts_at: string
+          p_gap_min?: number | null
+          p_active_after_min?: number | null
         }
         Returns: string
+      }
+      create_staff_booking: {
+        Args: {
+          p_business_id: string
+          p_service_id: string | null
+          p_staff_id: string
+          p_customer_id: string | null
+          p_customer_name: string
+          p_customer_email: string | null
+          p_customer_phone: string | null
+          p_starts_at: string
+          p_ends_at: string
+          p_price_cents: number
+          p_amount_paid_cents: number
+          p_amount_due_cents: number
+          p_notes: string | null
+          p_source: string
+          p_notify_customer: boolean
+          p_is_custom: boolean
+          p_custom_title: string | null
+          p_custom_color: string | null
+          p_status: string
+          p_gap_min?: number | null
+          p_active_after_min?: number | null
+          p_payment_status?: string
+        }
+        Returns: string
+      }
+      reschedule_booking: {
+        Args: { p_booking_id: string; p_new_starts_at: string }
+        Returns: undefined
+      }
+      move_booking: {
+        Args: {
+          p_booking_id: string
+          p_new_starts_at: string
+          p_new_ends_at: string
+          p_new_staff_id?: string | null
+        }
+        Returns: undefined
+      }
+      assert_no_booking_conflict: {
+        Args: {
+          p_staff_id: string
+          p_starts_at: string
+          p_ends_at: string
+          p_gap_min: number | null
+          p_active_after_min: number | null
+          p_exclude_booking_id?: string | null
+        }
+        Returns: undefined
       }
       current_user_email: { Args: never; Returns: string }
       customer_visit_counts: {

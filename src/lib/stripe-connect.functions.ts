@@ -167,7 +167,7 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
     if (!business.stripe_account_id || !business.stripe_charges_enabled) throw new Error("Online payment is not available for this business yet.");
 
     const [{ data: service, error: serviceError }, { data: staff, error: staffError }] = await Promise.all([
-      supabaseAdmin.from("services").select("id, name, price_cents, active").eq("id", data.serviceId).eq("business_id", business.id).maybeSingle(),
+      supabaseAdmin.from("services").select("id, name, price_cents, active, gap_min, active_after_min").eq("id", data.serviceId).eq("business_id", business.id).maybeSingle(),
       supabaseAdmin.from("staff").select("id").eq("id", data.staffId).eq("business_id", business.id).maybeSingle(),
     ]);
     if (serviceError) throw serviceError;
@@ -202,6 +202,8 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
         "metadata[ends_at]": data.endsAt,
         "metadata[notes]": data.notes.trim(),
         "metadata[payment_mode]": business.payment_mode,
+        "metadata[gap_min]": service.gap_min != null ? String(service.gap_min) : "",
+        "metadata[active_after_min]": service.active_after_min != null ? String(service.active_after_min) : "",
         "payment_intent_data[metadata][business_id]": business.id,
         "payment_intent_data[metadata][service_id]": data.serviceId,
         "payment_intent_data[metadata][staff_id]": data.staffId,

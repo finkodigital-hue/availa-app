@@ -66,6 +66,16 @@ export function BookingCard({
   const baseTop = ((s.getTime() - dayStart.getTime()) / 60000 / 60) * HOUR_PX;
   const baseHeight = Math.max(MIN_BASE_HEIGHT, ((e.getTime() - s.getTime()) / 60000 / 60) * HOUR_PX);
 
+  // Gap bookings render as one card spanning the whole appointment (so drag/
+  // resize/click keep working on it as a unit) with an internal strip marking
+  // the dead middle — a different client can be booked into that time slot
+  // as a normal, separate card that the existing packing algorithm places
+  // alongside this one.
+  const hasGap = !!(b.gap_min && b.active_after_min);
+  const totalMs = e.getTime() - s.getTime();
+  const gapTopPct = hasGap ? ((totalMs - (b.gap_min + b.active_after_min) * 60000) / totalMs) * 100 : 0;
+  const gapHeightPct = hasGap ? ((b.gap_min * 60000) / totalMs) * 100 : 0;
+
   const isActive = interactive && drag?.id === b.id;
   const isMoving = isActive && drag!.mode === "move";
   const isResizing = isActive && drag!.mode !== "move";
@@ -174,6 +184,26 @@ export function BookingCard({
         <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ background: colors.border }} />
         {/* Faded placeholder when moved into another column */}
         {isElsewhere && <span className="absolute inset-0 rounded-2xl border-2 border-dashed border-foreground/15 bg-card/60" />}
+        {/* Gap strip — the dead middle segment, genuinely free for another
+            booking. Hatched background only (no label text): the card's own
+            title/service/time text has no opaque background, so a text label
+            here would render interleaved with — and garble — whichever line
+            of real text happens to fall in the same rows on a compact card.
+            The exact segment breakdown is one click away in the detail
+            dialog; this strip only needs to read as "not really occupied". */}
+        {hasGap && !isElsewhere && (
+          <span
+            className="absolute left-0 right-0 pointer-events-none"
+            style={{
+              top: `${gapTopPct}%`,
+              height: `${gapHeightPct}%`,
+              borderTop: `1px dashed ${colors.border}`,
+              borderBottom: `1px dashed ${colors.border}`,
+              background: "repeating-linear-gradient(135deg, transparent, transparent 5px, color-mix(in oklab, currentColor 12%, transparent) 5px, color-mix(in oklab, currentColor 12%, transparent) 10px)",
+              opacity: 0.9,
+            }}
+          />
+        )}
         <div className="relative px-2.5 py-1.5">
           <div className="flex items-center gap-1.5 min-w-0">
             {variant === "week" && !colors.isCustom && (
@@ -206,8 +236,12 @@ export function BookingCard({
           </div>
         </div>
 
-        {/* Resize handles — day view only, and only while not mid cross-column move */}
-        {interactive && !isElsewhere && (
+        {/* Resize handles — day view only, not mid cross-column move, and not
+            on a gap booking: stretching one edge would change the total span
+            without adjusting active_after_min, silently desyncing the stored
+            segment split from the visible one. Moving the whole appointment
+            (drag) stays safe since both segments shift together. */}
+        {interactive && !isElsewhere && !hasGap && (
           <>
             <span
               className="absolute left-1/2 -translate-x-1/2 -top-0.5 h-2.5 w-10 rounded-full cursor-ns-resize resize-handle bg-foreground/30 group-hover:opacity-60 hover:!opacity-100 touch-none z-10"
