@@ -77,6 +77,8 @@ function CalendarPage() {
   const [prefill, setPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const calendarRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const calendarIsExpanded = isFullscreen || isFocusMode;
 
   const collectBalance = async () => {
     if (!selected) return;
@@ -103,11 +105,24 @@ function CalendarPage() {
   }, []);
 
   const toggleFullscreen = async () => {
+    // Safari and iOS WebViews do not consistently allow the browser Fullscreen
+    // API. Focus mode is a real in-app full-screen calendar that works there.
+    if (isFullscreen) {
+      await document.exitFullscreen();
+      return;
+    }
+    if (isFocusMode) {
+      setIsFocusMode(false);
+      return;
+    }
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      setIsFocusMode(true);
+      return;
+    }
     try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await calendarRef.current?.requestFullscreen();
+      await calendarRef.current?.requestFullscreen();
     } catch {
-      toast.error("Full screen isn't available in this browser.");
+      setIsFocusMode(true);
     }
   };
 
@@ -512,9 +527,18 @@ function CalendarPage() {
 
   return (
     <HoursContext.Provider value={hoursWindow}>
-    <div ref={calendarRef} className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${isFullscreen ? "h-[100dvh] max-w-none overflow-hidden bg-background" : ""}`}>
+    <div
+      ref={calendarRef}
+      className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${
+        isFocusMode
+          ? "fixed inset-0 z-[60] h-[100dvh] max-w-none overflow-hidden bg-background"
+          : isFullscreen
+            ? "h-[100dvh] max-w-none overflow-hidden bg-background"
+            : ""
+      }`}
+    >
 
-      {!isFullscreen && (
+      {!calendarIsExpanded && (
         <PageHeader
           eyebrow="Schedule"
           title="Calendar"
@@ -527,7 +551,7 @@ function CalendarPage() {
         />
       )}
 
-      {!isFullscreen && view === "day" && (
+      {!calendarIsExpanded && view === "day" && (
         <TodayStrip bookings={bookings ?? []} staff={staff ?? []} date={anchor} />
       )}
 
@@ -538,7 +562,7 @@ function CalendarPage() {
         title={title}
         onToday={goToToday}
         onNavigate={navigate}
-        isFullscreen={isFullscreen}
+        isFullscreen={calendarIsExpanded}
         onToggleFullscreen={toggleFullscreen}
       />
 
@@ -554,7 +578,7 @@ function CalendarPage() {
           onCellClick={(staffId, isoTime) => openNewBooking({ staffId, isoTime, date: anchor })}
           onMove={dropMove}
           onResize={resizeBooking}
-          fullscreen={isFullscreen}
+          fullscreen={calendarIsExpanded}
         />
       )}
 
@@ -565,7 +589,7 @@ function CalendarPage() {
           isLoading={isLoading}
           onSelect={setSelected}
           onCellClick={(date, isoTime) => openNewBooking({ isoTime, date })}
-          fullscreen={isFullscreen}
+          fullscreen={calendarIsExpanded}
         />
       )}
 

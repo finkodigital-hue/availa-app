@@ -164,6 +164,46 @@ function WebWorkspace({ session }: { session: Session }) {
     ? `(function(){try{localStorage.setItem(${JSON.stringify(storageKey)},${JSON.stringify(sessionJson)});}catch(e){}})();true;`
     : "true;";
 
+  // The website intentionally opens Stripe Checkout in a new browser tab.
+  // Native WebViews do not reliably create that tab, which used to make the
+  // "Take payment" button look unresponsive in the app. Bridge all such
+  // requests to the phone's secure browser instead.
+  const injectedNavigationBridge = `
+    (function () {
+      if (window.__bookzenvoNativeBridge) return true;
+      window.__bookzenvoNativeBridge = true;
+      var send = function (url) {
+        if (!url || !window.ReactNativeWebView) return;
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: "open-external", url: String(url) }));
+      };
+      window.open = function (url) {
+        send(url);
+        return { closed: false, close: function () {} };
+      };
+      document.addEventListener("click", function (event) {
+        var target = event.target;
+        var link = target && target.closest ? target.closest("a[target='_blank']") : null;
+        if (link && link.href) {
+          event.preventDefault();
+          send(link.href);
+        }
+      }, true);
+      return true;
+    })();
+    true;
+  `;
+
+  const handleWebMessage = async ({ nativeEvent }: { nativeEvent: { data: string } }) => {
+    try {
+      const message = JSON.parse(nativeEvent.data);
+      if (message?.type !== "open-external" || typeof message.url !== "string") return;
+      if (!/^https?:\/\//i.test(message.url)) return;
+      await Linking.openURL(message.url);
+    } catch {
+      // Ignore messages from third-party scripts that are not navigation requests.
+    }
+  };
+
   if (failed) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -193,6 +233,7 @@ function WebWorkspace({ session }: { session: Session }) {
         setSupportMultipleWindows={false}
         startInLoadingState
         injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
+        injectedJavaScript={injectedNavigationBridge}
         renderLoading={() => (
           <View style={styles.webLoading}>
             <Text style={styles.webLoadingWordmark}>Bookzenvo.</Text>
@@ -201,6 +242,7 @@ function WebWorkspace({ session }: { session: Session }) {
           </View>
         )}
         onError={() => setFailed(true)}
+        onMessage={handleWebMessage}
         onHttpError={({ nativeEvent }) => {
           if (nativeEvent.statusCode >= 500) setFailed(true);
         }}

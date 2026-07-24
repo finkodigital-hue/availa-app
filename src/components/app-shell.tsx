@@ -8,7 +8,6 @@ import {
   Settings,
   LogOut,
   ExternalLink,
-  Menu,
   X,
   Plus,
   Sparkles,
@@ -230,13 +229,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
         <div className="flex items-center gap-1">
           <NotificationsBell variant="icon" />
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="h-9 w-9 grid place-items-center rounded-lg hover:bg-card"
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
         </div>
       </div>
 
