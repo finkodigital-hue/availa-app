@@ -11,11 +11,15 @@ The Bookzenvo owner app for Android and iPhone. It uses the existing Bookzenvo S
 
 Never add a Supabase service-role key, Stripe secret key, Resend key, or webhook secret to the mobile app.
 
-## What is in this first foundation
+## What is in the app
 
 - Secure Supabase session storage
 - Sign in, password-reset request and sign out
-- A live owner dashboard using the same business and booking records as the website
-- Today calendar and bookings views
+- The live Bookzenvo workspace, loaded inside the app so it has the same
+  bookings, clients, staff, services, stock, reports, page builder, settings,
+  payments and help centre as the website
+- Native handling for links that need a secure browser, including Stripe Checkout
+- A recovery screen if the live workspace cannot be loaded, plus Android back
+  navigation and automatic recovery from a terminated WebView process
 
 Before publishing, configure `bookzenvo://` as an allowed redirect URL in Supabase Authentication and create the required Apple/Google developer accounts.

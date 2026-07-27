@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   FlatList,
   InputAccessoryView,
   Keyboard,
@@ -155,8 +156,12 @@ export default function App() {
 }
 
 function WebWorkspace({ session }: { session: Session }) {
+  const webViewRef = useRef<WebView>(null);
   const [failed, setFailed] = useState(false);
+  const [webViewKey, setWebViewKey] = useState(0);
+  const [canGoBack, setCanGoBack] = useState(false);
   const appUrl = process.env.EXPO_PUBLIC_APP_URL || "https://bookzenvo.com";
+  const workspaceUrl = `${appUrl.replace(/\/$/, "")}/dashboard`;
   const projectRef = (process.env.EXPO_PUBLIC_SUPABASE_URL || "").match(/^https?:\/\/([^.]+)\./)?.[1] || "";
   const storageKey = projectRef ? `sb-${projectRef}-auth-token` : "";
   const sessionJson = JSON.stringify(session);
@@ -193,12 +198,51 @@ function WebWorkspace({ session }: { session: Session }) {
     true;
   `;
 
+  const isWorkspaceUrl = (url: string) => {
+    try {
+      return new URL(url).origin === new URL(appUrl).origin;
+    } catch {
+      return false;
+    }
+  };
+
+  const openLink = async (url: string) => {
+    if (isWorkspaceUrl(url)) {
+      webViewRef.current?.injectJavaScript(`window.location.assign(${JSON.stringify(url)}); true;`);
+      return;
+    }
+
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Could not open link", "Please try again in your browser.");
+    }
+  };
+
+  const retryWorkspace = () => {
+    setFailed(false);
+    setCanGoBack(false);
+    setWebViewKey((value) => value + 1);
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (!canGoBack) return false;
+      webViewRef.current?.goBack();
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [canGoBack]);
+
   const handleWebMessage = async ({ nativeEvent }: { nativeEvent: { data: string } }) => {
     try {
       const message = JSON.parse(nativeEvent.data);
       if (message?.type !== "open-external" || typeof message.url !== "string") return;
       if (!/^https?:\/\//i.test(message.url)) return;
-      await Linking.openURL(message.url);
+      await openLink(message.url);
     } catch {
       // Ignore messages from third-party scripts that are not navigation requests.
     }
@@ -212,7 +256,7 @@ function WebWorkspace({ session }: { session: Session }) {
           <Text style={styles.webErrorWordmark}>Bookzenvo.</Text>
           <Text style={styles.webErrorTitle}>Bookzenvo could not load</Text>
           <Text style={styles.webErrorText}>Check your connection, then try opening the workspace again.</Text>
-          <Pressable style={styles.webRetry} onPress={() => setFailed(false)}>
+          <Pressable style={styles.webRetry} onPress={retryWorkspace}>
             <Text style={styles.primaryButtonText}>Try again</Text>
           </Pressable>
         </View>
@@ -224,7 +268,9 @@ function WebWorkspace({ session }: { session: Session }) {
     <SafeAreaView style={styles.webSafeArea}>
       <StatusBar barStyle="dark-content" />
       <WebView
-        source={{ uri: `${appUrl.replace(/\/$/, "")}/dashboard` }}
+        key={webViewKey}
+        ref={webViewRef}
+        source={{ uri: workspaceUrl }}
         style={styles.webView}
         javaScriptEnabled
         domStorageEnabled
@@ -232,6 +278,7 @@ function WebWorkspace({ session }: { session: Session }) {
         thirdPartyCookiesEnabled
         setSupportMultipleWindows={false}
         startInLoadingState
+        allowsBackForwardNavigationGestures
         injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
         injectedJavaScript={injectedNavigationBridge}
         renderLoading={() => (
@@ -242,7 +289,15 @@ function WebWorkspace({ session }: { session: Session }) {
           </View>
         )}
         onError={() => setFailed(true)}
+        onContentProcessDidTerminate={retryWorkspace}
+        onRenderProcessGone={retryWorkspace}
         onMessage={handleWebMessage}
+        onNavigationStateChange={({ canGoBack: nextCanGoBack }) => setCanGoBack(nextCanGoBack)}
+        onShouldStartLoadWithRequest={({ url }) => {
+          if (url === "about:blank" || isWorkspaceUrl(url)) return true;
+          if (/^https?:\/\//i.test(url)) void openLink(url);
+          return false;
+        }}
         onHttpError={({ nativeEvent }) => {
           if (nativeEvent.statusCode >= 500) setFailed(true);
         }}
