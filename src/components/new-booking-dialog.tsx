@@ -30,6 +30,8 @@ type Service = {
   buffer_before_min: number;
   buffer_after_min: number;
   color: string | null;
+  gap_min?: number | null;
+  active_after_min?: number | null;
 };
 type Staff = { id: string; name: string; business_id?: string };
 
@@ -103,7 +105,7 @@ export function NewBookingDialog({
     (async () => {
       const [staffRes, svcRes, custRes] = await Promise.all([
         prefill?.staffId ? supabase.from("staff").select("id, name, business_id").eq("id", prefill.staffId).maybeSingle() : Promise.resolve({ data: null } as any),
-        prefill?.serviceId ? supabase.from("services").select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color").eq("id", prefill.serviceId).maybeSingle() : Promise.resolve({ data: null } as any),
+        prefill?.serviceId ? supabase.from("services").select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color, gap_min, active_after_min").eq("id", prefill.serviceId).maybeSingle() : Promise.resolve({ data: null } as any),
         prefill?.customerId ? supabase.from("customers").select("id, name, email, phone").eq("id", prefill.customerId).maybeSingle() : Promise.resolve({ data: null } as any),
       ]);
       const st = staffRes?.data ? { id: staffRes.data.id, name: staffRes.data.name, business_id: staffRes.data.business_id } : null;
@@ -152,23 +154,29 @@ export function NewBookingDialog({
       const isCrossBiz = targetBiz !== businessId;
       if (isCustom) {
         const ends_at = new Date(new Date(starts_at).getTime() + customDuration * 60000).toISOString();
-        const { error } = await supabase.from("bookings").insert({
-          business_id: targetBiz,
-          staff_id: staff!.id,
-          service_id: null,
-          customer_id: null,
-          customer_name: customTitle,
-          starts_at,
-          ends_at,
-          price_cents: 0,
-          notes: notes || null,
-          source: "walkin",
-          notify_customer: false,
-          is_custom: true,
-          custom_title: customTitle,
-          custom_color: customColor,
-          status: "confirmed",
-        } as any);
+        const { error } = await supabase.rpc("create_staff_booking", {
+          p_business_id: targetBiz,
+          p_service_id: null,
+          p_staff_id: staff!.id,
+          p_customer_id: null,
+          p_customer_name: customTitle,
+          p_customer_email: null,
+          p_customer_phone: null,
+          p_starts_at: starts_at,
+          p_ends_at: ends_at,
+          p_price_cents: 0,
+          p_amount_paid_cents: 0,
+          p_amount_due_cents: 0,
+          p_notes: notes || null,
+          p_source: "walkin",
+          p_notify_customer: false,
+          p_is_custom: true,
+          p_custom_title: customTitle,
+          p_custom_color: customColor,
+          p_status: "confirmed",
+          p_gap_min: null,
+          p_active_after_min: null,
+        });
         if (error) throw error;
       } else {
         let custId = customer?.id ?? null;
@@ -194,38 +202,47 @@ export function NewBookingDialog({
             custId = ins.id;
           }
         }
-        const ends_at = new Date(new Date(starts_at).getTime() + service!.duration_minutes * 60000).toISOString();
+        const gapMin = service!.gap_min ?? 0;
+        const activeAfterMin = service!.active_after_min ?? 0;
+        const totalMin = service!.duration_minutes + gapMin + activeAfterMin;
+        const ends_at = new Date(new Date(starts_at).getTime() + totalMin * 60000).toISOString();
         // amount_paid_cents is what was actually collected; amount_due_cents
         // is what's left owing. The deposit input is money collected now,
         // so it belongs in amount_paid_cents, not amount_due_cents.
         const amountPaid = paymentStatus === "paid" ? service!.price_cents : paymentStatus === "deposit_paid" ? (depositCents || 0) : 0;
         const amountDue = Math.max(0, service!.price_cents - amountPaid);
-        const { data: ins, error } = await supabase.from("bookings").insert({
-          business_id: targetBiz,
-          service_id: service!.id,
-          staff_id: staff!.id,
-          customer_id: isCrossBiz ? null : custId,
-          customer_name: custName,
-          customer_email: custEmail,
-          customer_phone: custPhone,
-          starts_at,
-          ends_at,
-          price_cents: service!.price_cents,
-          notes: notes || null,
-          source: "walkin",
-          notify_customer: notify,
-          amount_paid_cents: amountPaid,
-          amount_due_cents: amountDue,
-          payment_status: paymentStatus,
-        } as any).select("id").single();
+        const { data: bookingId, error } = await supabase.rpc("create_staff_booking", {
+          p_business_id: targetBiz,
+          p_service_id: service!.id,
+          p_staff_id: staff!.id,
+          p_customer_id: isCrossBiz ? null : custId,
+          p_customer_name: custName,
+          p_customer_email: custEmail,
+          p_customer_phone: custPhone,
+          p_starts_at: starts_at,
+          p_ends_at: ends_at,
+          p_price_cents: service!.price_cents,
+          p_amount_paid_cents: amountPaid,
+          p_amount_due_cents: amountDue,
+          p_notes: notes || null,
+          p_source: "walkin",
+          p_notify_customer: notify,
+          p_is_custom: false,
+          p_custom_title: null,
+          p_custom_color: null,
+          p_status: "confirmed",
+          p_gap_min: service!.gap_min ?? null,
+          p_active_after_min: service!.active_after_min ?? null,
+          p_payment_status: paymentStatus,
+        });
         if (error) throw error;
-        if (notify && custEmail && ins?.id) {
+        if (notify && custEmail && bookingId) {
           // Best-effort — the sweep backstop in /api/cron/send-reminders
           // catches it if this call is dropped.
           fetch("/api/bookings/send-confirmation", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ booking_id: ins.id }),
+            body: JSON.stringify({ booking_id: bookingId }),
           }).catch(() => {});
         }
       }
@@ -233,7 +250,7 @@ export function NewBookingDialog({
       onCreated?.();
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e.message ?? "Could not create booking");
+      toast.error(e.message?.includes("SLOT_TAKEN") ? "That time was just booked — pick another slot." : e.message ?? "Could not create booking");
     } finally {
       setSubmitting(false);
     }
@@ -610,7 +627,7 @@ function ServiceStep({
   const { data: services, isLoading } = useQuery({
     queryKey: ["wi-services", businessId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("services").select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color").eq("business_id", businessId).eq("active", true).order("name");
+      const { data, error } = await supabase.from("services").select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color, gap_min, active_after_min").eq("business_id", businessId).eq("active", true).order("name");
       if (error) throw error;
       return data as Service[];
     },

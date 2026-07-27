@@ -394,17 +394,19 @@ function CalendarPage() {
         ) ?? [],
     );
 
-    const { error } = await supabase
-      .from("bookings")
-      .update({ staff_id: newStaffId, starts_at: newStart.toISOString(), ends_at: newEnd.toISOString() })
-      .eq("id", bookingId);
+    const { error } = await supabase.rpc("move_booking", {
+      p_booking_id: bookingId,
+      p_new_starts_at: newStart.toISOString(),
+      p_new_ends_at: newEnd.toISOString(),
+      p_new_staff_id: newStaffId,
+    });
 
     if (error) {
       qc.setQueryData<any[]>(
         calendarQueryKey,
         (old) => old?.map((x: any) => (x.id === bookingId ? { ...x, ...prev } : x)) ?? [],
       );
-      toast.error(error.message);
+      toast.error(error.message?.includes("SLOT_TAKEN") ? "That time is no longer available." : error.message);
       return;
     }
 
@@ -420,7 +422,13 @@ function CalendarPage() {
             calendarQueryKey,
             (old) => old?.map((x: any) => (x.id === bookingId ? { ...x, ...prev } : x)) ?? [],
           );
-          await supabase.from("bookings").update(prev).eq("id", bookingId);
+          const { error: undoError } = await supabase.rpc("move_booking", {
+            p_booking_id: bookingId,
+            p_new_starts_at: prev.starts_at,
+            p_new_ends_at: prev.ends_at,
+            p_new_staff_id: prev.staff_id,
+          });
+          if (undoError) toast.error("Could not undo — that slot may no longer be free.");
           qc.invalidateQueries({ queryKey: ["calendar"] });
         },
       },
@@ -445,14 +453,19 @@ function CalendarPage() {
       (old) => old?.map((x: any) => (x.id === bookingId ? { ...x, ...next } : x)) ?? [],
     );
 
-    const { error } = await supabase.from("bookings").update(next).eq("id", bookingId);
+    const { error } = await supabase.rpc("move_booking", {
+      p_booking_id: bookingId,
+      p_new_starts_at: next.starts_at,
+      p_new_ends_at: next.ends_at,
+      p_new_staff_id: null,
+    });
 
     if (error) {
       qc.setQueryData<any[]>(
         calendarQueryKey,
         (old) => old?.map((x: any) => (x.id === bookingId ? { ...x, ...prev } : x)) ?? [],
       );
-      toast.error(error.message);
+      toast.error(error.message?.includes("SLOT_TAKEN") ? "That time is no longer available." : error.message);
       return;
     }
 
@@ -467,7 +480,13 @@ function CalendarPage() {
             calendarQueryKey,
             (old) => old?.map((x: any) => (x.id === bookingId ? { ...x, ...prev } : x)) ?? [],
           );
-          await supabase.from("bookings").update(prev).eq("id", bookingId);
+          const { error: undoError } = await supabase.rpc("move_booking", {
+            p_booking_id: bookingId,
+            p_new_starts_at: prev.starts_at,
+            p_new_ends_at: prev.ends_at,
+            p_new_staff_id: null,
+          });
+          if (undoError) toast.error("Could not undo — that slot may no longer be free.");
           qc.invalidateQueries({ queryKey: ["calendar"] });
         },
       },
@@ -618,6 +637,16 @@ function CalendarPage() {
           {selected && (
             <div className="rounded-2xl border bg-secondary/40 p-4 space-y-2 text-sm">
               <DetailRow label="Service" value={selected.services?.name} />
+              {!!(selected.gap_min && selected.active_after_min) && (() => {
+                const returnStart = new Date(new Date(selected.ends_at).getTime() - selected.active_after_min * 60000).toISOString();
+                const firstSegmentEnd = new Date(new Date(returnStart).getTime() - selected.gap_min * 60000).toISOString();
+                return (
+                  <DetailRow
+                    label="Segments"
+                    value={`${fmtTime(selected.starts_at)}–${fmtTime(firstSegmentEnd)}, gap ${selected.gap_min}m, returns ${fmtTime(returnStart)}–${fmtTime(selected.ends_at)}`}
+                  />
+                );
+              })()}
               <DetailRow
                 label="With"
                 value={

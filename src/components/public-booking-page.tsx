@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { expandBookingSegments, expandCandidateSegments, segmentsOverlap } from "@/lib/slots";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +58,8 @@ type Service = {
   description: string | null;
   buffer_before_min?: number | null;
   buffer_after_min?: number | null;
+  gap_min?: number | null;
+  active_after_min?: number | null;
   color?: string | null;
   business_id: string;
 };
@@ -191,7 +194,7 @@ export function PublicBookingPage({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("services")
-        .select("id, name, duration_minutes, price_cents, description, buffer_before_min, buffer_after_min, color, business_id")
+        .select("id, name, duration_minutes, price_cents, description, buffer_before_min, buffer_after_min, gap_min, active_after_min, color, business_id")
         .in("business_id", bizIds)
         .eq("active", true)
         .order("name");
@@ -258,14 +261,14 @@ export function PublicBookingPage({
         supabase.from("business_hours").select("*").eq("business_id", service!.business_id).eq("weekday", date.getDay()).maybeSingle(),
         (supabase as any)
           .from("public_booking_slots")
-          .select("starts_at, ends_at")
+          .select("starts_at, ends_at, gap_min, active_after_min")
           .eq("business_id", service!.business_id)
           .eq("staff_id", staff!.id)
           .gte("starts_at", dayStart.toISOString())
           .lte("starts_at", dayEnd.toISOString()),
         supabase.from("blocked_dates").select("*").eq("business_id", service!.business_id).lt("starts_at", dayEnd.toISOString()).gt("ends_at", dayStart.toISOString()),
       ]);
-      return { hours: hoursR.data, bookings: (bookingsR.data ?? []) as { starts_at: string; ends_at: string }[], blocked: blockedR.data ?? [] };
+      return { hours: hoursR.data, bookings: (bookingsR.data ?? []) as { starts_at: string; ends_at: string; gap_min: number | null; active_after_min: number | null }[], blocked: blockedR.data ?? [] };
     },
   });
 
@@ -274,18 +277,27 @@ export function PublicBookingPage({
     const slotMin = 15;
     const bufBefore = service.buffer_before_min ?? 0;
     const bufAfter = service.buffer_after_min ?? 0;
-    const totalMin = service.duration_minutes + bufBefore + bufAfter;
+    const gapMin = service.gap_min ?? 0;
+    const activeAfterMin = service.active_after_min ?? 0;
+    const totalMin = service.duration_minutes + bufBefore + bufAfter + gapMin + activeAfterMin;
     const [oh, om] = dayData.hours.open_time.split(":").map(Number);
     const [ch, cm] = dayData.hours.close_time!.split(":").map(Number);
     const open = new Date(date); open.setHours(oh, om, 0, 0);
     const close = new Date(date); close.setHours(ch, cm, 0, 0);
     const result: { time: string; iso: string; hour: number }[] = [];
     const now = new Date();
+    const existingSegments = dayData.bookings.map((b) => expandBookingSegments(b));
     for (let t = new Date(open); t.getTime() + totalMin * 60000 <= close.getTime(); t = new Date(t.getTime() + slotMin * 60000)) {
       if (t < now) continue;
-      const slotEnd = new Date(t.getTime() + totalMin * 60000);
-      const conflict = dayData.bookings.some((b) => new Date(b.starts_at) < slotEnd && new Date(b.ends_at) > t);
-      const blocked = dayData.blocked.some((b: any) => (!b.staff_id || b.staff_id === staff?.id) && new Date(b.starts_at) < slotEnd && new Date(b.ends_at) > t);
+      const candidateSegments = expandCandidateSegments(t.getTime(), service);
+      const conflict = existingSegments.some((segs) => segmentsOverlap(candidateSegments, segs));
+      // Same rule as the staff-side slot search: a blocked_dates row only
+      // matters if it overlaps an active segment, not a client's own gap.
+      const blocked = dayData.blocked.some((b: any) => {
+        if (b.staff_id && b.staff_id !== staff?.id) return false;
+        const blockedSeg = [{ start: new Date(b.starts_at).getTime(), end: new Date(b.ends_at).getTime() }];
+        return segmentsOverlap(candidateSegments, blockedSeg);
+      });
       if (!conflict && !blocked) {
         const start = new Date(t.getTime() + bufBefore * 60000);
         result.push({ time: start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), iso: start.toISOString(), hour: start.getHours() });
@@ -352,14 +364,19 @@ export function PublicBookingPage({
     setSubmitting(true);
     try {
       const starts_at = time;
-      const ends_at = new Date(new Date(starts_at).getTime() + service.duration_minutes * 60000).toISOString();
-      const { data: clash } = await (supabase as any)
+      const gapMin = service.gap_min ?? 0;
+      const activeAfterMin = service.active_after_min ?? 0;
+      const totalMin = service.duration_minutes + gapMin + activeAfterMin;
+      const ends_at = new Date(new Date(starts_at).getTime() + totalMin * 60000).toISOString();
+      const { data: clashRows } = await (supabase as any)
         .from("public_booking_slots")
-        .select("staff_id")
+        .select("starts_at, ends_at, gap_min, active_after_min")
         .eq("staff_id", staff.id)
         .lt("starts_at", ends_at)
         .gt("ends_at", starts_at);
-      if (clash && clash.length > 0) {
+      const candidateSegments = expandCandidateSegments(new Date(starts_at).getTime(), service);
+      const clash = (clashRows ?? []).some((b: any) => segmentsOverlap(candidateSegments, expandBookingSegments(b)));
+      if (clash) {
         toast.error("That slot was just taken — pick another.");
         setStep("time");
         setTime(null);
@@ -394,6 +411,8 @@ export function PublicBookingPage({
         p_starts_at: starts_at,
         p_ends_at: ends_at,
         p_notes: info.notes || "",
+        p_gap_min: service.gap_min ?? null,
+        p_active_after_min: service.active_after_min ?? null,
       });
       if (error) throw error;
       setStep("done");

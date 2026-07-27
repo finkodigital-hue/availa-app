@@ -19,21 +19,25 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 });
 
 const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => {
-  const response = await next();
-  const headers = new Headers(response.headers);
+  // `next()` resolves to the middleware context ({ request, pathname,
+  // context, response, ... }), not the Response itself. The actual Response
+  // lives at `.response` — mutate its headers in place rather than
+  // constructing a new Response around it. Streaming SSR responses are
+  // tracked by object identity downstream (see executeMiddleware's
+  // getFinalResponse in @tanstack/start-server-core); replacing the Response
+  // object breaks that identity check, causing the framework to dispose the
+  // in-flight stream and fall back to an empty body on every request.
+  const ctx = await next();
+  const response = ctx.response;
 
-  headers.set("Content-Security-Policy", "base-uri 'self'; frame-ancestors 'none'; object-src 'none'");
-  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("X-Frame-Options", "DENY");
-  headers.set("Permissions-Policy", "camera=(), geolocation=(), microphone=()");
-  headers.set("Strict-Transport-Security", "max-age=31536000");
+  response.headers.set("Content-Security-Policy", "base-uri 'self'; frame-ancestors 'none'; object-src 'none'");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("Permissions-Policy", "camera=(), geolocation=(), microphone=()");
+  response.headers.set("Strict-Transport-Security", "max-age=31536000");
 
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
+  return ctx;
 });
 
 export const startInstance = createStart(() => ({
