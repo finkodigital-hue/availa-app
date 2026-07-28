@@ -458,6 +458,12 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
           </View>
         )}
         onError={() => setFailed(true)}
+        onLoadEnd={() => {
+          // iOS may finish initial page setup after the first injection. Send
+          // the native session again once the workspace is ready so protected
+          // actions such as taking a payment always receive an auth header.
+          webViewRef.current?.injectJavaScript(syncWorkspaceSession);
+        }}
         onContentProcessDidTerminate={retryWorkspace}
         onRenderProcessGone={retryWorkspace}
         onMessage={handleWebMessage}
