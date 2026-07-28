@@ -24,15 +24,11 @@ function parseDotEnv(source) {
 const localEnv = parseDotEnv(await readFile(new URL("../.env", import.meta.url), "utf8").catch(() => ""));
 const requiredPublicVariables = ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"];
 const publicVariables = Object.fromEntries(
-  requiredPublicVariables.map((name) => [name, process.env[name] || localEnv[name]]),
+  requiredPublicVariables.flatMap((name) => {
+    const value = process.env[name] || localEnv[name];
+    return value ? [[name, value]] : [];
+  }),
 );
-const missing = requiredPublicVariables.filter((name) => !publicVariables[name]);
-
-if (missing.length) {
-  throw new Error(
-    `Cloudflare build is missing ${missing.join(", ")}. Refusing to deploy a Worker that would take Bookzenvo offline.`,
-  );
-}
 
 config.name = "availa-app";
 // Cloudflare rejects dates newer than the current platform date. Nitro may
@@ -40,7 +36,12 @@ config.name = "availa-app";
 // compatibility date for reliable manual and Git deployments.
 config.compatibility_date = "2026-07-23";
 config.keep_vars = true;
-config.vars = { ...(config.vars ?? {}), ...publicVariables };
+// A Git build does not have the local .env file. When values are available,
+// include them for a local/manual deployment; when they are not, keep_vars
+// preserves the production bindings managed in the Cloudflare dashboard.
+if (Object.keys(publicVariables).length > 0) {
+  config.vars = { ...(config.vars ?? {}), ...publicVariables };
+}
 
 await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
 
