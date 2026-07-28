@@ -95,6 +95,10 @@ const MOBILE_WORKSPACE_ROUTES = new Set([
   "page-builder",
   "help",
   "import",
+  "assistant",
+  "onboarding",
+  "preview",
+  "block-preview",
 ]);
 
 function workspacePathFromDeepLink(url: string) {
