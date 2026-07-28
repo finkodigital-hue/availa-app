@@ -331,15 +331,19 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     }
   };
 
+  const isSupportedExternalUrl = (url: string) => /^(https?:|mailto:|tel:|sms:)/i.test(url);
+
   const openLink = async (url: string) => {
     if (isWorkspaceUrl(url)) {
       webViewRef.current?.injectJavaScript(`window.location.assign(${JSON.stringify(url)}); true;`);
       return;
     }
 
+    if (!isSupportedExternalUrl(url)) return;
+
     try {
       await Linking.openURL(url);
-      returningFromExternalLink.current = true;
+      if (/^https?:\/\//i.test(url)) returningFromExternalLink.current = true;
     } catch {
       Alert.alert("Could not open link", "Please try again in your browser.");
     }
@@ -399,7 +403,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         return;
       }
       if (message?.type !== "open-external" || typeof message.url !== "string") return;
-      if (!/^https?:\/\//i.test(message.url)) return;
+      if (!isSupportedExternalUrl(message.url)) return;
       await openLink(message.url);
     } catch {
       // Ignore messages from third-party scripts that are not navigation requests.
@@ -470,7 +474,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         onNavigationStateChange={({ canGoBack: nextCanGoBack }) => setCanGoBack(nextCanGoBack)}
         onShouldStartLoadWithRequest={({ url }) => {
           if (url === "about:blank" || isWorkspaceUrl(url)) return true;
-          if (/^https?:\/\//i.test(url)) void openLink(url);
+          if (isSupportedExternalUrl(url)) void openLink(url);
           return false;
         }}
         onHttpError={({ nativeEvent }) => {
