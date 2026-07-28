@@ -36,8 +36,14 @@ export function resolveDayPeriods(opts: {
   bizHours?: WeekdayOverride;
 }): DayPeriod[] {
   const { weekday, staffHours, bizPeriods, bizHours } = opts;
-  if (staffHours && !staffHours.closed && staffHours.open_time && staffHours.close_time) {
-    return [{ open_time: staffHours.open_time, close_time: staffHours.close_time }];
+  // An explicit staff-hours row always wins. In particular, a closed row is
+  // a deliberate day off; it must not fall back to the business schedule.
+  if (staffHours) {
+    if (staffHours.closed) return [];
+    if (staffHours.open_time && staffHours.close_time) {
+      return [{ open_time: staffHours.open_time, close_time: staffHours.close_time }];
+    }
+    return [];
   }
   if (bizPeriods.length > 0) return bizPeriods;
   if (bizHours && !bizHours.closed && bizHours.open_time && bizHours.close_time) {

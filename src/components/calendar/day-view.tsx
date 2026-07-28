@@ -21,6 +21,7 @@ export function DayView({
   onMove,
   onResize,
   fullscreen = false,
+  emptyMessage = "Add a team member on the Staff page to start scheduling.",
 }: {
   staff: any[];
   availability?: Map<string, { periods: DayPeriod[]; dayOff: boolean }>;
@@ -33,6 +34,7 @@ export function DayView({
   onMove: (id: string, newStaffId: string, newStart: Date) => void;
   onResize: (id: string, edge: "start" | "end", newIso: string) => void;
   fullscreen?: boolean;
+  emptyMessage?: string;
 }) {
   const { START_HOUR, END_HOUR } = useHours();
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
@@ -166,7 +168,7 @@ export function DayView({
   if (staff.length === 0)
     return (
       <div className="rounded-3xl border border-dashed bg-card/40 p-12 text-center text-sm text-muted-foreground">
-        Add a team member on the Staff page to start scheduling.
+        {emptyMessage}
       </div>
     );
 

@@ -335,6 +335,19 @@ function CalendarPage() {
     return map;
   }, [view, dayStaffHours, dayBizPeriods, dayBizHours, dayViewStaff, dayWeekday]);
 
+  // Staff with an explicit day off should not take up a calendar column.
+  // Keep someone visible if they already have a booking that day so existing
+  // appointments never disappear from the team's view.
+  const visibleDayStaff = useMemo(() => {
+    if (view !== "day") return dayViewStaff;
+    return dayViewStaff.filter((staffMember: any) => {
+      const hasBooking = (bookings ?? []).some(
+        (booking: any) => booking.staff_id === staffMember.id && booking.status !== "cancelled",
+      );
+      return hasBooking || !staffAvailability.get(staffMember.id)?.dayOff;
+    });
+  }, [view, dayViewStaff, staffAvailability, bookings]);
+
   // Shared guard for moves/resizes landing outside a staff member's working
   // hours or on top of a time-off block — the Day view grid already blocks
   // these interactions visually, but drag/resize can still commit a change
@@ -599,7 +612,7 @@ function CalendarPage() {
 
       {view === "day" && (
         <DayView
-          staff={dayViewStaff}
+          staff={visibleDayStaff}
           availability={staffAvailability}
           bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
           blocked={blocked ?? []}
@@ -610,6 +623,7 @@ function CalendarPage() {
           onMove={dropMove}
           onResize={resizeBooking}
           fullscreen={calendarIsExpanded}
+          emptyMessage="Nobody is scheduled to work on this day."
         />
       )}
 

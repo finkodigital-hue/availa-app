@@ -1,16 +1,30 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Building2, Clock3, Loader2, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WEEKDAYS } from "@/lib/format";
 import { toast } from "sonner";
 
-type Row = { id?: string; staff_id: string; business_id: string; weekday: number; open_time: string | null; close_time: string | null; closed: boolean };
+type Mode = "business" | "custom" | "off";
+type Row = {
+  id?: string;
+  staff_id: string;
+  business_id: string;
+  weekday: number;
+  open_time: string | null;
+  close_time: string | null;
+  closed: boolean;
+  mode: Mode;
+};
 
+/**
+ * Staff hours deliberately use three states, rather than a single vague
+ * on/off switch. A missing staff_hours row means “follow the business”, an
+ * open row is a custom shift, and a closed row is a genuine day off.
+ */
 export function StaffHoursEditor({ staffId, businessId }: { staffId: string; businessId: string }) {
   const qc = useQueryClient();
   const [rows, setRows] = useState<Row[]>([]);
@@ -19,66 +33,182 @@ export function StaffHoursEditor({ staffId, businessId }: { staffId: string; bus
   const { data, isLoading } = useQuery({
     queryKey: ["staff-hours", staffId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("staff_hours").select("*").eq("staff_id", staffId).order("weekday");
+      const { data, error } = await supabase
+        .from("staff_hours")
+        .select("*")
+        .eq("staff_id", staffId)
+        .order("weekday");
       if (error) throw error;
       return data ?? [];
     },
   });
 
   useEffect(() => {
-    const map = new Map<number, any>((data ?? []).map((r: any) => [r.weekday, r]));
-    setRows(Array.from({ length: 7 }, (_, i) => map.get(i) ?? {
-      staff_id: staffId, business_id: businessId, weekday: i,
-      open_time: "09:00", close_time: "17:00", closed: true,
-    }));
+    const byWeekday = new Map<number, any>((data ?? []).map((row: any) => [row.weekday, row]));
+    setRows(
+      Array.from({ length: 7 }, (_, weekday) => {
+        const existing = byWeekday.get(weekday);
+        if (!existing) {
+          return {
+            staff_id: staffId,
+            business_id: businessId,
+            weekday,
+            open_time: "09:00",
+            close_time: "17:00",
+            closed: false,
+            mode: "business" as const,
+          };
+        }
+        return {
+          ...existing,
+          open_time: existing.open_time?.slice(0, 5) ?? "09:00",
+          close_time: existing.close_time?.slice(0, 5) ?? "17:00",
+          mode: existing.closed ? ("off" as const) : ("custom" as const),
+        };
+      }),
+    );
   }, [data, staffId, businessId]);
 
+  const update = (index: number, patch: Partial<Row>) => {
+    setRows((current) =>
+      current.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)),
+    );
+  };
+
   const save = async () => {
-    for (const r of rows) {
-      if (!r.closed && r.open_time && r.close_time && r.open_time >= r.close_time) {
-        toast.error(`${WEEKDAYS[r.weekday]}: opening time must be before closing time.`);
+    for (const row of rows) {
+      if (
+        row.mode === "custom" &&
+        (!row.open_time || !row.close_time || row.open_time >= row.close_time)
+      ) {
+        toast.error(`${WEEKDAYS[row.weekday]}: opening time must be before closing time.`);
         return;
       }
     }
+
     setSaving(true);
     try {
-      // upsert each row
-      for (const r of rows) {
-        const payload: any = {
-          staff_id: r.staff_id, business_id: r.business_id, weekday: r.weekday,
-          open_time: r.closed ? null : r.open_time, close_time: r.closed ? null : r.close_time, closed: r.closed,
-        };
-        if (r.id) {
-          await supabase.from("staff_hours").update(payload).eq("id", r.id);
-        } else {
-          await supabase.from("staff_hours").upsert(payload, { onConflict: "staff_id,weekday" });
+      for (const row of rows) {
+        // Business hours is represented by no row at all. Deleting a saved
+        // override means that moving back to this option works immediately.
+        if (row.mode === "business") {
+          if (row.id) {
+            const { error } = await supabase.from("staff_hours").delete().eq("id", row.id);
+            if (error) throw error;
+          }
+          continue;
         }
+
+        const payload = {
+          staff_id: row.staff_id,
+          business_id: row.business_id,
+          weekday: row.weekday,
+          open_time: row.mode === "off" ? null : row.open_time,
+          close_time: row.mode === "off" ? null : row.close_time,
+          closed: row.mode === "off",
+        };
+        const result = row.id
+          ? await supabase.from("staff_hours").update(payload).eq("id", row.id)
+          : await supabase.from("staff_hours").upsert(payload, { onConflict: "staff_id,weekday" });
+        if (result.error) throw result.error;
       }
-      toast.success("Working hours saved");
+
+      toast.success("Working days saved");
       qc.invalidateQueries({ queryKey: ["staff-hours", staffId] });
-    } catch (e: any) {
-      toast.error(e.message ?? "Could not save");
-    } finally { setSaving(false); }
+      qc.invalidateQueries({ queryKey: ["calendar-day-staff-hours"] });
+      qc.invalidateQueries({ queryKey: ["slots-day"] });
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not save working days");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (isLoading) return <div className="space-y-2">{Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}</div>;
+  if (isLoading)
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 7 }).map((_, index) => (
+          <Skeleton key={index} className="h-16 w-full" />
+        ))}
+      </div>
+    );
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">Overrides business hours for this staff member. Leave all days closed to inherit business hours.</p>
-      <div className="space-y-1.5">
-        {rows.map((r, i) => (
-          <div key={r.weekday} className={`grid grid-cols-[72px_1fr_1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 ${r.closed ? "opacity-60" : ""}`}>
-            <span className="text-xs font-medium">{WEEKDAYS[r.weekday]}</span>
-            <Input type="time" disabled={r.closed} value={r.open_time?.slice(0, 5) ?? ""} onChange={(e) => { const c = [...rows]; c[i] = { ...r, open_time: e.target.value }; setRows(c); }} className="h-8 tabular-nums text-xs" />
-            <Input type="time" disabled={r.closed} value={r.close_time?.slice(0, 5) ?? ""} onChange={(e) => { const c = [...rows]; c[i] = { ...r, close_time: e.target.value }; setRows(c); }} className="h-8 tabular-nums text-xs" />
-            <Switch checked={!r.closed} onCheckedChange={(v) => { const c = [...rows]; c[i] = { ...r, closed: !v }; setRows(c); }} />
+    <div className="space-y-4">
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Set this person's schedule one day at a time. <b className="text-foreground">Business</b>{" "}
+        follows your studio hours; <b className="text-foreground">Day off</b> hides them from that
+        day's availability.
+      </p>
+      <div className="space-y-2">
+        {rows.map((row, index) => (
+          <div
+            key={row.weekday}
+            className={`rounded-xl border bg-card p-3 transition-colors ${row.mode === "off" ? "bg-muted/25" : ""}`}
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm font-semibold">{WEEKDAYS[row.weekday]}</span>
+              <div className="grid grid-cols-3 rounded-lg border bg-background p-0.5 text-[11px]">
+                {(
+                  [
+                    ["business", Building2, "Business"],
+                    ["custom", Clock3, "Custom"],
+                    ["off", Moon, "Day off"],
+                  ] as const
+                ).map(([mode, Icon, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => update(index, { mode, closed: mode === "off" })}
+                    className={`inline-flex min-h-8 items-center justify-center gap-1 rounded-md px-2 font-medium transition-colors ${
+                      row.mode === mode
+                        ? "bg-foreground text-background shadow-sm"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3 w-3" /> {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {row.mode === "custom" && (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <label className="space-y-1 text-[11px] text-muted-foreground">
+                  Starts
+                  <Input
+                    type="time"
+                    value={row.open_time?.slice(0, 5) ?? ""}
+                    onChange={(event) => update(index, { open_time: event.target.value })}
+                    className="h-9 tabular-nums text-sm"
+                  />
+                </label>
+                <label className="space-y-1 text-[11px] text-muted-foreground">
+                  Finishes
+                  <Input
+                    type="time"
+                    value={row.close_time?.slice(0, 5) ?? ""}
+                    onChange={(event) => update(index, { close_time: event.target.value })}
+                    className="h-9 tabular-nums text-sm"
+                  />
+                </label>
+              </div>
+            )}
+            {row.mode === "business" && (
+              <p className="mt-2 text-xs text-muted-foreground">Uses your business hours.</p>
+            )}
+            {row.mode === "off" && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Not bookable. They are hidden from the day calendar unless they already have a
+                booking.
+              </p>
+            )}
           </div>
         ))}
       </div>
       <Button onClick={save} disabled={saving} size="sm">
-        {saving && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
-        Save hours
+        {saving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+        Save working days
       </Button>
     </div>
   );
