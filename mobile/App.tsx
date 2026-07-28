@@ -263,6 +263,17 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
           send(link.href);
         }
       }, true);
+
+      // A network or deployment failure can occasionally leave a WebView with
+      // an empty document instead of raising a native loading error. Surface a
+      // useful retry screen in that case rather than a misleading white page.
+      window.setTimeout(function () {
+        var root = document.getElementById("root");
+        var hasWorkspace = Boolean(root && root.childElementCount > 0);
+        if (!hasWorkspace && window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: "workspace-empty" }));
+        }
+      }, 7000);
       return true;
     })();
     true;
@@ -318,6 +329,10 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   const handleWebMessage = async ({ nativeEvent }: { nativeEvent: { data: string } }) => {
     try {
       const message = JSON.parse(nativeEvent.data);
+      if (message?.type === "workspace-empty") {
+        setFailed(true);
+        return;
+      }
       if (message?.type !== "open-external" || typeof message.url !== "string") return;
       if (!/^https?:\/\//i.test(message.url)) return;
       await openLink(message.url);
