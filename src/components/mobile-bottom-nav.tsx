@@ -17,6 +17,11 @@ const TABS = [
 export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
   const path = useRouterState({ select: (s) => s.location.pathname });
 
+  // The drawer owns the entire phone screen while it is open. Hiding the
+  // navigation here prevents the floating action button or the tab bar from
+  // appearing above the drawer on slower devices during its transition.
+  if (menuOpen) return null;
+
   return (
     <>
       {/* Glass bar */}
@@ -51,21 +56,19 @@ export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
 
       {/* Floating Add — separate fixed element so it can never be clipped or
           covered by the bar. Sits above the bar with its own z-index. */}
-      {!menuOpen && (
-        <button
-          type="button"
-          onClick={onAdd}
-          aria-label="New booking"
-          className="md:hidden fixed left-1/2 -translate-x-1/2 z-50 h-14 w-14 rounded-full grid place-items-center text-primary-foreground bg-primary active:scale-95 transition-transform duration-150"
-          style={{
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 2.75rem)",
-            boxShadow:
-              "0 14px 32px -10px color-mix(in oklab, var(--color-primary) 55%, transparent), 0 6px 14px -4px oklch(0 0 0 / 0.22)",
-          }}
-        >
-          <Plus className="h-6 w-6" strokeWidth={2.4} />
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={onAdd}
+        aria-label="New booking"
+        className="md:hidden fixed left-1/2 -translate-x-1/2 z-50 h-14 w-14 rounded-full grid place-items-center text-primary-foreground bg-primary active:scale-95 transition-transform duration-150"
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 2.75rem)",
+          boxShadow:
+            "0 14px 32px -10px color-mix(in oklab, var(--color-primary) 55%, transparent), 0 6px 14px -4px oklch(0 0 0 / 0.22)",
+        }}
+      >
+        <Plus className="h-6 w-6" strokeWidth={2.4} />
+      </button>
     </>
   );
 }
