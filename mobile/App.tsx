@@ -267,6 +267,31 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         }
       }, true);
 
+      // The workspace owns its own browser session. When its sign-out action
+      // clears that session, sign out the native Supabase client too so the
+      // phone cannot silently reopen an authenticated workspace.
+      var authStorageKey = ${storageKey ? JSON.stringify(storageKey) : "null"};
+      if (authStorageKey && typeof Storage !== "undefined") {
+        var notifyNativeSignOut = function () {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: "workspace-signed-out" }));
+          }
+        };
+        var originalRemoveItem = Storage.prototype.removeItem;
+        Storage.prototype.removeItem = function (key) {
+          var result = originalRemoveItem.apply(this, arguments);
+          if (key === authStorageKey) notifyNativeSignOut();
+          return result;
+        };
+        var originalClear = Storage.prototype.clear;
+        Storage.prototype.clear = function () {
+          var hadWorkspaceSession = Boolean(this.getItem(authStorageKey));
+          var result = originalClear.apply(this, arguments);
+          if (hadWorkspaceSession) notifyNativeSignOut();
+          return result;
+        };
+      }
+
       // A network or deployment failure can occasionally leave a WebView with
       // an empty document instead of raising a native loading error. Surface a
       // useful retry screen in that case rather than a misleading white page.
@@ -351,6 +376,10 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       const message = JSON.parse(nativeEvent.data);
       if (message?.type === "workspace-empty") {
         setFailed(true);
+        return;
+      }
+      if (message?.type === "workspace-signed-out") {
+        await supabase?.auth.signOut();
         return;
       }
       if (message?.type !== "open-external" || typeof message.url !== "string") return;
