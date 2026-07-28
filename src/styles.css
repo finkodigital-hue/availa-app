@@ -165,8 +165,9 @@
 
 @layer base {
   * { border-color: var(--color-border); }
-  html { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-  body { background-color: var(--color-background); color: var(--color-foreground); font-feature-settings: "ss01", "cv11"; }
+  html { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; overflow-x: hidden; }
+  body { background-color: var(--color-background); color: var(--color-foreground); font-feature-settings: "ss01", "cv11"; overflow-x: hidden; }
+  #root { min-width: 0; max-width: 100%; }
   h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.022em; font-feature-settings: "ss01"; }
   ::selection { background: color-mix(in oklab, var(--color-primary) 25%, transparent); }
 }

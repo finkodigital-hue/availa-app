@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { fmtMoney as formatMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
 import { startBalanceCheckout, takeSavedBalancePayment } from "@/lib/stripe-connect.functions";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
   component: BookingsPage,
@@ -60,14 +61,15 @@ function BookingsPage() {
   const collectBalance = async () => {
     if (!selected) return;
     try {
-      const savedCardPayment = await takeSavedBalancePayment({ data: { bookingId: selected.id } });
+      const headers = await getServerFnAuthHeaders();
+      const savedCardPayment = await takeSavedBalancePayment({ data: { bookingId: selected.id }, headers });
       if (savedCardPayment.charged) {
         toast.success("The saved card was charged successfully.");
         setSelected(null);
         qc.invalidateQueries({ queryKey: ["bookings-list", bid] });
         return;
       }
-      const { checkoutUrl } = await startBalanceCheckout({ data: { bookingId: selected.id } });
+      const { checkoutUrl } = await startBalanceCheckout({ data: { bookingId: selected.id }, headers });
       window.open(checkoutUrl, "_blank", "noopener,noreferrer");
       toast.message("The card needs approval or isn't saved yet, so Stripe Checkout opened in a new tab.");
     } catch (error: any) {
