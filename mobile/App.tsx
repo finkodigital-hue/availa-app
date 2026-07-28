@@ -434,6 +434,10 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         domStorageEnabled
         sharedCookiesEnabled
         thirdPartyCookiesEnabled
+        // The workspace changes often while Bookzenvo is being built. Avoid
+        // a stale cached shell pairing with a newer deployed script and
+        // presenting as a blank app after a release.
+        cacheEnabled={false}
         setSupportMultipleWindows={false}
         startInLoadingState
         bounces={false}
