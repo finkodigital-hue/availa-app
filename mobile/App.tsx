@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -18,6 +17,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { Session } from "@supabase/supabase-js";
 import * as FileSystem from "expo-file-system/legacy";
@@ -197,16 +197,20 @@ export default function App() {
     };
   }, []);
 
-  if (!fontsLoaded) return <LoadingScreen label="Opening Bookzenvo" />;
-  if (!isSupabaseConfigured) return <ConfigurationRequired />;
-  if (loading) return <LoadingScreen label="Opening Bookzenvo" />;
-  if (resettingPassword) return <NewPasswordScreen onComplete={() => setResettingPassword(false)} />;
-  if (!session) return <SignInScreen />;
+  let content: ReactNode;
+  if (!fontsLoaded) content = <LoadingScreen label="Opening Bookzenvo" />;
+  else if (!isSupabaseConfigured) content = <ConfigurationRequired />;
+  else if (loading) content = <LoadingScreen label="Opening Bookzenvo" />;
+  else if (resettingPassword) content = <NewPasswordScreen onComplete={() => setResettingPassword(false)} />;
+  else if (!session) content = <SignInScreen />;
+  else {
+    // Keep the mobile app on the same workspace as the website. This gives owners
+    // the complete, live dashboard (including editing, payments, stock, reports,
+    // settings and help) instead of a second, partial implementation.
+    content = <WebWorkspace session={session} workspacePath={workspacePath} />;
+  }
 
-  // Keep the mobile app on the same workspace as the website. This gives owners
-  // the complete, live dashboard (including editing, payments, stock, reports,
-  // settings and help) instead of a second, partial implementation.
-  return <WebWorkspace session={session} workspacePath={workspacePath} />;
+  return <SafeAreaProvider>{content}</SafeAreaProvider>;
 }
 
 function WebWorkspace({ session, workspacePath }: { session: Session; workspacePath: string }) {
