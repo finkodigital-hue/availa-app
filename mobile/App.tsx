@@ -421,6 +421,9 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
           <Pressable style={styles.webRetry} onPress={retryWorkspace}>
             <Text style={styles.primaryButtonText}>Try again</Text>
           </Pressable>
+          <Pressable style={styles.webBrowserFallback} onPress={() => void Linking.openURL(workspaceUrl)}>
+            <Text style={styles.webBrowserFallbackText}>Open in browser</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -1020,6 +1023,8 @@ const styles = StyleSheet.create({
   webErrorTitle: { color: PALETTE.ink, fontFamily: "CormorantGaramond_500Medium", fontSize: 34, marginTop: 28, textAlign: "center" },
   webErrorText: { color: PALETTE.muted, fontFamily: "DMSans_400Regular", fontSize: 15, lineHeight: 22, marginTop: 10, maxWidth: 320, textAlign: "center" },
   webRetry: { minWidth: 150, height: 52, borderRadius: 10, backgroundColor: PALETTE.ink, alignItems: "center", justifyContent: "center", marginTop: 25 },
+  webBrowserFallback: { minWidth: 150, height: 48, alignItems: "center", justifyContent: "center", marginTop: 4 },
+  webBrowserFallbackText: { color: PALETTE.ink, fontFamily: "DMSans_600SemiBold", fontSize: 15, textDecorationLine: "underline" },
   centered: { flex: 1, padding: 32, justifyContent: "center", alignItems: "center", backgroundColor: PALETTE.ink },
   wordmark: { fontSize: 27, fontFamily: "CormorantGaramond_600SemiBold", color: PALETTE.white },
   loadingText: { marginTop: 16, color: "#d8d0c6", fontSize: 15 },
