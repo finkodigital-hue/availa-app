@@ -14,23 +14,45 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 // owner session after the app is restarted.
 const MAX_SECURE_STORE_CHUNK_SIZE = 1_700;
 const CHUNK_MANIFEST_PREFIX = "bookzenvo-secure-chunks:v1:";
-const chunkKey = (key: string, index: number) => `${key}:chunk:${index}`;
+// SecureStore only accepts alphanumeric characters plus `.`, `-` and `_` in
+// keys. The original colon-delimited chunk names worked until a large session
+// was restored on iOS, then left the app stuck on its loading screen.
+const chunkKey = (key: string, index: number) => `${key}.chunk.${index}`;
+
+const safelyRead = async (key: string) => {
+  try {
+    return await SecureStore.getItemAsync(key);
+  } catch {
+    // An older version wrote invalid chunk names on iOS. Treat those entries
+    // as an expired local session so the user can still open and sign in.
+    return null;
+  }
+};
+
+const safelyDelete = async (key: string) => {
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch {
+    // Old invalid keys cannot be removed by iOS Keychain. They are ignored
+    // and the current, valid key format is used from now on.
+  }
+};
 
 const secureStore = {
   async getItem(key: string) {
-    const value = await SecureStore.getItemAsync(key);
+    const value = await safelyRead(key);
     if (!value?.startsWith(CHUNK_MANIFEST_PREFIX)) return value;
 
     const chunkCount = Number(value.slice(CHUNK_MANIFEST_PREFIX.length));
     if (!Number.isInteger(chunkCount) || chunkCount < 1) return null;
 
     const chunks = await Promise.all(
-      Array.from({ length: chunkCount }, (_, index) => SecureStore.getItemAsync(chunkKey(key, index))),
+      Array.from({ length: chunkCount }, (_, index) => safelyRead(chunkKey(key, index))),
     );
     return chunks.every((chunk): chunk is string => typeof chunk === "string") ? chunks.join("") : null;
   },
   async setItem(key: string, value: string) {
-    const previous = await SecureStore.getItemAsync(key);
+    const previous = await safelyRead(key);
     const previousChunkCount = previous?.startsWith(CHUNK_MANIFEST_PREFIX)
       ? Number(previous.slice(CHUNK_MANIFEST_PREFIX.length))
       : 0;
@@ -39,7 +61,7 @@ const secureStore = {
       await SecureStore.setItemAsync(key, value);
       if (Number.isInteger(previousChunkCount) && previousChunkCount > 0) {
         await Promise.all(
-          Array.from({ length: previousChunkCount }, (_, index) => SecureStore.deleteItemAsync(chunkKey(key, index))),
+          Array.from({ length: previousChunkCount }, (_, index) => safelyDelete(chunkKey(key, index))),
         );
       }
       return;
@@ -54,23 +76,20 @@ const secureStore = {
 
     if (Number.isInteger(previousChunkCount) && previousChunkCount > chunks.length) {
       await Promise.all(
-        Array.from(
-          { length: previousChunkCount - chunks.length },
-          (_, index) => SecureStore.deleteItemAsync(chunkKey(key, chunks.length + index)),
-        ),
+      Array.from({ length: previousChunkCount - chunks.length }, (_, index) => safelyDelete(chunkKey(key, chunks.length + index))),
       );
     }
   },
   async removeItem(key: string) {
-    const value = await SecureStore.getItemAsync(key);
+    const value = await safelyRead(key);
     const chunkCount = value?.startsWith(CHUNK_MANIFEST_PREFIX)
       ? Number(value.slice(CHUNK_MANIFEST_PREFIX.length))
       : 0;
 
-    await SecureStore.deleteItemAsync(key);
+    await safelyDelete(key);
     if (Number.isInteger(chunkCount) && chunkCount > 0) {
       await Promise.all(
-        Array.from({ length: chunkCount }, (_, index) => SecureStore.deleteItemAsync(chunkKey(key, index))),
+        Array.from({ length: chunkCount }, (_,index) => safelyDelete(chunkKey(key, index))),
       );
     }
   },
