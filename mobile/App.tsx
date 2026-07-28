@@ -276,6 +276,13 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         send(url);
         return { closed: false, close: function () {} };
       };
+
+      // Printing is a browser feature, rather than something a WebView can
+      // reliably present. Open the current report in the system browser so
+      // the owner gets the standard iPhone share and Print actions.
+      window.print = function () {
+        send(window.location.href);
+      };
       document.addEventListener("click", function (event) {
         var target = event.target;
         var downloadLink = target && target.closest ? target.closest("a[download]") : null;
