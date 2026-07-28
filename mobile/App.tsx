@@ -456,10 +456,17 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
 
     if (!isSupportedExternalUrl(url)) return;
 
+    // Mark this before handing control to the operating system. On some
+    // phones Linking.openURL can background the app before its promise gets a
+    // chance to resolve, which previously meant a completed Stripe Checkout
+    // could return to an out-of-date booking screen.
+    const shouldRefreshOnReturn = /^https?:\/\//i.test(url);
+    if (shouldRefreshOnReturn) returningFromExternalLink.current = true;
+
     try {
       await Linking.openURL(url);
-      if (/^https?:\/\//i.test(url)) returningFromExternalLink.current = true;
     } catch {
+      if (shouldRefreshOnReturn) returningFromExternalLink.current = false;
       Alert.alert("Could not open link", "Please try again in your browser.");
     }
   };
