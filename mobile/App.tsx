@@ -218,7 +218,23 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     ? `
       (function () {
         try {
-          localStorage.setItem(${JSON.stringify(storageKey)}, ${JSON.stringify(sessionJson)});
+          var key = ${JSON.stringify(storageKey)};
+          var nextValue = ${JSON.stringify(sessionJson)};
+          var previousValue = localStorage.getItem(key);
+          localStorage.setItem(key, nextValue);
+
+          // A WebView is a separate browser context from the native app.
+          // Notify the website's Supabase client as well as updating storage,
+          // so an in-memory browser session is refreshed immediately.
+          if (previousValue !== nextValue && typeof StorageEvent !== "undefined") {
+            window.dispatchEvent(new StorageEvent("storage", {
+              key: key,
+              oldValue: previousValue,
+              newValue: nextValue,
+              storageArea: localStorage,
+              url: window.location.href,
+            }));
+          }
         } catch (error) {
           // The workspace will show its normal sign-in screen if web storage is unavailable.
         }
