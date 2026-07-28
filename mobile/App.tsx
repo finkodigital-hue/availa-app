@@ -20,7 +20,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { Session } from "@supabase/supabase-js";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
+import * as Sharing from "expo-sharing";
 import { useFonts } from "expo-font";
 import { WebView } from "react-native-webview";
 import {
@@ -276,6 +278,34 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       };
       document.addEventListener("click", function (event) {
         var target = event.target;
+        var downloadLink = target && target.closest ? target.closest("a[download]") : null;
+        if (downloadLink && downloadLink.href) {
+          event.preventDefault();
+          var reader = new FileReader();
+          fetch(downloadLink.href)
+            .then(function (response) { return response.blob(); })
+            .then(function (blob) {
+              if (blob.size > 5 * 1024 * 1024) throw new Error("This export is too large to share from the app.");
+              reader.onload = function () {
+                var result = typeof reader.result === "string" ? reader.result : "";
+                var base64 = result.split(",")[1];
+                if (!base64 || !window.ReactNativeWebView) return;
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: "download-file",
+                  filename: downloadLink.getAttribute("download") || "bookzenvo-export.csv",
+                  mimeType: blob.type || "text/csv",
+                  base64: base64
+                }));
+              };
+              reader.readAsDataURL(blob);
+            })
+            .catch(function () {
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: "download-failed" }));
+              }
+            });
+          return;
+        }
         var link = target && target.closest ? target.closest("a[target='_blank']") : null;
         if (link && link.href) {
           event.preventDefault();
@@ -355,6 +385,21 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     setWebViewKey((value) => value + 1);
   };
 
+  const saveWorkspaceDownload = async (filename: string, base64: string, mimeType: string) => {
+    const directory = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+    if (!directory) throw new Error("No local file storage is available.");
+
+    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "-") || "bookzenvo-export.csv";
+    const uri = `${directory}${safeFilename}`;
+    await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
+
+    if (!(await Sharing.isAvailableAsync())) {
+      throw new Error("File sharing is not available on this device.");
+    }
+
+    await Sharing.shareAsync(uri, { mimeType, UTI: mimeType === "text/csv" ? "public.comma-separated-values-text" : undefined });
+  };
+
   useEffect(() => {
     if (Platform.OS !== "android") return;
 
@@ -400,6 +445,18 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       }
       if (message?.type === "workspace-signed-out") {
         await supabase?.auth.signOut();
+        return;
+      }
+      if (message?.type === "download-file" && typeof message.filename === "string" && typeof message.base64 === "string") {
+        try {
+          await saveWorkspaceDownload(message.filename, message.base64, typeof message.mimeType === "string" ? message.mimeType : "text/csv");
+        } catch {
+          Alert.alert("Could not save export", "Please try exporting it again, or open Bookzenvo in your browser.");
+        }
+        return;
+      }
+      if (message?.type === "download-failed") {
+        Alert.alert("Could not prepare export", "Please try again, or open Bookzenvo in your browser.");
         return;
       }
       if (message?.type !== "open-external" || typeof message.url !== "string") return;
