@@ -23,9 +23,18 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-secure-store",
-      "expo-font"
-    ]
+      "plugins": [
+        "expo-secure-store",
+        "expo-font",
+        [
+          "expo-splash-screen",
+          {
+            "backgroundColor": "#FAFAF8",
+            "image": "./assets/splash-icon.png",
+            "imageWidth": 180,
+            "resizeMode": "contain"
+          }
+        ]
+      ]
   }
 }
