@@ -440,8 +440,12 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         cacheEnabled={false}
         setSupportMultipleWindows={false}
         startInLoadingState
-        bounces={false}
+        // iOS needs vertical bounce enabled for the native pull-to-refresh
+        // gesture. The injected workspace CSS still prevents horizontal
+        // bounce into an empty strip.
+        bounces={Platform.OS === "ios"}
         overScrollMode="never"
+        pullToRefreshEnabled={Platform.OS === "ios"}
         automaticallyAdjustContentInsets={false}
         allowsBackForwardNavigationGestures
         injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
