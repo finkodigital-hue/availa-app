@@ -8,6 +8,8 @@
     "build": "vite build && node scripts/prepare-cloudflare-deploy.mjs",
     "build:dev": "vite build --mode development",
     "verify:production": "node scripts/verify-production.mjs",
+    "deploy:cloudflare": "npm run build && npx wrangler deploy --keep-vars",
+    "deploy:cloudflare:dry-run": "npm run build && npx wrangler deploy --dry-run --keep-vars",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
