@@ -106,6 +106,16 @@ function CalendarPage() {
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
 
+  // On phones, focus mode replaces the surrounding workspace rather than
+  // sitting underneath its fixed header and navigation. This keeps the day
+  // grid fully tappable and gives it the whole viewport.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("bookzenvo:calendar-focus", { detail: { active: calendarIsExpanded } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("bookzenvo:calendar-focus", { detail: { active: false } }));
+    };
+  }, [calendarIsExpanded]);
+
   const toggleFullscreen = async () => {
     // Safari and iOS WebViews do not consistently allow the browser Fullscreen
     // API. Focus mode is a real in-app full-screen calendar that works there.
@@ -552,7 +562,7 @@ function CalendarPage() {
       ref={calendarRef}
       className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${
         isFocusMode
-          ? "fixed inset-0 z-40 h-[100dvh] max-w-none overflow-hidden bg-background"
+          ? "fixed inset-0 z-50 h-[100dvh] max-w-none overflow-hidden bg-background"
           : isFullscreen
             ? "h-[100dvh] max-w-none overflow-hidden bg-background"
             : ""

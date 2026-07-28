@@ -21,7 +21,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
@@ -65,6 +65,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: biz } = useMyBusiness();
   const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [calendarFocusMode, setCalendarFocusMode] = useState(false);
+
+  // The calendar owns its focus/full-screen state. Keeping that state here as
+  // well lets the mobile shell get out of the way completely while someone is
+  // managing a day, rather than leaving the header and floating add button
+  // over the booking grid.
+  useEffect(() => {
+    const onCalendarFocusChange = (event: Event) => {
+      setCalendarFocusMode(Boolean((event as CustomEvent<{ active?: boolean }>).detail?.active));
+    };
+    window.addEventListener("bookzenvo:calendar-focus", onCalendarFocusChange);
+    return () => window.removeEventListener("bookzenvo:calendar-focus", onCalendarFocusChange);
+  }, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -223,14 +236,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Mobile header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4 print:hidden">
-        <Link to="/dashboard" className="font-display text-lg">
-          Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
-        </Link>
-        <div className="flex items-center gap-1">
-          <NotificationsBell variant="icon" />
+      {!calendarFocusMode && (
+        <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4 print:hidden">
+          <Link to="/dashboard" className="font-display text-lg">
+            Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
+          </Link>
+          <div className="flex items-center gap-1">
+            <NotificationsBell variant="icon" />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mobile drawer */}
       {mobileOpen && (
@@ -252,9 +267,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <main className="flex-1 min-w-0 pt-14 md:pt-0 pb-28 md:pb-0 print:pt-0 print:pb-0">{children}</main>
+      <main className={`flex-1 min-w-0 ${calendarFocusMode ? "pt-0 pb-0" : "pt-14 pb-28"} md:pt-0 md:pb-0 print:pt-0 print:pb-0`}>{children}</main>
 
-      <div className="print:hidden">
+      {!calendarFocusMode && <div className="print:hidden">
           <MobileBottomNav
             menuOpen={mobileOpen}
             onMore={() => setMobileOpen(true)}
@@ -268,7 +283,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             }
           }}
         />
-      </div>
+      </div>}
     </div>
   );
 }
