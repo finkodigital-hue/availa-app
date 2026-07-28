@@ -9,8 +9,16 @@ const body = await response.text();
 // TanStack Start streams its app directly into <body>, so the app does not
 // necessarily use a traditional #root element. Require the HTML shell plus a
 // fingerprinted client bundle instead.
-if (!response.ok || !body.includes("<body") || !body.includes('/assets/index-')) {
+const entryMatch = body.match(/src="(\/assets\/index-[^"]+\.js)"/);
+
+if (!response.ok || !body.includes("<body") || !entryMatch) {
   console.error(`Production check failed for ${response.url} (HTTP ${response.status}).`);
+  process.exit(1);
+}
+
+const entryResponse = await fetch(new URL(entryMatch[1], response.url));
+if (!entryResponse.ok || !entryResponse.headers.get("content-type")?.includes("javascript")) {
+  console.error(`Production client bundle failed for ${entryResponse.url} (HTTP ${entryResponse.status}).`);
   process.exit(1);
 }
 

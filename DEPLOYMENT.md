@@ -33,3 +33,8 @@ If the production check fails, do not merge further feature changes. Check the
 latest Worker deployment in Cloudflare, use the most recent successful
 deployment as the rollback target, and tell affected customers through the
 support channel while it is being restored.
+
+The GitHub **Production uptime** workflow runs this same check every 15
+minutes. The repository owners should keep GitHub Actions failure notifications
+enabled. Use the public `/status` page to post and close a customer-facing
+incident notice.
