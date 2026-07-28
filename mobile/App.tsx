@@ -423,26 +423,6 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         };
       }
 
-      // A network or deployment failure can occasionally leave a WebView with
-      // an empty document instead of raising a native loading error. Do not
-      // mistake a slower-than-usual first render for that failure though: the
-      // workspace has a sizeable authenticated shell and can legitimately
-      // take more than one short timeout on mobile data.
-      var checkForWorkspace = function (attempt) {
-        var root = document.getElementById("root");
-        var hasWorkspace = Boolean(root && root.childElementCount > 0);
-        if (hasWorkspace) return;
-
-        if (attempt < 2) {
-          window.setTimeout(function () { checkForWorkspace(attempt + 1); }, 5000);
-          return;
-        }
-
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: "workspace-empty" }));
-        }
-      };
-      window.setTimeout(function () { checkForWorkspace(0); }, 7000);
       return true;
     })();
     true;
@@ -543,10 +523,6 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   const handleWebMessage = async ({ nativeEvent }: { nativeEvent: { data: string } }) => {
     try {
       const message = JSON.parse(nativeEvent.data);
-      if (message?.type === "workspace-empty") {
-        setFailed(true);
-        return;
-      }
       if (message?.type === "workspace-signed-out") {
         await supabase?.auth.signOut();
         return;
