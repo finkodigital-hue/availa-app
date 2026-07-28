@@ -211,8 +211,20 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   const projectRef = (process.env.EXPO_PUBLIC_SUPABASE_URL || "").match(/^https?:\/\/([^.]+)\./)?.[1] || "";
   const storageKey = projectRef ? `sb-${projectRef}-auth-token` : "";
   const sessionJson = JSON.stringify(session);
+  const syncWorkspaceSession = storageKey
+    ? `
+      (function () {
+        try {
+          localStorage.setItem(${JSON.stringify(storageKey)}, ${JSON.stringify(sessionJson)});
+        } catch (error) {
+          // The workspace will show its normal sign-in screen if web storage is unavailable.
+        }
+      })();
+      true;
+    `
+    : "true;";
   const injectedJavaScriptBeforeContentLoaded = storageKey
-    ? `(function(){try{localStorage.setItem(${JSON.stringify(storageKey)},${JSON.stringify(sessionJson)});}catch(e){}})();true;`
+    ? syncWorkspaceSession
     : "true;";
 
   // The website intentionally opens Stripe Checkout in a new browser tab.
@@ -294,6 +306,14 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
 
     return () => subscription.remove();
   }, [canGoBack]);
+
+  // Native Supabase refreshes access tokens securely in the background. Mirror
+  // the fresh session into the website whenever it changes, so protected
+  // actions such as taking a payment never lose their authorisation mid-use.
+  useEffect(() => {
+    if (!storageKey) return;
+    webViewRef.current?.injectJavaScript(syncWorkspaceSession);
+  }, [storageKey, syncWorkspaceSession]);
 
   const handleWebMessage = async ({ nativeEvent }: { nativeEvent: { data: string } }) => {
     try {
