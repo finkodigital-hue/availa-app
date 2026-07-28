@@ -322,6 +322,34 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         }
         return nativeFetch(input, init);
       };
+
+      // A few browser libraries still use XMLHttpRequest rather than fetch.
+      // Give those same-origin workspace calls the same native session bridge,
+      // while keeping the token completely away from Stripe and every other
+      // external origin.
+      var originalXhrOpen = XMLHttpRequest.prototype.open;
+      var originalXhrSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+      var originalXhrSend = XMLHttpRequest.prototype.send;
+      XMLHttpRequest.prototype.open = function (method, url) {
+        try {
+          this.__bookzenvoWorkspaceRequest = new URL(String(url), window.location.href).origin === window.location.origin;
+          this.__bookzenvoHasAuthorization = false;
+        } catch (error) {
+          this.__bookzenvoWorkspaceRequest = false;
+        }
+        return originalXhrOpen.apply(this, arguments);
+      };
+      XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+        if (String(name).toLowerCase() === "authorization") this.__bookzenvoHasAuthorization = true;
+        return originalXhrSetRequestHeader.apply(this, arguments);
+      };
+      XMLHttpRequest.prototype.send = function () {
+        var token = window.__bookzenvoNativeAccessToken;
+        if (token && this.__bookzenvoWorkspaceRequest && !this.__bookzenvoHasAuthorization) {
+          originalXhrSetRequestHeader.call(this, "Authorization", "Bearer " + token);
+        }
+        return originalXhrSend.apply(this, arguments);
+      };
       window.open = function (url) {
         send(url);
         return { closed: false, close: function () {} };
