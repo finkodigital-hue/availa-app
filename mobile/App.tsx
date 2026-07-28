@@ -267,11 +267,20 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       // Keep the workspace locked to the phone viewport. This prevents iOS
       // WebView rubber-banding horizontally into an empty strip when a wide
       // report/chart or a temporary dialog is on screen.
+      var viewportMeta = document.querySelector('meta[name="viewport"]');
+      if (!viewportMeta) {
+        viewportMeta = document.createElement("meta");
+        viewportMeta.setAttribute("name", "viewport");
+        (document.head || document.documentElement).appendChild(viewportMeta);
+      }
+      viewportMeta.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
+
       var viewportStyle = document.createElement("style");
       viewportStyle.setAttribute("data-bookzenvo-native-viewport", "true");
       viewportStyle.textContent = [
-        "html, body { width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; overscroll-behavior-x: none !important; }",
-        "body { position: relative !important; }"
+        "html, body { width: 100% !important; min-width: 0 !important; max-width: 100vw !important; overflow-x: clip !important; overscroll-behavior-x: none !important; }",
+        "#root { width: 100% !important; min-width: 0 !important; max-width: 100vw !important; overflow-x: clip !important; }",
+        "body { position: relative !important; touch-action: pan-y pinch-zoom !important; }"
       ].join("\\n");
       (document.head || document.documentElement).appendChild(viewportStyle);
 
