@@ -22,6 +22,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { Session } from "@supabase/supabase-js";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
+import { useNetworkState } from "expo-network";
 import * as Sharing from "expo-sharing";
 import { useFonts } from "expo-font";
 import { WebView } from "react-native-webview";
@@ -211,6 +212,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   const [failed, setFailed] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
   const [canGoBack, setCanGoBack] = useState(false);
+  const networkState = useNetworkState();
   const appUrl = process.env.EXPO_PUBLIC_APP_URL || "https://bookzenvo.com";
   const workspaceUrl = new URL(workspacePath, `${appUrl.replace(/\/$/, "")}/`).toString();
   const projectRef = (process.env.EXPO_PUBLIC_SUPABASE_URL || "").match(/^https?:\/\/([^.]+)\./)?.[1] || "";
@@ -407,6 +409,8 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     await Sharing.shareAsync(uri, { mimeType, UTI: mimeType === "text/csv" ? "public.comma-separated-values-text" : undefined });
   };
 
+  const isOffline = networkState.isConnected === false || networkState.isInternetReachable === false;
+
   useEffect(() => {
     if (Platform.OS !== "android") return;
 
@@ -496,58 +500,66 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   return (
     <SafeAreaView style={styles.webSafeArea}>
       <StatusBar barStyle="dark-content" />
-      <WebView
-        key={webViewKey}
-        ref={webViewRef}
-        source={{ uri: workspaceUrl }}
-        style={styles.webView}
-        javaScriptEnabled
-        domStorageEnabled
-        sharedCookiesEnabled
-        thirdPartyCookiesEnabled
+      <View style={styles.webContainer}>
+        <WebView
+          key={webViewKey}
+          ref={webViewRef}
+          source={{ uri: workspaceUrl }}
+          style={styles.webView}
+          javaScriptEnabled
+          domStorageEnabled
+          sharedCookiesEnabled
+          thirdPartyCookiesEnabled
         // The workspace changes often while Bookzenvo is being built. Avoid
         // a stale cached shell pairing with a newer deployed script and
         // presenting as a blank app after a release.
-        cacheEnabled={false}
-        setSupportMultipleWindows={false}
-        startInLoadingState
+          cacheEnabled={false}
+          setSupportMultipleWindows={false}
+          startInLoadingState
         // iOS needs vertical bounce enabled for the native pull-to-refresh
         // gesture. The injected workspace CSS still prevents horizontal
         // bounce into an empty strip.
-        bounces={Platform.OS === "ios"}
-        overScrollMode="never"
-        pullToRefreshEnabled={Platform.OS === "ios"}
-        automaticallyAdjustContentInsets={false}
-        allowsBackForwardNavigationGestures
-        injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
-        injectedJavaScript={injectedNavigationBridge}
-        renderLoading={() => (
-          <View style={styles.webLoading}>
-            <Text style={styles.webLoadingWordmark}>Bookzenvo.</Text>
-            <ActivityIndicator color={PALETTE.goldDeep} size="large" style={{ marginTop: 28 }} />
-            <Text style={styles.loadingText}>Opening your workspace</Text>
-          </View>
-        )}
-        onError={() => setFailed(true)}
-        onLoadEnd={() => {
+          bounces={Platform.OS === "ios"}
+          overScrollMode="never"
+          pullToRefreshEnabled={Platform.OS === "ios"}
+          automaticallyAdjustContentInsets={false}
+          allowsBackForwardNavigationGestures
+          injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
+          injectedJavaScript={injectedNavigationBridge}
+          renderLoading={() => (
+            <View style={styles.webLoading}>
+              <Text style={styles.webLoadingWordmark}>Bookzenvo.</Text>
+              <ActivityIndicator color={PALETTE.goldDeep} size="large" style={{ marginTop: 28 }} />
+              <Text style={styles.loadingText}>Opening your workspace</Text>
+            </View>
+          )}
+          onError={() => setFailed(true)}
+          onLoadEnd={() => {
           // iOS may finish initial page setup after the first injection. Send
           // the native session again once the workspace is ready so protected
           // actions such as taking a payment always receive an auth header.
-          webViewRef.current?.injectJavaScript(syncWorkspaceSession);
-        }}
-        onContentProcessDidTerminate={retryWorkspace}
-        onRenderProcessGone={retryWorkspace}
-        onMessage={handleWebMessage}
-        onNavigationStateChange={({ canGoBack: nextCanGoBack }) => setCanGoBack(nextCanGoBack)}
-        onShouldStartLoadWithRequest={({ url }) => {
-          if (url === "about:blank" || isWorkspaceUrl(url)) return true;
-          if (isSupportedExternalUrl(url)) void openLink(url);
-          return false;
-        }}
-        onHttpError={({ nativeEvent }) => {
-          if (nativeEvent.statusCode >= 500) setFailed(true);
-        }}
-      />
+            webViewRef.current?.injectJavaScript(syncWorkspaceSession);
+          }}
+          onContentProcessDidTerminate={retryWorkspace}
+          onRenderProcessGone={retryWorkspace}
+          onMessage={handleWebMessage}
+          onNavigationStateChange={({ canGoBack: nextCanGoBack }) => setCanGoBack(nextCanGoBack)}
+          onShouldStartLoadWithRequest={({ url }) => {
+            if (url === "about:blank" || isWorkspaceUrl(url)) return true;
+            if (isSupportedExternalUrl(url)) void openLink(url);
+            return false;
+          }}
+          onHttpError={({ nativeEvent }) => {
+            if (nativeEvent.statusCode >= 500) setFailed(true);
+          }}
+        />
+        {isOffline && (
+          <Pressable style={styles.offlineBanner} onPress={retryWorkspace}>
+            <Ionicons name="cloud-offline-outline" size={17} color={PALETTE.white} />
+            <Text style={styles.offlineBannerText}>You're offline — tap to retry</Text>
+          </Pressable>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -1079,7 +1091,10 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => voi
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: PALETTE.cream },
   webSafeArea: { flex: 1, backgroundColor: PALETTE.cream },
+  webContainer: { flex: 1 },
   webView: { flex: 1, backgroundColor: PALETTE.cream },
+  offlineBanner: { position: "absolute", left: 16, right: 16, bottom: 18, minHeight: 44, borderRadius: 12, backgroundColor: PALETTE.ink, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: 16 },
+  offlineBannerText: { color: PALETTE.white, fontFamily: "DMSans_600SemiBold", fontSize: 13 },
   webLoading: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: PALETTE.ink },
   webLoadingWordmark: { color: PALETTE.white, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 31 },
   webError: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30, backgroundColor: PALETTE.cream },
