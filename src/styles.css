@@ -172,6 +172,15 @@
   ::selection { background: color-mix(in oklab, var(--color-primary) 25%, transparent); }
 }
 
+/* The owner workspace is also used inside the mobile app's WebView. Keep
+   desktop-sized controls, popovers and long import names from widening the
+   document and exposing a blank horizontal strip on a phone. */
+@media (max-width: 767px) {
+  html, body, #root { width: 100%; max-width: 100vw; overflow-x: clip; overscroll-behavior-x: none; }
+  #root > * { min-width: 0; max-width: 100%; }
+  [data-radix-popper-content-wrapper] { max-width: calc(100vw - 1rem) !important; }
+}
+
 /* ============== Custom keyframes & utilities ============== */
 @keyframes shimmer {
   0% { background-position: -400px 0; }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, CalendarPlus, CalendarX } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -28,11 +28,23 @@ function timeAgo(iso: string) {
   return `${day}d ago`;
 }
 
-export function NotificationsBell({ variant = "sidebar" }: { variant?: "sidebar" | "icon" }) {
+export function NotificationsBell({
+  variant = "sidebar",
+  closeOn = false,
+}: {
+  variant?: "sidebar" | "icon";
+  closeOn?: boolean;
+}) {
   const { data: business } = useMyBusiness();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const bid = business?.id;
+
+  // A drawer and a popover at the same time leaves two competing layers on a
+  // phone. Close notification panels whenever the workspace menu opens.
+  useEffect(() => {
+    if (closeOn) setOpen(false);
+  }, [closeOn]);
 
   const { data: notifications } = useQuery({
     queryKey: ["notifications", bid],

@@ -114,8 +114,8 @@ function ProfessionalsPage() {
         }
       />
 
-      <Tabs defaultValue="team" className="space-y-5">
-        <TabsList className="bg-card border p-1">
+      <Tabs defaultValue="team" className="min-w-0 space-y-5">
+        <TabsList className="max-w-full bg-card border p-1">
           <TabsTrigger value="team"><Armchair className="h-3.5 w-3.5 mr-1.5" /> Team</TabsTrigger>
           <TabsTrigger value="rent"><CircleDollarSign className="h-3.5 w-3.5 mr-1.5" /> Rent</TabsTrigger>
         </TabsList>

@@ -176,12 +176,12 @@ function CustomersPage() {
         title="Customers"
         subtitle="Everyone who's ever booked with you, with their full history."
         action={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={exportClients} disabled={exporting || !bid}>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <Button className="w-full sm:w-auto" variant="outline" onClick={exportClients} disabled={exporting || !bid}>
               {exporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
               {q.trim() ? "Export filtered clients" : "Export clients"}
             </Button>
-            <Button onClick={() => setEditing({})} className="shadow-glow">
+            <Button onClick={() => setEditing({})} className="w-full shadow-glow sm:w-auto">
               <Plus className="h-4 w-4 mr-1" /> Add customer
             </Button>
           </div>

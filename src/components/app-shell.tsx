@@ -118,7 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <GlobalSearch />
         </div>
         <div className="px-1 pb-3">
-          <NotificationsBell />
+          <NotificationsBell closeOn={mobileOpen} />
         </div>
         {NAV.map((n) => {
           const active = path === n.to || (n.to !== "/dashboard" && path.startsWith(n.to));
@@ -242,7 +242,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
           </Link>
           <div className="flex items-center gap-1">
-            <NotificationsBell variant="icon" />
+            <NotificationsBell variant="icon" closeOn={mobileOpen} />
           </div>
         </div>
       )}
@@ -267,7 +267,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <main className={`flex-1 min-w-0 ${calendarFocusMode ? "pt-0 pb-0" : "pt-14 pb-28"} md:pt-0 md:pb-0 print:pt-0 print:pb-0`}>{children}</main>
+      <main
+        className={`flex-1 min-w-0 overflow-x-clip ${calendarFocusMode ? "pt-0 pb-0" : "pt-14 pb-[calc(9rem+env(safe-area-inset-bottom))]"} md:pt-0 md:pb-0 print:pt-0 print:pb-0`}
+      >
+        {children}
+      </main>
 
       {!calendarFocusMode && <div className="print:hidden">
           <MobileBottomNav
@@ -301,21 +305,25 @@ export function PageHeader({
   eyebrow?: string;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 mb-8 animate-rise">
+    <div className="flex min-w-0 max-w-full flex-col items-stretch gap-4 mb-8 animate-rise sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
       <div className="min-w-0">
         {eyebrow && (
           <div className="text-[11px] uppercase tracking-[0.18em] text-primary mb-2">
             {eyebrow}
           </div>
         )}
-        <h1 className="font-display text-3xl md:text-4xl tracking-tight text-balance">
+        <h1 className="font-display text-3xl leading-[0.98] md:text-4xl tracking-tight text-balance">
           {title}
         </h1>
         {subtitle && (
           <p className="text-muted-foreground mt-2 text-sm text-pretty">{subtitle}</p>
         )}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {action && (
+        <div className="w-full min-w-0 max-w-full shrink-0 sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
+          {action}
+        </div>
+      )}
     </div>
   );
 }
