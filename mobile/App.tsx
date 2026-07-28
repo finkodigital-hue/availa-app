@@ -649,7 +649,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         {isOffline && (
           <Pressable style={styles.offlineBanner} onPress={retryWorkspace}>
             <Ionicons name="cloud-offline-outline" size={17} color={PALETTE.white} />
-            <Text style={styles.offlineBannerText}>You're offline — tap to retry</Text>
+            <Text style={styles.offlineBannerText}>You're offline - tap to retry</Text>
           </Pressable>
         )}
       </View>
