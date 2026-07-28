@@ -424,15 +424,25 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       }
 
       // A network or deployment failure can occasionally leave a WebView with
-      // an empty document instead of raising a native loading error. Surface a
-      // useful retry screen in that case rather than a misleading white page.
-      window.setTimeout(function () {
+      // an empty document instead of raising a native loading error. Do not
+      // mistake a slower-than-usual first render for that failure though: the
+      // workspace has a sizeable authenticated shell and can legitimately
+      // take more than one short timeout on mobile data.
+      var checkForWorkspace = function (attempt) {
         var root = document.getElementById("root");
         var hasWorkspace = Boolean(root && root.childElementCount > 0);
-        if (!hasWorkspace && window.ReactNativeWebView) {
+        if (hasWorkspace) return;
+
+        if (attempt < 2) {
+          window.setTimeout(function () { checkForWorkspace(attempt + 1); }, 5000);
+          return;
+        }
+
+        if (window.ReactNativeWebView) {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: "workspace-empty" }));
         }
-      }, 7000);
+      };
+      window.setTimeout(function () { checkForWorkspace(0); }, 7000);
       return true;
     })();
     true;
