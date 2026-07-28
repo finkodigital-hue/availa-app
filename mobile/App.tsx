@@ -223,6 +223,18 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     (function () {
       if (window.__bookzenvoNativeBridge) return true;
       window.__bookzenvoNativeBridge = true;
+
+      // Keep the workspace locked to the phone viewport. This prevents iOS
+      // WebView rubber-banding horizontally into an empty strip when a wide
+      // report/chart or a temporary dialog is on screen.
+      var viewportStyle = document.createElement("style");
+      viewportStyle.setAttribute("data-bookzenvo-native-viewport", "true");
+      viewportStyle.textContent = [
+        "html, body { width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; overscroll-behavior-x: none !important; }",
+        "body { position: relative !important; }"
+      ].join("\\n");
+      (document.head || document.documentElement).appendChild(viewportStyle);
+
       var send = function (url) {
         if (!url || !window.ReactNativeWebView) return;
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: "open-external", url: String(url) }));
@@ -324,6 +336,9 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         thirdPartyCookiesEnabled
         setSupportMultipleWindows={false}
         startInLoadingState
+        bounces={false}
+        overScrollMode="never"
+        automaticallyAdjustContentInsets={false}
         allowsBackForwardNavigationGestures
         injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
         injectedJavaScript={injectedNavigationBridge}
