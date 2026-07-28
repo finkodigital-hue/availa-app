@@ -562,7 +562,7 @@ function CalendarPage() {
       ref={calendarRef}
       className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${
         isFocusMode
-          ? "fixed inset-0 z-50 h-[100dvh] max-w-none overflow-hidden bg-background"
+      ? "fixed inset-0 z-30 h-[100dvh] max-w-none overflow-hidden bg-background"
           : isFullscreen
             ? "h-[100dvh] max-w-none overflow-hidden bg-background"
             : ""
