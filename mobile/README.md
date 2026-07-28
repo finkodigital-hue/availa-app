@@ -19,6 +19,9 @@ Never add a Supabase service-role key, Stripe secret key, Resend key, or webhook
   bookings, clients, staff, services, stock, reports, page builder, settings,
   payments and help centre as the website
 - Native handling for links that need a secure browser, including Stripe Checkout
+- Deep links for the main workspace screens, for example
+  `bookzenvo://workspace/calendar` or
+  `bookzenvo://workspace/bookings?bookingId=...`
 - A recovery screen if the live workspace cannot be loaded, plus Android back
   navigation and automatic recovery from a terminated WebView process
 

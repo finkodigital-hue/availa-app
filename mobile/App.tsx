@@ -76,6 +76,44 @@ const PALETTE = {
 
 const AUTH_KEYBOARD_ACCESSORY_ID = "bookzenvo-auth-keyboard";
 
+const MOBILE_WORKSPACE_ROUTES = new Set([
+  "dashboard",
+  "calendar",
+  "bookings",
+  "customers",
+  "staff",
+  "professionals",
+  "services",
+  "stock",
+  "payments",
+  "reports",
+  "settings",
+  "page-builder",
+  "help",
+  "import",
+]);
+
+function workspacePathFromDeepLink(url: string) {
+  const parsed = Linking.parse(url);
+  if (parsed.scheme !== "bookzenvo") return null;
+
+  // Expo treats the first part after bookzenvo:// as the hostname, so support
+  // both bookzenvo://calendar and bookzenvo://workspace/calendar.
+  const pathParts = [parsed.hostname, parsed.path]
+    .filter((part): part is string => Boolean(part))
+    .flatMap((part) => part.split("/").filter(Boolean));
+  const route = pathParts[0] === "workspace" ? pathParts[1] : pathParts[0];
+
+  if (!route || !MOBILE_WORKSPACE_ROUTES.has(route)) return null;
+
+  const query = new URLSearchParams();
+  Object.entries(parsed.queryParams ?? {}).forEach(([key, value]) => {
+    if (typeof value === "string") query.set(key, value);
+  });
+  const search = query.toString();
+  return `/${route}${search ? `?${search}` : ""}`;
+}
+
 function formatMoney(cents: number, currency = "GBP") {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format((cents || 0) / 100);
 }
@@ -105,6 +143,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [workspacePath, setWorkspacePath] = useState("/dashboard");
 
   useEffect(() => {
     const client = supabase;
@@ -123,19 +162,26 @@ export default function App() {
       setLoading(false);
     });
 
-    const receiveRecoveryLink = async (url: string | null) => {
-      if (!url || !url.includes("type=recovery")) return;
-      const fragment = url.split("#")[1] ?? "";
-      const params = new URLSearchParams(fragment);
-      const accessToken = params.get("access_token");
-      const refreshToken = params.get("refresh_token");
-      if (!accessToken || !refreshToken) return;
-      const { error } = await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-      if (!error) setResettingPassword(true);
+    const receiveAppLink = async (url: string | null) => {
+      if (!url) return;
+
+      if (url.includes("type=recovery")) {
+        const fragment = url.split("#")[1] ?? "";
+        const params = new URLSearchParams(fragment);
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+        if (!accessToken || !refreshToken) return;
+        const { error } = await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        if (!error) setResettingPassword(true);
+        return;
+      }
+
+      const path = workspacePathFromDeepLink(url);
+      if (path) setWorkspacePath(path);
     };
 
-    Linking.getInitialURL().then(receiveRecoveryLink);
-    const linkingSubscription = Linking.addEventListener("url", ({ url }) => receiveRecoveryLink(url));
+    Linking.getInitialURL().then(receiveAppLink);
+    const linkingSubscription = Linking.addEventListener("url", ({ url }) => receiveAppLink(url));
 
     return () => {
       data.subscription.unsubscribe();
@@ -152,16 +198,16 @@ export default function App() {
   // Keep the mobile app on the same workspace as the website. This gives owners
   // the complete, live dashboard (including editing, payments, stock, reports,
   // settings and help) instead of a second, partial implementation.
-  return <WebWorkspace session={session} />;
+  return <WebWorkspace session={session} workspacePath={workspacePath} />;
 }
 
-function WebWorkspace({ session }: { session: Session }) {
+function WebWorkspace({ session, workspacePath }: { session: Session; workspacePath: string }) {
   const webViewRef = useRef<WebView>(null);
   const [failed, setFailed] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
   const [canGoBack, setCanGoBack] = useState(false);
   const appUrl = process.env.EXPO_PUBLIC_APP_URL || "https://bookzenvo.com";
-  const workspaceUrl = `${appUrl.replace(/\/$/, "")}/dashboard`;
+  const workspaceUrl = new URL(workspacePath, `${appUrl.replace(/\/$/, "")}/`).toString();
   const projectRef = (process.env.EXPO_PUBLIC_SUPABASE_URL || "").match(/^https?:\/\/([^.]+)\./)?.[1] || "";
   const storageKey = projectRef ? `sb-${projectRef}-auth-token` : "";
   const sessionJson = JSON.stringify(session);
