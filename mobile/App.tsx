@@ -228,6 +228,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
         try {
           var key = ${JSON.stringify(storageKey)};
           var nextValue = ${JSON.stringify(sessionJson)};
+          window.__bookzenvoNativeAccessToken = ${JSON.stringify(session.access_token)};
           var previousValue = localStorage.getItem(key);
           localStorage.setItem(key, nextValue);
 
@@ -277,6 +278,36 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       var send = function (url) {
         if (!url || !window.ReactNativeWebView) return;
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: "open-external", url: String(url) }));
+      };
+
+      // TanStack server functions make their own same-origin requests. On a
+      // normal browser the website's Supabase client supplies this header,
+      // but a native WebView can initialise before that browser session has
+      // refreshed. Keep those owner-only actions (for example charging a
+      // saved card) authenticated, while never adding this token to external
+      // requests such as Stripe Checkout.
+      var nativeFetch = window.fetch.bind(window);
+      window.fetch = function (input, init) {
+        var token = window.__bookzenvoNativeAccessToken;
+        var rawUrl = typeof input === "string" ? input : input && input.url;
+        try {
+          var requestUrl = new URL(rawUrl, window.location.href);
+          if (token && requestUrl.origin === window.location.origin) {
+            var headers = new Headers(
+              input instanceof Request ? input.headers : undefined
+            );
+            if (init && init.headers) {
+              new Headers(init.headers).forEach(function (value, key) { headers.set(key, value); });
+            }
+            if (!headers.has("Authorization")) {
+              headers.set("Authorization", "Bearer " + token);
+            }
+            return nativeFetch(input, Object.assign({}, init || {}, { headers: headers }));
+          }
+        } catch (error) {
+          // Leave malformed or non-HTTP requests to the browser's normal fetch.
+        }
+        return nativeFetch(input, init);
       };
       window.open = function (url) {
         send(url);
