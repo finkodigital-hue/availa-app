@@ -217,6 +217,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   const webViewRef = useRef<WebView>(null);
   const appState = useRef(AppState.currentState);
   const returningFromExternalLink = useRef(false);
+  const refreshingWorkspaceSession = useRef(false);
   const [failed, setFailed] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
   const [canGoBack, setCanGoBack] = useState(false);
@@ -315,7 +316,16 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
             if (!headers.has("Authorization")) {
               headers.set("Authorization", "Bearer " + token);
             }
-            return nativeFetch(input, Object.assign({}, init || {}, { headers: headers }));
+            return nativeFetch(input, Object.assign({}, init || {}, { headers: headers })).then(function (response) {
+              // A WebView can keep a page alive while the native Supabase token
+              // quietly refreshes. Tell the native shell about a 401 so it can
+              // refresh and mirror the new session rather than leaving owner
+              // actions (such as taking a saved-card payment) unauthorised.
+              if (response && response.status === 401 && window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: "workspace-auth-required" }));
+              }
+              return response;
+            });
           }
         } catch (error) {
           // Leave malformed or non-HTTP requests to the browser's normal fetch.
@@ -345,6 +355,13 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       };
       XMLHttpRequest.prototype.send = function () {
         var token = window.__bookzenvoNativeAccessToken;
+        if (this.__bookzenvoWorkspaceRequest) {
+          this.addEventListener("loadend", function () {
+            if (this.status === 401 && window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: "workspace-auth-required" }));
+            }
+          });
+        }
         if (token && this.__bookzenvoWorkspaceRequest && !this.__bookzenvoHasAuthorization) {
           originalXhrSetRequestHeader.call(this, "Authorization", "Bearer " + token);
         }
@@ -525,6 +542,31 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       const message = JSON.parse(nativeEvent.data);
       if (message?.type === "workspace-signed-out") {
         await supabase?.auth.signOut();
+        return;
+      }
+      if (message?.type === "workspace-auth-required") {
+        const client = supabase;
+        if (!client || refreshingWorkspaceSession.current) return;
+
+        refreshingWorkspaceSession.current = true;
+        try {
+          const { data, error } = await client.auth.refreshSession();
+          if (error || !data.session) {
+            Alert.alert("Please sign in again", "Your Bookzenvo session has expired.");
+            await client.auth.signOut();
+            return;
+          }
+
+          // The auth-state listener will mirror this refreshed session into the
+          // WebView. Reload after that event has had a chance to update the
+          // bridge, so the original owner action can be retried straight away.
+          setTimeout(() => webViewRef.current?.reload(), 150);
+        } finally {
+          // Allow a later retry if the owner remains on a protected page.
+          setTimeout(() => {
+            refreshingWorkspaceSession.current = false;
+          }, 500);
+        }
         return;
       }
       if (message?.type === "download-file" && typeof message.filename === "string" && typeof message.base64 === "string") {
