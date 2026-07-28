@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   BackHandler,
   FlatList,
   InputAccessoryView,
@@ -203,6 +204,8 @@ export default function App() {
 
 function WebWorkspace({ session, workspacePath }: { session: Session; workspacePath: string }) {
   const webViewRef = useRef<WebView>(null);
+  const appState = useRef(AppState.currentState);
+  const returningFromExternalLink = useRef(false);
   const [failed, setFailed] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
   const [canGoBack, setCanGoBack] = useState(false);
@@ -295,6 +298,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
 
     try {
       await Linking.openURL(url);
+      returningFromExternalLink.current = true;
     } catch {
       Alert.alert("Could not open link", "Please try again in your browser.");
     }
@@ -317,6 +321,22 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
 
     return () => subscription.remove();
   }, [canGoBack]);
+
+  // Stripe Checkout runs in the phone's secure browser. When the owner returns
+  // to Bookzenvo, reload the workspace once so completed payments and booking
+  // status are immediately reflected in the app.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const wasAway = /inactive|background/.test(appState.current);
+      if (wasAway && nextState === "active" && returningFromExternalLink.current) {
+        returningFromExternalLink.current = false;
+        webViewRef.current?.reload();
+      }
+      appState.current = nextState;
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   // Native Supabase refreshes access tokens securely in the background. Mirror
   // the fresh session into the website whenever it changes, so protected
