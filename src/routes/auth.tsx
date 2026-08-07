@@ -122,13 +122,9 @@ function AuthPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 text-xs opacity-60">
-            <div className="flex -space-x-2">
-              {["bg-primary", "bg-chart-3", "bg-chart-2"].map((c, i) => (
-                <div key={i} className={`h-7 w-7 rounded-full border-2 border-foreground ${c}`} />
-              ))}
-            </div>
-            Trusted by 1,200+ studios worldwide
+          <div className="flex items-center gap-2 text-xs opacity-60">
+            <Sparkles className="h-4 w-4" />
+            Now onboarding the first studios
           </div>
         </div>
       </div>
