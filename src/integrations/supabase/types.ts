@@ -1908,6 +1908,10 @@ export type Database = {
         }
         Returns: string
       }
+      join_waitlist: {
+        Args: { p_email: string; p_note?: string | null }
+        Returns: undefined
+      }
       create_staff_booking: {
         Args: {
           p_business_id: string

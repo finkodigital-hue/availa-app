@@ -81,6 +81,20 @@ function StaffPage() {
 
 
   const toggleActive = async (s: Staff, v: boolean) => {
+    // Free plan: re-enabling a disabled staff member is the same "more than
+    // one staff member" case the Add-staff button already blocks above, but
+    // this path (toggling an existing row) isn't covered by the INSERT-only
+    // DB trigger, so it needs its own client-side check. The trigger added in
+    // 20260808120000_fix_staff_plan_limit_on_reactivate.sql is the real
+    // backstop; this is just so the owner sees a clear message instead of a
+    // raw Postgres error.
+    if (v && (biz?.plan ?? "free") === "free") {
+      const activeOthers = (staff ?? []).filter((x) => x.id !== s.id && x.active).length;
+      if (activeOthers >= 1) {
+        toast.error("The free plan is limited to one staff member. Upgrade to Studio to enable more.");
+        return;
+      }
+    }
     const { error } = await supabase.from("staff").update({ active: v }).eq("id", s.id);
     if (error) return toast.error(error.message);
     toast.success(v ? "Staff enabled" : "Staff disabled");
@@ -88,7 +102,7 @@ function StaffPage() {
   };
 
   return (
-    <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
+    <div className="p-5 sm:p-8 md:p-10 max-w-6xl" data-premium-page="staff">
       <PageHeader
         eyebrow="Team"
         title="Staff"

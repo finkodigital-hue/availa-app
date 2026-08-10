@@ -775,7 +775,7 @@ function Landing() {
         "Deposits & online payments",
         "Branded page & client book",
       ],
-      cta: "Start free",
+      cta: "Join the waitlist",
     },
     {
       name: "Studio",
@@ -788,7 +788,7 @@ function Landing() {
         "Analytics & insights",
         "AI assistant & AI page editor",
       ],
-      cta: "Start free",
+      cta: "Join the waitlist",
       featured: true,
     },
   ];
@@ -827,7 +827,7 @@ function Landing() {
                 search={{ mode: "signup" } as any}
                 className="inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground font-semibold text-[.9rem] px-5 py-2.5 transition-all hover:-translate-y-px hover:shadow-[0_12px_24px_-12px_rgba(26,26,26,.4)]"
               >
-                Start free
+                Join the waitlist
               </Link>
             </div>
           </div>
@@ -857,7 +857,7 @@ function Landing() {
                 search={{ mode: "signup" } as any}
                 className="group inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground font-semibold text-[.95rem] px-7 py-4 transition-all hover:-translate-y-px hover:shadow-[0_12px_24px_-12px_rgba(26,26,26,.4)]"
               >
-                Create your booking page
+                Join the waitlist
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <span className="text-[.88rem] text-muted-foreground">
@@ -1046,7 +1046,7 @@ function Landing() {
                 search={{ mode: "signup" } as any}
                 className="inline-flex items-center gap-2 rounded-[6px] bg-background text-foreground font-semibold text-[.95rem] px-6 py-3.5 hover:opacity-90 transition"
               >
-                Create your booking page
+                Join the waitlist
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>

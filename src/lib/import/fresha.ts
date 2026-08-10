@@ -23,8 +23,15 @@ export const ENTITY_LABELS: Record<ImportEntity, string> = {
   bookings: "Appointments",
 };
 
+// Some booking systems export a literal placeholder string instead of
+// leaving the name blank when the owner never got around to naming a
+// walk-in/guest client (Fresha does this with "Change client name"). If we
+// import that verbatim it shows up as if it were a real customer's name.
+const PLACEHOLDER_NAME_RE = /^(change (client|customer) name|unnamed (client|customer))$/i;
+
 function fullNameOf(r: Record<string, string>): string {
-  return r.fullName || `${r.firstName ?? ""} ${r.lastName ?? ""}`.trim();
+  const raw = r.fullName || `${r.firstName ?? ""} ${r.lastName ?? ""}`.trim();
+  return PLACEHOLDER_NAME_RE.test(raw.trim()) ? "Unnamed client" : raw;
 }
 
 export type ParsedStaffRow = {

@@ -27,6 +27,14 @@ function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  // Public self-signup is paused pre-launch — mode=signup shows a waitlist
+  // form instead of creating a real account (see submit() below). Existing
+  // accounts are unaffected; signin/reset/update all still work as normal.
+  const [waitlistDone, setWaitlistDone] = useState(false);
+
+  useEffect(() => {
+    setWaitlistDone(false);
+  }, [mode]);
 
   useEffect(() => {
     if (user && mode !== "update") navigate({ to: "/dashboard", replace: true });
@@ -46,16 +54,20 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: name },
-            emailRedirectTo: window.location.origin,
-          },
+        const { error } = await supabase.rpc("join_waitlist", {
+          p_email: email,
+          p_note: name || null,
         });
-        if (error) throw error;
-        toast.success("Account created. Welcome!");
+        if (error) {
+          if (error.message?.includes("ALREADY_ON_LIST")) {
+            toast.success("You're already on the waitlist — we'll be in touch.");
+            setWaitlistDone(true);
+            return;
+          }
+          throw error;
+        }
+        toast.success("You're on the list!");
+        setWaitlistDone(true);
       } else if (mode === "reset") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           // The recovery session can already be active when the page opens. Include
@@ -74,27 +86,34 @@ function AuthPage() {
         if (error) throw error;
       }
     } catch (err: any) {
-      toast.error(err.message ?? "Something went wrong");
+      const msg: string = err.message ?? "";
+      if (msg.includes("INVALID_EMAIL")) {
+        toast.error("Please enter a valid email address");
+      } else if (msg.includes("RATE_LIMITED")) {
+        toast.error("Too many requests right now — please try again in a minute");
+      } else {
+        toast.error(msg || "Something went wrong");
+      }
     } finally {
       setBusy(false);
     }
   };
 
   const heading =
-    mode === "signup" ? "Create your workspace"
+    mode === "signup" ? "Join the waitlist"
       : mode === "reset" ? "Reset password"
       : mode === "update" ? "Set new password"
       : "Welcome back";
   const sub =
     mode === "signup"
-      ? "Start free. Set up in minutes."
+      ? "We're onboarding studios one at a time — pop your email in and we'll be in touch."
       : mode === "reset"
         ? "We'll email you a secure link."
         : mode === "update"
           ? "Choose a new password for your account."
           : "Sign in to your dashboard.";
   const cta =
-    mode === "signup" ? "Create account"
+    mode === "signup" ? "Join waitlist"
       : mode === "reset" ? "Send reset link"
       : mode === "update" ? "Update password"
       : "Sign in";
@@ -122,13 +141,9 @@ function AuthPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 text-xs opacity-60">
-            <div className="flex -space-x-2">
-              {["bg-primary", "bg-chart-3", "bg-chart-2"].map((c, i) => (
-                <div key={i} className={`h-7 w-7 rounded-full border-2 border-foreground ${c}`} />
-              ))}
-            </div>
-            Trusted by 1,200+ studios worldwide
+          <div className="flex items-center gap-2 text-xs opacity-60">
+            <Sparkles className="h-4 w-4" />
+            Now onboarding the first studios
           </div>
         </div>
       </div>
@@ -144,18 +159,31 @@ function AuthPage() {
           <h1 className="font-display text-3xl md:text-4xl tracking-tight">{heading}</h1>
           <p className="text-sm text-muted-foreground mt-2">{sub}</p>
 
+          {mode === "signup" && waitlistDone ? (
+            <div className="mt-8 rounded-xl border bg-card p-5 animate-rise">
+              <p className="text-sm">
+                You're on the list — we'll email you as soon as it's your turn.
+              </p>
+              <Link
+                to="/auth"
+                search={{ mode: "signin" }}
+                className="text-sm font-medium text-foreground underline-offset-4 hover:underline mt-3 inline-block"
+              >
+                Already have an account? Sign in
+              </Link>
+            </div>
+          ) : (
           <form onSubmit={submit} className="mt-8 space-y-4">
             {mode === "signup" && (
               <div>
                 <Label htmlFor="name" className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Your name
+                  Your business (optional)
                 </Label>
                 <Input
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  required
-                  placeholder="Mia Tanaka"
+                  placeholder="Maison Coiffure"
                   className="mt-1.5 h-11"
                 />
               </div>
@@ -177,7 +205,7 @@ function AuthPage() {
                 />
               </div>
             )}
-            {(mode === "signin" || mode === "signup" || mode === "update") && (
+            {(mode === "signin" || mode === "update") && (
               <div>
                 <div className="flex items-baseline justify-between">
                   <Label htmlFor="password" className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -193,7 +221,7 @@ function AuthPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    autoComplete={mode === "signup" || mode === "update" ? "new-password" : "current-password"}
+                    autoComplete={mode === "update" ? "new-password" : "current-password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -221,30 +249,33 @@ function AuthPage() {
               )}
             </Button>
           </form>
+          )}
 
-          <p className="mt-6 text-xs text-muted-foreground text-center">
-            {mode === "signin" && (
-              <>
-                New to Bookzenvo?{" "}
-                <Link to="/auth" search={{ mode: "signup" }} className="text-foreground underline-offset-4 hover:underline">
-                  Create an account
+          {!(mode === "signup" && waitlistDone) && (
+            <p className="mt-6 text-xs text-muted-foreground text-center">
+              {mode === "signin" && (
+                <>
+                  New to Bookzenvo?{" "}
+                  <Link to="/auth" search={{ mode: "signup" }} className="text-foreground underline-offset-4 hover:underline">
+                    Join the waitlist
+                  </Link>
+                </>
+              )}
+              {mode === "signup" && (
+                <>
+                  Already have an account?{" "}
+                  <Link to="/auth" search={{ mode: "signin" }} className="text-foreground underline-offset-4 hover:underline">
+                    Sign in
+                  </Link>
+                </>
+              )}
+              {mode === "reset" && (
+                <Link to="/auth" search={{ mode: "signin" }} className="hover:text-foreground">
+                  ← Back to sign in
                 </Link>
-              </>
-            )}
-            {mode === "signup" && (
-              <>
-                Already have an account?{" "}
-                <Link to="/auth" search={{ mode: "signin" }} className="text-foreground underline-offset-4 hover:underline">
-                  Sign in
-                </Link>
-              </>
-            )}
-            {mode === "reset" && (
-              <Link to="/auth" search={{ mode: "signin" }} className="hover:text-foreground">
-                ← Back to sign in
-              </Link>
-            )}
-          </p>
+              )}
+            </p>
+          )}
         </div>
       </div>
     </div>
