@@ -587,7 +587,6 @@ function CalendarPage() {
 
       {!calendarIsExpanded && (
         <PageHeader
-          eyebrow="Schedule"
           title="Calendar"
           subtitle="View and manage your team's bookings."
           action={
