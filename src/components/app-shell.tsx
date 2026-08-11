@@ -305,22 +305,33 @@ export function PageHeader({
   eyebrow?: string;
 }) {
   return (
-    <div className="flex min-w-0 max-w-full flex-col items-stretch gap-4 mb-8 animate-rise sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+    <div
+      className="flex min-w-0 max-w-full flex-col items-stretch gap-4 mb-8 animate-rise sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+      data-page-header
+    >
       <div className="min-w-0">
         {eyebrow && (
           <div className="text-[11px] uppercase tracking-[0.18em] text-primary mb-2">
             {eyebrow}
           </div>
         )}
-        <h1 className="font-display text-3xl leading-[0.98] md:text-4xl tracking-tight text-balance">
+        <h1
+          className="font-display text-3xl leading-[0.98] md:text-4xl tracking-tight text-balance"
+          data-page-title
+        >
           {title}
         </h1>
         {subtitle && (
-          <p className="text-muted-foreground mt-2 text-sm text-pretty">{subtitle}</p>
+          <p className="text-muted-foreground mt-2 text-sm text-pretty" data-page-subtitle>
+            {subtitle}
+          </p>
         )}
       </div>
       {action && (
-        <div className="w-full min-w-0 max-w-full shrink-0 sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
+        <div
+          className="w-full min-w-0 max-w-full shrink-0 sm:w-auto [&>button]:w-full sm:[&>button]:w-auto"
+          data-page-header-action
+        >
           {action}
         </div>
       )}

@@ -573,6 +573,9 @@ function CalendarPage() {
     <HoursContext.Provider value={hoursWindow}>
     <div
       ref={calendarRef}
+      data-calendar-page
+      data-calendar-expanded={calendarIsExpanded ? "true" : "false"}
+      data-calendar-view={view}
       className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${
         isFocusMode
       ? "fixed inset-0 z-30 h-[100dvh] max-w-none overflow-hidden bg-background"
@@ -588,7 +591,7 @@ function CalendarPage() {
           title="Calendar"
           subtitle="View and manage your team's bookings."
           action={
-            <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow">
+            <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow" data-calendar-new-booking>
               <Plus className="h-4 w-4 mr-1.5" /> New booking
             </Button>
           }
