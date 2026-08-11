@@ -152,6 +152,7 @@ export function BookingCard({
     <>
       <button
         type="button"
+        data-calendar-booking
         onPointerDown={startPending("move")}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

@@ -29,12 +29,14 @@ export function CalendarToolbar({
   const isOnToday = anchor.toDateString() === now.toDateString();
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 mt-4">
-      <div className="inline-flex rounded-[8px] border bg-card p-1 shadow-soft">
+    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 mt-4" data-calendar-toolbar>
+      <div className="inline-flex rounded-[8px] border bg-card p-1 shadow-soft" data-calendar-view-switcher>
         {(["day", "week", "month"] as View[]).map((v) => (
           <button
             key={v}
             onClick={() => onViewChange(v)}
+            data-state={view === v ? "active" : "inactive"}
+            aria-pressed={view === v}
             className={`px-4 py-1.5 text-xs rounded-[6px] capitalize transition-all duration-200 ${
               view === v ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
@@ -43,7 +45,7 @@ export function CalendarToolbar({
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5" data-calendar-date-controls>
         {onToggleFullscreen && (
           <Button
             variant="outline"
@@ -64,7 +66,7 @@ export function CalendarToolbar({
         >
           Today
         </Button>
-        <div className="inline-flex items-center rounded-[8px] border bg-card shadow-soft">
+        <div className="inline-flex items-center rounded-[8px] border bg-card shadow-soft" data-calendar-date-picker>
           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none" onClick={() => onNavigate(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>

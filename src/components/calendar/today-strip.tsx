@@ -28,18 +28,18 @@ export function TodayStrip({ bookings, staff, date }: { bookings: any[]; staff: 
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-2">
-      {cards.map((c) => {
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-2" data-calendar-stats>
+      {cards.map((c, index) => {
         const Icon = c.icon;
         return (
-          <div key={c.label} className="rounded-2xl border bg-card p-3 sm:p-4 shadow-soft transition-transform hover:-translate-y-0.5 hover:shadow-elegant">
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-              <span className="h-6 w-6 rounded-full grid place-items-center" style={{ background: c.tint, color: c.ink }}>
+          <div key={c.label} className="rounded-2xl border bg-card p-3 sm:p-4 shadow-soft transition-transform hover:-translate-y-0.5 hover:shadow-elegant" data-calendar-stat data-calendar-stat-index={index}>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground" data-calendar-stat-label>
+              <span className="h-6 w-6 rounded-full grid place-items-center" style={{ background: c.tint, color: c.ink }} data-calendar-stat-icon>
                 <Icon className="h-3.5 w-3.5" />
               </span>
               <span className="truncate">{c.label}</span>
             </div>
-            <div className="mt-2 font-display text-xl sm:text-2xl tabular-nums tracking-tight">{c.value}</div>
+            <div className="mt-2 font-display text-xl sm:text-2xl tabular-nums tracking-tight" data-calendar-stat-value>{c.value}</div>
           </div>
         );
       })}
