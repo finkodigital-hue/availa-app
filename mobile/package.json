@@ -30,7 +30,11 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "check": "npx expo-doctor && tsc --noEmit",
+    "build:preview:ios": "npx eas-cli build --profile preview --platform ios",
+    "build:preview:android": "npx eas-cli build --profile preview --platform android",
+    "build:production": "npx eas-cli build --profile production --platform all"
   },
   "private": true
 }
