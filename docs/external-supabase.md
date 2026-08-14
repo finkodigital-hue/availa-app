@@ -1,12 +1,12 @@
 # Connecting an external Supabase project
 
-This app runs on Lovable Cloud (its own Supabase instance) but can also talk to a
-**second, external** Supabase project you control.
+This app runs on Cloudflare Workers and can also talk to a **second, external**
+Supabase project you control.
 
 ## 1. Configure the secrets
 
-Three secrets are stored in Lovable (Cloud → Secrets), available as
-`process.env` in server code:
+Store these three values as Cloudflare Worker variables and secrets. They are
+available as `process.env` in server code:
 
 | Secret | Purpose |
 | --- | --- |
@@ -14,7 +14,8 @@ Three secrets are stored in Lovable (Cloud → Secrets), available as
 | `EXTERNAL_SUPABASE_ANON_KEY` | Public "anon" key — respects RLS |
 | `EXTERNAL_SUPABASE_SERVICE_ROLE_KEY` | Service-role key — **bypasses RLS** |
 
-Update them any time in Cloud settings; no code change needed.
+Update them in the Cloudflare dashboard under the Worker's variables and
+secrets; no code change is needed.
 
 ## 2. Use the clients (server-only)
 
@@ -73,7 +74,7 @@ Call these from components with `useServerFn`, or from `_authenticated` loaders.
 
 - The service-role key **must never** reach the browser.
 - Even the anon key + URL are kept server-side here so keys can be rotated in
-  Cloud settings without a redeploy of the frontend bundle.
+  Cloudflare settings without rebuilding the frontend bundle.
 
 ## 3. Required RLS policies on the external project
 
@@ -109,5 +110,6 @@ Rules of thumb:
 ## 4. Rotating keys
 
 Rotate in the external Supabase dashboard, then update
-`EXTERNAL_SUPABASE_ANON_KEY` / `EXTERNAL_SUPABASE_SERVICE_ROLE_KEY` in Cloud →
-Secrets. Server functions pick up the new value on the next invocation.
+`EXTERNAL_SUPABASE_ANON_KEY` / `EXTERNAL_SUPABASE_SERVICE_ROLE_KEY` in the
+Cloudflare Worker's variables and secrets. Server functions pick up the new
+value on the next invocation.
