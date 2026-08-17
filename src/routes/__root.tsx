@@ -7,11 +7,31 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
+
+// Fire-and-forget crash reporting to /api/client-errors (see that route for
+// the server-side limits). Session-deduped and capped so a render loop can't
+// flood the endpoint from one tab.
+const reportedMessages = new Set<string>();
+function reportClientError(message: string, stack?: string) {
+  try {
+    if (typeof window === "undefined") return;
+    if (reportedMessages.size >= 10 || reportedMessages.has(message)) return;
+    reportedMessages.add(message);
+    fetch("/api/client-errors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, stack, url: window.location.href }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // Reporting must never throw.
+  }
+}
 
 function NotFoundComponent() {
   return (
@@ -35,6 +55,7 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
+  reportClientError(error.message, error.stack);
   const router = useRouter();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -144,6 +165,26 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    const onError = (e: ErrorEvent) => {
+      reportClientError(e.message ?? "Unknown error", e.error?.stack);
+    };
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const reason = e.reason;
+      reportClientError(
+        reason?.message ?? String(reason ?? "Unhandled rejection"),
+        reason?.stack,
+      );
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
