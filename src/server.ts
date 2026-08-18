@@ -86,12 +86,31 @@ async function getServerEntry(): Promise<ServerEntry> {
 
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
-async function normalizeCatastrophicSsrResponse(response: Response, env: unknown): Promise<Response> {
+async function normalizeCatastrophicSsrResponse(
+  request: Request,
+  response: Response,
+  env: unknown,
+): Promise<Response> {
+  // Statuses that are defined as bodyless. Constructing a replacement
+  // Response WITH a body for these throws in the Workers runtime, which
+  // turned every deliberate "204 No Content" from an API route (e.g.
+  // /api/bookings/send-confirmation) into the catastrophic 500 error page.
+  if (response.status === 204 || response.status === 205 || response.status === 304) {
+    return response;
+  }
+
+  // The empty-stream rescue below exists for HTML document loads only. API
+  // routes legitimately return empty bodies and must never be rewritten
+  // into the client shell.
+  const isDocumentRequest =
+    !new URL(request.url).pathname.startsWith("/api/") &&
+    (request.headers.get("accept") ?? "").includes("text/html");
+
   // Nitro can occasionally return a successful response with an empty stream
   // (notably after a Cloudflare build/runtime restart). Keep the application
   // usable by returning the normal client shell; the TanStack client router
   // then hydrates the requested route and renders the full page.
-  if (response.status >= 200 && response.status < 300) {
+  if (isDocumentRequest && response.status >= 200 && response.status < 300) {
     const body = await response.clone().text();
     if (!body.trim()) {
       // The browser client needs these public values before it can initialise
@@ -148,7 +167,7 @@ export default {
       await installRuntimeEnvironment(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response, env);
+      return await normalizeCatastrophicSsrResponse(request, response, env);
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
