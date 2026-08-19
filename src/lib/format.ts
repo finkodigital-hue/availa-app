@@ -22,10 +22,7 @@ export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 // and vivid enough to read at a glance, while "completed" is intentionally
 // desaturated so finished bookings recede rather than compete for attention.
 export const BOOKING_STATUSES = [
-  { id: "pending", label: "Pending", color: "oklch(0.58 0.15 58)", tint: "oklch(0.94 0.045 58)" },
   { id: "confirmed", label: "Confirmed", color: "oklch(0.52 0.14 150)", tint: "oklch(0.93 0.045 150)" },
-  { id: "checked_in", label: "Checked in", color: "oklch(0.52 0.15 235)", tint: "oklch(0.93 0.04 235)" },
-  { id: "in_progress", label: "In progress", color: "oklch(0.50 0.17 300)", tint: "oklch(0.93 0.045 300)" },
   { id: "completed", label: "Completed", color: "oklch(0.45 0.035 150)", tint: "oklch(0.94 0.012 150)" },
   { id: "cancelled", label: "Cancelled", color: "oklch(0.55 0.18 25)", tint: "oklch(0.94 0.045 25)" },
   { id: "no_show", label: "No-show", color: "oklch(0.48 0.13 40)", tint: "oklch(0.93 0.04 40)" },
@@ -33,5 +30,18 @@ export const BOOKING_STATUSES = [
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number]["id"];
 
+// Statuses a salon can no longer SET, but which still exist on historical
+// rows (imported bookings, anything created before the list was trimmed) and
+// on the public booking path, which still creates bookings as 'pending'.
+// Kept here purely so those rows keep rendering with the right label/colour
+// instead of silently falling back to "Confirmed".
+const LEGACY_BOOKING_STATUSES = [
+  { id: "pending", label: "Pending", color: "oklch(0.58 0.15 58)", tint: "oklch(0.94 0.045 58)" },
+  { id: "checked_in", label: "Checked in", color: "oklch(0.52 0.15 235)", tint: "oklch(0.93 0.04 235)" },
+  { id: "in_progress", label: "In progress", color: "oklch(0.50 0.17 300)", tint: "oklch(0.93 0.045 300)" },
+] as const;
+
 export const statusMeta = (id: string | null | undefined) =>
-  BOOKING_STATUSES.find((s) => s.id === id) ?? BOOKING_STATUSES[1];
+  BOOKING_STATUSES.find((s) => s.id === id) ??
+  LEGACY_BOOKING_STATUSES.find((s) => s.id === id) ??
+  BOOKING_STATUSES[0];

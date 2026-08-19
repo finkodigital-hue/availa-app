@@ -103,17 +103,22 @@ export function mapServiceRow(r: Record<string, string>): ParsedServiceRow | nul
   };
 }
 
+// Booking statuses were trimmed to the four a salon actually sets
+// (confirmed / completed / cancelled / no-show), so "new" and anything
+// unrecognised now land on `confirmed` rather than the retired `pending`
+// — an imported future appointment IS a booking in the diary, and leaving
+// it on a status the owner can no longer change was a dead end.
 const STATUS_MAP: Record<string, BookingStatus> = {
   completed: "completed",
   cancelled: "cancelled",
   "no show": "no_show",
   confirmed: "confirmed",
-  new: "pending",
+  new: "confirmed",
 };
 
 export function mapApptStatus(raw: string | null): BookingStatus {
   const key = (raw ?? "").trim().toLowerCase();
-  return STATUS_MAP[key] ?? "pending";
+  return STATUS_MAP[key] ?? "confirmed";
 }
 
 export type ParsedApptRow = {
