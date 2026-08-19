@@ -31,6 +31,7 @@ import { startBookingCheckout } from "@/lib/stripe-connect.functions";
 import { useAuth } from "@/lib/auth";
 import { usePortalCustomer } from "@/lib/portal-customer";
 import { BookingSignIn } from "@/components/booking-sign-in";
+import { AddToCalendar } from "@/components/add-to-calendar";
 
 // The real public booking page renderer — used both at /book/$slug and,
 // embedded/scaled/non-interactive, as the live preview in the setup wizard
@@ -45,6 +46,7 @@ export interface PublicBookingBusiness {
   phone: string | null;
   website: string | null;
   currency?: string | null;
+  timezone?: string | null;
 }
 
 // A "service" here is always a specific business's variant (its own price,
@@ -139,6 +141,17 @@ export function PublicBookingPage({
   const [staff, setStaff] = useState<Staff | null>(null);
   const [date, setDate] = useState<Date>(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const [time, setTime] = useState<string | null>(null);
+  // Captured at the moment of a successful direct booking so the "done"
+  // screen's Add-to-calendar event has the TRUE full-span end time (start +
+  // duration + gap + active_after for a gap service) without recomputing it
+  // from `service` after the fact, where a stale/reset `service` could drift.
+  const [bookedEndsAt, setBookedEndsAt] = useState<string | null>(null);
+  // Same id the confirmation email's .ics attachment uses as its UID (see
+  // confirmation-email.server.ts) — keeping them identical means a client who
+  // both downloads from this screen and later opens the emailed attachment
+  // gets treated as the SAME calendar event by their calendar app (an update,
+  // not a duplicate), rather than two unrelated events for one appointment.
+  const [bookedBookingId, setBookedBookingId] = useState<string | null>(null);
   const [info, setInfo] = useState({ name: "", email: "", phone: "", notes: "" });
   const [infoTouched, setInfoTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -415,6 +428,8 @@ export function PublicBookingPage({
         p_active_after_min: service.active_after_min ?? null,
       });
       if (error) throw error;
+      setBookedEndsAt(ends_at);
+      setBookedBookingId(bookingId ?? null);
       setStep("done");
       if (bookingId) {
         // Best-effort — a dropped/failed call here doesn't lose the
@@ -442,6 +457,7 @@ export function PublicBookingPage({
 
   const reset = () => {
     setStep("service"); setServiceGroup(null); setService(null); setStaff(null); setTime(null);
+    setBookedEndsAt(null); setBookedBookingId(null);
     setInfo({ name: "", email: "", phone: "", notes: "" });
     setInfoTouched(false);
   };
@@ -787,6 +803,18 @@ export function PublicBookingPage({
               <SummaryRow label="Total" value={fmtMoney(service.price_cents, currency)} />
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              {bookedEndsAt && (
+                <AddToCalendar
+                  event={{
+                    uid: `booking-${bookedBookingId ?? `${staff.id}-${time}`}@bookzenvo.com`,
+                    title: `${serviceGroup?.name ?? service.name} with ${staff.name}`,
+                    description: `${serviceGroup?.name ?? service.name} at ${biz.name}, with ${staff.name}. Booked via Bookzenvo.`,
+                    location: biz.address ?? undefined,
+                    startsAtIso: time,
+                    endsAtIso: bookedEndsAt,
+                  }}
+                />
+              )}
               <Button variant="outline" onClick={reset}>Book another</Button>
               {info.email && (
                 <a
