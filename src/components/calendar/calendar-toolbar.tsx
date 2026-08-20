@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ export function CalendarToolbar({
   onNavigate,
   isFullscreen = false,
   onToggleFullscreen,
+  actions,
 }: {
   view: View;
   onViewChange: (v: View) => void;
@@ -22,6 +24,10 @@ export function CalendarToolbar({
   onNavigate: (dir: -1 | 1) => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  // Extra buttons (New booking / Block time) shown here instead — used when
+  // the page's normal header is hidden, i.e. while the calendar is
+  // fullscreen/focus-mode, since this toolbar stays visible in both.
+  actions?: ReactNode;
 }) {
   // Driven by the shared clock, not a one-shot `new Date()`, so this stays
   // correct even if the tab has been open since before midnight.
@@ -46,6 +52,7 @@ export function CalendarToolbar({
         ))}
       </div>
       <div className="flex items-center gap-1.5" data-calendar-date-controls>
+        {actions}
         {onToggleFullscreen && (
           <Button
             variant="outline"

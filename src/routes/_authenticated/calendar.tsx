@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { AddTimeOffDialog } from "@/components/time-off-editor";
+import { PortalContainerContext } from "@/components/ui/dialog-portal-context";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { startBalanceCheckout, takeSavedBalancePayment } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
@@ -109,6 +110,20 @@ function CalendarPage() {
     document.addEventListener("fullscreenchange", syncFullscreen);
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
+
+  // The native Fullscreen API only keeps `calendarRef`'s subtree on screen —
+  // Radix Dialog/AlertDialog/Select all portal to document.body by default,
+  // which sits outside that subtree, so they'd render invisible and
+  // un-clickable the moment real fullscreen kicks in (this is why "New
+  // booking", the booking-detail dialog, and cancel confirmations all
+  // silently stopped working in fullscreen). Redirect their portal target
+  // to the fullscreen element itself while it's active; back to the default
+  // (document.body, via null) otherwise. Set in an effect, not during
+  // render, so calendarRef.current is guaranteed to be attached.
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setPortalContainer(isFullscreen ? calendarRef.current : null);
+  }, [isFullscreen]);
 
   // On phones, focus mode replaces the surrounding workspace rather than
   // sitting underneath its fixed header and navigation. This keeps the day
@@ -580,6 +595,7 @@ function CalendarPage() {
 
   return (
     <HoursContext.Provider value={hoursWindow}>
+    <PortalContainerContext.Provider value={portalContainer}>
     <div
       ref={calendarRef}
       data-calendar-page
@@ -624,6 +640,18 @@ function CalendarPage() {
         onNavigate={navigate}
         isFullscreen={calendarIsExpanded}
         onToggleFullscreen={toggleFullscreen}
+        actions={
+          calendarIsExpanded ? (
+            <>
+              <Button variant="outline" size="sm" onClick={() => openBlockTime()} className="h-9 px-3">
+                <CalendarOff className="h-4 w-4 mr-1.5" /> Block time
+              </Button>
+              <Button size="sm" onClick={() => openNewBooking()} className="h-9 px-3 shadow-glow">
+                <Plus className="h-4 w-4 mr-1.5" /> New booking
+              </Button>
+            </>
+          ) : undefined
+        }
       />
 
       {view === "day" && (
@@ -819,6 +847,7 @@ function CalendarPage() {
         />
       )}
     </div>
+    </PortalContainerContext.Provider>
     </HoursContext.Provider>
   );
 }
