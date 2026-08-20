@@ -51,7 +51,13 @@ export function CalendarToolbar({
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-1.5" data-calendar-date-controls>
+      {/* flex-wrap + shrink-0 on every child here on purpose: this row can
+          hold up to 5 buttons at once in full screen (Block time, New
+          booking, Exit, Today, the date picker). Without flex-wrap they had
+          nowhere to go but to flex-shrink below their own content size,
+          which let icon+text overflow one button's box and visually collide
+          with the next one instead of cleanly dropping to a second line. */}
+      <div className="flex flex-wrap items-center justify-end gap-x-1.5 gap-y-2" data-calendar-date-controls>
         {actions}
         {onToggleFullscreen && (
           // Icon-only when not expanded (matches the old look), but a
@@ -62,7 +68,7 @@ export function CalendarToolbar({
           <Button
             variant="outline"
             size={isFullscreen ? "sm" : "icon"}
-            className={isFullscreen ? "h-9 px-3" : "h-9 w-9"}
+            className={isFullscreen ? "h-9 px-3 shrink-0" : "h-9 w-9 shrink-0"}
             onClick={onToggleFullscreen}
             aria-label={isFullscreen ? "Exit calendar full screen" : "Open calendar full screen"}
             title={isFullscreen ? "Exit full screen" : "Full screen"}
@@ -73,20 +79,20 @@ export function CalendarToolbar({
         )}
         <Button
           variant={isOnToday ? "default" : "outline"}
-          className={`h-9 ${isOnToday ? "shadow-glow" : ""}`}
+          className={`h-9 shrink-0 ${isOnToday ? "shadow-glow" : ""}`}
           onClick={onToday}
           aria-pressed={isOnToday}
         >
           Today
         </Button>
-        <div className="inline-flex items-center rounded-[8px] border bg-card shadow-soft" data-calendar-date-picker>
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none" onClick={() => onNavigate(-1)}>
+        <div className="inline-flex items-center rounded-[8px] border bg-card shadow-soft shrink-0" data-calendar-date-picker>
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none shrink-0" onClick={() => onNavigate(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-[9.5rem] px-2 h-9 flex items-center justify-center border-x text-sm font-medium tabular-nums whitespace-nowrap">
             {title}
           </div>
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-l-none" onClick={() => onNavigate(1)}>
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-l-none shrink-0" onClick={() => onNavigate(1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

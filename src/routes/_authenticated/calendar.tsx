@@ -621,10 +621,10 @@ function CalendarPage() {
         actions={
           calendarIsExpanded ? (
             <>
-              <Button variant="outline" size="sm" onClick={() => openBlockTime()} className="h-9 px-3">
+              <Button variant="outline" size="sm" onClick={() => openBlockTime()} className="h-9 px-3 shrink-0">
                 <CalendarOff className="h-4 w-4 mr-1.5" /> Block time
               </Button>
-              <Button size="sm" onClick={() => openNewBooking()} className="h-9 px-3 shadow-glow">
+              <Button size="sm" onClick={() => openNewBooking()} className="h-9 px-3 shrink-0 shadow-glow">
                 <Plus className="h-4 w-4 mr-1.5" /> New booking
               </Button>
             </>
