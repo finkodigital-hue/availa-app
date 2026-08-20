@@ -8,33 +8,37 @@
     "userInterfaceStyle": "light",
     "scheme": "bookzenvo",
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.finkodigital.bookzenvo"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.finkodigital.bookzenvo",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.finkodigital.bookzenvo",
       "adaptiveIcon": {
-          "backgroundColor": "#FAFAF8",
-          "foregroundImage": "./assets/android-icon-foreground.png",
-          "backgroundImage": "./assets/android-icon-background.png"
+        "backgroundColor": "#FAFAF8",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-      "plugins": [
-        "expo-secure-store",
-        "expo-font",
-        [
-          "expo-splash-screen",
-          {
-            "backgroundColor": "#FAFAF8",
-            "image": "./assets/splash-icon.png",
-            "imageWidth": 180,
-            "resizeMode": "contain"
-          }
-        ]
+    "plugins": [
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FAFAF8",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain"
+        }
       ]
+    ]
   }
 }

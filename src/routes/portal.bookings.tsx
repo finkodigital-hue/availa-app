@@ -67,7 +67,12 @@ function BookingsPage() {
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Booking cancelled"); qc.invalidateQueries({ queryKey: ["portal-bookings"] }); },
-    onError: (e: any) => toast.error(e.message ?? "Could not cancel"),
+    onError: (e: any) =>
+      toast.error(
+        e.message?.includes("CANCEL_WINDOW")
+          ? "This booking is inside the cancellation window — contact the business to cancel."
+          : e.message ?? "Could not cancel",
+      ),
   });
 
   const [rescheduleTarget, setRescheduleTarget] = useState<Booking | null>(null);

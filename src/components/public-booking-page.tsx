@@ -453,6 +453,10 @@ export function PublicBookingPage({
         toast.error("That slot was just taken — pick another.");
         setStep("time");
         setTime(null);
+      } else if (msg.includes("SLOT_IN_PAST")) {
+        toast.error("That time has already passed — pick another.");
+        setStep("time");
+        setTime(null);
       } else if (msg.includes("RATE_LIMITED")) {
         toast.error("Too many booking attempts — please wait a few minutes and try again.");
       } else {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { paletteFor } from "@/lib/staff-colors";
@@ -18,6 +18,7 @@ export function DayView({
   isLoading,
   onSelect,
   onCellClick,
+  onCellBlock,
   onMove,
   onResize,
   fullscreen = false,
@@ -31,6 +32,7 @@ export function DayView({
   isLoading: boolean;
   onSelect: (b: any) => void;
   onCellClick: (staffId: string, isoTime: string) => void;
+  onCellBlock?: (staffId: string, isoTime: string) => void;
   onMove: (id: string, newStaffId: string, newStart: Date) => void;
   onResize: (id: string, edge: "start" | "end", newIso: string) => void;
   fullscreen?: boolean;
@@ -172,15 +174,19 @@ export function DayView({
       </div>
     );
 
-  const colWidth = "minmax(180px, 1fr)";
-  const gridTemplate = `64px repeat(${staff.length}, ${colWidth})`;
-
   return (
-    <div className="rounded-3xl border bg-card overflow-hidden shadow-soft">
-      <div ref={scrollRef} className={`overflow-auto scroll-smooth ${fullscreen ? "max-h-[calc(100dvh-64px)]" : "max-h-[calc(100vh-280px)]"}`}>
-        <div style={{ minWidth: 64 + staff.length * 180 }}>
+    <div className="rounded-3xl border bg-card overflow-hidden shadow-soft" data-calendar-day-surface>
+      <div ref={scrollRef} className={`overflow-auto scroll-smooth ${fullscreen ? "max-h-[calc(100dvh-64px)]" : "max-h-[calc(100vh-280px)]"}`} data-calendar-day-scroll>
+        <div
+          data-calendar-grid-frame
+          data-staff-count={staff.length}
+          style={{
+            "--calendar-staff-count": staff.length,
+            "--calendar-grid-min": `${48 + staff.length * 148}px`,
+          } as CSSProperties}
+        >
           {/* Sticky staff header */}
-          <div className="grid sticky top-0 z-20 bg-card/85 backdrop-blur-xl border-b" style={{ gridTemplateColumns: gridTemplate }}>
+          <div className="grid sticky top-0 z-20 bg-card/85 backdrop-blur-xl border-b" data-calendar-staff-header>
             <div className="bg-muted/30" />
             {staff.map((s) => {
               const palette = paletteFor(s.id);
@@ -190,7 +196,7 @@ export function DayView({
           </div>
 
           {/* Body */}
-          <div className="grid relative" style={{ gridTemplateColumns: gridTemplate, height: totalH }}>
+          <div className="grid relative" style={{ height: totalH }} data-calendar-time-grid>
             {/* Hour gutter */}
             <div className="relative">
               {hours.map((h, i) => (
@@ -221,6 +227,7 @@ export function DayView({
                   blocked={blocked.filter((b: any) => !b.staff_id || b.staff_id === s.id)}
                   onSelect={onSelect}
                   onCellClick={(iso) => onCellClick(s.id, iso)}
+                  onCellBlock={onCellBlock ? (iso) => onCellBlock(s.id, iso) : undefined}
                   nowTop={nowTop}
                   drag={drag}
                   onDragStart={beginDrag}

@@ -9,6 +9,7 @@ import {
   Package,
   ChevronDown,
   CreditCard,
+  CalendarOff,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
+import { AddTimeOffDialog } from "@/components/time-off-editor";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { startBalanceCheckout, takeSavedBalancePayment } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
@@ -76,10 +78,11 @@ function CalendarPage() {
   const [selected, setSelected] = useState<any | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [prefill, setPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockPrefill, setBlockPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const calendarRef = useRef<HTMLDivElement>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
-  const calendarIsExpanded = isFullscreen || isFocusMode;
+  const calendarIsExpanded = isFocusMode;
 
   const collectBalance = async () => {
     if (!selected) return;
@@ -100,12 +103,6 @@ function CalendarPage() {
     }
   };
 
-  useEffect(() => {
-    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === calendarRef.current);
-    document.addEventListener("fullscreenchange", syncFullscreen);
-    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
-  }, []);
-
   // On phones, focus mode replaces the surrounding workspace rather than
   // sitting underneath its fixed header and navigation. This keeps the day
   // grid fully tappable and gives it the whole viewport.
@@ -116,27 +113,17 @@ function CalendarPage() {
     };
   }, [calendarIsExpanded]);
 
-  const toggleFullscreen = async () => {
-    // Safari and iOS WebViews do not consistently allow the browser Fullscreen
-    // API. Focus mode is a real in-app full-screen calendar that works there.
-    if (isFullscreen) {
-      await document.exitFullscreen();
-      return;
-    }
-    if (isFocusMode) {
-      setIsFocusMode(false);
-      return;
-    }
-    if (window.matchMedia("(max-width: 767px)").matches) {
-      setIsFocusMode(true);
-      return;
-    }
-    try {
-      await calendarRef.current?.requestFullscreen();
-    } catch {
-      setIsFocusMode(true);
-    }
-  };
+  // This used to try the browser's native Fullscreen API first (falling back
+  // to this CSS overlay only on Safari/iOS, where it's unreliable). Dropped
+  // that entirely: real fullscreen promotes calendarRef into the browser's
+  // "top layer", and every dialog here (New booking, booking details, cancel
+  // confirmations, the type/staff dropdowns) portals to document.body by
+  // default — which sits outside that layer. They opened, but stayed
+  // invisible and un-clickable the whole time you were actually fullscreen,
+  // only appearing once you exited. This in-app overlay avoids that
+  // entirely — nothing is promoted to a special browser layer, so every
+  // dialog renders exactly as it already does in normal view.
+  const toggleFullscreen = () => setIsFocusMode((v) => !v);
 
   const range = useMemo(() => {
     if (view === "day") {
@@ -381,6 +368,11 @@ function CalendarPage() {
     setNewOpen(true);
   };
 
+  const openBlockTime = (cell?: { staffId?: string; isoTime?: string; date?: Date }) => {
+    setBlockPrefill(cell);
+    setBlockOpen(true);
+  };
+
   // Global trigger from the mobile bottom nav floating "+" button, and from
   // ?new=1 deep links (navigating to /calendar from elsewhere).
   useEffect(() => {
@@ -573,24 +565,27 @@ function CalendarPage() {
     <HoursContext.Provider value={hoursWindow}>
     <div
       ref={calendarRef}
+      data-calendar-page
+      data-calendar-expanded={calendarIsExpanded ? "true" : "false"}
+      data-calendar-view={view}
       className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${
-        isFocusMode
-      ? "fixed inset-0 z-30 h-[100dvh] max-w-none overflow-hidden bg-background"
-          : isFullscreen
-            ? "h-[100dvh] max-w-none overflow-hidden bg-background"
-            : ""
+        isFocusMode ? "fixed inset-0 z-30 h-[100dvh] max-w-none overflow-hidden bg-background" : ""
       }`}
     >
 
       {!calendarIsExpanded && (
         <PageHeader
-          eyebrow="Schedule"
           title="Calendar"
           subtitle="View and manage your team's bookings."
           action={
-            <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow">
-              <Plus className="h-4 w-4 mr-1.5" /> New booking
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => openBlockTime()} className="h-10 px-4" data-calendar-block-time>
+                <CalendarOff className="h-4 w-4 mr-1.5" /> Block time
+              </Button>
+              <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow" data-calendar-new-booking>
+                <Plus className="h-4 w-4 mr-1.5" /> New booking
+              </Button>
+            </div>
           }
         />
       )}
@@ -608,6 +603,18 @@ function CalendarPage() {
         onNavigate={navigate}
         isFullscreen={calendarIsExpanded}
         onToggleFullscreen={toggleFullscreen}
+        actions={
+          calendarIsExpanded ? (
+            <>
+              <Button variant="outline" size="sm" onClick={() => openBlockTime()} className="h-9 px-3">
+                <CalendarOff className="h-4 w-4 mr-1.5" /> Block time
+              </Button>
+              <Button size="sm" onClick={() => openNewBooking()} className="h-9 px-3 shadow-glow">
+                <Plus className="h-4 w-4 mr-1.5" /> New booking
+              </Button>
+            </>
+          ) : undefined
+        }
       />
 
       {view === "day" && (
@@ -620,6 +627,7 @@ function CalendarPage() {
           isLoading={isLoading}
           onSelect={setSelected}
           onCellClick={(staffId, isoTime) => openNewBooking({ staffId, isoTime, date: anchor })}
+          onCellBlock={(staffId, isoTime) => openBlockTime({ staffId, isoTime, date: anchor })}
           onMove={dropMove}
           onResize={resizeBooking}
           fullscreen={calendarIsExpanded}
@@ -782,6 +790,23 @@ function CalendarPage() {
           businessId={bid}
           prefill={prefill}
           onCreated={() => qc.invalidateQueries({ queryKey: ["calendar"] })}
+        />
+      )}
+
+      {bid && (
+        <AddTimeOffDialog
+          open={blockOpen}
+          onOpenChange={setBlockOpen}
+          businessId={bid}
+          staffOptions={(staff ?? []).map((s: any) => ({ id: s.id, name: s.name }))}
+          initialStaffId={blockPrefill?.staffId}
+          initialDate={blockPrefill?.date ? blockPrefill.date.toISOString().slice(0, 10) : undefined}
+          initialTime={blockPrefill?.isoTime ? new Date(blockPrefill.isoTime).toTimeString().slice(0, 5) : undefined}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["calendar-blocked"] });
+            qc.invalidateQueries({ queryKey: ["calendar"] });
+            qc.invalidateQueries({ queryKey: ["time-off"] });
+          }}
         />
       )}
     </div>

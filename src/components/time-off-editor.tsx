@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Loader2, Plane, Stethoscope, Coffee, GraduationCap, CalendarOff, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -158,21 +158,39 @@ export function TimeOffEditor({ businessId, staffId }: { businessId: string; sta
   );
 }
 
-function AddTimeOffDialog({
+// Sentinel for the staff <Select> — Radix doesn't allow an empty-string
+// item value, and "whole team" is represented in the DB as staff_id = null.
+const TEAM_VALUE = "__team__";
+
+export function AddTimeOffDialog({
   open,
   onOpenChange,
   businessId,
   defaultStaffId,
+  staffOptions,
+  initialStaffId,
+  initialDate,
+  initialTime,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   businessId: string;
+  // Locked usage (Staff > edit staff > Time off tab): always this staff
+  // member, no picker shown.
   defaultStaffId?: string;
+  // Calendar usage: shows a staff picker (+ "Whole team") instead of
+  // locking to one person. initialStaffId/initialDate/initialTime prefill
+  // the fields (e.g. from a right-clicked grid cell) but stay editable.
+  staffOptions?: { id: string; name: string }[];
+  initialStaffId?: string | null;
+  initialDate?: string;
+  initialTime?: string;
   onSaved: () => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const [kind, setKind] = useState("vacation");
+  const [staffSel, setStaffSel] = useState<string>(initialStaffId || defaultStaffId || TEAM_VALUE);
   const [title, setTitle] = useState("");
   const [allDay, setAllDay] = useState(true);
   const [startDate, setStartDate] = useState(today);
@@ -182,15 +200,44 @@ function AddTimeOffDialog({
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Re-seed every field when the dialog opens, since this one instance is
+  // reused across the "Block time" button (no prefill) and right-clicked
+  // cells (staff/date/time prefilled) — without this, a second open would
+  // still show whatever the first open left behind.
+  useEffect(() => {
+    if (!open) return;
+    setStaffSel(initialStaffId || defaultStaffId || TEAM_VALUE);
+    setTitle("");
+    setReason("");
+    const d = initialDate || today;
+    setStartDate(d);
+    setEndDate(d);
+    if (initialTime) {
+      setKind("break");
+      setAllDay(false);
+      setStartTime(initialTime);
+      const [hh, mm] = initialTime.split(":").map(Number);
+      const endMins = Math.min(23 * 60 + 59, hh * 60 + mm + 30);
+      setEndTime(`${String(Math.floor(endMins / 60)).padStart(2, "0")}:${String(endMins % 60).padStart(2, "0")}`);
+    } else {
+      setKind("vacation");
+      setAllDay(true);
+      setStartTime("09:00");
+      setEndTime("17:00");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const submit = async () => {
     setSaving(true);
     try {
       const starts = new Date(`${startDate}T${allDay ? "00:00" : startTime}:00`);
       const ends = new Date(`${endDate}T${allDay ? "23:59" : endTime}:00`);
       if (ends <= starts) throw new Error("End must be after start.");
+      const staffId = staffOptions ? (staffSel === TEAM_VALUE ? null : staffSel) : (defaultStaffId ?? null);
       const { error } = await supabase.from("blocked_dates").insert({
         business_id: businessId,
-        staff_id: defaultStaffId ?? null,
+        staff_id: staffId,
         starts_at: starts.toISOString(),
         ends_at: ends.toISOString(),
         kind,
@@ -210,16 +257,38 @@ function AddTimeOffDialog({
     }
   };
 
+  const selectedStaffName = staffOptions?.find((s) => s.id === staffSel)?.name;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Add time off</DialogTitle>
           <DialogDescription>
-            {defaultStaffId ? "Blocks bookings for this staff member." : "Blocks bookings for the whole team."}
+            {staffOptions
+              ? staffSel === TEAM_VALUE
+                ? "Blocks bookings for the whole team."
+                : `Blocks bookings for ${selectedStaffName ?? "this staff member"}.`
+              : defaultStaffId
+                ? "Blocks bookings for this staff member."
+                : "Blocks bookings for the whole team."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
+          {staffOptions && (
+            <div>
+              <Label>Staff member</Label>
+              <Select value={staffSel} onValueChange={setStaffSel}>
+                <SelectTrigger className="mt-1.5 h-10"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TEAM_VALUE}>Whole team</SelectItem>
+                  {staffOptions.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label>Type</Label>
             <Select value={kind} onValueChange={setKind}>

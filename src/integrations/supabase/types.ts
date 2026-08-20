@@ -450,8 +450,12 @@ export type Database = {
           show_staff: boolean
           slug: string
           stripe_account_id: string | null
+          stripe_billing_customer_id: string | null
           stripe_charges_enabled: boolean
           stripe_details_submitted: boolean
+          stripe_subscription_id: string | null
+          stripe_subscription_status: string | null
+          billing_synced_at: string | null
           terms: string | null
           tiktok: string | null
           timezone: string
@@ -497,8 +501,12 @@ export type Database = {
           show_staff?: boolean
           slug: string
           stripe_account_id?: string | null
+          stripe_billing_customer_id?: string | null
           stripe_charges_enabled?: boolean
           stripe_details_submitted?: boolean
+          stripe_subscription_id?: string | null
+          stripe_subscription_status?: string | null
+          billing_synced_at?: string | null
           terms?: string | null
           tiktok?: string | null
           timezone?: string
@@ -544,8 +552,12 @@ export type Database = {
           show_staff?: boolean
           slug?: string
           stripe_account_id?: string | null
+          stripe_billing_customer_id?: string | null
           stripe_charges_enabled?: boolean
           stripe_details_submitted?: boolean
+          stripe_subscription_id?: string | null
+          stripe_subscription_status?: string | null
+          billing_synced_at?: string | null
           terms?: string | null
           tiktok?: string | null
           timezone?: string
@@ -1907,6 +1919,10 @@ export type Database = {
           p_active_after_min?: number | null
         }
         Returns: string
+      }
+      join_waitlist: {
+        Args: { p_email: string; p_note?: string | null }
+        Returns: undefined
       }
       create_staff_booking: {
         Args: {

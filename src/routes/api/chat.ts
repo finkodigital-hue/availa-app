@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
-import { createAnthropicChatProvider } from "@/lib/ai-gateway.server";
+import { createAiProvider } from "@/lib/ai-provider.server";
 import { buildAssistantContext } from "@/lib/assistant-context.server";
 
 export const Route = createFileRoute("/api/chat")({
@@ -13,21 +13,27 @@ export const Route = createFileRoute("/api/chat")({
           if (!token) return new Response("Unauthorized", { status: 401 });
 
           const body = (await request.json()) as { messages?: UIMessage[] };
-          if (!Array.isArray(body.messages)) return new Response("messages required", { status: 400 });
+          if (!Array.isArray(body.messages))
+            return new Response("messages required", { status: 400 });
 
           const key = process.env.ANTHROPIC_API_KEY;
           if (!key) {
             console.error("ANTHROPIC_API_KEY is not configured");
-            return new Response("The assistant isn't configured yet. Please contact support.", { status: 500 });
+            return new Response("The assistant isn't configured yet. Please contact support.", {
+              status: 500,
+            });
           }
 
           const { business, summary } = await buildAssistantContext(token);
           if (!business) return new Response("No workspace", { status: 400 });
           if (((business as { plan?: string }).plan ?? "free") === "free") {
-            return new Response("The AI assistant is a Studio feature. Upgrade to Studio to use it.", { status: 402 });
+            return new Response(
+              "The AI assistant is a Studio feature. Upgrade to Studio to use it.",
+              { status: 402 },
+            );
           }
 
-          const anthropic = createAnthropicChatProvider(key);
+          const provider = createAiProvider(key);
           const system = `You are the in-app AI business assistant for "${business.name}", a service booking business using this platform.
 Be concise, warm, and actionable. Use markdown (short headings, bullets, bold). Always ground answers in the LIVE DATA below — do not invent bookings, customers, or numbers. When asked to draft an email, return a complete email with a subject line and body that the owner can copy.
 
@@ -35,7 +41,11 @@ LIVE DATA SNAPSHOT (refreshed each message):
 ${summary}`;
 
           const result = streamText({
-            model: anthropic("claude-haiku-4-5-20251001"),
+            // Haiku, not Sonnet/Opus — this is a high-frequency, low-complexity
+            // chat workload (plain-text answers over live business data, no
+            // image input, no strict output schema), so the cheapest current
+            // Claude model is the right cost/latency tradeoff here.
+            model: provider("claude-haiku-4-5-20251001"),
             system,
             messages: await convertToModelMessages(body.messages),
           });

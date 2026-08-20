@@ -23,8 +23,15 @@ export const ENTITY_LABELS: Record<ImportEntity, string> = {
   bookings: "Appointments",
 };
 
+// Some booking systems export a literal placeholder string instead of
+// leaving the name blank when the owner never got around to naming a
+// walk-in/guest client (Fresha does this with "Change client name"). If we
+// import that verbatim it shows up as if it were a real customer's name.
+const PLACEHOLDER_NAME_RE = /^(change (client|customer) name|unnamed (client|customer))$/i;
+
 function fullNameOf(r: Record<string, string>): string {
-  return r.fullName || `${r.firstName ?? ""} ${r.lastName ?? ""}`.trim();
+  const raw = r.fullName || `${r.firstName ?? ""} ${r.lastName ?? ""}`.trim();
+  return PLACEHOLDER_NAME_RE.test(raw.trim()) ? "Unnamed client" : raw;
 }
 
 export type ParsedStaffRow = {
@@ -96,17 +103,22 @@ export function mapServiceRow(r: Record<string, string>): ParsedServiceRow | nul
   };
 }
 
+// Booking statuses were trimmed to the four a salon actually sets
+// (confirmed / completed / cancelled / no-show), so "new" and anything
+// unrecognised now land on `confirmed` rather than the retired `pending`
+// — an imported future appointment IS a booking in the diary, and leaving
+// it on a status the owner can no longer change was a dead end.
 const STATUS_MAP: Record<string, BookingStatus> = {
   completed: "completed",
   cancelled: "cancelled",
   "no show": "no_show",
   confirmed: "confirmed",
-  new: "pending",
+  new: "confirmed",
 };
 
 export function mapApptStatus(raw: string | null): BookingStatus {
   const key = (raw ?? "").trim().toLowerCase();
-  return STATUS_MAP[key] ?? "pending";
+  return STATUS_MAP[key] ?? "confirmed";
 }
 
 export type ParsedApptRow = {

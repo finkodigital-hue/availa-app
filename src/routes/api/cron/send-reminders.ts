@@ -191,7 +191,69 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           }
         }
 
-        return Response.json({ claimed, sent, failed, confirmationsClaimed, confirmationsSent, confirmationsFailed });
+        // --- Studio subscription status sweep ---
+        // Renewal/cancellation truth arrives by re-checking Stripe rather than
+        // webhooks (same fulfil-by-verification philosophy as checkout).
+        // Throttled: each paid subscription is re-checked at most every 6h,
+        // max 20 per tick. Businesses whose Studio was granted manually have
+        // stripe_subscription_id NULL and are never touched.
+        let subscriptionsChecked = 0;
+        let subscriptionsDowngraded = 0;
+
+        const stripeKey = process.env.STRIPE_SECRET_KEY;
+        if (stripeKey) {
+          const staleBefore = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+          const { data: subscribed, error: subErr } = await (supabaseAdmin as any)
+            .from("businesses")
+            .select("id, stripe_subscription_id, billing_synced_at")
+            .eq("plan", "studio")
+            .not("stripe_subscription_id", "is", null)
+            .or(`billing_synced_at.is.null,billing_synced_at.lt.${staleBefore}`)
+            .limit(20);
+
+          if (subErr) {
+            console.error("[send-reminders] failed to load subscribed businesses", subErr);
+          } else {
+            for (const biz of subscribed ?? []) {
+              try {
+                const res = await fetch(
+                  `https://api.stripe.com/v1/subscriptions/${encodeURIComponent(biz.stripe_subscription_id)}`,
+                  { headers: { Authorization: `Bearer ${stripeKey}` } },
+                );
+                const sub = (await res.json()) as { status?: string; error?: { message?: string } };
+                if (!res.ok) throw new Error(sub.error?.message ?? "Stripe error");
+                subscriptionsChecked++;
+
+                const status = sub.status ?? "unknown";
+                // past_due keeps access while Stripe retries the card; only
+                // genuinely-terminal states lose Studio.
+                const terminal = ["canceled", "unpaid", "incomplete_expired"].includes(status);
+                await (supabaseAdmin as any)
+                  .from("businesses")
+                  .update({
+                    stripe_subscription_status: status,
+                    billing_synced_at: new Date().toISOString(),
+                    ...(terminal ? { plan: "free", stripe_subscription_id: null } : {}),
+                  })
+                  .eq("id", biz.id);
+                if (terminal) subscriptionsDowngraded++;
+              } catch (err) {
+                console.error("[send-reminders] subscription sync failed", biz.id, err);
+              }
+            }
+          }
+        }
+
+        return Response.json({
+          claimed,
+          sent,
+          failed,
+          confirmationsClaimed,
+          confirmationsSent,
+          confirmationsFailed,
+          subscriptionsChecked,
+          subscriptionsDowngraded,
+        });
       },
     },
   },
