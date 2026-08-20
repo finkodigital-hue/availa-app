@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/dialog";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { AddTimeOffDialog } from "@/components/time-off-editor";
-import { PortalContainerContext } from "@/components/ui/dialog-portal-context";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { startBalanceCheckout, takeSavedBalancePayment } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
@@ -82,9 +81,8 @@ function CalendarPage() {
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockPrefill, setBlockPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const calendarRef = useRef<HTMLDivElement>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
-  const calendarIsExpanded = isFullscreen || isFocusMode;
+  const calendarIsExpanded = isFocusMode;
 
   const collectBalance = async () => {
     if (!selected) return;
@@ -105,26 +103,6 @@ function CalendarPage() {
     }
   };
 
-  useEffect(() => {
-    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === calendarRef.current);
-    document.addEventListener("fullscreenchange", syncFullscreen);
-    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
-  }, []);
-
-  // The native Fullscreen API only keeps `calendarRef`'s subtree on screen —
-  // Radix Dialog/AlertDialog/Select all portal to document.body by default,
-  // which sits outside that subtree, so they'd render invisible and
-  // un-clickable the moment real fullscreen kicks in (this is why "New
-  // booking", the booking-detail dialog, and cancel confirmations all
-  // silently stopped working in fullscreen). Redirect their portal target
-  // to the fullscreen element itself while it's active; back to the default
-  // (document.body, via null) otherwise. Set in an effect, not during
-  // render, so calendarRef.current is guaranteed to be attached.
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setPortalContainer(isFullscreen ? calendarRef.current : null);
-  }, [isFullscreen]);
-
   // On phones, focus mode replaces the surrounding workspace rather than
   // sitting underneath its fixed header and navigation. This keeps the day
   // grid fully tappable and gives it the whole viewport.
@@ -135,27 +113,17 @@ function CalendarPage() {
     };
   }, [calendarIsExpanded]);
 
-  const toggleFullscreen = async () => {
-    // Safari and iOS WebViews do not consistently allow the browser Fullscreen
-    // API. Focus mode is a real in-app full-screen calendar that works there.
-    if (isFullscreen) {
-      await document.exitFullscreen();
-      return;
-    }
-    if (isFocusMode) {
-      setIsFocusMode(false);
-      return;
-    }
-    if (window.matchMedia("(max-width: 767px)").matches) {
-      setIsFocusMode(true);
-      return;
-    }
-    try {
-      await calendarRef.current?.requestFullscreen();
-    } catch {
-      setIsFocusMode(true);
-    }
-  };
+  // This used to try the browser's native Fullscreen API first (falling back
+  // to this CSS overlay only on Safari/iOS, where it's unreliable). Dropped
+  // that entirely: real fullscreen promotes calendarRef into the browser's
+  // "top layer", and every dialog here (New booking, booking details, cancel
+  // confirmations, the type/staff dropdowns) portals to document.body by
+  // default — which sits outside that layer. They opened, but stayed
+  // invisible and un-clickable the whole time you were actually fullscreen,
+  // only appearing once you exited. This in-app overlay avoids that
+  // entirely — nothing is promoted to a special browser layer, so every
+  // dialog renders exactly as it already does in normal view.
+  const toggleFullscreen = () => setIsFocusMode((v) => !v);
 
   const range = useMemo(() => {
     if (view === "day") {
@@ -595,18 +563,13 @@ function CalendarPage() {
 
   return (
     <HoursContext.Provider value={hoursWindow}>
-    <PortalContainerContext.Provider value={portalContainer}>
     <div
       ref={calendarRef}
       data-calendar-page
       data-calendar-expanded={calendarIsExpanded ? "true" : "false"}
       data-calendar-view={view}
       className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${
-        isFocusMode
-      ? "fixed inset-0 z-30 h-[100dvh] max-w-none overflow-hidden bg-background"
-          : isFullscreen
-            ? "h-[100dvh] max-w-none overflow-hidden bg-background"
-            : ""
+        isFocusMode ? "fixed inset-0 z-30 h-[100dvh] max-w-none overflow-hidden bg-background" : ""
       }`}
     >
 
@@ -847,7 +810,6 @@ function CalendarPage() {
         />
       )}
     </div>
-    </PortalContainerContext.Provider>
     </HoursContext.Provider>
   );
 }
