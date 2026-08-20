@@ -568,9 +568,16 @@ function CalendarPage() {
       data-calendar-page
       data-calendar-expanded={calendarIsExpanded ? "true" : "false"}
       data-calendar-view={view}
-      className={`p-3 sm:p-5 md:p-8 max-w-[1800px] ${
-        isFocusMode ? "fixed inset-0 z-30 h-[100dvh] max-w-none overflow-hidden bg-background" : ""
-      }`}
+      className={
+        isFocusMode
+          // Kept entirely separate from the normal-mode classes below —
+          // Tailwind doesn't respect JSX string order when two classes set
+          // the same property (max-w-[1800px] vs max-w-none), so mixing
+          // them left the overlay capped at 1800px instead of filling the
+          // screen. Simplest fix is to never emit both at once.
+          ? "fixed inset-0 z-30 h-[100dvh] w-screen p-3 sm:p-5 md:p-8 overflow-hidden bg-background"
+          : "p-3 sm:p-5 md:p-8 max-w-[1800px]"
+      }
     >
 
       {!calendarIsExpanded && (

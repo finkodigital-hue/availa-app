@@ -230,10 +230,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-60 md:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen print:hidden">
-        {SidebarContent}
-      </aside>
+      {/* Desktop sidebar — hidden in calendar focus/full-screen mode too.
+          calendarFocusMode used to only ever fire on mobile viewports (this
+          aside is already `hidden` there via md:flex), so nothing gated it
+          before; now the calendar's full-screen toggle uses this same
+          overlay on desktop as well, and without this it stayed on screen,
+          overlapping the calendar grid underneath the overlay. */}
+      {!calendarFocusMode && (
+        <aside className="hidden md:flex md:w-60 md:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen print:hidden">
+          {SidebarContent}
+        </aside>
+      )}
 
       {/* Mobile header */}
       {!calendarFocusMode && (
