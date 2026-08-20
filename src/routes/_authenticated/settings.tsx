@@ -518,7 +518,7 @@ function ProfileEditor({ biz }: { biz: any }) {
         <Field label="Instagram"><Input value={form.instagram ?? ""} onChange={(e) => setForm({ ...form, instagram: e.target.value })} className="h-10" placeholder="@handle" /></Field>
         <Field label="Facebook"><Input value={form.facebook ?? ""} onChange={(e) => setForm({ ...form, facebook: e.target.value })} className="h-10" /></Field>
         <Field label="TikTok"><Input value={form.tiktok ?? ""} onChange={(e) => setForm({ ...form, tiktok: e.target.value })} className="h-10" placeholder="@handle" /></Field>
-        <Field label="Twitter"><Input value={form.twitter ?? ""} onChange={(e) => setForm({ ...form, twitter: e.target.value })} className="h-10" /></Field>
+        <Field label="X"><Input value={form.twitter ?? ""} onChange={(e) => setForm({ ...form, twitter: e.target.value })} className="h-10" /></Field>
       </div>
       <div className="pt-1 flex justify-end">
         <Button onClick={save} disabled={saving}>
