@@ -624,6 +624,7 @@ function ServiceStep({
 }: {
   businessId: string; current: Service | null; onBack: () => void; onPick: (svc: Service) => void;
 }) {
+  const [q, setQ] = useState("");
   const { data: services, isLoading } = useQuery({
     queryKey: ["wi-services", businessId],
     queryFn: async () => {
@@ -632,15 +633,41 @@ function ServiceStep({
       return data as Service[];
     },
   });
+
+  // Filtered client-side: the whole active service list is already loaded,
+  // and salons with long menus (colour variants, add-ons) otherwise mean a
+  // lot of scrolling to find one item.
+  const needle = q.trim().toLowerCase();
+  const filtered = needle
+    ? (services ?? []).filter((s) => s.name.toLowerCase().includes(needle))
+    : services ?? [];
+
   return (
     <div className="space-y-3">
       <button onClick={onBack} className="text-xs text-muted-foreground flex w-fit items-center gap-1">
         <ChevronLeft className="h-3 w-3" /> Back
       </button>
       <Label className="text-xs uppercase tracking-wide text-muted-foreground">Service</Label>
+      {(services?.length ?? 0) > 5 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            autoFocus
+            placeholder="Search services…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="pl-9 h-11"
+          />
+        </div>
+      )}
       {isLoading && <Skeleton className="h-12 w-full" />}
+      {!isLoading && filtered.length === 0 && (
+        <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground text-center">
+          {needle ? "No services match that search." : "No active services yet."}
+        </div>
+      )}
       <div className="space-y-2 max-h-72 overflow-y-auto">
-        {services?.map((s) => (
+        {filtered.map((s) => (
           <button key={s.id} onClick={() => onPick(s)}
             className={`w-full text-left rounded-xl border p-3 hover:bg-secondary/40 flex items-center justify-between ${current?.id === s.id ? "border-primary bg-primary/5" : "bg-card"}`}>
             <div>
