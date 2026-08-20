@@ -35,7 +35,7 @@ export function CalendarToolbar({
   const isOnToday = anchor.toDateString() === now.toDateString();
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 mt-4" data-calendar-toolbar>
+    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 mt-4 shrink-0" data-calendar-toolbar>
       <div className="inline-flex rounded-[8px] border bg-card p-1 shadow-soft" data-calendar-view-switcher>
         {(["day", "week", "month"] as View[]).map((v) => (
           <button
@@ -54,15 +54,21 @@ export function CalendarToolbar({
       <div className="flex items-center gap-1.5" data-calendar-date-controls>
         {actions}
         {onToggleFullscreen && (
+          // Icon-only when not expanded (matches the old look), but a
+          // labeled button once expanded — an unlabeled icon squeezed in
+          // next to "Block time"/"New booking" was easy to miss as the way
+          // back out, especially once it's the *only* way back (the sidebar
+          // is hidden in this mode too).
           <Button
             variant="outline"
-            size="icon"
-            className="h-9 w-9"
+            size={isFullscreen ? "sm" : "icon"}
+            className={isFullscreen ? "h-9 px-3" : "h-9 w-9"}
             onClick={onToggleFullscreen}
             aria-label={isFullscreen ? "Exit calendar full screen" : "Open calendar full screen"}
             title={isFullscreen ? "Exit full screen" : "Full screen"}
           >
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            {isFullscreen ? <Minimize2 className="h-4 w-4 mr-1.5" /> : <Maximize2 className="h-4 w-4" />}
+            {isFullscreen && "Exit"}
           </Button>
         )}
         <Button

@@ -175,8 +175,18 @@ export function DayView({
     );
 
   return (
-    <div className="rounded-3xl border bg-card overflow-hidden shadow-soft" data-calendar-day-surface>
-      <div ref={scrollRef} className={`overflow-auto scroll-smooth ${fullscreen ? "max-h-[calc(100dvh-64px)]" : "max-h-[calc(100vh-280px)]"}`} data-calendar-day-scroll>
+    <div
+      className={`rounded-3xl border bg-card shadow-soft ${fullscreen ? "flex-1 min-h-0 flex flex-col overflow-hidden" : "overflow-hidden"}`}
+      data-calendar-day-surface
+    >
+      {/* fullscreen: fills whatever's left below the toolbar (flex-1 on a
+          flex-col parent), so the page itself never needs to scroll —
+          only this box does. Non-fullscreen keeps the old fixed max-height. */}
+      <div
+        ref={scrollRef}
+        className={`overflow-auto scroll-smooth ${fullscreen ? "flex-1 min-h-0" : "max-h-[calc(100vh-280px)]"}`}
+        data-calendar-day-scroll
+      >
         <div
           data-calendar-grid-frame
           data-staff-count={staff.length}

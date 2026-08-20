@@ -575,7 +575,15 @@ function CalendarPage() {
           // the same property (max-w-[1800px] vs max-w-none), so mixing
           // them left the overlay capped at 1800px instead of filling the
           // screen. Simplest fix is to never emit both at once.
-          ? "fixed inset-0 z-30 h-[100dvh] w-screen p-3 sm:p-5 md:p-8 overflow-hidden bg-background"
+          //
+          // flex flex-col + the view wrapper below being flex-1 min-h-0
+          // (instead of the day/week grid guessing its own height via
+          // max-h-[calc(100dvh-64px)]) is what actually keeps this to one
+          // frame: the toolbar can wrap to 2 lines depending on window
+          // width, and a hardcoded height guess broke the moment it did,
+          // pushing the whole page into scrolling instead of just the
+          // hour grid.
+          ? "fixed inset-0 z-30 h-[100dvh] w-screen flex flex-col p-3 sm:p-5 md:p-8 overflow-hidden bg-background"
           : "p-3 sm:p-5 md:p-8 max-w-[1800px]"
       }
     >
@@ -624,43 +632,49 @@ function CalendarPage() {
         }
       />
 
-      {view === "day" && (
-        <DayView
-          staff={visibleDayStaff}
-          availability={staffAvailability}
-          bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
-          blocked={blocked ?? []}
-          date={anchor}
-          isLoading={isLoading}
-          onSelect={setSelected}
-          onCellClick={(staffId, isoTime) => openNewBooking({ staffId, isoTime, date: anchor })}
-          onCellBlock={(staffId, isoTime) => openBlockTime({ staffId, isoTime, date: anchor })}
-          onMove={dropMove}
-          onResize={resizeBooking}
-          fullscreen={calendarIsExpanded}
-          emptyMessage="Nobody is scheduled to work on this day."
-        />
-      )}
+      {/* Plain wrapper outside full screen (no layout effect). In full
+          screen it's the flex-1 min-h-0 that makes whichever view is active
+          fill exactly what's left below the toolbar, instead of the view
+          guessing that height itself. */}
+      <div className={calendarIsExpanded ? "flex-1 min-h-0 flex flex-col" : ""}>
+        {view === "day" && (
+          <DayView
+            staff={visibleDayStaff}
+            availability={staffAvailability}
+            bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
+            blocked={blocked ?? []}
+            date={anchor}
+            isLoading={isLoading}
+            onSelect={setSelected}
+            onCellClick={(staffId, isoTime) => openNewBooking({ staffId, isoTime, date: anchor })}
+            onCellBlock={(staffId, isoTime) => openBlockTime({ staffId, isoTime, date: anchor })}
+            onMove={dropMove}
+            onResize={resizeBooking}
+            fullscreen={calendarIsExpanded}
+            emptyMessage="Nobody is scheduled to work on this day."
+          />
+        )}
 
-      {view === "week" && (
-        <WeekView
-          bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
-          weekStart={range.start}
-          isLoading={isLoading}
-          onSelect={setSelected}
-          onCellClick={(date, isoTime) => openNewBooking({ isoTime, date })}
-          fullscreen={calendarIsExpanded}
-        />
-      )}
+        {view === "week" && (
+          <WeekView
+            bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
+            weekStart={range.start}
+            isLoading={isLoading}
+            onSelect={setSelected}
+            onCellClick={(date, isoTime) => openNewBooking({ isoTime, date })}
+            fullscreen={calendarIsExpanded}
+          />
+        )}
 
-      {view === "month" && (
-        <MonthView
-          bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
-          monthStart={range.start}
-          onSelect={setSelected}
-          onDayClick={(date) => { setAnchor(date); setView("day"); }}
-        />
-      )}
+        {view === "month" && (
+          <MonthView
+            bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
+            monthStart={range.start}
+            onSelect={setSelected}
+            onDayClick={(date) => { setAnchor(date); setView("day"); }}
+          />
+        )}
+      </div>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent className="sm:max-w-md">
