@@ -426,7 +426,7 @@
 [data-calendar-toolbar] {
   display: grid !important;
   grid-template-columns: auto minmax(0, 1fr) !important;
-  align-items: center !important;
+  align-items: start !important;
   gap: .72rem !important;
   margin: 0 0 .72rem !important;
   padding: 0 !important;
@@ -446,8 +446,17 @@
 }
 [data-calendar-view-switcher] button { padding: .5rem .75rem !important; border-radius: .5rem !important; color: var(--bz-muted) !important; font-size: .72rem !important; }
 [data-calendar-view-switcher] button[data-state="active"] { background: #191919 !important; color: #fff !important; box-shadow: none !important; }
-[data-calendar-date-controls] { display: grid !important; grid-template-columns: 2.45rem 4.75rem minmax(11.5rem, 1fr) !important; justify-self: end; align-items: center; gap: .42rem !important; }
-[data-calendar-date-controls] > [data-ui-button], [data-calendar-date-picker] { height: 2.55rem !important; border-color: var(--bz-rule) !important; background: var(--bz-panel) !important; color: var(--bz-ink) !important; box-shadow: none !important; }
+/* This used to be a `display: grid` with a hardcoded 3-column template
+   (icon-only fullscreen toggle, Today, date picker). It silently broke the
+   moment Block time / New booking / a labeled Exit button were added to
+   this row, because CSS grid auto-placement packs extra items into however
+   many implicit rows it needs using that SAME fixed column-width template
+   -- so 5 buttons got jammed into 3 narrow tracks instead of getting their
+   own space, and the grid's `!important` meant no amount of Tailwind
+   flex/wrap classes on the element itself could override it. flex-wrap
+   handles any number of buttons without a hardcoded count. */
+[data-calendar-date-controls] { display: flex !important; flex-wrap: wrap !important; justify-content: flex-end !important; justify-self: end; align-items: center; gap: .42rem !important; }
+[data-calendar-date-controls] > [data-ui-button], [data-calendar-date-picker] { height: 2.55rem !important; border-color: var(--bz-rule) !important; background: var(--bz-panel) !important; color: var(--bz-ink) !important; box-shadow: none !important; flex-shrink: 0 !important; }
 [data-calendar-date-controls] > [data-ui-button][aria-pressed="true"] { background: #191919 !important; color: #fff !important; }
 [data-calendar-date-picker] { display: grid !important; grid-template-columns: 2.45rem minmax(7rem, 1fr) 2.45rem !important; min-width: 0; border-radius: .72rem !important; overflow: hidden; }
 [data-calendar-date-picker] > div { min-width: 0 !important; height: 2.55rem !important; border-color: var(--bz-rule) !important; font-size: .78rem !important; overflow: hidden; text-overflow: ellipsis; }
@@ -467,7 +476,13 @@
 [data-calendar-booking]:hover { transform: translateY(-1px) !important; }
 [data-calendar-page][data-calendar-expanded="true"] { padding: .6rem !important; background: var(--bz-paper) !important; }
 [data-calendar-page][data-calendar-expanded="true"] [data-calendar-toolbar] { position: sticky; top: 0; z-index: 35; padding: .15rem 0 .55rem !important; background: var(--bz-paper) !important; }
-[data-calendar-page][data-calendar-expanded="true"] [data-calendar-day-scroll] { max-height: calc(100dvh - 4.25rem) !important; }
+/* No hardcoded max-height here anymore -- it used to assume the toolbar
+   above is always exactly 4.25rem tall, which broke the "fits in one
+   frame" goal the moment the toolbar wrapped to 2 lines (e.g. once it
+   couldn't fit Block time/New booking/Exit/Today/date picker on one row).
+   day-view.tsx now sizes this element with flex-1 + min-h-0 inside a
+   flex-col page, which adapts to whatever height the toolbar actually
+   ends up being instead of guessing a fixed number. */
 
 @media (max-width: 767px) {
   [data-calendar-page] { --calendar-gutter: 42px; padding: 1.2rem .9rem 1.5rem !important; }
