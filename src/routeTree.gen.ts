@@ -28,6 +28,7 @@ import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
 import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-suggest'
+import { Route as ApiClientErrorsRouteImport } from './routes/api/client-errors'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
@@ -146,6 +147,11 @@ const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
 const ApiPageAiSuggestRoute = ApiPageAiSuggestRouteImport.update({
   id: '/api/page-ai-suggest',
   path: '/api/page-ai-suggest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiClientErrorsRoute = ApiClientErrorsRouteImport.update({
+  id: '/api/client-errors',
+  path: '/api/client-errors',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -310,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/staff': typeof AuthenticatedStaffRoute
   '/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
@@ -353,6 +360,7 @@ export interface FileRoutesByTo {
   '/staff': typeof AuthenticatedStaffRoute
   '/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
@@ -400,6 +408,7 @@ export interface FileRoutesById {
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/_authenticated/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
@@ -447,6 +456,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/stock'
     | '/api/chat'
+    | '/api/client-errors'
     | '/api/page-ai-suggest'
     | '/api/stripe-webhook'
     | '/book/$slug'
@@ -490,6 +500,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/stock'
     | '/api/chat'
+    | '/api/client-errors'
     | '/api/page-ai-suggest'
     | '/api/stripe-webhook'
     | '/book/$slug'
@@ -536,6 +547,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff'
     | '/_authenticated/stock'
     | '/api/chat'
+    | '/api/client-errors'
     | '/api/page-ai-suggest'
     | '/api/stripe-webhook'
     | '/book/$slug'
@@ -566,6 +578,7 @@ export interface RootRouteChildren {
   StatusRoute: typeof StatusRoute
   TermsRoute: typeof TermsRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiClientErrorsRoute: typeof ApiClientErrorsRoute
   ApiPageAiSuggestRoute: typeof ApiPageAiSuggestRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   BookSlugRoute: typeof BookSlugRoute
@@ -712,6 +725,13 @@ declare module '@tanstack/react-router' {
       path: '/api/page-ai-suggest'
       fullPath: '/api/page-ai-suggest'
       preLoaderRoute: typeof ApiPageAiSuggestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/client-errors': {
+      id: '/api/client-errors'
+      path: '/api/client-errors'
+      fullPath: '/api/client-errors'
+      preLoaderRoute: typeof ApiClientErrorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -974,6 +994,7 @@ const rootRouteChildren: RootRouteChildren = {
   StatusRoute: StatusRoute,
   TermsRoute: TermsRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiClientErrorsRoute: ApiClientErrorsRoute,
   ApiPageAiSuggestRoute: ApiPageAiSuggestRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   BookSlugRoute: BookSlugRoute,

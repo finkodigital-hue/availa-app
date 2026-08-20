@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Search, UserPlus, ChevronLeft, Pencil, Sparkles, Lock } from "lucide-react";
+import { Loader2, Search, UserPlus, ChevronLeft, ChevronRight, Pencil, Sparkles, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fmtMoney, fmtTime } from "@/lib/format";
-import { useAvailableSlots, buildDateStrip } from "@/lib/slots";
+import { useAvailableSlots } from "@/lib/slots";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -258,10 +258,10 @@ export function NewBookingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display text-2xl flex items-center gap-2">
-            {isCustom ? <><Lock className="h-5 w-5" /> Block time / custom</> : <>New booking</>}
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-5 sm:p-6 gap-3 overflow-hidden">
+        <DialogHeader className="shrink-0 space-y-1">
+          <DialogTitle className="font-display text-xl flex items-center gap-2">
+            {isCustom ? <><Lock className="h-4 w-4" /> Block time / custom</> : <>New booking</>}
           </DialogTitle>
           <DialogDescription className="flex items-center justify-between gap-3">
             <span>{isCustom ? "Internal only — no customer notification." : "We've pre-filled what we already know."}</span>
@@ -273,26 +273,30 @@ export function NewBookingDialog({
         </DialogHeader>
 
         {/* Progress dots */}
-        <div className="flex items-center gap-1.5">
+        <div className="shrink-0 flex items-center gap-1.5">
           {wizardSteps.map((s, i) => (
             <div key={s} className={cn("h-1 flex-1 rounded-full transition-colors", i <= stepIndex ? "bg-primary" : "bg-secondary")} />
           ))}
         </div>
-        <div className="text-[10px] uppercase tracking-widest text-muted-foreground -mt-1">
+        <div className="shrink-0 text-[10px] uppercase tracking-widest text-muted-foreground -mt-2">
           Step {stepIndex + 1} of {wizardSteps.length}
         </div>
 
-        {/* Summary */}
+        {/* Summary — compact reference info, not the main event */}
         {step !== "confirm" && (customerLabel || service || staff || time || (isCustom && customTitle)) && (
-          <Summary
-            isCustom={isCustom}
-            customerOrTitle={isCustom ? customTitle || null : customerLabel}
-            service={isCustom ? customService : service}
-            staff={staff}
-            time={time}
-            onJump={(s) => setStep(s)}
-          />
+          <div className="shrink-0">
+            <Summary
+              isCustom={isCustom}
+              customerOrTitle={isCustom ? customTitle || null : customerLabel}
+              service={isCustom ? customService : service}
+              staff={staff}
+              time={time}
+              onJump={(s) => setStep(s)}
+            />
+          </div>
         )}
+
+        <div className="flex-1 min-h-0 overflow-y-auto">
 
         {loadingPrefill && (
           <div className="py-6 grid place-items-center">
@@ -404,6 +408,7 @@ export function NewBookingDialog({
             </DialogFooter>
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -433,7 +438,7 @@ function Summary({
   onJump: (s: Step) => void;
 }) {
   return (
-    <div className="rounded-xl border bg-secondary/40 p-3 text-sm space-y-1.5">
+    <div className="rounded-lg border bg-secondary/40 px-2.5 py-1.5 text-sm">
       <SummaryRow k={isCustom ? "Title" : "Customer"} v={customerOrTitle} onEdit={() => onJump(isCustom ? "custom" : "customer")} />
       {!isCustom && (
         <SummaryRow
@@ -450,18 +455,19 @@ function Summary({
         k="When"
         v={time ? `${new Date(time).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })} · ${fmtTime(time)}` : null}
         onEdit={() => onJump("slot")}
+        last
       />
     </div>
   );
 }
 
-function SummaryRow({ k, v, onEdit }: { k: string; v: string | null; onEdit: () => void }) {
+function SummaryRow({ k, v, onEdit, last }: { k: string; v: string | null; onEdit: () => void; last?: boolean }) {
   return (
-    <div className="grid grid-cols-[72px_1fr_auto] gap-3 items-center">
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</span>
-      <span className={`font-medium text-sm truncate ${v ? "" : "text-muted-foreground/60 italic"}`}>{v ?? "—"}</span>
-      <button type="button" onClick={onEdit} className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-        <Pencil className="h-3 w-3" /> {v ? "Change" : "Set"}
+    <div className={cn("grid grid-cols-[64px_1fr_auto] gap-2 items-center py-1", !last && "border-b border-border/60")}>
+      <span className="text-[9px] uppercase tracking-wider text-muted-foreground">{k}</span>
+      <span className={`font-medium text-xs truncate ${v ? "" : "text-muted-foreground/60 italic"}`}>{v ?? "—"}</span>
+      <button type="button" onClick={onEdit} className="text-[10px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 shrink-0">
+        <Pencil className="h-2.5 w-2.5" /> {v ? "Change" : "Set"}
       </button>
     </div>
   );
@@ -725,40 +731,96 @@ function StaffStep({
   );
 }
 
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 function SlotStep({
   businessId, staff, service, date, setDate, onBack, onPick,
 }: {
   businessId: string; staff: Staff; service: Service; date: Date; setDate: (d: Date) => void; onBack: () => void; onPick: (iso: string) => void;
 }) {
   const { slots, isLoading } = useAvailableSlots({ businessId, staffId: staff.id, service, date });
-  const days = useMemo(() => buildDateStrip(14), []);
+
+  // 7-day week view with prev/next nav, instead of a 14-pill strip that
+  // forced horizontal scrolling — grid-cols-7 with no fixed pill width
+  // always fits the modal, at any width. Starts on whichever week already
+  // contains the selected/prefilled date.
+  const [weekStart, setWeekStart] = useState(() => {
+    const today = startOfToday();
+    return date >= today ? date : today;
+  });
+  const week = useMemo(() => {
+    const arr: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      arr.push(d);
+    }
+    return arr;
+  }, [weekStart]);
+  const canGoPrev = weekStart > startOfToday();
+  const prevWeek = () => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() - 7);
+    setWeekStart(d < startOfToday() ? startOfToday() : d);
+  };
+  const nextWeek = () => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 7);
+    setWeekStart(d);
+  };
+
   return (
-    <div className="space-y-3">
-      <button onClick={onBack} className="text-xs text-muted-foreground inline-flex items-center gap-1">
+    <div className="h-full min-h-0 flex flex-col gap-2.5">
+      <button onClick={onBack} className="shrink-0 w-fit text-xs text-muted-foreground inline-flex items-center gap-1">
         <ChevronLeft className="h-3 w-3" /> Back
       </button>
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-thin pb-1">
-        {days.map((d) => {
-          const sel = d.toDateString() === date.toDateString();
-          return (
-            <button key={d.toISOString()} onClick={() => setDate(d)}
-              className={`shrink-0 flex flex-col items-center min-w-[52px] py-2 rounded-xl text-xs transition-all ${sel ? "bg-primary text-primary-foreground" : "bg-secondary/50 hover:bg-secondary"}`}>
-              <span className="uppercase tracking-wider text-[10px] opacity-80">{d.toLocaleDateString([], { weekday: "short" })}</span>
-              <span className="font-display text-base mt-0.5 tabular-nums">{d.getDate()}</span>
-            </button>
-          );
-        })}
+
+      <div className="shrink-0 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={prevWeek}
+          disabled={!canGoPrev}
+          aria-label="Previous week"
+          className="h-8 w-6 shrink-0 grid place-items-center rounded-lg text-muted-foreground hover:bg-secondary disabled:opacity-25 disabled:pointer-events-none"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex-1 grid grid-cols-7 gap-1">
+          {week.map((d) => {
+            const sel = d.toDateString() === date.toDateString();
+            return (
+              <button key={d.toISOString()} onClick={() => setDate(d)}
+                className={`flex flex-col items-center py-1.5 rounded-lg text-xs transition-all ${sel ? "bg-primary text-primary-foreground" : "bg-secondary/50 hover:bg-secondary"}`}>
+                <span className="uppercase tracking-wider text-[9px] opacity-80">{d.toLocaleDateString([], { weekday: "short" })}</span>
+                <span className="font-display text-sm mt-0.5 tabular-nums">{d.getDate()}</span>
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={nextWeek}
+          aria-label="Next week"
+          className="h-8 w-6 shrink-0 grid place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
+
       {isLoading && (
         <div className="grid grid-cols-4 gap-2">{Array.from({ length: 8 }).map((_, i) => (<Skeleton key={i} className="h-10 rounded-xl" />))}</div>
       )}
       {!isLoading && slots.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-8">No availability on this day.</p>
+        <p className="text-sm text-muted-foreground text-center py-6">No availability on this day.</p>
       )}
       {!isLoading && slots.length > 0 && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-80 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto content-start grid grid-cols-3 sm:grid-cols-4 gap-2 pr-0.5">
           {slots.map((s) => (
-            <button key={s.iso} onClick={() => onPick(s.iso)} className="h-10 rounded-xl border bg-card hover:bg-primary hover:text-primary-foreground hover:border-transparent text-sm tabular-nums transition-colors">
+            <button key={s.iso} onClick={() => onPick(s.iso)} className="h-9 rounded-lg border bg-card hover:bg-primary hover:text-primary-foreground hover:border-transparent text-sm tabular-nums transition-colors">
               {s.time}
             </button>
           ))}
