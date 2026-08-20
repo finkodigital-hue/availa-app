@@ -21,6 +21,7 @@ export function StaffColumn({
   blocked,
   onSelect,
   onCellClick,
+  onCellBlock,
   nowTop,
   drag,
   onDragStart,
@@ -37,6 +38,7 @@ export function StaffColumn({
   blocked: any[];
   onSelect: (b: any) => void;
   onCellClick: (iso: string) => void;
+  onCellBlock?: (iso: string) => void;
   nowTop: number | null;
   drag: DragState | null;
   onDragStart: (b: any, mode: DragMode, staffId: string, top: number, height: number, clientY: number) => void;
@@ -124,6 +126,18 @@ export function StaffColumn({
             }
             onCellClick(d.toISOString());
           }}
+          onContextMenu={(e) => {
+            if (!interactive || !onCellBlock) return;
+            e.preventDefault();
+            const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+            const y = i * HOUR_PX + (e.clientY - rect.top);
+            const minutes = Math.max(0, Math.round(y / SLOT_PX) * SLOT_MIN);
+            const d = new Date(date);
+            d.setHours(START_HOUR, 0, 0, 0);
+            d.setMinutes(d.getMinutes() + minutes);
+            onCellBlock(d.toISOString());
+          }}
+          title={interactive && onCellBlock ? "Right-click to block this time" : undefined}
         >
           {/* half-hour subtle line */}
           <div className="h-1/2 border-b border-dashed border-border/25" />

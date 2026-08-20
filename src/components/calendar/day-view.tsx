@@ -18,6 +18,7 @@ export function DayView({
   isLoading,
   onSelect,
   onCellClick,
+  onCellBlock,
   onMove,
   onResize,
   fullscreen = false,
@@ -31,6 +32,7 @@ export function DayView({
   isLoading: boolean;
   onSelect: (b: any) => void;
   onCellClick: (staffId: string, isoTime: string) => void;
+  onCellBlock?: (staffId: string, isoTime: string) => void;
   onMove: (id: string, newStaffId: string, newStart: Date) => void;
   onResize: (id: string, edge: "start" | "end", newIso: string) => void;
   fullscreen?: boolean;
@@ -225,6 +227,7 @@ export function DayView({
                   blocked={blocked.filter((b: any) => !b.staff_id || b.staff_id === s.id)}
                   onSelect={onSelect}
                   onCellClick={(iso) => onCellClick(s.id, iso)}
+                  onCellBlock={onCellBlock ? (iso) => onCellBlock(s.id, iso) : undefined}
                   nowTop={nowTop}
                   drag={drag}
                   onDragStart={beginDrag}

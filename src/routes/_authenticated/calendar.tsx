@@ -9,6 +9,7 @@ import {
   Package,
   ChevronDown,
   CreditCard,
+  CalendarOff,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
+import { AddTimeOffDialog } from "@/components/time-off-editor";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { startBalanceCheckout, takeSavedBalancePayment } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
@@ -76,6 +78,8 @@ function CalendarPage() {
   const [selected, setSelected] = useState<any | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [prefill, setPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockPrefill, setBlockPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const calendarRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -381,6 +385,11 @@ function CalendarPage() {
     setNewOpen(true);
   };
 
+  const openBlockTime = (cell?: { staffId?: string; isoTime?: string; date?: Date }) => {
+    setBlockPrefill(cell);
+    setBlockOpen(true);
+  };
+
   // Global trigger from the mobile bottom nav floating "+" button, and from
   // ?new=1 deep links (navigating to /calendar from elsewhere).
   useEffect(() => {
@@ -590,9 +599,14 @@ function CalendarPage() {
           title="Calendar"
           subtitle="View and manage your team's bookings."
           action={
-            <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow" data-calendar-new-booking>
-              <Plus className="h-4 w-4 mr-1.5" /> New booking
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => openBlockTime()} className="h-10 px-4" data-calendar-block-time>
+                <CalendarOff className="h-4 w-4 mr-1.5" /> Block time
+              </Button>
+              <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow" data-calendar-new-booking>
+                <Plus className="h-4 w-4 mr-1.5" /> New booking
+              </Button>
+            </div>
           }
         />
       )}
@@ -622,6 +636,7 @@ function CalendarPage() {
           isLoading={isLoading}
           onSelect={setSelected}
           onCellClick={(staffId, isoTime) => openNewBooking({ staffId, isoTime, date: anchor })}
+          onCellBlock={(staffId, isoTime) => openBlockTime({ staffId, isoTime, date: anchor })}
           onMove={dropMove}
           onResize={resizeBooking}
           fullscreen={calendarIsExpanded}
@@ -784,6 +799,23 @@ function CalendarPage() {
           businessId={bid}
           prefill={prefill}
           onCreated={() => qc.invalidateQueries({ queryKey: ["calendar"] })}
+        />
+      )}
+
+      {bid && (
+        <AddTimeOffDialog
+          open={blockOpen}
+          onOpenChange={setBlockOpen}
+          businessId={bid}
+          staffOptions={(staff ?? []).map((s: any) => ({ id: s.id, name: s.name }))}
+          initialStaffId={blockPrefill?.staffId}
+          initialDate={blockPrefill?.date ? blockPrefill.date.toISOString().slice(0, 10) : undefined}
+          initialTime={blockPrefill?.isoTime ? new Date(blockPrefill.isoTime).toTimeString().slice(0, 5) : undefined}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["calendar-blocked"] });
+            qc.invalidateQueries({ queryKey: ["calendar"] });
+            qc.invalidateQueries({ queryKey: ["time-off"] });
+          }}
         />
       )}
     </div>
