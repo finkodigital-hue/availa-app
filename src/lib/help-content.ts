@@ -629,7 +629,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Setting up your business profile",
     summary: "Your business name, contact details and socials.",
     blocks: [
-      { type: "p", text: "Under Settings → Business, set your business name, timezone, contact email and phone, website, address, description and social handles (Instagram, Facebook, TikTok, Twitter)." },
+      { type: "p", text: "Under Settings → Business, set your business name, timezone, contact email and phone, website, address, description and social handles (Instagram, Facebook, TikTok, X)." },
     ],
   },
   {
