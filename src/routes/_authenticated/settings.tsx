@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight, UserRound, KeyRound, ShieldCheck, Sparkles, CreditCard } from "lucide-react";
+import { Building2, Clock, Loader2, ImageIcon, Palette, FileText, Crown, Armchair, Eye, CalendarCheck, Move, Globe2, ArrowRight, UserRound, KeyRound, ShieldCheck, Sparkles, CreditCard, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { useAuth } from "@/lib/auth";
@@ -23,6 +23,18 @@ import { WhiteLabelEditor } from "@/components/white-label-editor";
 import { TwoFactorSettings } from "@/components/two-factor-settings";
 import { PlanSettings } from "@/components/plan-settings";
 import { StripeSettings } from "@/components/stripe-settings";
+import { deleteMyAccount } from "@/lib/account.functions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const SETTINGS_TABS = ["account", "plan", "profile", "payments", "hours", "branding", "gallery", "page", "whitelabel", "chairs"] as const;
 
@@ -94,6 +106,9 @@ function SettingsPage() {
           </Section>
           <Section icon={ShieldCheck} title="Security" description="Extra protection for your sign-in.">
             <TwoFactorSettings />
+          </Section>
+          <Section icon={AlertTriangle} title="Danger zone" description="Permanently delete this workspace and everything in it.">
+            <DeleteAccountSection biz={biz} />
           </Section>
         </TabsContent>
         <TabsContent value="plan">
@@ -253,6 +268,93 @@ function AccountEditor({ user }: { user: { id: string; email?: string } }) {
           Save account
         </Button>
       </div>
+    </div>
+  );
+}
+
+function DeleteAccountSection({ biz }: { biz: { id: string; name: string } }) {
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const canConfirm = confirmText.trim().length > 0 && confirmText.trim() === biz.name.trim();
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteMyAccount({ data: { confirmName: confirmText.trim() } });
+      toast.success("Your account and all its data have been deleted.");
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // The account is already gone server-side either way — don't let a
+        // sign-out hiccup stop the redirect below.
+      }
+      setTimeout(() => window.location.assign("/"), 1200);
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not delete the account");
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+      <p className="text-sm font-medium">Delete {biz.name}</p>
+      <p className="text-xs text-muted-foreground mt-1 mb-4 text-pretty">
+        Permanently deletes this business, every booking, customer, staff member and setting, cancels
+        your Studio subscription if you have one, and removes your sign-in. This cannot be undone.
+      </p>
+      <AlertDialog
+        open={open}
+        onOpenChange={(o) => {
+          setOpen(o);
+          if (!o) setConfirmText("");
+        }}
+      >
+        <AlertDialogTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            <Trash2 className="h-4 w-4 mr-2" /> Delete account
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display text-2xl">Delete {biz.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This immediately and permanently deletes the business, all bookings, customers, staff,
+              hours and page content, cancels any active subscription, and signs you out for good.
+              There's no undo — type the business name below to confirm.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder={biz.name}
+            className="h-10"
+            autoComplete="off"
+            autoFocus
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!canConfirm || deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async (e) => {
+                // Same reasoning as ConfirmDialog: take over closing
+                // ourselves since onConfirm is async and we redirect the
+                // whole page afterwards rather than just closing the dialog.
+                e.preventDefault();
+                await handleDelete();
+              }}
+            >
+              {deleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Permanently delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
