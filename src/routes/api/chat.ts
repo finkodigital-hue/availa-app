@@ -41,11 +41,11 @@ LIVE DATA SNAPSHOT (refreshed each message):
 ${summary}`;
 
           const result = streamText({
-            // claude-sonnet-5 is a real, current model string. The previous
-            // value ("claude-opus-4-8") does not exist on the Anthropic API,
-            // so every assistant message failed; Sonnet is also a fraction of
-            // Opus pricing and plenty for this assistant's workload.
-            model: provider("claude-sonnet-5"),
+            // Haiku, not Sonnet/Opus — this is a high-frequency, low-complexity
+            // chat workload (plain-text answers over live business data, no
+            // image input, no strict output schema), so the cheapest current
+            // Claude model is the right cost/latency tradeoff here.
+            model: provider("claude-haiku-4-5-20251001"),
             system,
             messages: await convertToModelMessages(body.messages),
           });

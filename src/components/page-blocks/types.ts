@@ -52,7 +52,7 @@ export type BlockType =
   "hero" | "about" | "gallery" | "services-list" | "staff-spotlight" | "testimonial" | "hours-location";
 
 export const BLOCK_LABELS: Record<BlockType, string> = {
-  hero: "Hero",
+  hero: "Welcome banner",
   about: "About",
   gallery: "Gallery",
   "services-list": "Services",

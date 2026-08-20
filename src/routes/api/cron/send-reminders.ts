@@ -138,7 +138,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         const cutoff = new Date(Date.now() - CONFIRMATION_BACKSTOP_WINDOW_MS).toISOString();
         const { data: unconfirmed, error: unconfirmedErr } = await (supabaseAdmin as any)
           .from("bookings")
-          .select("id, business_id, created_at, starts_at, price_cents, customer_email, customers(email), status, services(name), staff(name), businesses(name, timezone, currency, address, page_theme)")
+          .select("id, business_id, created_at, starts_at, ends_at, price_cents, customer_email, customers(email), status, services(name), staff(name), businesses(name, timezone, currency, address, page_theme)")
           .is("confirmation_sent_at", null)
           .neq("status", "cancelled")
           .gte("created_at", cutoff)
@@ -166,18 +166,20 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
 
             try {
               const business = booking.businesses;
-              const { subject, html } = buildConfirmationEmail({
+              const { subject, html, attachments } = buildConfirmationEmail({
                 theme: parseTheme(business?.page_theme),
                 businessName: business?.name ?? "",
                 serviceName: booking.services?.name ?? "Appointment",
                 staffName: booking.staff?.name ?? "the team",
+                bookingId: booking.id,
                 startsAtIso: booking.starts_at,
+                endsAtIso: booking.ends_at,
                 timezone: business?.timezone || "UTC",
                 priceCents: booking.price_cents ?? 0,
                 currency: business?.currency || "GBP",
                 location: business?.address ?? null,
               });
-              await sendEmail({ businessId: booking.business_id, to: recipientEmail, subject, html });
+              await sendEmail({ businessId: booking.business_id, to: recipientEmail, subject, html, attachments });
               confirmationsSent++;
             } catch (err) {
               confirmationsFailed++;

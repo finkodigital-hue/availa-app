@@ -74,12 +74,18 @@ export async function sendEmail({
   subject,
   html,
   replyTo,
+  attachments,
 }: {
   businessId: string;
   to: string;
   subject: string;
   html: string;
   replyTo?: string;
+  /** Resend's attachment shape: content is base64-encoded (see icsBase64 in
+   *  @/lib/ics for the ICS calendar invite use case — the only current
+   *  caller). Suppressed/redirected sends below never reach Resend, so an
+   *  attachment is never delivered to a non-production recipient by accident. */
+  attachments?: { filename: string; content: string }[];
 }): Promise<void> {
   if (await isBusinessSuppressed(businessId)) {
     console.warn(`[email-guard] SUPPRESSED (business ${businessId} is email_suppressed, or its status couldn't be confirmed) — would have sent "${subject}" to ${to}`);
@@ -120,6 +126,7 @@ export async function sendEmail({
         subject: effectiveSubject,
         html,
         ...(replyTo ? { reply_to: replyTo } : {}),
+        ...(attachments && attachments.length > 0 ? { attachments } : {}),
       }),
       signal: controller.signal,
     });

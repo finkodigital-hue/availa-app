@@ -38,7 +38,10 @@ export function HoursLocation({ config }: { config: HoursLocationConfig }) {
   if (isLoading) return <Skeleton className="h-48 rounded-2xl" />;
 
   return (
-    <section className="rounded-2xl border bg-card p-8 sm:p-10 grid sm:grid-cols-2 gap-8">
+    <section
+      style={{ borderRadius: "var(--brand-radius)" }}
+      className="border bg-card p-8 sm:p-10 grid sm:grid-cols-2 gap-8"
+    >
       <div>
         {config.heading && <h2 className="font-display text-2xl mb-4">{config.heading}</h2>}
         {data?.business?.address && (

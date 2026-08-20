@@ -43,8 +43,15 @@ export function StaffSpotlight({ config }: { config: StaffSpotlightConfig }) {
           </div>
         )}
         {staff?.map((s) => (
-          <div key={s.id} className="rounded-2xl border bg-card p-5 text-center">
-            <div className="h-16 w-16 mx-auto rounded-full bg-secondary overflow-hidden grid place-items-center font-display text-xl">
+          <div
+            key={s.id}
+            style={{ borderRadius: "var(--brand-radius)" }}
+            className="border bg-card p-5 text-center"
+          >
+            <div
+              style={{ boxShadow: "0 0 0 2px var(--brand-accent)" }}
+              className="h-16 w-16 mx-auto rounded-full bg-secondary overflow-hidden grid place-items-center font-display text-xl"
+            >
               {s.photo_url ? (
                 <img src={s.photo_url} alt="" className="h-full w-full object-cover" />
               ) : (

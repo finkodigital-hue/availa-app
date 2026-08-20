@@ -1,4 +1,4 @@
-import { Palette, Type, Square } from "lucide-react";
+import { Type, Square } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -22,13 +22,11 @@ export function ThemeControls({ theme, onChange }: { theme: Theme; onChange: (t:
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-3">
         <ColorField
-          icon={Palette}
           label="Primary"
           value={theme.colors.primary}
           onChange={(v) => onChange({ ...theme, colors: { ...theme.colors, primary: v } })}
         />
         <ColorField
-          icon={Palette}
           label="Accent"
           value={theme.colors.accent}
           onChange={(v) => onChange({ ...theme, colors: { ...theme.colors, accent: v } })}

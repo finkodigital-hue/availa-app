@@ -2,7 +2,7 @@ import type { AboutConfig } from "./types";
 
 export function About({ config }: { config: AboutConfig }) {
   return (
-    <section className="rounded-2xl border bg-card p-8 sm:p-10">
+    <section style={{ borderRadius: "var(--brand-radius)" }} className="border bg-card p-8 sm:p-10">
       <div
         className={config.photoUrl ? "grid sm:grid-cols-[auto_1fr] gap-6 items-start" : undefined}
       >
@@ -10,7 +10,8 @@ export function About({ config }: { config: AboutConfig }) {
           <img
             src={config.photoUrl}
             alt=""
-            className="h-24 w-24 rounded-2xl object-cover shrink-0"
+            style={{ borderRadius: "var(--brand-radius)" }}
+            className="h-24 w-24 object-cover shrink-0"
           />
         )}
         <div>

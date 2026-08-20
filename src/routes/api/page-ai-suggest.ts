@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { suggestPageBlocks, PageAiError, PlanRequiredError } from "@/lib/page-ai.server";
+import { parseTheme } from "@/lib/theme";
 
 export const Route = createFileRoute("/api/page-ai-suggest")({
   server: {
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/api/page-ai-suggest")({
           const body = (await request.json()) as {
             businessId?: string;
             blocks?: unknown;
+            theme?: unknown;
             prompt?: string;
           };
           if (!body.businessId || typeof body.prompt !== "string" || !body.prompt.trim()) {
@@ -35,6 +37,7 @@ export const Route = createFileRoute("/api/page-ai-suggest")({
             businessId: body.businessId,
             siteOrigin: new URL(request.url).origin,
             blocks: body.blocks,
+            theme: parseTheme(body.theme),
             prompt: body.prompt,
           });
 
