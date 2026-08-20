@@ -108,6 +108,39 @@ export function themedButtonStyle(
   }
 }
 
+// What a caller (the AI suggest-changes flow) is allowed to propose changing
+// about the design — narrower than the full Theme: background/surface/text
+// colors stay owner-only, since a bad AI-picked background could wreck
+// contrast/readability site-wide in a way a bad button color can't.
+export interface DesignSuggestion {
+  primaryColor?: string;
+  accentColor?: string;
+  displayFont?: string;
+  buttonStyle?: ButtonStyle;
+  cornerRadius?: number;
+}
+
+export function applyDesignSuggestion(theme: Theme, design: DesignSuggestion | null | undefined): Theme {
+  if (!design) return theme;
+  return {
+    ...theme,
+    colors: {
+      ...theme.colors,
+      ...(design.primaryColor ? { primary: design.primaryColor } : {}),
+      ...(design.accentColor ? { accent: design.accentColor } : {}),
+    },
+    typography: {
+      ...theme.typography,
+      ...(design.displayFont ? { displayFont: design.displayFont } : {}),
+    },
+    buttons: {
+      ...theme.buttons,
+      ...(design.buttonStyle ? { style: design.buttonStyle } : {}),
+      ...(design.cornerRadius !== undefined ? { cornerRadius: design.cornerRadius } : {}),
+    },
+  };
+}
+
 export function defaultTheme(): Theme {
   return {
     version: 1,

@@ -41,7 +41,11 @@ export function ServicesList({ config }: { config: ServicesListConfig }) {
           </div>
         )}
         {services?.map((s) => (
-          <div key={s.id} className="rounded-2xl border bg-card p-5 flex items-start justify-between gap-4">
+          <div
+            key={s.id}
+            style={{ borderRadius: "var(--brand-radius)" }}
+            className="border bg-card p-5 flex items-start justify-between gap-4"
+          >
             <div className="min-w-0">
               <div className="font-medium">{s.name}</div>
               {s.description && (

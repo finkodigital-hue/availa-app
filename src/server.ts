@@ -84,6 +84,17 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
+// Per the Fetch/HTTP spec these statuses are DEFINED to never carry a body —
+// an empty body on one of these is correct, intentional behavior (e.g.
+// send-confirmation.ts's idempotency no-ops), not a broken/interrupted SSR
+// stream. Constructing `new Response(nonEmptyBody, { status })` for any of
+// these throws ("Response constructor: Invalid response status code"), which
+// is exactly what was happening before this guard existed: any API route
+// returning a legitimate 204 got its real response silently replaced by a
+// thrown error, caught by the outer catch in fetch() below, and turned into
+// an unrelated 500 page-render error instead of the intended empty response.
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response, env: unknown): Promise<Response> {
@@ -91,7 +102,7 @@ async function normalizeCatastrophicSsrResponse(response: Response, env: unknown
   // (notably after a Cloudflare build/runtime restart). Keep the application
   // usable by returning the normal client shell; the TanStack client router
   // then hydrates the requested route and renders the full page.
-  if (response.status >= 200 && response.status < 300) {
+  if (response.status >= 200 && response.status < 300 && !NULL_BODY_STATUSES.has(response.status)) {
     const body = await response.clone().text();
     if (!body.trim()) {
       // The browser client needs these public values before it can initialise

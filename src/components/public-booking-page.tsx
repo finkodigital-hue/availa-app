@@ -118,6 +118,7 @@ export function PublicBookingPage({
   pageBlocks,
   domId = "public-booking-page",
   footerExtra,
+  renderBlock = (_block, _index, children) => children,
 }: {
   business: PublicBookingBusiness;
   theme: Theme;
@@ -132,6 +133,11 @@ export function PublicBookingPage({
   // preview embeds, which render this component with no consent provider in
   // the tree — only the real /book/$slug route passes it.
   footerExtra?: React.ReactNode;
+  // Lets the page-builder canvas wrap each rendered block with a
+  // hover/select/drag-handle shell without forking BlockRenderer or the
+  // block components themselves. Real visitors and every other embed get
+  // the identity default.
+  renderBlock?: (block: PageBlock, index: number, children: React.ReactNode) => React.ReactNode;
 }) {
   const biz = business;
   const currency = business.currency ?? "GBP";
@@ -469,8 +475,8 @@ export function PublicBookingPage({
       <style>{themeFontOverrideCss(theme, `#${domId}`)}</style>
       {customBlocks.length > 0 ? (
         <div className="max-w-3xl mx-auto px-5 sm:px-6 pt-8 sm:pt-12 space-y-8 sm:space-y-10">
-          {customBlocks.map((block) => (
-            <BlockRenderer key={block.id} block={block} />
+          {customBlocks.map((block, index) => (
+            <div key={block.id}>{renderBlock(block, index, <BlockRenderer block={block} />)}</div>
           ))}
         </div>
       ) : (

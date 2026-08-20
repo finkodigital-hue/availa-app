@@ -4,11 +4,15 @@ import type { HeroConfig } from "./types";
 // Color comes from the page-level theme (the --brand custom property set by
 // applyThemeVars on the page wrapper) — hero no longer carries its own color.
 const brand = "var(--brand)";
+const radius = "var(--brand-radius)";
 
 export function Hero({ config }: { config: HeroConfig }) {
   if (config.variant === "split-screen") {
     return (
-      <section className="grid sm:grid-cols-2 min-h-[420px] rounded-2xl overflow-hidden border">
+      <section
+        style={{ borderRadius: radius }}
+        className="grid sm:grid-cols-2 min-h-[420px] overflow-hidden border"
+      >
         <div className="flex flex-col justify-center p-8 sm:p-12">
           <HeroCopy config={config} brand={brand} />
         </div>
@@ -19,7 +23,7 @@ export function Hero({ config }: { config: HeroConfig }) {
 
   if (config.variant === "text-photo") {
     return (
-      <section className="rounded-2xl overflow-hidden border">
+      <section style={{ borderRadius: radius }} className="overflow-hidden border">
         <div className="relative h-56 sm:h-72">
           <Photo url={config.photoUrl} className="absolute inset-0" />
           <div
@@ -41,8 +45,9 @@ export function Hero({ config }: { config: HeroConfig }) {
     <section
       style={{
         background: `linear-gradient(135deg, color-mix(in oklab, ${brand} 12%, transparent), transparent 70%)`,
+        borderRadius: radius,
       }}
-      className="rounded-2xl border p-10 sm:p-16 text-center"
+      className="border p-10 sm:p-16 text-center"
     >
       <HeroCopy config={config} brand={brand} centered />
     </section>
@@ -82,14 +87,18 @@ function HeroCopy({
         </div>
       )}
       <h1 className="font-display text-3xl sm:text-4xl text-balance">{config.heading}</h1>
+      <div
+        className={cn("h-[3px] w-12 rounded-full mt-2.5", centered && "mx-auto")}
+        style={{ background: "var(--brand-accent)" }}
+      />
       {config.subheading && (
         <p className="text-muted-foreground mt-3 text-pretty">{config.subheading}</p>
       )}
       {config.ctaLabel && (
         <a
           href={config.ctaHref ?? "#"}
-          className="inline-flex items-center justify-center h-11 px-6 rounded-xl text-white text-sm font-medium mt-6 shadow-glow"
-          style={{ background: brand }}
+          className="inline-flex items-center justify-center h-11 px-6 text-white text-sm font-medium mt-6 shadow-glow"
+          style={{ background: brand, borderRadius: radius }}
         >
           {config.ctaLabel}
         </a>

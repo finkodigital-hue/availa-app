@@ -7,7 +7,11 @@ export function Gallery({ config }: { config: GalleryConfig }) {
   return (
     <section className="grid grid-cols-3 gap-2 sm:gap-3">
       {photos.map((p, i) => (
-        <div key={i} className="aspect-square rounded-xl overflow-hidden bg-secondary">
+        <div
+          key={i}
+          style={{ borderRadius: "var(--brand-radius)" }}
+          className="aspect-square overflow-hidden bg-secondary"
+        >
           <img
             src={p.url}
             alt={p.alt ?? ""}
@@ -19,7 +23,8 @@ export function Gallery({ config }: { config: GalleryConfig }) {
       {Array.from({ length: placeholders }).map((_, i) => (
         <div
           key={`placeholder-${i}`}
-          className="aspect-square rounded-xl border border-dashed bg-secondary/40 grid place-items-center text-xs text-muted-foreground"
+          style={{ borderRadius: "var(--brand-radius)" }}
+          className="aspect-square border border-dashed bg-secondary/40 grid place-items-center text-xs text-muted-foreground"
         >
           No photo
         </div>
