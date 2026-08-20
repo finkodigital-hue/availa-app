@@ -476,13 +476,19 @@
 [data-calendar-booking]:hover { transform: translateY(-1px) !important; }
 [data-calendar-page][data-calendar-expanded="true"] { padding: .6rem !important; background: var(--bz-paper) !important; }
 [data-calendar-page][data-calendar-expanded="true"] [data-calendar-toolbar] { position: sticky; top: 0; z-index: 35; padding: .15rem 0 .55rem !important; background: var(--bz-paper) !important; }
-/* No hardcoded max-height here anymore -- it used to assume the toolbar
-   above is always exactly 4.25rem tall, which broke the "fits in one
-   frame" goal the moment the toolbar wrapped to 2 lines (e.g. once it
-   couldn't fit Block time/New booking/Exit/Today/date picker on one row).
-   day-view.tsx now sizes this element with flex-1 + min-h-0 inside a
-   flex-col page, which adapts to whatever height the toolbar actually
-   ends up being instead of guessing a fixed number. */
+/* [data-calendar-day-scroll]'s base rule below caps it at min(68dvh,760px)
+   for the normal (non-expanded) page, where the day grid sits among other
+   page content and shouldn't fill the whole viewport. That cap has no
+   `[data-calendar-expanded]` scoping on it, though, so simply deleting the
+   old fixed calc(100dvh - 4.25rem) override here (see prior commit) still
+   left this 68dvh/760px ceiling in effect in full screen too -- the grid
+   stopped short of the bottom of the screen with empty space below it
+   instead of filling it, because 68dvh is well short of the space flex-1
+   actually has available once the toolbar (shrink-0) is accounted for.
+   Explicitly lifting the cap here (not replacing it with another fixed
+   number) is what lets day-view.tsx's flex-1/min-h-0 fill 100% of
+   whatever's left below the toolbar, however tall that ends up being. */
+[data-calendar-page][data-calendar-expanded="true"] [data-calendar-day-scroll] { max-height: none !important; }
 
 @media (max-width: 767px) {
   [data-calendar-page] { --calendar-gutter: 42px; padding: 1.2rem .9rem 1.5rem !important; }
