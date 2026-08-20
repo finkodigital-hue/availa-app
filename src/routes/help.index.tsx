@@ -158,29 +158,36 @@ function HelpCentre() {
           />
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16">
-          {HELP_CATEGORIES.map((category) => {
-            const Icon = ICONS[category.icon] ?? Rocket;
-            const count = HELP_ARTICLES.filter((a) => a.categorySlug === category.slug).length;
-            return (
-              <a
-                key={category.slug}
-                href={`#${category.slug}`}
-                onClick={() => setQuery("")}
-                className="card-hover rounded-xl border border-border bg-white p-6 flex flex-col"
-              >
-                <div className="h-10 w-10 rounded-lg bg-[color:var(--gold-wash)] grid place-items-center mb-4">
-                  <Icon className="h-5 w-5 text-[color:var(--gold-deep)]" />
-                </div>
-                <h3 className="font-display font-semibold text-[1.2rem] mb-1">{category.title}</h3>
-                <p className="text-[.85rem] text-muted-foreground mb-3">{category.description}</p>
-                <span className="mt-auto text-[.75rem] font-semibold text-[color:var(--gold-deep)]">
-                  {count} article{count === 1 ? "" : "s"}
-                </span>
-              </a>
-            );
-          })}
-        </div>
+        {/* Hidden while actively searching (was always shown, above the
+            results section further down) -- on a page this tall, typing a
+            query updated the results correctly but they landed well below
+            the fold under this always-visible category grid, so it read as
+            "the search box does nothing" even though it was working. */}
+        {!results && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16">
+            {HELP_CATEGORIES.map((category) => {
+              const Icon = ICONS[category.icon] ?? Rocket;
+              const count = HELP_ARTICLES.filter((a) => a.categorySlug === category.slug).length;
+              return (
+                <a
+                  key={category.slug}
+                  href={`#${category.slug}`}
+                  onClick={() => setQuery("")}
+                  className="card-hover rounded-xl border border-border bg-white p-6 flex flex-col"
+                >
+                  <div className="h-10 w-10 rounded-lg bg-[color:var(--gold-wash)] grid place-items-center mb-4">
+                    <Icon className="h-5 w-5 text-[color:var(--gold-deep)]" />
+                  </div>
+                  <h3 className="font-display font-semibold text-[1.2rem] mb-1">{category.title}</h3>
+                  <p className="text-[.85rem] text-muted-foreground mb-3">{category.description}</p>
+                  <span className="mt-auto text-[.75rem] font-semibold text-[color:var(--gold-deep)]">
+                    {count} article{count === 1 ? "" : "s"}
+                  </span>
+                </a>
+              );
+            })}
+          </div>
+        )}
 
         {results ? (
           <div className="mb-16">
