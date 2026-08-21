@@ -15,6 +15,9 @@ import {
   Moon,
   Loader2,
   Sparkles,
+  Mail,
+  Instagram,
+  Facebook,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { expandBookingSegments, expandCandidateSegments, segmentsOverlap } from "@/lib/slots";
@@ -44,6 +47,10 @@ export interface PublicBookingBusiness {
   address: string | null;
   phone: string | null;
   website: string | null;
+  email?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  twitter?: string | null;
   currency?: string | null;
 }
 
@@ -94,7 +101,22 @@ function priceRange(variants: Service[], currency: string) {
   const min = Math.min(...prices), max = Math.max(...prices);
   if (min === max) return fmtMoney(min, currency);
   return `${fmtMoney(min, currency)} to ${fmtMoney(max, currency)}`;
-  return min === max ? fmtMoney(min) : `${fmtMoney(min)}–${fmtMoney(max)}`;
+}
+
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function inferServiceCategory(name: string) {
+  const value = name.toLowerCase();
+  if (/colour|color|balayage|highlight|tint|foil|bleach|toner/.test(value)) return "Colour";
+  if (/extension/.test(value)) return "Extensions";
+  if (/treatment|keratin|mask|conditioning/.test(value)) return "Treatments";
+  if (/cut|trim|blow|style|hair up/.test(value)) return "Cuts & styling";
+  if (/brow|lash|nail|makeup|wax|facial|massage/.test(value)) return "Beauty & finishing";
+  return "Other services";
+}
+
+function displayTime(value: string | null) {
+  return value ? value.slice(0, 5) : "";
 }
 
 function durationRange(variants: Service[]) {
@@ -203,7 +225,31 @@ export function PublicBookingPage({
     },
   });
 
+  const { data: openingHours = [] } = useQuery({
+    queryKey: ["pub-business-hours", biz.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("business_hours")
+        .select("weekday, open_time, close_time, closed")
+        .eq("business_id", biz.id);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const serviceGroups = useMemo(() => groupServices(services ?? []), [services]);
+  const serviceCategories = useMemo(() => {
+    const categories = new Map<string, ServiceGroup[]>();
+    for (const group of serviceGroups) {
+      const category = inferServiceCategory(group.name);
+      categories.set(category, [...(categories.get(category) ?? []), group]);
+    }
+    return Array.from(categories, ([name, groups]) => ({ name, groups }));
+  }, [serviceGroups]);
+  const sortedOpeningHours = useMemo(
+    () => [...openingHours].sort((a, b) => a.weekday - b.weekday),
+    [openingHours],
+  );
 
   const { data: allStaff, isLoading: loadingStaff } = useQuery({
     queryKey: ["pub-staff", serviceGroup?.key, proBusinessIds.join(",")],
@@ -432,6 +478,10 @@ export function PublicBookingPage({
         toast.error("That slot was just taken — pick another.");
         setStep("time");
         setTime(null);
+      } else if (msg.includes("SLOT_IN_PAST")) {
+        toast.error("That time has already passed — pick another.");
+        setStep("time");
+        setTime(null);
       } else if (msg.includes("RATE_LIMITED")) {
         toast.error("Too many booking attempts — please wait a few minutes and try again.");
       } else {
@@ -541,29 +591,105 @@ export function PublicBookingPage({
                 No services available yet. Please check back soon.
               </div>
             )}
-            {serviceGroups.map((g, i) => (
-              <button
-                key={g.key}
-                onClick={() => pickGroup(g)}
-                className={`group w-full text-left rounded-2xl border bg-card p-5 card-hover animate-rise stagger-${(i % 6) + 1}`}
-              >
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 items-start">
-                  <div className="min-w-0">
-                    <h3 className="font-display text-xl">{g.name}</h3>
-                    {g.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2 text-pretty">{g.description}</p>}
-                    <div className="text-xs text-muted-foreground mt-2 inline-flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> {durationRange(g.variants)}
-                    </div>
+            {serviceCategories.map((category, categoryIndex) => (
+              <section key={category.name} className="space-y-3 pt-4 first:pt-0">
+                <div className="flex items-end justify-between gap-4 px-1">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                      Services
+                    </p>
+                    <h2 className="font-display text-2xl">{category.name}</h2>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-display text-lg tabular-nums">{priceRange(g.variants, currency)}</div>
-                    <div className="mt-2 inline-flex items-center justify-center h-7 w-7 rounded-full bg-secondary group-hover:bg-foreground group-hover:text-background transition-colors ml-auto">
-                      <ChevronRight className="h-3.5 w-3.5" />
+                  <span className="text-xs text-muted-foreground">
+                    {category.groups.length} {category.groups.length === 1 ? "service" : "services"}
+                  </span>
+                </div>
+                <div className="overflow-hidden rounded-[24px] border bg-card shadow-sm">
+                  {category.groups.map((g, groupIndex) => (
+                    <button
+                      key={g.key}
+                      onClick={() => pickGroup(g)}
+                      className={`group w-full border-b p-5 text-left transition-colors last:border-b-0 hover:bg-secondary/50 animate-rise stagger-${((categoryIndex + groupIndex) % 6) + 1}`}
+                    >
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+                        <div className="min-w-0">
+                          <h3 className="font-display text-xl">{g.name}</h3>
+                          {g.description && <p className="mt-1 line-clamp-2 text-pretty text-sm text-muted-foreground">{g.description}</p>}
+                          <div className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" /> {durationRange(g.variants)}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <div className="font-display text-lg tabular-nums">{priceRange(g.variants, currency)}</div>
+                          <div className="ml-auto mt-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-foreground group-hover:text-background">
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+
+            {(sortedOpeningHours.length > 0 || biz.address || biz.phone || biz.email || biz.website || biz.instagram || biz.facebook) && (
+              <section className="space-y-4 pt-10">
+                <div className="px-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Salon information</p>
+                  <h2 className="font-display text-3xl">Plan your visit</h2>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  {sortedOpeningHours.length > 0 && (
+                    <div className="rounded-[28px] border bg-card p-6 shadow-sm">
+                      <div className="mb-5 flex items-center gap-3">
+                        <div className="grid h-10 w-10 place-items-center rounded-full bg-secondary"><Clock className="h-4 w-4" /></div>
+                        <h3 className="font-display text-xl">Opening hours</h3>
+                      </div>
+                      <div className="space-y-2.5 text-sm">
+                        {sortedOpeningHours.map((hours) => (
+                          <div key={hours.weekday} className="flex items-center justify-between gap-4 border-b pb-2.5 last:border-0 last:pb-0">
+                            <span className="text-muted-foreground">{WEEKDAYS[hours.weekday]}</span>
+                            <span className="font-medium tabular-nums">
+                              {hours.closed ? "Closed" : `${displayTime(hours.open_time)} – ${displayTime(hours.close_time)}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-[28px] border bg-card p-6 shadow-sm">
+                    <div className="mb-5 flex items-center gap-3">
+                      <div className="grid h-10 w-10 place-items-center rounded-full bg-secondary"><MapPin className="h-4 w-4" /></div>
+                      <h3 className="font-display text-xl">Find us</h3>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                      {biz.address && <p className="text-pretty text-muted-foreground">{biz.address}</p>}
+                      {biz.phone && <a className="flex items-center gap-2 font-medium hover:underline" href={`tel:${biz.phone}`}><Phone className="h-4 w-4" />{biz.phone}</a>}
+                      {biz.email && <a className="flex items-center gap-2 font-medium hover:underline" href={`mailto:${biz.email}`}><Mail className="h-4 w-4" />{biz.email}</a>}
+                      {biz.website && <a className="flex items-center gap-2 font-medium hover:underline" href={biz.website} target="_blank" rel="noreferrer"><Globe2 className="h-4 w-4" />Visit website</a>}
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {biz.instagram && <a className="inline-flex h-9 w-9 items-center justify-center rounded-full border hover:bg-secondary" href={biz.instagram} target="_blank" rel="noreferrer" aria-label="Instagram"><Instagram className="h-4 w-4" /></a>}
+                        {biz.facebook && <a className="inline-flex h-9 w-9 items-center justify-center rounded-full border hover:bg-secondary" href={biz.facebook} target="_blank" rel="noreferrer" aria-label="Facebook"><Facebook className="h-4 w-4" /></a>}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </button>
-            ))}
+
+                {biz.address && (
+                  <div className="overflow-hidden rounded-[28px] border bg-secondary/20 shadow-sm">
+                    <iframe
+                      title={`${biz.name} location`}
+                      src={`https://www.google.com/maps?q=${encodeURIComponent(biz.address)}&output=embed`}
+                      className="h-72 w-full border-0 grayscale-[15%]"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  </div>
+                )}
+              </section>
+            )}
           </div>
         )}
 
