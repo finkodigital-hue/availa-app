@@ -379,13 +379,6 @@
   margin: 0 !important;
 }
 [data-calendar-page] [data-page-header] > div:first-child { min-width: 0; }
-[data-calendar-page] [data-page-title] {
-  font-family: inherit !important;
-  font-size: clamp(2rem, 3vw, 2.65rem) !important;
-  font-weight: 600 !important;
-  line-height: 1.05 !important;
-  letter-spacing: -0.035em !important;
-}
 [data-calendar-page] [data-page-subtitle] { max-width: 25rem !important; margin-top: 1rem !important; font-size: 1rem !important; }
 [data-calendar-new-booking] {
   height: 3rem !important;
