@@ -323,7 +323,7 @@ export function PageHeader({
           </div>
         )}
         <h1
-          className="font-display text-3xl leading-[0.98] md:text-4xl tracking-tight text-balance"
+          className="font-sans text-[clamp(2rem,3vw,2.65rem)] font-semibold leading-[1.05] tracking-[-0.035em] text-balance"
           data-page-title
         >
           {title}
