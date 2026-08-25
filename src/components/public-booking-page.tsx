@@ -569,8 +569,47 @@ export function PublicBookingPage({
               </div>
             </div>
           </div>
-        </header>
+      </header>
       )}
+
+      <section className="mx-auto max-w-5xl px-5 pt-8 sm:px-6 sm:pt-10">
+        <div className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/70 px-6 py-8 shadow-sm sm:px-10 sm:py-11">
+          <div
+            aria-hidden="true"
+            className="absolute -right-16 -top-20 h-52 w-52 rounded-full opacity-15 blur-2xl"
+            style={{ backgroundColor: theme.accentColor }}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute -bottom-24 -left-16 h-48 w-48 rounded-full opacity-10 blur-2xl"
+            style={{ backgroundColor: theme.accentColor }}
+          />
+
+          <div className="relative max-w-2xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+              Book your visit
+            </p>
+            <h2 className="font-display text-3xl leading-tight text-foreground sm:text-5xl">
+              Find the right service, then choose a time that suits you.
+            </h2>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+              Browse everything available, select who you would like to book with and confirm your appointment online.
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-2">
+              <span className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground">
+                Simple online booking
+              </span>
+              <span className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground">
+                Instant confirmation
+              </span>
+              <span className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground">
+                {biz.address || "Appointment details sent after booking"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <main className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10 pb-32">
         {paymentReturn === "success" && (
