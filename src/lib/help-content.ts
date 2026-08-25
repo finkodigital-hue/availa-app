@@ -140,7 +140,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         "Studio (£22/month) — unlimited staff members, plus the AI Assistant and AI page editing.",
       ] },
       { type: "p", text: "The staff limit and the AI features are actively enforced: adding a second staff member or opening the AI tools on a Free plan shows an upgrade prompt instead. Everything else in Bookzenvo — including payments, deposits and reports — is usable on both plans today." },
-      { type: "note", text: "Upgrading isn't an automatic checkout yet — go to Settings → Plan and request an upgrade, and our team will follow up." },
+      { type: "note", text: "Upgrading is instant and self-serve — go to Settings → Plan and click Upgrade to pay by card through Stripe Checkout. You're on Studio as soon as payment goes through, and the same page gives you a billing portal to update your card, view invoices, or cancel any time." },
     ],
     keywords: ["pricing", "upgrade", "plan", "billing"],
   },
@@ -463,7 +463,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "What Bookzenvo currently notifies you about.",
     blocks: [
       { type: "p", text: "The bell icon in the sidebar notifies you, the business owner, whenever a booking is created or cancelled." },
-      { type: "note", text: "Automatic email or SMS confirmations and reminders to clients aren't available yet. The \"send confirmation\" option you'll see in the booking dialog is reserved for when that's switched on — for now, it's worth confirming appointment details with new clients yourself." },
+      { type: "note", text: "Booking confirmation emails send automatically as soon as a booking is made, on every plan. On Studio, clients also get an automatic reminder email a configurable number of hours before their appointment — set the lead time in Settings → Business. SMS confirmations and reminders aren't built yet." },
     ],
     keywords: ["reminders", "email", "sms", "bell"],
   },
