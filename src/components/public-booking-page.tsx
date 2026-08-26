@@ -619,8 +619,10 @@ export function PublicBookingPage({
   };
 
   const storefrontOwnedBlockTypes = new Set([
+    "hero",
     "gallery",
     "services-list",
+    "staff-spotlight",
     "testimonial",
     "hours-location",
   ]);
