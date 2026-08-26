@@ -729,18 +729,21 @@ function ServicesPage() {
                     </div>
                     <div>
                       <Label>Category</Label>
-                      <Input
+                      <select
                         value={edit.category ?? ""}
-                        onChange={(event) => setEdit({ ...edit, category: event.target.value })}
-                        className="mt-1.5 h-11"
-                        placeholder="Colouring"
-                        list="service-category-options"
-                      />
-                      <datalist id="service-category-options">
+                        onChange={(event) =>
+                          setEdit({ ...edit, category: event.target.value || null })
+                        }
+                        className="mt-1.5 h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                        aria-label="Category"
+                      >
+                        <option value="">Uncategorised</option>
                         {managedCategories.map((category) => (
-                          <option key={category} value={category} />
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
                         ))}
-                      </datalist>
+                      </select>
                       <button
                         type="button"
                         onClick={() => setCategoryManagerOpen(true)}
