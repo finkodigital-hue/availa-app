@@ -81,6 +81,7 @@ export function useAvailableSlots(opts: {
         staffHours: staffHoursR.data as any,
         bizPeriods: (periodsR.data ?? []) as any,
         bizHours: bizHoursR.data as any,
+        date,
       });
       return { periods, bookings: bookingsR.data ?? [], blocked: blockedR.data ?? [] };
     },

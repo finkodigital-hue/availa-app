@@ -54,3 +54,37 @@
 - Follow-up interaction check: the Categories manager opened with all 10 existing testshop category names plus rename/delete actions, and the Attach stock dialog opened with the inline Create & attach flow. No test records were written during QA.
 
 final result: passed
+
+---
+
+# Staff redesign visual QA
+
+- Source visual truth: `C:\Users\jakob\.codex\generated_images\01a03b8f-63b5-7440-8a02-4c8c88e6386c\exec-d89d8d83-024d-4bc9-afda-24d8f24b46d4.png`
+- Implementation screenshot: `C:\bookzenvo\availa-app\staff-redesign-implementation-1280x911.png`
+- Full-view comparison: `C:\bookzenvo\availa-app\staff-redesign-design-qa-comparison.png`
+- Focused editor comparison: `C:\bookzenvo\availa-app\staff-redesign-design-qa-panel-comparison.png`
+- Viewport/state: 1280 × 1024 CSS viewport, signed-in `/staff`, Jen's Profile editor open.
+- Pixel normalization: browser capture was 2560 × 2048; the visible 1280 × 911 region was normalized beside the 1487 × 1058 source for the full-view comparison. The editor was also cropped and normalized to 430 × 1024 per side for focused inspection.
+
+## Findings and comparison history
+
+1. Initial implementation matched the selected directory-and-side-editor structure, but only exposed a status filter. Added a functional role filter to match the source's staff-directory controls.
+2. Repeated full-view comparison confirmed the same compact row hierarchy, pale neutral palette, restrained borders, pastel avatars, clear status/booking visibility pills, and right-side editor.
+3. Focused editor comparison confirmed the same profile hierarchy, tab navigation, paired role/email fields, phone and bio inputs, booking/active controls, save/cancel actions, and destructive action treatment.
+4. Intentional data differences remain: the real account contains 18 people rather than the source's seven, and service counts reflect real `service_staff` links rather than mock values.
+5. Reassignment remains part of the existing delete flow and appears when future bookings exist, instead of showing an always-visible card.
+
+## Functional checks
+
+- Search, role filter, and status filter work.
+- Existing staff rows and Add staff open the side editor.
+- Profile, Hours, Services, and Time off tabs open successfully.
+- The Profile tab includes the requested reassignment card and reports the real upcoming-booking count.
+- Custom working days support weekly, every 2 weeks, every 3 weeks, or every 4 weeks with a first-working-date anchor.
+- Alternating-week resolution was checked against an anchor Saturday, its off-week, and the following working cycle.
+- Service-link changes now refresh the directory's service counts.
+- No data-changing action was submitted during QA.
+- Fresh browser session reported no console errors or warnings.
+- Production build completed successfully.
+
+Final result: passed

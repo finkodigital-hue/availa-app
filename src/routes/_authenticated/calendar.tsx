@@ -253,17 +253,18 @@ function CalendarPage() {
   // Only fetched for the Day view since Week/Month pool bookings by date,
   // not by staff column.
   const dayWeekday = anchor.getDay();
+  const dayDateKey = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, "0")}-${String(anchor.getDate()).padStart(2, "0")}`;
   const dayStaffIds = useMemo(() => dayViewStaff.map((s: any) => s.id), [dayViewStaff]);
   const dayStaffIdsKey = dayStaffIds.join(",");
   const dayBizIdsKey = allBizIds.join(",");
 
   const { data: dayStaffHours } = useQuery({
-    queryKey: ["calendar-day-staff-hours", dayStaffIdsKey, dayWeekday],
+    queryKey: ["calendar-day-staff-hours", dayStaffIdsKey, dayDateKey],
     enabled: view === "day" && dayStaffIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff_hours")
-        .select("staff_id, closed, open_time, close_time")
+        .select("staff_id, closed, open_time, close_time, repeat_weeks, repeat_anchor")
         .in("staff_id", dayStaffIds)
         .eq("weekday", dayWeekday);
       if (error) throw error;
@@ -316,11 +317,12 @@ function CalendarPage() {
         staffHours: staffHoursByStaff.get(s.id) as any,
         bizPeriods: bizPeriodsByBiz.get(s.business_id) ?? [],
         bizHours: bizHoursByBiz.get(s.business_id) as any,
+        date: anchor,
       });
       map.set(s.id, { periods, dayOff: periods.length === 0 });
     }
     return map;
-  }, [view, dayStaffHours, dayBizPeriods, dayBizHours, dayViewStaff, dayWeekday]);
+  }, [view, dayStaffHours, dayBizPeriods, dayBizHours, dayViewStaff, dayWeekday, anchor]);
 
   // Staff with an explicit day off should not take up a calendar column.
   // Keep someone visible if they already have a booking that day so existing

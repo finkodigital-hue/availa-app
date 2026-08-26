@@ -1569,6 +1569,8 @@ export type Database = {
           closed: boolean
           id: string
           open_time: string | null
+          repeat_anchor: string | null
+          repeat_weeks: number
           staff_id: string
           weekday: number
         }
@@ -1578,6 +1580,8 @@ export type Database = {
           closed?: boolean
           id?: string
           open_time?: string | null
+          repeat_anchor?: string | null
+          repeat_weeks?: number
           staff_id: string
           weekday: number
         }
@@ -1587,6 +1591,8 @@ export type Database = {
           closed?: boolean
           id?: string
           open_time?: string | null
+          repeat_anchor?: string | null
+          repeat_weeks?: number
           staff_id?: string
           weekday?: number
         }

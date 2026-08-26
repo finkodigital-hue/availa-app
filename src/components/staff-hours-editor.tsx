@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Clock3, Loader2, Moon } from "lucide-react";
+import { Building2, CalendarDays, Clock3, Loader2, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,17 @@ type Row = {
   open_time: string | null;
   close_time: string | null;
   closed: boolean;
+  repeat_weeks: number;
+  repeat_anchor: string | null;
   mode: Mode;
 };
+
+function nextWeekdayDate(weekday: number): string {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + ((weekday - date.getDay() + 7) % 7));
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 /**
  * Staff hours deliberately use three states, rather than a single vague
@@ -56,6 +65,8 @@ export function StaffHoursEditor({ staffId, businessId }: { staffId: string; bus
             open_time: "09:00",
             close_time: "17:00",
             closed: false,
+            repeat_weeks: 1,
+            repeat_anchor: null,
             mode: "business" as const,
           };
         }
@@ -63,6 +74,8 @@ export function StaffHoursEditor({ staffId, businessId }: { staffId: string; bus
           ...existing,
           open_time: existing.open_time?.slice(0, 5) ?? "09:00",
           close_time: existing.close_time?.slice(0, 5) ?? "17:00",
+          repeat_weeks: existing.repeat_weeks ?? 1,
+          repeat_anchor: existing.repeat_anchor ?? null,
           mode: existing.closed ? ("off" as const) : ("custom" as const),
         };
       }),
@@ -82,6 +95,19 @@ export function StaffHoursEditor({ staffId, businessId }: { staffId: string; bus
         (!row.open_time || !row.close_time || row.open_time >= row.close_time)
       ) {
         toast.error(`${WEEKDAYS[row.weekday]}: opening time must be before closing time.`);
+        return;
+      }
+      if (row.mode === "custom" && row.repeat_weeks > 1 && !row.repeat_anchor) {
+        toast.error(`${WEEKDAYS[row.weekday]}: choose the first working date.`);
+        return;
+      }
+      if (
+        row.mode === "custom" &&
+        row.repeat_weeks > 1 &&
+        row.repeat_anchor &&
+        new Date(`${row.repeat_anchor}T12:00:00`).getDay() !== row.weekday
+      ) {
+        toast.error(`The first working date must be a ${WEEKDAYS[row.weekday]}.`);
         return;
       }
     }
@@ -106,6 +132,8 @@ export function StaffHoursEditor({ staffId, businessId }: { staffId: string; bus
           open_time: row.mode === "off" ? null : row.open_time,
           close_time: row.mode === "off" ? null : row.close_time,
           closed: row.mode === "off",
+          repeat_weeks: row.mode === "custom" ? row.repeat_weeks : 1,
+          repeat_anchor: row.mode === "custom" && row.repeat_weeks > 1 ? row.repeat_anchor : null,
         };
         const result = row.id
           ? await supabase.from("staff_hours").update(payload).eq("id", row.id)
@@ -159,7 +187,11 @@ export function StaffHoursEditor({ staffId, businessId }: { staffId: string; bus
                   <button
                     key={mode}
                     type="button"
-                    onClick={() => update(index, { mode, closed: mode === "off" })}
+                    onClick={() => update(index, {
+                      mode,
+                      closed: mode === "off",
+                      ...(mode === "custom" ? {} : { repeat_weeks: 1, repeat_anchor: null }),
+                    })}
                     className={`inline-flex min-h-8 items-center justify-center gap-1 rounded-md px-2 font-medium transition-colors ${
                       row.mode === mode
                         ? "bg-foreground text-background shadow-sm"
@@ -173,25 +205,60 @@ export function StaffHoursEditor({ staffId, businessId }: { staffId: string; bus
             </div>
 
             {row.mode === "custom" && (
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <label className="space-y-1 text-[11px] text-muted-foreground">
-                  Starts
-                  <Input
-                    type="time"
-                    value={row.open_time?.slice(0, 5) ?? ""}
-                    onChange={(event) => update(index, { open_time: event.target.value })}
-                    className="h-9 tabular-nums text-sm"
-                  />
-                </label>
-                <label className="space-y-1 text-[11px] text-muted-foreground">
-                  Finishes
-                  <Input
-                    type="time"
-                    value={row.close_time?.slice(0, 5) ?? ""}
-                    onChange={(event) => update(index, { close_time: event.target.value })}
-                    className="h-9 tabular-nums text-sm"
-                  />
-                </label>
+              <div className="mt-3 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="space-y-1 text-[11px] text-muted-foreground">
+                    Starts
+                    <Input
+                      type="time"
+                      value={row.open_time?.slice(0, 5) ?? ""}
+                      onChange={(event) => update(index, { open_time: event.target.value })}
+                      className="h-9 tabular-nums text-sm"
+                    />
+                  </label>
+                  <label className="space-y-1 text-[11px] text-muted-foreground">
+                    Finishes
+                    <Input
+                      type="time"
+                      value={row.close_time?.slice(0, 5) ?? ""}
+                      onChange={(event) => update(index, { close_time: event.target.value })}
+                      className="h-9 tabular-nums text-sm"
+                    />
+                  </label>
+                </div>
+                <div className="rounded-lg bg-secondary/45 p-3">
+                  <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                    <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" /> Repeats
+                  </label>
+                  <select
+                    value={row.repeat_weeks}
+                    onChange={(event) => {
+                      const repeat_weeks = Number(event.target.value);
+                      update(index, {
+                        repeat_weeks,
+                        repeat_anchor: repeat_weeks > 1 ? (row.repeat_anchor ?? nextWeekdayDate(row.weekday)) : null,
+                      });
+                    }}
+                    className="mt-1.5 h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    aria-label={`${WEEKDAYS[row.weekday]} repeat pattern`}
+                  >
+                    <option value={1}>Every week</option>
+                    <option value={2}>Every 2 weeks</option>
+                    <option value={3}>Every 3 weeks</option>
+                    <option value={4}>Every 4 weeks</option>
+                  </select>
+                  {row.repeat_weeks > 1 && (
+                    <label className="mt-2 block space-y-1 text-[11px] text-muted-foreground">
+                      First working {WEEKDAYS[row.weekday]}
+                      <Input
+                        type="date"
+                        value={row.repeat_anchor ?? ""}
+                        onChange={(event) => update(index, { repeat_anchor: event.target.value })}
+                        className="h-9 text-sm"
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
             )}
             {row.mode === "business" && (

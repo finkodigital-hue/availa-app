@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { expandBookingSegments, expandCandidateSegments, segmentsOverlap } from "@/lib/slots";
+import { resolveDayPeriods } from "@/lib/staff-hours";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -376,12 +377,25 @@ export function PublicBookingPage({
       dayStart.setHours(0, 0, 0, 0);
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
-      const [hoursR, bookingsR, blockedR] = await Promise.all([
+      const weekday = date.getDay();
+      const [hoursR, periodsR, staffHoursR, bookingsR, blockedR] = await Promise.all([
         supabase
           .from("business_hours")
           .select("*")
           .eq("business_id", service!.business_id)
-          .eq("weekday", date.getDay())
+          .eq("weekday", weekday)
+          .maybeSingle(),
+        supabase
+          .from("business_hour_periods")
+          .select("open_time, close_time")
+          .eq("business_id", service!.business_id)
+          .eq("weekday", weekday)
+          .order("open_time"),
+        supabase
+          .from("staff_hours")
+          .select("closed, open_time, close_time, repeat_weeks, repeat_anchor")
+          .eq("staff_id", staff!.id)
+          .eq("weekday", weekday)
           .maybeSingle(),
         (supabase as any)
           .from("public_booking_slots")
@@ -398,7 +412,13 @@ export function PublicBookingPage({
           .gt("ends_at", dayStart.toISOString()),
       ]);
       return {
-        hours: hoursR.data,
+        periods: resolveDayPeriods({
+          weekday,
+          staffHours: staffHoursR.data as any,
+          bizPeriods: (periodsR.data ?? []) as any,
+          bizHours: hoursR.data as any,
+          date,
+        }),
         bookings: (bookingsR.data ?? []) as {
           starts_at: string;
           ends_at: string;
@@ -411,46 +431,46 @@ export function PublicBookingPage({
   });
 
   const slots = useMemo(() => {
-    if (!service || !dayData?.hours || dayData.hours.closed || !dayData.hours.open_time) return [];
+    if (!service || !dayData?.periods?.length) return [];
     const slotMin = 15;
     const bufBefore = service.buffer_before_min ?? 0;
     const bufAfter = service.buffer_after_min ?? 0;
     const gapMin = service.gap_min ?? 0;
     const activeAfterMin = service.active_after_min ?? 0;
     const totalMin = service.duration_minutes + bufBefore + bufAfter + gapMin + activeAfterMin;
-    const [oh, om] = dayData.hours.open_time.split(":").map(Number);
-    const [ch, cm] = dayData.hours.close_time!.split(":").map(Number);
-    const open = new Date(date);
-    open.setHours(oh, om, 0, 0);
-    const close = new Date(date);
-    close.setHours(ch, cm, 0, 0);
     const result: { time: string; iso: string; hour: number }[] = [];
     const now = new Date();
     const existingSegments = dayData.bookings.map((b) => expandBookingSegments(b));
-    for (
-      let t = new Date(open);
-      t.getTime() + totalMin * 60000 <= close.getTime();
-      t = new Date(t.getTime() + slotMin * 60000)
-    ) {
-      if (t < now) continue;
-      const candidateSegments = expandCandidateSegments(t.getTime(), service);
-      const conflict = existingSegments.some((segs) => segmentsOverlap(candidateSegments, segs));
-      // Same rule as the staff-side slot search: a blocked_dates row only
-      // matters if it overlaps an active segment, not a client's own gap.
-      const blocked = dayData.blocked.some((b: any) => {
-        if (b.staff_id && b.staff_id !== staff?.id) return false;
-        const blockedSeg = [
-          { start: new Date(b.starts_at).getTime(), end: new Date(b.ends_at).getTime() },
-        ];
-        return segmentsOverlap(candidateSegments, blockedSeg);
-      });
-      if (!conflict && !blocked) {
-        const start = new Date(t.getTime() + bufBefore * 60000);
-        result.push({
-          time: start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-          iso: start.toISOString(),
-          hour: start.getHours(),
+    for (const period of dayData.periods) {
+      const [oh, om] = period.open_time.split(":").map(Number);
+      const [ch, cm] = period.close_time.split(":").map(Number);
+      const open = new Date(date);
+      open.setHours(oh, om, 0, 0);
+      const close = new Date(date);
+      close.setHours(ch, cm, 0, 0);
+      for (
+        let t = new Date(open);
+        t.getTime() + totalMin * 60000 <= close.getTime();
+        t = new Date(t.getTime() + slotMin * 60000)
+      ) {
+        if (t < now) continue;
+        const candidateSegments = expandCandidateSegments(t.getTime(), service);
+        const conflict = existingSegments.some((segs) => segmentsOverlap(candidateSegments, segs));
+        const blocked = dayData.blocked.some((b: any) => {
+          if (b.staff_id && b.staff_id !== staff?.id) return false;
+          const blockedSeg = [
+            { start: new Date(b.starts_at).getTime(), end: new Date(b.ends_at).getTime() },
+          ];
+          return segmentsOverlap(candidateSegments, blockedSeg);
         });
+        if (!conflict && !blocked) {
+          const start = new Date(t.getTime() + bufBefore * 60000);
+          result.push({
+            time: start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+            iso: start.toISOString(),
+            hour: start.getHours(),
+          });
+        }
       }
     }
     return result;
