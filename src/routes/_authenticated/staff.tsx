@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/staff")({
   component: StaffPage,
 });
 
-type Staff = { id: string; name: string; email: string | null; phone: string | null; role: string | null; bio: string | null; photo_url: string | null; bookable: boolean; active: boolean };
+type Staff = { id: string; name: string; email: string | null; phone: string | null; role: string | null; bio: string | null; photo_url: string | null; bookable: boolean; active: boolean; archived_at: string | null };
 
 const AVATAR_TINTS = [
   "bg-rose-100 text-rose-900",
@@ -73,7 +73,7 @@ function StaffPage() {
     queryKey: ["staff", bid],
     enabled: !!bid,
     queryFn: async () => {
-      const { data, error } = await supabase.from("staff").select("*").eq("business_id", bid!).order("name");
+      const { data, error } = await supabase.from("staff").select("*").eq("business_id", bid!).is("archived_at", null).order("name");
       if (error) throw error;
       return data as Staff[];
     },
@@ -125,15 +125,36 @@ function StaffPage() {
   };
 
   const del = async (s: Staff) => {
-    const { count } = await supabase
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("staff_id", s.id)
-      .gte("starts_at", new Date().toISOString())
-      .neq("status", "cancelled");
-    if ((count ?? 0) > 0) {
+    const now = new Date().toISOString();
+    const [futureResult, allResult] = await Promise.all([
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("staff_id", s.id)
+        .gte("starts_at", now)
+        .neq("status", "cancelled"),
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("staff_id", s.id),
+    ]);
+    if (futureResult.error) return toast.error(futureResult.error.message);
+    if (allResult.error) return toast.error(allResult.error.message);
+    if ((futureResult.count ?? 0) > 0) {
       // Show reassign flow instead of failing
-      setReassign({ staff: s, futureCount: count ?? 0, disableAfter: true });
+      setReassign({ staff: s, futureCount: futureResult.count ?? 0, disableAfter: true });
+      return;
+    }
+    if ((allResult.count ?? 0) > 0) {
+      // Keep the row for historical booking joins, but remove it from every
+      // owner/customer surface. This avoids the bookings_staff_id_fkey error.
+      const { error } = await supabase
+        .from("staff")
+        .update({ archived_at: now, active: false, bookable: false })
+        .eq("id", s.id);
+      if (error) return toast.error(error.message);
+      toast.success("Staff removed · booking history preserved");
+      qc.invalidateQueries({ queryKey: ["staff"] });
       return;
     }
     const { error } = await supabase.from("staff").delete().eq("id", s.id);
@@ -322,7 +343,7 @@ function StaffPage() {
                 <ConfirmDialog
                   trigger={<button className="inline-flex items-center gap-2 text-xs font-medium text-destructive hover:underline"><Trash2 className="h-3.5 w-3.5" /> Delete staff</button>}
                   title="Remove this team member?"
-                  description="If they have future bookings, you can reassign them before the account is disabled."
+                  description="If they have future bookings, you can reassign them first. Historical booking records will be preserved."
                   confirmLabel="Remove"
                   onConfirm={async () => { await del(edit as Staff); setEdit(null); }}
                 />
@@ -366,9 +387,9 @@ function ReassignDialog({ info, allStaff, onClose, onDone }: {
       }
       if (alsoDelete) {
         // Disable rather than hard-delete — preserves historic booking joins.
-        const { error } = await supabase.from("staff").update({ active: false, bookable: false }).eq("id", info.staff.id);
+        const { error } = await supabase.from("staff").update({ archived_at: new Date().toISOString(), active: false, bookable: false }).eq("id", info.staff.id);
         if (error) throw error;
-        toast.success(target ? "Bookings reassigned · staff disabled" : "Staff disabled");
+        toast.success(target ? "Bookings reassigned · staff removed" : "Staff removed");
       } else {
         toast.success(`Reassigned ${info.futureCount} booking${info.futureCount === 1 ? "" : "s"}`);
       }
@@ -386,12 +407,12 @@ function ReassignDialog({ info, allStaff, onClose, onDone }: {
           <DialogDescription>
             {info?.staff?.name} has <b>{info?.futureCount}</b> upcoming booking{info?.futureCount === 1 ? "" : "s"}.
             {info?.disableAfter
-              ? " Pick a teammate to take them over, then disable the account to preserve history."
+              ? " Pick a teammate to take them over, then remove the staff member while preserving booking history."
               : " Pick the teammate who should take them over."}
           </DialogDescription>
         </DialogHeader>
         {candidates.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No other active staff to reassign to. Add a new team member first, or disable this one without reassigning.</p>
+          <p className="text-sm text-muted-foreground">No other active staff to reassign to. Add a new team member first, or remove this one without reassigning.</p>
         ) : (
           <div className="space-y-2 max-h-72 overflow-y-auto">
             {candidates.map((s) => (
@@ -421,7 +442,7 @@ function ReassignDialog({ info, allStaff, onClose, onDone }: {
               <Button variant="outline" onClick={() => submit(false)} disabled={busy || !target}>Reassign only</Button>
               <Button onClick={() => submit(true)} disabled={busy || (!target && candidates.length > 0)}>
                 {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {target ? "Reassign & disable" : "Just disable"}
+                {target ? "Reassign & remove" : "Just remove"}
               </Button>
             </>
           ) : (

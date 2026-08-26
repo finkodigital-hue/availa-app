@@ -1495,6 +1495,7 @@ export type Database = {
       staff: {
         Row: {
           active: boolean
+          archived_at: string | null
           bio: string | null
           bookable: boolean
           business_id: string
@@ -1510,6 +1511,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          archived_at?: string | null
           bio?: string | null
           bookable?: boolean
           business_id: string
@@ -1525,6 +1527,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          archived_at?: string | null
           bio?: string | null
           bookable?: boolean
           business_id?: string
