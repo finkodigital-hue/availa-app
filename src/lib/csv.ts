@@ -20,3 +20,18 @@ export function downloadCsv(filename: string, rows: Record<string, string | numb
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+// Same pattern as downloadCsv — generated client-side from data the owner
+// already fetched over their own authenticated session, so there's never a
+// public URL or a Storage upload for it to leak from.
+export function downloadJson(filename: string, data: unknown) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename.endsWith(".json") ? filename : `${filename}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}

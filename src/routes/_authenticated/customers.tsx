@@ -21,7 +21,9 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { compressImage, signedUrl } from "@/lib/image";
 import { fmtDate, fmtMoney as formatMoney, fmtTime, statusMeta } from "@/lib/format";
-import { downloadCsv } from "@/lib/csv";
+import { downloadCsv, downloadJson } from "@/lib/csv";
+import { generateCustomerDataExport, eraseCustomer, type CustomerDataExport, type EraseCustomerResult } from "@/lib/customer-data-requests.functions";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { toast } from "sonner";
 
 // PostgREST caps any single response at 1000 rows regardless of .limit() —
@@ -332,8 +334,11 @@ function CustomersPage() {
   );
 }
 
+type DataRequest = { id: string; customer_id: string | null; email: string; kind: "export" | "deletion"; created_at: string };
+
 function DataRequestsBanner({ businessId, onView }: { businessId: string; onView: (customerId: string) => void }) {
   const qc = useQueryClient();
+  const [acting, setActing] = useState<DataRequest | null>(null);
   const { data: requests } = useQuery({
     queryKey: ["customer-data-requests", businessId],
     queryFn: async () => {
@@ -345,18 +350,9 @@ function DataRequestsBanner({ businessId, onView }: { businessId: string; onView
         .order("created_at", { ascending: true });
       // Degrade quietly if the migration hasn't been applied yet.
       if (error) return [];
-      return data ?? [];
+      return (data ?? []) as DataRequest[];
     },
   });
-
-  const resolve = async (id: string) => {
-    const { error } = await (supabase as any)
-      .from("customer_data_requests")
-      .update({ status: "completed", resolved_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    qc.invalidateQueries({ queryKey: ["customer-data-requests", businessId] });
-  };
 
   if (!requests || requests.length === 0) return null;
 
@@ -366,7 +362,7 @@ function DataRequestsBanner({ businessId, onView }: { businessId: string; onView
         {requests.length} pending data request{requests.length === 1 ? "" : "s"}
       </p>
       <ul className="space-y-1.5">
-        {requests.map((r: any) => (
+        {requests.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span>
               <span className="font-medium">{r.email}</span> requested{" "}
@@ -374,14 +370,220 @@ function DataRequestsBanner({ businessId, onView }: { businessId: string; onView
             </span>
             <div className="flex gap-1.5">
               {r.customer_id && (
-                <Button variant="outline" size="sm" onClick={() => onView(r.customer_id)}>View</Button>
+                <Button variant="outline" size="sm" onClick={() => onView(r.customer_id!)}>View</Button>
               )}
-              <Button variant="ghost" size="sm" onClick={() => resolve(r.id)}>Mark handled</Button>
+              {r.customer_id && (
+                <Button size="sm" onClick={() => setActing(r)}>
+                  {r.kind === "deletion" ? "Erase" : "Generate export"}
+                </Button>
+              )}
             </div>
           </li>
         ))}
       </ul>
+
+      <DataRequestActionDialog
+        request={acting}
+        onClose={() => setActing(null)}
+        onDone={() => qc.invalidateQueries({ queryKey: ["customer-data-requests", businessId] })}
+      />
     </div>
+  );
+}
+
+function DataRequestActionDialog({
+  request,
+  onClose,
+  onDone,
+}: {
+  request: DataRequest | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [confirmName, setConfirmName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [exportResult, setExportResult] = useState<CustomerDataExport | null>(null);
+  const [eraseResult, setEraseResult] = useState<EraseCustomerResult | null>(null);
+
+  const reset = () => { setConfirmName(""); setBusy(false); setExportResult(null); setEraseResult(null); };
+  const close = () => { reset(); onClose(); };
+
+  const runExport = async () => {
+    if (!request) return;
+    setBusy(true);
+    try {
+      const headers = await getServerFnAuthHeaders();
+      const result = await generateCustomerDataExport({ data: { requestId: request.id }, headers });
+      downloadJson(`customer-data-${result.customer.name.replace(/\s+/g, "-").toLowerCase()}`, result);
+      setExportResult(result);
+      onDone();
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not generate the export.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runErase = async () => {
+    if (!request) return;
+    setBusy(true);
+    try {
+      const headers = await getServerFnAuthHeaders();
+      const result = await eraseCustomer({ data: { requestId: request.id }, headers });
+      setEraseResult(result);
+      onDone();
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not erase this customer.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!request) return null;
+  const isExport = request.kind === "export";
+
+  return (
+    <Dialog open={!!request} onOpenChange={(o) => !o && close()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isExport ? "Generate data export" : "Erase customer data"}</DialogTitle>
+          {!eraseResult && !exportResult && (
+            <DialogDescription>
+              Requested by <span className="font-medium">{request.email}</span>
+            </DialogDescription>
+          )}
+        </DialogHeader>
+
+        {isExport ? (
+          exportResult ? (
+            <div className="space-y-3 text-sm">
+              <p>
+                Downloaded <span className="font-medium">{exportResult.bookings.length}</span> booking
+                {exportResult.bookings.length === 1 ? "" : "s"} and{" "}
+                <span className="font-medium">{exportResult.payments.length}</span> payment record
+                {exportResult.payments.length === 1 ? "" : "s"} for{" "}
+                <span className="font-medium">{exportResult.customer.name}</span>. The request has been marked resolved.
+              </p>
+              <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">Not included automatically — check manually if relevant:</p>
+                {exportResult.notCovered.map((n) => <p key={n}>• {n}</p>)}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Compiles everything on file for this customer — profile, bookings and payment history — into a JSON file
+              that downloads immediately, and marks this request resolved.
+            </p>
+          )
+        ) : eraseResult ? (
+          <div className="space-y-3 text-sm">
+            <p>
+              Erased. {eraseResult.bookingsScrubbed} booking{eraseResult.bookingsScrubbed === 1 ? "" : "s"} and{" "}
+              {eraseResult.paymentsScrubbed} payment{eraseResult.paymentsScrubbed === 1 ? "" : "s"} kept for records with
+              identity removed, {eraseResult.notificationsDeleted} notification
+              {eraseResult.notificationsDeleted === 1 ? "" : "s"} deleted, {eraseResult.photosDeleted} photo
+              {eraseResult.photosDeleted === 1 ? "" : "s"} deleted from storage.
+              {eraseResult.authAccountRemoved
+                ? " Their portal sign-in has been removed entirely."
+                : " Their portal sign-in was left in place — it's still in use by another business's customer record for the same email."}
+            </p>
+            <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Not covered automatically — please check manually:</p>
+              {eraseResult.manualCheckNotice.map((n) => <p key={n}>• {n}</p>)}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3 text-sm">
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="rounded-lg border p-2.5">
+                <p className="font-medium text-foreground mb-1">Removed</p>
+                <ul className="text-muted-foreground space-y-0.5">
+                  <li>Name, email, phone, address, notes, photo</li>
+                  <li>Name/email/phone on their bookings and payments</li>
+                  <li>Notes on their bookings</li>
+                  <li>Matching notifications</li>
+                  <li>Portal sign-in, if no other business needs it</li>
+                </ul>
+              </div>
+              <div className="rounded-lg border p-2.5">
+                <p className="font-medium text-foreground mb-1">Retained</p>
+                <ul className="text-muted-foreground space-y-0.5">
+                  <li>Booking dates, services, staff, status</li>
+                  <li>Payment amounts and dates</li>
+                  <li>(identity stripped — for reports/financial records)</li>
+                </ul>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Blocked if this customer has any upcoming bookings — cancel or reassign those first. This cannot be undone.
+            </p>
+            <div>
+              <Label htmlFor="confirm-erase-name" className="text-xs">
+                Type the customer's name to confirm
+              </Label>
+              <Input
+                id="confirm-erase-name"
+                value={confirmName}
+                onChange={(e) => setConfirmName(e.target.value)}
+                className="mt-1 h-9"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          {eraseResult || exportResult ? (
+            <Button onClick={close}>Close</Button>
+          ) : isExport ? (
+            <>
+              <Button variant="ghost" onClick={close} disabled={busy}>Cancel</Button>
+              <Button onClick={runExport} disabled={busy}>
+                {busy ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
+                Generate export
+              </Button>
+            </>
+          ) : (
+            <ErasureNameGate request={request} confirmName={confirmName} busy={busy} onCancel={close} onConfirm={runErase} />
+          )
+        }
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ErasureNameGate({
+  request,
+  confirmName,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  request: DataRequest;
+  confirmName: string;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { data: customer } = useQuery({
+    queryKey: ["erase-target-name", request.customer_id],
+    enabled: !!request.customer_id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("customers").select("name").eq("id", request.customer_id!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const matches = !!customer && confirmName.trim() === customer.name;
+  return (
+    <>
+      <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancel</Button>
+      <Button variant="destructive" onClick={onConfirm} disabled={busy || !matches}>
+        {busy ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
+        Erase{customer ? ` "${customer.name}"` : ""}
+      </Button>
+    </>
   );
 }
 
