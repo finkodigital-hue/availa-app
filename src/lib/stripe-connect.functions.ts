@@ -25,6 +25,10 @@ type BalanceCheckoutInput = {
   bookingId: string;
 };
 
+type RefundInput = {
+  bookingId: string;
+};
+
 type StripePaymentMethods = {
   data: Array<{ id: string }>;
 };
@@ -32,6 +36,18 @@ type StripePaymentMethods = {
 type StripePaymentIntent = {
   id: string;
   status: string;
+};
+
+type StripeRefund = {
+  id: string;
+  status: string;
+};
+
+type RefundChargeResult = {
+  paymentIntentId: string;
+  amountCents: number;
+  ok: boolean;
+  error?: string;
 };
 
 function stripeSecretKey() {
@@ -413,4 +429,111 @@ export const takeSavedBalancePayment = createServerFn({ method: "POST" })
     );
     if (fulfilmentError) throw fulfilmentError;
     return { charged: true };
+  });
+
+// Refunds every succeeded charge on a booking, in full, back to the
+// customer's original card. A booking can have more than one succeeded
+// charge (a deposit, then a balance collected separately later) — this
+// refunds all of them, not just the first. Each charge gets its own
+// deterministic Idempotency-Key so a retry after a partial failure can
+// never double-refund a charge that already succeeded: Stripe sees the
+// same key + same request again and hands back the original refund
+// instead of creating a second one.
+//
+// This never marks the booking refunded itself — booking.payment_status
+// is only ever set by fulfill_stripe_refund, from a confirmed
+// refund.updated webhook event. A failed refund call is logged as a
+// payments row (type: "failure") so there's a record of who tried, when,
+// and why it didn't go through, without touching the booking at all.
+export const refundBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: RefundInput) => {
+    if (!data.bookingId) throw new Error("Choose a booking first.");
+    return data;
+  })
+  .handler(async ({ data, context }): Promise<{ results: RefundChargeResult[] }> => {
+    const { data: business, error: businessError } = await context.supabase
+      .from("businesses")
+      .select("id, currency, stripe_account_id, stripe_charges_enabled")
+      .eq("owner_id", context.userId)
+      .maybeSingle();
+    if (businessError) throw businessError;
+    if (!business?.stripe_account_id || !business.stripe_charges_enabled) {
+      throw new Error("Connect Stripe before issuing a refund.");
+    }
+
+    const { data: booking, error: bookingError } = await context.supabase
+      .from("bookings")
+      .select("id, customer_name, customer_email")
+      .eq("id", data.bookingId)
+      .eq("business_id", business.id)
+      .maybeSingle();
+    if (bookingError) throw bookingError;
+    if (!booking) throw new Error("Booking not found.");
+
+    const { data: chargeRows, error: chargesError } = await context.supabase
+      .from("payments")
+      .select("stripe_payment_intent_id, amount_cents")
+      .eq("booking_id", booking.id)
+      .eq("business_id", business.id)
+      .eq("type", "charge")
+      .eq("status", "succeeded");
+    if (chargesError) throw chargesError;
+    const charges = (chargeRows ?? []).filter(
+      (c): c is { stripe_payment_intent_id: string; amount_cents: number } => !!c.stripe_payment_intent_id,
+    );
+    if (charges.length === 0) throw new Error("This booking has no online payment to refund.");
+
+    const { data: refundRows, error: refundsError } = await context.supabase
+      .from("payments")
+      .select("stripe_payment_intent_id")
+      .eq("booking_id", booking.id)
+      .eq("business_id", business.id)
+      .eq("type", "refund")
+      .eq("status", "succeeded");
+    if (refundsError) throw refundsError;
+    const alreadyRefunded = new Set((refundRows ?? []).map((r) => r.stripe_payment_intent_id));
+
+    const outstanding = charges.filter((c) => !alreadyRefunded.has(c.stripe_payment_intent_id));
+    if (outstanding.length === 0) throw new Error("This booking has already been fully refunded.");
+
+    const results: RefundChargeResult[] = charges
+      .filter((c) => alreadyRefunded.has(c.stripe_payment_intent_id))
+      .map((c) => ({ paymentIntentId: c.stripe_payment_intent_id, amountCents: c.amount_cents, ok: true }));
+
+    const stripeHeaders = { "Content-Type": "application/x-www-form-urlencoded", "Stripe-Account": business.stripe_account_id };
+    for (const charge of outstanding) {
+      const paymentIntentId = charge.stripe_payment_intent_id;
+      try {
+        await stripeRequest<StripeRefund>("/v1/refunds", {
+          method: "POST",
+          headers: { ...stripeHeaders, "Idempotency-Key": `bookzenvo-refund-${paymentIntentId}` },
+          body: formBody({
+            payment_intent: paymentIntentId,
+            "metadata[business_id]": business.id,
+            "metadata[booking_id]": booking.id,
+            "metadata[initiated_by_user_id]": context.userId,
+          }),
+        });
+        results.push({ paymentIntentId, amountCents: charge.amount_cents, ok: true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Stripe could not process this refund.";
+        results.push({ paymentIntentId, amountCents: charge.amount_cents, ok: false, error: message });
+        await context.supabase.from("payments").insert({
+          business_id: business.id,
+          booking_id: booking.id,
+          stripe_payment_intent_id: paymentIntentId,
+          type: "failure",
+          status: "failed",
+          amount_cents: charge.amount_cents,
+          currency: business.currency.toLowerCase(),
+          customer_name: booking.customer_name,
+          customer_email: booking.customer_email,
+          description: "Refund attempt failed",
+          error_message: message,
+          initiated_by_user_id: context.userId,
+        });
+      }
+    }
+    return { results };
   });

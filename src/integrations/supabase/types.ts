@@ -887,6 +887,7 @@ export type Database = {
           description: string | null
           error_message: string | null
           id: string
+          initiated_by_user_id: string | null
           status: string
           stripe_charge_id: string | null
           stripe_payment_intent_id: string | null
@@ -905,6 +906,7 @@ export type Database = {
           description?: string | null
           error_message?: string | null
           id?: string
+          initiated_by_user_id?: string | null
           status: string
           stripe_charge_id?: string | null
           stripe_payment_intent_id?: string | null
@@ -923,6 +925,7 @@ export type Database = {
           description?: string | null
           error_message?: string | null
           id?: string
+          initiated_by_user_id?: string | null
           status?: string
           stripe_charge_id?: string | null
           stripe_payment_intent_id?: string | null
