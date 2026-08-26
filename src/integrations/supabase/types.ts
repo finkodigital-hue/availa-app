@@ -445,6 +445,7 @@ export type Database = {
           payment_mode: string
           phone: string | null
           plan: string
+          service_categories: string[]
           show_durations: boolean
           show_prices: boolean
           show_staff: boolean
@@ -496,6 +497,7 @@ export type Database = {
           payment_mode?: string
           phone?: string | null
           plan?: string
+          service_categories?: string[]
           show_durations?: boolean
           show_prices?: boolean
           show_staff?: boolean
@@ -547,6 +549,7 @@ export type Database = {
           payment_mode?: string
           phone?: string | null
           plan?: string
+          service_categories?: string[]
           show_durations?: boolean
           show_prices?: boolean
           show_staff?: boolean

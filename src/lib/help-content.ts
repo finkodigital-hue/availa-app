@@ -305,7 +305,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { type: "p", text: "Add and edit services from the Services page. Each service has:" },
       { type: "list", items: [
         "Name and description",
-        "Category — a free-text tag (e.g. \"Hair\", \"Nails\") shown as a badge on the card; there's no separate category management screen",
+        "Category — choose a starting category or type your own. Use Manage categories to add, rename or delete category names",
         "Duration in minutes (5-minute increments) and price",
         "Buffer time before and after the appointment",
         "A calendar color, used as the accent bar on the card and in the calendar",
@@ -323,8 +323,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Linking products to services",
     summary: "Track how much stock a service uses, and see its real profit margin.",
     blocks: [
-      { type: "p", text: "On a service's edit form, use \"Products used\" to link inventory items from Stock and set how much of each is used per booking. This powers the cost, profit and margin shown on the service card, and the \"Most/least profitable services\" cards on the Stock page." },
-      { type: "note", text: "Linking a product doesn't automatically deduct stock when a booking is completed — it's used for cost and margin calculations only. Adjust your stock levels yourself as you use products; see \"Tracking inventory.\"" },
+      { type: "p", text: "On a service's edit form, use \"Attach stock item\" to choose an item from Stock, or create one without leaving the service. Set how much is used for each appointment to see the estimated appointments remaining." },
+      { type: "note", text: "Linked quantities are deducted automatically when a booking is completed. If a completion is reversed, the recorded stock deduction is restored." },
     ],
     keywords: ["recipe", "margin", "profit", "cost"],
   },
@@ -536,7 +536,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         "Out of stock — stock is at zero or below.",
       ] },
       { type: "p", text: "The top of the Stock page shows summary cards for products tracked, items needing attention, and total inventory value (quantity × cost across all products)." },
-      { type: "note", text: "Completing a booking does not automatically deduct stock, even if products are linked to that service — you'll need to adjust quantities yourself as you use them." },
+      { type: "note", text: "Completing a booking automatically deducts the quantities linked to that service. You can still make manual stock adjustments when you need to correct a count." },
     ],
     keywords: ["low stock", "out of stock", "alerts"],
   },
