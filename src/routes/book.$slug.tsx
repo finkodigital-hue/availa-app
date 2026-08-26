@@ -37,14 +37,27 @@ export const Route = createFileRoute("/book/$slug")({
     // Custom page layout is optional — if the owner never used the page
     // builder (or the row can't be read for any reason), fall back to the
     // page exactly as it's always looked.
-    const { data: layout } = await supabase
+    let { data: layout, error: layoutError } = await supabase
       .from("page_layouts")
-      .select("blocks")
+      .select("blocks, storefront_settings")
       .eq("business_id", data.id)
       .maybeSingle();
+    // Keep the public page usable while the new storefront migration is
+    // rolling out across environments. Once present, the richer select is
+    // used automatically; older databases fall back to their saved blocks.
+    if (layoutError) {
+      const fallback = await supabase
+        .from("page_layouts")
+        .select("blocks")
+        .eq("business_id", data.id)
+        .maybeSingle();
+      layout = fallback.data ? { ...fallback.data, storefront_settings: null } : null;
+      layoutError = fallback.error;
+    }
+    if (layoutError) throw layoutError;
     const pageBlocks = ((layout?.blocks as unknown as PageBlock[]) ?? []).filter((b) => b && b.type);
 
-    return { ...data, pageBlocks };
+    return { ...data, pageBlocks, storefrontSettings: layout?.storefront_settings ?? null };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -88,6 +101,7 @@ function PublicBooking() {
       business={biz}
       theme={theme}
       pageBlocks={biz.pageBlocks ?? []}
+      storefrontSettings={biz.storefrontSettings}
       footerExtra={isScreenshotPreview ? undefined : <CookieSettingsFooterLink />}
     />
   );

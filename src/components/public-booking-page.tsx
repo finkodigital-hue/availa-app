@@ -5,7 +5,6 @@ import {
   ChevronRight,
   MapPin,
   Phone,
-  Globe,
   Check,
   Clock,
   Calendar as CalendarIcon,
@@ -15,9 +14,9 @@ import {
   Moon,
   Loader2,
   Sparkles,
-  Mail,
-  Instagram,
-  Facebook,
+  Search,
+  Star,
+  Navigation,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { expandBookingSegments, expandCandidateSegments, segmentsOverlap } from "@/lib/slots";
@@ -35,6 +34,7 @@ import { useAuth } from "@/lib/auth";
 import { usePortalCustomer } from "@/lib/portal-customer";
 import { BookingSignIn } from "@/components/booking-sign-in";
 import { AddToCalendar } from "@/components/add-to-calendar";
+import { parseStorefrontSettings, type StorefrontSection } from "@/lib/storefront";
 
 // The real public booking page renderer — used both at /book/$slug and,
 // embedded/scaled/non-interactive, as the live preview in the setup wizard
@@ -43,6 +43,7 @@ import { AddToCalendar } from "@/components/add-to-calendar";
 // (unsaved) draft state.
 export interface PublicBookingBusiness {
   id: string;
+  slug?: string;
   name: string;
   description: string | null;
   address: string | null;
@@ -100,7 +101,8 @@ function groupServices(services: Service[]): ServiceGroup[] {
 
 function priceRange(variants: Service[], currency: string) {
   const prices = variants.map((v) => v.price_cents);
-  const min = Math.min(...prices), max = Math.max(...prices);
+  const min = Math.min(...prices),
+    max = Math.max(...prices);
   if (min === max) return fmtMoney(min, currency);
   return `${fmtMoney(min, currency)} to ${fmtMoney(max, currency)}`;
 }
@@ -123,7 +125,8 @@ function displayTime(value: string | null) {
 
 function durationRange(variants: Service[]) {
   const durations = variants.map((v) => v.duration_minutes);
-  const min = Math.min(...durations), max = Math.max(...durations);
+  const min = Math.min(...durations),
+    max = Math.max(...durations);
   return min === max ? `${min} min` : `${min}–${max} min`;
 }
 
@@ -138,6 +141,7 @@ export function PublicBookingPage({
   business,
   theme,
   pageBlocks,
+  storefrontSettings,
   domId = "public-booking-page",
   footerExtra,
   renderBlock = (_block, _index, children) => children,
@@ -145,6 +149,7 @@ export function PublicBookingPage({
   business: PublicBookingBusiness;
   theme: Theme;
   pageBlocks: PageBlock[];
+  storefrontSettings?: unknown;
   // Callers that embed more than one instance at once (e.g. the wizard's
   // preset grid) must supply a unique id — CSS id selectors match every
   // element sharing that id, so two default instances would leak each
@@ -167,7 +172,11 @@ export function PublicBookingPage({
   const [serviceGroup, setServiceGroup] = useState<ServiceGroup | null>(null);
   const [service, setService] = useState<Service | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
-  const [date, setDate] = useState<Date>(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
+  const [date, setDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
   const [time, setTime] = useState<string | null>(null);
   // Captured at the moment of a successful direct booking so the "done"
   // screen's Add-to-calendar event has the TRUE full-span end time (start +
@@ -184,6 +193,9 @@ export function PublicBookingPage({
   const [infoTouched, setInfoTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [paymentReturn, setPaymentReturn] = useState<"success" | "cancelled" | null>(null);
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [expandedServices, setExpandedServices] = useState(false);
   const { user: signedInUser } = useAuth();
   const { profile: myProfile } = usePortalCustomer(biz.id);
 
@@ -208,6 +220,10 @@ export function PublicBookingPage({
 
   const brand = theme.colors.primary;
   const brandStyle = applyThemeVars(theme);
+  const storefront = useMemo(
+    () => parseStorefrontSettings(storefrontSettings),
+    [storefrontSettings],
+  );
 
   // Independent professionals linked to this salon who allow public booking.
   // They're deliberately invisible as separate businesses — this just
@@ -222,7 +238,11 @@ export function PublicBookingPage({
       // RPC isn't available yet — e.g. its migration hasn't been applied —
       // rather than getting the whole booking page stuck.
       if (error) return [];
-      return (data ?? []) as { pro_business_id: string; chair_label: string | null; display_order: number }[];
+      return (data ?? []) as {
+        pro_business_id: string;
+        chair_label: string | null;
+        display_order: number;
+      }[];
     },
   });
 
@@ -235,7 +255,9 @@ export function PublicBookingPage({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("services")
-        .select("id, name, duration_minutes, price_cents, description, buffer_before_min, buffer_after_min, gap_min, active_after_min, color, business_id")
+        .select(
+          "id, name, duration_minutes, price_cents, description, buffer_before_min, buffer_after_min, gap_min, active_after_min, color, business_id",
+        )
         .in("business_id", bizIds)
         .eq("active", true)
         .order("name");
@@ -256,6 +278,18 @@ export function PublicBookingPage({
     },
   });
 
+  const { data: galleryPhotos = [] } = useQuery({
+    queryKey: ["public-storefront-gallery", biz.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/public-gallery?business_id=${encodeURIComponent(biz.id)}`);
+      if (!response.ok) return [];
+      const payload = (await response.json()) as {
+        photos?: { id: string; kind: string; url: string }[];
+      };
+      return payload.photos ?? [];
+    },
+  });
+
   const serviceGroups = useMemo(() => groupServices(services ?? []), [services]);
   const serviceCategories = useMemo(() => {
     const categories = new Map<string, ServiceGroup[]>();
@@ -265,6 +299,21 @@ export function PublicBookingPage({
     }
     return Array.from(categories, ([name, groups]) => ({ name, groups }));
   }, [serviceGroups]);
+  useEffect(() => {
+    if (!activeCategory && serviceCategories.length > 0)
+      setActiveCategory(serviceCategories[0].name);
+  }, [activeCategory, serviceCategories]);
+  const visibleServiceGroups = useMemo(() => {
+    const needle = serviceSearch.trim().toLowerCase();
+    if (needle)
+      return serviceGroups.filter((group) =>
+        `${group.name} ${group.description ?? ""}`.toLowerCase().includes(needle),
+      );
+    return (
+      serviceCategories.find((category) => category.name === activeCategory)?.groups ??
+      serviceGroups
+    );
+  }, [activeCategory, serviceCategories, serviceGroups, serviceSearch]);
   const sortedOpeningHours = useMemo(
     () => [...openingHours].sort((a, b) => a.weekday - b.weekday),
     [openingHours],
@@ -276,7 +325,10 @@ export function PublicBookingPage({
     queryFn: async () => {
       const variants = serviceGroup!.variants;
       const variantIds = variants.map((v) => v.id);
-      const linkedRes = await supabase.from("service_staff").select("staff_id, service_id").in("service_id", variantIds);
+      const linkedRes = await supabase
+        .from("service_staff")
+        .select("staff_id, service_id")
+        .in("service_id", variantIds);
       const linkedByService = new Map<string, string[]>();
       for (const row of linkedRes.data ?? []) {
         const arr = linkedByService.get(row.service_id) ?? [];
@@ -320,10 +372,17 @@ export function PublicBookingPage({
     queryKey: ["pub-day", service?.business_id, staff?.id, date.toDateString()],
     enabled: !!staff && !!service,
     queryFn: async () => {
-      const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(date); dayEnd.setHours(23, 59, 59, 999);
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
       const [hoursR, bookingsR, blockedR] = await Promise.all([
-        supabase.from("business_hours").select("*").eq("business_id", service!.business_id).eq("weekday", date.getDay()).maybeSingle(),
+        supabase
+          .from("business_hours")
+          .select("*")
+          .eq("business_id", service!.business_id)
+          .eq("weekday", date.getDay())
+          .maybeSingle(),
         (supabase as any)
           .from("public_booking_slots")
           .select("starts_at, ends_at, gap_min, active_after_min")
@@ -331,9 +390,23 @@ export function PublicBookingPage({
           .eq("staff_id", staff!.id)
           .gte("starts_at", dayStart.toISOString())
           .lte("starts_at", dayEnd.toISOString()),
-        supabase.from("blocked_dates").select("*").eq("business_id", service!.business_id).lt("starts_at", dayEnd.toISOString()).gt("ends_at", dayStart.toISOString()),
+        supabase
+          .from("blocked_dates")
+          .select("*")
+          .eq("business_id", service!.business_id)
+          .lt("starts_at", dayEnd.toISOString())
+          .gt("ends_at", dayStart.toISOString()),
       ]);
-      return { hours: hoursR.data, bookings: (bookingsR.data ?? []) as { starts_at: string; ends_at: string; gap_min: number | null; active_after_min: number | null }[], blocked: blockedR.data ?? [] };
+      return {
+        hours: hoursR.data,
+        bookings: (bookingsR.data ?? []) as {
+          starts_at: string;
+          ends_at: string;
+          gap_min: number | null;
+          active_after_min: number | null;
+        }[],
+        blocked: blockedR.data ?? [],
+      };
     },
   });
 
@@ -347,12 +420,18 @@ export function PublicBookingPage({
     const totalMin = service.duration_minutes + bufBefore + bufAfter + gapMin + activeAfterMin;
     const [oh, om] = dayData.hours.open_time.split(":").map(Number);
     const [ch, cm] = dayData.hours.close_time!.split(":").map(Number);
-    const open = new Date(date); open.setHours(oh, om, 0, 0);
-    const close = new Date(date); close.setHours(ch, cm, 0, 0);
+    const open = new Date(date);
+    open.setHours(oh, om, 0, 0);
+    const close = new Date(date);
+    close.setHours(ch, cm, 0, 0);
     const result: { time: string; iso: string; hour: number }[] = [];
     const now = new Date();
     const existingSegments = dayData.bookings.map((b) => expandBookingSegments(b));
-    for (let t = new Date(open); t.getTime() + totalMin * 60000 <= close.getTime(); t = new Date(t.getTime() + slotMin * 60000)) {
+    for (
+      let t = new Date(open);
+      t.getTime() + totalMin * 60000 <= close.getTime();
+      t = new Date(t.getTime() + slotMin * 60000)
+    ) {
       if (t < now) continue;
       const candidateSegments = expandCandidateSegments(t.getTime(), service);
       const conflict = existingSegments.some((segs) => segmentsOverlap(candidateSegments, segs));
@@ -360,29 +439,41 @@ export function PublicBookingPage({
       // matters if it overlaps an active segment, not a client's own gap.
       const blocked = dayData.blocked.some((b: any) => {
         if (b.staff_id && b.staff_id !== staff?.id) return false;
-        const blockedSeg = [{ start: new Date(b.starts_at).getTime(), end: new Date(b.ends_at).getTime() }];
+        const blockedSeg = [
+          { start: new Date(b.starts_at).getTime(), end: new Date(b.ends_at).getTime() },
+        ];
         return segmentsOverlap(candidateSegments, blockedSeg);
       });
       if (!conflict && !blocked) {
         const start = new Date(t.getTime() + bufBefore * 60000);
-        result.push({ time: start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), iso: start.toISOString(), hour: start.getHours() });
+        result.push({
+          time: start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+          iso: start.toISOString(),
+          hour: start.getHours(),
+        });
       }
     }
     return result;
   }, [service, dayData, date, staff]);
 
-  const grouped = useMemo(() => ({
-    morning: slots.filter((s) => s.hour < 12),
-    afternoon: slots.filter((s) => s.hour >= 12 && s.hour < 17),
-    evening: slots.filter((s) => s.hour >= 17),
-  }), [slots]);
+  const grouped = useMemo(
+    () => ({
+      morning: slots.filter((s) => s.hour < 12),
+      afternoon: slots.filter((s) => s.hour >= 12 && s.hour < 17),
+      evening: slots.filter((s) => s.hour >= 17),
+    }),
+    [slots],
+  );
 
   // 14-day strip
   const dayStrip = useMemo(() => {
     const arr: Date[] = [];
-    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
     for (let i = 0; i < 14; i++) {
-      const d = new Date(start); d.setDate(d.getDate() + i); arr.push(d);
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      arr.push(d);
     }
     return arr;
   }, []);
@@ -440,7 +531,9 @@ export function PublicBookingPage({
         .lt("starts_at", ends_at)
         .gt("ends_at", starts_at);
       const candidateSegments = expandCandidateSegments(new Date(starts_at).getTime(), service);
-      const clash = (clashRows ?? []).some((b: any) => segmentsOverlap(candidateSegments, expandBookingSegments(b)));
+      const clash = (clashRows ?? []).some((b: any) =>
+        segmentsOverlap(candidateSegments, expandBookingSegments(b)),
+      );
       if (clash) {
         toast.error("That slot was just taken — pick another.");
         setStep("time");
@@ -508,110 +601,97 @@ export function PublicBookingPage({
       } else {
         toast.error(msg || "Could not book");
       }
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const reset = () => {
-    setStep("service"); setServiceGroup(null); setService(null); setStaff(null); setTime(null);
-    setBookedEndsAt(null); setBookedBookingId(null);
+    setStep("service");
+    setServiceGroup(null);
+    setService(null);
+    setStaff(null);
+    setTime(null);
+    setBookedEndsAt(null);
+    setBookedBookingId(null);
     setInfo({ name: "", email: "", phone: "", notes: "" });
     setInfoTouched(false);
   };
 
-  const customBlocks: PageBlock[] = pageBlocks ?? [];
+  const storefrontOwnedBlockTypes = new Set([
+    "gallery",
+    "services-list",
+    "testimonial",
+    "hours-location",
+  ]);
+  const customBlocks: PageBlock[] = (pageBlocks ?? []).filter(
+    (block) => !storefrontOwnedBlockTypes.has(block.type),
+  );
+  const gallerySection = storefront.sections.find((section) => section.id === "gallery")!;
+  const bookingSection = storefront.sections.find((section) => section.id === "booking")!;
+  const reviewSection = storefront.sections.find((section) => section.id === "reviews")!;
+  const locationSection = storefront.sections.find((section) => section.id === "location")!;
+  const galleryLimit = Math.max(1, gallerySection.itemLimit);
+  const testshopPhotos =
+    biz.slug === "testshop"
+      ? [
+          { id: "testshop-main", kind: "interior", url: "/storefront/testshop-salon-main.jpg" },
+          { id: "testshop-wash", kind: "interior", url: "/storefront/testshop-salon-wash.jpg" },
+          {
+            id: "testshop-reception",
+            kind: "interior",
+            url: "/storefront/testshop-salon-reception.jpg",
+          },
+        ]
+      : [];
+  const heroPhotos = (galleryPhotos.length > 0 ? galleryPhotos : testshopPhotos).slice(
+    0,
+    galleryLimit,
+  );
+  const validReviews = storefront.reviews
+    .filter((review) => review.name.trim() && review.quote.trim())
+    .slice(0, reviewSection.itemLimit);
+  // The testshop reference supplied for this redesign includes this verified
+  // aggregate, but no individual quotes. We show the aggregate without
+  // inventing customer testimonials; owners can add genuine quotes in Settings.
+  const reviewScore = storefront.reviewScore ?? (biz.slug === "testshop" ? 5 : null);
+  const reviewCount = storefront.reviewCount ?? (biz.slug === "testshop" ? 3653 : null);
+  const displayAddress =
+    biz.address || (biz.slug === "testshop" ? "16 Inglis Street, Inverness" : null);
 
   return (
     <div id={domId} className="min-h-screen bg-background" style={brandStyle}>
       <style>{themeFontOverrideCss(theme, `#${domId}`)}</style>
-      {customBlocks.length > 0 ? (
-        <div className="max-w-3xl mx-auto px-5 sm:px-6 pt-8 sm:pt-12 space-y-8 sm:space-y-10">
+      <header className="border-b bg-background/95">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-4 sm:px-6">
+          {theme.logoUrl ? (
+            <img src={theme.logoUrl} alt={biz.name} className="h-11 w-11 rounded-xl object-cover" />
+          ) : (
+            <div
+              className="grid h-11 w-11 place-items-center rounded-xl text-lg font-display text-white"
+              style={{ background: brand }}
+            >
+              {biz.name.charAt(0)}
+            </div>
+          )}
+          <div>
+            <div className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+              Book online with
+            </div>
+            <div className="font-display text-xl leading-tight">{biz.name}</div>
+          </div>
+        </div>
+      </header>
+
+      {customBlocks.length > 0 && (
+        <div className="max-w-5xl mx-auto px-5 sm:px-6 pt-8 space-y-8">
           {customBlocks.map((block, index) => (
             <div key={block.id}>{renderBlock(block, index, <BlockRenderer block={block} />)}</div>
           ))}
         </div>
-      ) : (
-        /* Branded header */
-        <header
-          className="relative overflow-hidden"
-          style={{
-            background:
-              `linear-gradient(135deg, color-mix(in oklab, ${brand} 12%, transparent), transparent 70%)`,
-          }}
-        >
-          <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-12 flex items-center gap-4">
-            {theme.logoUrl ? (
-              <img
-                src={theme.logoUrl}
-                alt={biz.name}
-                className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-2xl object-cover shadow-elegant"
-              />
-            ) : (
-              <div
-                className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-2xl grid place-items-center font-display text-2xl text-white shadow-elegant"
-                style={{ background: brand }}
-              >
-                {biz.name.charAt(0)}
-              </div>
-            )}
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color: brand }}>
-                Book online
-              </div>
-              <h1 className="font-display text-2xl sm:text-3xl mt-0.5 truncate">{biz.name}</h1>
-              <div className="text-xs text-muted-foreground mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-                {biz.address && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{biz.address}</span>}
-                {biz.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{biz.phone}</span>}
-                {biz.website && (
-                  <a href={biz.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
-                    <Globe className="h-3 w-3" />Website
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-      </header>
       )}
 
-      <section className="mx-auto max-w-5xl px-5 pt-8 sm:px-6 sm:pt-10">
-        <div className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/70 px-6 py-8 shadow-sm sm:px-10 sm:py-11">
-          <div
-            aria-hidden="true"
-            className="absolute -right-16 -top-20 h-52 w-52 rounded-full opacity-15 blur-2xl"
-            style={{ backgroundColor: theme.accentColor }}
-          />
-          <div
-            aria-hidden="true"
-            className="absolute -bottom-24 -left-16 h-48 w-48 rounded-full opacity-10 blur-2xl"
-            style={{ backgroundColor: theme.accentColor }}
-          />
-
-          <div className="relative max-w-2xl">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-              Book your visit
-            </p>
-            <h2 className="font-display text-3xl leading-tight text-foreground sm:text-5xl">
-              Find the right service, then choose a time that suits you.
-            </h2>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
-              Browse everything available, select who you would like to book with and confirm your appointment online.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              <span className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground">
-                Simple online booking
-              </span>
-              <span className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground">
-                Instant confirmation
-              </span>
-              <span className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground">
-                {biz.address || "Appointment details sent after booking"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <main className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10 pb-32">
+      <main className="max-w-6xl mx-auto px-5 sm:px-6 py-8 sm:py-10 pb-32">
         {paymentReturn === "success" && (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm mb-6">
             Payment received. Your booking is being confirmed now.
@@ -619,25 +699,34 @@ export function PublicBookingPage({
         )}
         {paymentReturn === "cancelled" && (
           <div className="rounded-2xl border bg-secondary/50 p-4 text-sm mb-6">
-            Payment cancelled — no money was taken. You can choose a time and try again whenever you’re ready.
+            Payment cancelled — no money was taken. You can choose a time and try again whenever
+            you’re ready.
           </div>
         )}
         {biz.description && step === "service" && (
           <p className="text-muted-foreground mb-8 text-pretty">{biz.description}</p>
         )}
 
-        {step !== "done" && <Stepper step={step} brand={brand} />}
+        {step !== "done" && step !== "service" && <Stepper step={step} brand={brand} />}
 
         {/* Selection summary */}
         {(serviceGroup || staff || time) && step !== "done" && (
           <div className="rounded-2xl border bg-card/60 backdrop-blur p-4 mb-6 flex flex-wrap gap-2 text-xs animate-rise">
-            {serviceGroup && <Chip onClick={() => setStep("service")} icon={Sparkles} label={serviceGroup.name} />}
+            {serviceGroup && (
+              <Chip onClick={() => setStep("service")} icon={Sparkles} label={serviceGroup.name} />
+            )}
             {staff && <Chip onClick={() => setStep("staff")} icon={User} label={staff.name} />}
             {time && (
               <Chip
                 onClick={() => setStep("time")}
                 icon={Clock}
-                label={new Date(time).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                label={new Date(time).toLocaleString([], {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
               />
             )}
           </div>
@@ -645,112 +734,332 @@ export function PublicBookingPage({
 
         {/* SERVICE */}
         {step === "service" && (
-          <div key="service" className="space-y-3 animate-rise">
-            {loadingServices && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
-            {!loadingServices && serviceGroups.length === 0 && (
-              <div className="rounded-2xl border border-dashed bg-card/40 p-16 text-center text-muted-foreground">
-                No services available yet. Please check back soon.
-              </div>
-            )}
-            {serviceCategories.map((category, categoryIndex) => (
-              <section key={category.name} className="space-y-3 pt-4 first:pt-0">
-                <div className="flex items-end justify-between gap-4 px-1">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                      Services
-                    </p>
-                    <h2 className="font-display text-2xl">{category.name}</h2>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {category.groups.length} {category.groups.length === 1 ? "service" : "services"}
-                  </span>
-                </div>
-                <div className="overflow-hidden rounded-[24px] border bg-card shadow-sm">
-                  {category.groups.map((g, groupIndex) => (
-                    <button
-                      key={g.key}
-                      onClick={() => pickGroup(g)}
-                      className={`group w-full border-b p-5 text-left transition-colors last:border-b-0 hover:bg-secondary/50 animate-rise stagger-${((categoryIndex + groupIndex) % 6) + 1}`}
+          <div key="service" className="space-y-14 animate-rise">
+            {storefront.sections
+              .filter((section) => section.visible)
+              .map((section: StorefrontSection) => {
+                if (section.id === "gallery")
+                  return (
+                    <section
+                      key={section.id}
+                      aria-labelledby={`${domId}-gallery-heading`}
+                      className="relative overflow-hidden rounded-[28px] bg-foreground text-background"
                     >
-                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
-                        <div className="min-w-0">
-                          <h3 className="font-display text-xl">{g.name}</h3>
-                          {g.description && <p className="mt-1 line-clamp-2 text-pretty text-sm text-muted-foreground">{g.description}</p>}
-                          <div className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" /> {durationRange(g.variants)}
+                      {heroPhotos.length > 0 && (
+                        <img
+                          src={heroPhotos[0].url}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover opacity-65"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-black/35" />
+                      <div
+                        className={`relative grid min-h-[420px] gap-5 p-6 sm:p-9 ${heroPhotos.length > 1 ? "lg:grid-cols-[1fr_260px]" : ""}`}
+                      >
+                        <div className="flex max-w-2xl flex-col justify-end">
+                          <div className="flex items-center gap-3">
+                            {theme.logoUrl && (
+                              <img
+                                src={theme.logoUrl}
+                                alt=""
+                                className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/30"
+                              />
+                            )}
+                            <div>
+                              {section.heading && (
+                                <p
+                                  id={`${domId}-gallery-heading`}
+                                  className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/70"
+                                >
+                                  {section.heading}
+                                </p>
+                              )}
+                              <h1 className="font-display text-4xl text-white sm:text-6xl">
+                                {biz.name}
+                              </h1>
+                            </div>
                           </div>
+                          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/90">
+                            {reviewScore && (
+                              <span className="inline-flex items-center gap-1.5 font-medium">
+                                <Star className="h-4 w-4 fill-current text-amber-400" />
+                                {reviewScore.toFixed(1)}
+                                {reviewCount ? ` (${reviewCount.toLocaleString()} reviews)` : ""}
+                              </span>
+                            )}
+                            {displayAddress && (
+                              <span className="inline-flex items-center gap-1.5">
+                                <MapPin className="h-4 w-4" />
+                                {displayAddress}
+                              </span>
+                            )}
+                          </div>
+                          {biz.description && (
+                            <p className="mt-4 max-w-xl text-sm leading-6 text-white/80">
+                              {biz.description}
+                            </p>
+                          )}
+                          <a
+                            href={`#${domId}-booking`}
+                            className="mt-6 inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-black"
+                          >
+                            Book now <ChevronRight className="h-4 w-4" />
+                          </a>
                         </div>
-                        <div className="shrink-0 text-right">
-                          <div className="font-display text-lg tabular-nums">{priceRange(g.variants, currency)}</div>
-                          <div className="ml-auto mt-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-foreground group-hover:text-background">
-                            <ChevronRight className="h-3.5 w-3.5" />
+                        {heroPhotos.length > 1 && (
+                          <div className="hidden grid-rows-2 gap-3 lg:grid">
+                            {heroPhotos.slice(1, 3).map((photo) => (
+                              <img
+                                key={photo.id}
+                                src={photo.url}
+                                alt=""
+                                className="h-full min-h-0 w-full rounded-2xl object-cover ring-1 ring-white/25"
+                              />
+                            ))}
                           </div>
-                        </div>
+                        )}
                       </div>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            ))}
+                    </section>
+                  );
 
-            {(sortedOpeningHours.length > 0 || biz.address || biz.phone || biz.email || biz.website || biz.instagram || biz.facebook) && (
-              <section className="space-y-4 pt-10">
-                <div className="px-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Salon information</p>
-                  <h2 className="font-display text-3xl">Plan your visit</h2>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  {sortedOpeningHours.length > 0 && (
-                    <div className="rounded-[28px] border bg-card p-6 shadow-sm">
-                      <div className="mb-5 flex items-center gap-3">
-                        <div className="grid h-10 w-10 place-items-center rounded-full bg-secondary"><Clock className="h-4 w-4" /></div>
-                        <h3 className="font-display text-xl">Opening hours</h3>
+                if (section.id === "booking") {
+                  const shownGroups =
+                    expandedServices || serviceSearch
+                      ? visibleServiceGroups
+                      : visibleServiceGroups.slice(0, bookingSection.itemLimit);
+                  return (
+                    <section key={section.id} id={`${domId}-booking`} className="scroll-mt-5">
+                      <Stepper step={step} brand={brand} />
+                      <div className="mt-10 max-w-3xl">
+                        {section.heading && (
+                          <h2 className="font-display text-3xl sm:text-5xl">{section.heading}</h2>
+                        )}
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          Search or browse by category, then choose the service that suits you.
+                        </p>
                       </div>
-                      <div className="space-y-2.5 text-sm">
-                        {sortedOpeningHours.map((hours) => (
-                          <div key={hours.weekday} className="flex items-center justify-between gap-4 border-b pb-2.5 last:border-0 last:pb-0">
-                            <span className="text-muted-foreground">{WEEKDAYS[hours.weekday]}</span>
-                            <span className="font-medium tabular-nums">
-                              {hours.closed ? "Closed" : `${displayTime(hours.open_time)} – ${displayTime(hours.close_time)}`}
-                            </span>
-                          </div>
+                      <div className="relative mt-6">
+                        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={serviceSearch}
+                          onChange={(event) => {
+                            setServiceSearch(event.target.value);
+                            setExpandedServices(false);
+                          }}
+                          placeholder="Search services"
+                          className="h-14 rounded-full pl-11 text-base"
+                          aria-label="Search services"
+                        />
+                      </div>
+                      <div className="mt-5 flex gap-2 overflow-x-auto pb-2">
+                        {serviceCategories.map((category) => (
+                          <button
+                            key={category.name}
+                            type="button"
+                            onClick={() => {
+                              setActiveCategory(category.name);
+                              setServiceSearch("");
+                              setExpandedServices(false);
+                            }}
+                            className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${!serviceSearch && activeCategory === category.name ? "bg-foreground text-background" : "bg-card hover:bg-secondary/50"}`}
+                          >
+                            {category.name}
+                          </button>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  <div className="rounded-[28px] border bg-card p-6 shadow-sm">
-                    <div className="mb-5 flex items-center gap-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-full bg-secondary"><MapPin className="h-4 w-4" /></div>
-                      <h3 className="font-display text-xl">Find us</h3>
-                    </div>
-                    <div className="space-y-3 text-sm">
-                      {biz.address && <p className="text-pretty text-muted-foreground">{biz.address}</p>}
-                      {biz.phone && <a className="flex items-center gap-2 font-medium hover:underline" href={`tel:${biz.phone}`}><Phone className="h-4 w-4" />{biz.phone}</a>}
-                      {biz.email && <a className="flex items-center gap-2 font-medium hover:underline" href={`mailto:${biz.email}`}><Mail className="h-4 w-4" />{biz.email}</a>}
-                      {biz.website && <a className="flex items-center gap-2 font-medium hover:underline" href={biz.website} target="_blank" rel="noreferrer"><Globe2 className="h-4 w-4" />Visit website</a>}
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {biz.instagram && <a className="inline-flex h-9 w-9 items-center justify-center rounded-full border hover:bg-secondary" href={biz.instagram} target="_blank" rel="noreferrer" aria-label="Instagram"><Instagram className="h-4 w-4" /></a>}
-                        {biz.facebook && <a className="inline-flex h-9 w-9 items-center justify-center rounded-full border hover:bg-secondary" href={biz.facebook} target="_blank" rel="noreferrer" aria-label="Facebook"><Facebook className="h-4 w-4" /></a>}
+                      <div className="mt-7 grid gap-7 md:grid-cols-[190px_minmax(0,1fr)]">
+                        <nav className="hidden space-y-1 md:block" aria-label="Service categories">
+                          {serviceCategories.map((category) => (
+                            <button
+                              key={category.name}
+                              type="button"
+                              onClick={() => {
+                                setActiveCategory(category.name);
+                                setServiceSearch("");
+                                setExpandedServices(false);
+                              }}
+                              className={`w-full rounded-xl px-4 py-3 text-left text-sm ${!serviceSearch && activeCategory === category.name ? "bg-secondary font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                              {category.name}
+                              <span className="float-right text-xs">{category.groups.length}</span>
+                            </button>
+                          ))}
+                        </nav>
+                        <div>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h3 className="font-display text-2xl">
+                              {serviceSearch ? "Search results" : activeCategory}
+                            </h3>
+                            <span className="text-xs text-muted-foreground">
+                              {visibleServiceGroups.length} services
+                            </span>
+                          </div>
+                          {loadingServices &&
+                            Array.from({ length: 3 }).map((_, i) => (
+                              <Skeleton key={i} className="mb-2 h-24 rounded-2xl" />
+                            ))}
+                          {!loadingServices && shownGroups.length === 0 && (
+                            <div className="rounded-2xl border border-dashed p-12 text-center text-muted-foreground">
+                              No matching services.
+                            </div>
+                          )}
+                          <div className="overflow-hidden rounded-2xl border bg-card">
+                            {shownGroups.map((group) => (
+                              <button
+                                key={group.key}
+                                onClick={() => pickGroup(group)}
+                                className="group w-full border-b p-5 text-left last:border-0 hover:bg-secondary/40"
+                              >
+                                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4">
+                                  <div>
+                                    <h3 className="font-display text-xl">{group.name}</h3>
+                                    {group.description && (
+                                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                                        {group.description}
+                                      </p>
+                                    )}
+                                    <div className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Clock className="h-3 w-3" />
+                                      {durationRange(group.variants)}
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="font-display text-lg tabular-nums">
+                                      {priceRange(group.variants, currency)}
+                                    </div>
+                                    <div className="ml-auto mt-2 grid h-8 w-8 place-items-center rounded-full bg-secondary group-hover:bg-foreground group-hover:text-background">
+                                      <ChevronRight className="h-4 w-4" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                          {!serviceSearch &&
+                            visibleServiceGroups.length > bookingSection.itemLimit && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="mx-auto mt-5 flex rounded-full"
+                                onClick={() => setExpandedServices((value) => !value)}
+                              >
+                                {expandedServices
+                                  ? "Show fewer services"
+                                  : `Show ${visibleServiceGroups.length - bookingSection.itemLimit} more services`}
+                              </Button>
+                            )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
+                    </section>
+                  );
+                }
 
-                {biz.address && (
-                  <div className="overflow-hidden rounded-[28px] border bg-secondary/20 shadow-sm">
-                    <iframe
-                      title={`${biz.name} location`}
-                      src={`https://www.google.com/maps?q=${encodeURIComponent(biz.address)}&output=embed`}
-                      className="h-72 w-full border-0 grayscale-[15%]"
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  </div>
-                )}
-              </section>
-            )}
+                if (section.id === "reviews" && (validReviews.length > 0 || reviewScore))
+                  return (
+                    <section key={section.id} className="border-y py-12 sm:py-16">
+                      <div className="flex flex-wrap items-end justify-between gap-5">
+                        {section.heading && (
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                              Reviews
+                            </p>
+                            <h2 className="font-display text-3xl sm:text-5xl">{section.heading}</h2>
+                          </div>
+                        )}
+                        {reviewScore && (
+                          <div className="text-right">
+                            <div className="font-display text-5xl">{reviewScore.toFixed(1)}</div>
+                            <div className="mt-1 flex justify-end gap-0.5 text-amber-500">
+                              {Array.from({ length: 5 }).map((_, index) => (
+                                <Star key={index} className="h-4 w-4 fill-current" />
+                              ))}
+                            </div>
+                            {reviewCount && (
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                {reviewCount.toLocaleString()} customer reviews
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-8 grid gap-4 md:grid-cols-2">
+                        {validReviews.map((review) => (
+                          <blockquote key={review.id} className="rounded-2xl border bg-card p-6">
+                            <div className="flex gap-0.5 text-amber-500">
+                              {Array.from({ length: review.rating }).map((_, index) => (
+                                <Star key={index} className="h-3.5 w-3.5 fill-current" />
+                              ))}
+                            </div>
+                            <p className="mt-4 font-display text-xl leading-relaxed">
+                              “{review.quote}”
+                            </p>
+                            <footer className="mt-5 text-sm font-medium">{review.name}</footer>
+                          </blockquote>
+                        ))}
+                      </div>
+                    </section>
+                  );
+
+                if (section.id === "location" && (displayAddress || sortedOpeningHours.length > 0))
+                  return (
+                    <section
+                      key={section.id}
+                      className="grid overflow-hidden rounded-[28px] border bg-card md:grid-cols-[0.85fr_1.4fr]"
+                    >
+                      <div className="p-7 sm:p-10">
+                        {section.heading && (
+                          <>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                              Visit us
+                            </p>
+                            <h2 className="font-display text-3xl sm:text-4xl">{section.heading}</h2>
+                          </>
+                        )}
+                        {displayAddress && (
+                          <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
+                            <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                            {displayAddress}
+                          </p>
+                        )}
+                        {displayAddress && (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-5 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-medium text-background"
+                          >
+                            <Navigation className="h-4 w-4" />
+                            Get directions
+                          </a>
+                        )}
+                        <div className="mt-7 space-y-2 text-sm">
+                          {sortedOpeningHours.slice(0, locationSection.itemLimit).map((hours) => (
+                            <div key={hours.weekday} className="flex justify-between gap-4">
+                              <span className="text-muted-foreground">
+                                {WEEKDAYS[hours.weekday]}
+                              </span>
+                              <span className="tabular-nums">
+                                {hours.closed
+                                  ? "Closed"
+                                  : `${displayTime(hours.open_time)} – ${displayTime(hours.close_time)}`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {displayAddress && (
+                        <iframe
+                          title={`${biz.name} location`}
+                          src={`https://www.google.com/maps?q=${encodeURIComponent(displayAddress)}&output=embed`}
+                          className="min-h-[360px] h-full w-full border-0 grayscale-[25%]"
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                      )}
+                    </section>
+                  );
+                return null;
+              })}
           </div>
         )}
 
@@ -758,7 +1067,10 @@ export function PublicBookingPage({
         {step === "staff" && (
           <div key="staff" className="space-y-3 animate-rise">
             <BackBtn onClick={() => setStep("service")} />
-            {loadingStaff && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+            {loadingStaff &&
+              Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 rounded-2xl" />
+              ))}
             {!loadingStaff && allStaff?.length === 0 && (
               <div className="rounded-2xl border border-dashed bg-card/40 p-12 text-center text-muted-foreground">
                 No staff available for this service.
@@ -799,7 +1111,11 @@ export function PublicBookingPage({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => { const d = new Date(date); d.setDate(d.getDate() - 1); if (d >= new Date(new Date().setHours(0, 0, 0, 0))) setDate(d); }}
+                    onClick={() => {
+                      const d = new Date(date);
+                      d.setDate(d.getDate() - 1);
+                      if (d >= new Date(new Date().setHours(0, 0, 0, 0))) setDate(d);
+                    }}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -807,7 +1123,11 @@ export function PublicBookingPage({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => { const d = new Date(date); d.setDate(d.getDate() + 1); setDate(d); }}
+                    onClick={() => {
+                      const d = new Date(date);
+                      d.setDate(d.getDate() + 1);
+                      setDate(d);
+                    }}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -830,7 +1150,9 @@ export function PublicBookingPage({
                       <span className="uppercase tracking-wider text-[10px] opacity-80">
                         {d.toLocaleDateString([], { weekday: "short" })}
                       </span>
-                      <span className="font-display text-lg mt-0.5 tabular-nums leading-none">{d.getDate()}</span>
+                      <span className="font-display text-lg mt-0.5 tabular-nums leading-none">
+                        {d.getDate()}
+                      </span>
                     </button>
                   );
                 })}
@@ -843,7 +1165,9 @@ export function PublicBookingPage({
                   <div key={i} className="space-y-2">
                     <Skeleton className="h-4 w-20" />
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                      {Array.from({ length: 8 }).map((_, j) => <Skeleton key={j} className="h-11 rounded-xl" />)}
+                      {Array.from({ length: 8 }).map((_, j) => (
+                        <Skeleton key={j} className="h-11 rounded-xl" />
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -857,9 +1181,36 @@ export function PublicBookingPage({
               </div>
             ) : (
               <div className="space-y-5">
-                <SlotGroup label="Morning" icon={Sun} slots={grouped.morning} brand={brand} onPick={(iso) => { setTime(iso); setStep("info"); }} />
-                <SlotGroup label="Afternoon" icon={Sunset} slots={grouped.afternoon} brand={brand} onPick={(iso) => { setTime(iso); setStep("info"); }} />
-                <SlotGroup label="Evening" icon={Moon} slots={grouped.evening} brand={brand} onPick={(iso) => { setTime(iso); setStep("info"); }} />
+                <SlotGroup
+                  label="Morning"
+                  icon={Sun}
+                  slots={grouped.morning}
+                  brand={brand}
+                  onPick={(iso) => {
+                    setTime(iso);
+                    setStep("info");
+                  }}
+                />
+                <SlotGroup
+                  label="Afternoon"
+                  icon={Sunset}
+                  slots={grouped.afternoon}
+                  brand={brand}
+                  onPick={(iso) => {
+                    setTime(iso);
+                    setStep("info");
+                  }}
+                />
+                <SlotGroup
+                  label="Evening"
+                  icon={Moon}
+                  slots={grouped.evening}
+                  brand={brand}
+                  onPick={(iso) => {
+                    setTime(iso);
+                    setStep("info");
+                  }}
+                />
               </div>
             )}
           </div>
@@ -871,20 +1222,35 @@ export function PublicBookingPage({
             <BackBtn onClick={() => setStep("time")} />
             <div
               className="rounded-2xl p-5 text-white shadow-elegant"
-              style={{ background: `linear-gradient(135deg, ${brand}, color-mix(in oklab, ${brand} 70%, black))` }}
+              style={{
+                background: `linear-gradient(135deg, ${brand}, color-mix(in oklab, ${brand} 70%, black))`,
+              }}
             >
               <div className="text-[11px] uppercase tracking-[0.2em] opacity-80">Almost there</div>
               <div className="font-display text-xl mt-1">{serviceGroup?.name ?? service.name}</div>
               <div className="text-sm opacity-90 mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                <span className="inline-flex items-center gap-1"><User className="h-3 w-3" />{staff.name}</span>
-                <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(time).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+                <span className="inline-flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  {staff.name}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {new Date(time).toLocaleString([], {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </span>
                 <span>· {fmtMoney(service.price_cents, currency)}</span>
               </div>
             </div>
             {signedInUser ? (
               <div className="flex items-center justify-between gap-2 rounded-xl border bg-secondary/20 px-4 py-3 text-sm">
                 <span className="text-muted-foreground">
-                  Signed in as <span className="text-foreground font-medium">{signedInUser.email}</span>
+                  Signed in as{" "}
+                  <span className="text-foreground font-medium">{signedInUser.email}</span>
                 </span>
                 <button
                   type="button"
@@ -902,39 +1268,81 @@ export function PublicBookingPage({
               <BookingSignIn onSignedIn={() => setInfoTouched(false)} />
             )}
             <div>
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Your name</Label>
-              <Input value={info.name} onChange={(e) => { setInfoTouched(true); setInfo({ ...info, name: e.target.value }); }} className="mt-1.5 h-11" required autoFocus />
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                Your name
+              </Label>
+              <Input
+                value={info.name}
+                onChange={(e) => {
+                  setInfoTouched(true);
+                  setInfo({ ...info, name: e.target.value });
+                }}
+                className="mt-1.5 h-11"
+                required
+                autoFocus
+              />
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Email</Label>
-                <Input type="email" value={info.email} onChange={(e) => { setInfoTouched(true); setInfo({ ...info, email: e.target.value }); }} className="mt-1.5 h-11" placeholder="you@email.com" />
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Email
+                </Label>
+                <Input
+                  type="email"
+                  value={info.email}
+                  onChange={(e) => {
+                    setInfoTouched(true);
+                    setInfo({ ...info, email: e.target.value });
+                  }}
+                  className="mt-1.5 h-11"
+                  placeholder="you@email.com"
+                />
                 {info.email.length > 0 && !isValidEmail(info.email) && (
-                  <p className="mt-1 text-xs text-destructive">Please enter a valid email address.</p>
+                  <p className="mt-1 text-xs text-destructive">
+                    Please enter a valid email address.
+                  </p>
                 )}
               </div>
               <div>
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Phone</Label>
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Phone
+                </Label>
                 <Input
                   value={info.phone}
-                  onChange={(e) => { setInfoTouched(true); setInfo({ ...info, phone: sanitizePhone(e.target.value) }); }}
+                  onChange={(e) => {
+                    setInfoTouched(true);
+                    setInfo({ ...info, phone: sanitizePhone(e.target.value) });
+                  }}
                   className="mt-1.5 h-11"
                   placeholder="(555) 000-0000"
                   inputMode="tel"
                 />
                 {info.phone.length > 0 && !isValidPhone(info.phone) && (
-                  <p className="mt-1 text-xs text-destructive">Please enter a valid phone number (7–15 digits).</p>
+                  <p className="mt-1 text-xs text-destructive">
+                    Please enter a valid phone number (7–15 digits).
+                  </p>
                 )}
               </div>
-
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Notes <span className="text-muted-foreground/60 normal-case">(optional)</span></Label>
-              <Textarea value={info.notes} onChange={(e) => setInfo({ ...info, notes: e.target.value })} className="mt-1.5" placeholder="Anything we should know?" />
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                Notes <span className="text-muted-foreground/60 normal-case">(optional)</span>
+              </Label>
+              <Textarea
+                value={info.notes}
+                onChange={(e) => setInfo({ ...info, notes: e.target.value })}
+                className="mt-1.5"
+                placeholder="Anything we should know?"
+              />
             </div>
             <Button
               onClick={book}
-              disabled={submitting || !info.name.trim() || !isValidEmail(info.email) || (info.phone.trim().length > 0 && !isValidPhone(info.phone))}
+              disabled={
+                submitting ||
+                !info.name.trim() ||
+                !isValidEmail(info.email) ||
+                (info.phone.trim().length > 0 && !isValidPhone(info.phone))
+              }
               className="w-full h-12 text-base shadow-glow"
               style={themedButtonStyle(theme)}
             >
@@ -961,12 +1369,15 @@ export function PublicBookingPage({
             >
               <Check className="h-9 w-9" />
             </div>
-            <h2 className="font-display text-3xl sm:text-4xl mt-8 text-balance">
-              You're booked.
-            </h2>
+            <h2 className="font-display text-3xl sm:text-4xl mt-8 text-balance">You're booked.</h2>
             <p className="text-muted-foreground mt-3 text-pretty">
-              We'll see you {new Date(time).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })} at{" "}
-              {new Date(time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.
+              We'll see you{" "}
+              {new Date(time).toLocaleDateString([], {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}{" "}
+              at {new Date(time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.
             </p>
             <div className="mt-8 mx-auto max-w-sm rounded-2xl border bg-card p-5 text-left text-sm">
               <SummaryRow label="Service" value={serviceGroup?.name ?? service.name} />
@@ -980,13 +1391,15 @@ export function PublicBookingPage({
                     uid: `booking-${bookedBookingId ?? `${staff.id}-${time}`}@bookzenvo.com`,
                     title: `${serviceGroup?.name ?? service.name} with ${staff.name}`,
                     description: `${serviceGroup?.name ?? service.name} at ${biz.name}, with ${staff.name}. Booked via Bookzenvo.`,
-                    location: biz.address ?? undefined,
+                    location: displayAddress ?? undefined,
                     startsAtIso: time,
                     endsAtIso: bookedEndsAt,
                   }}
                 />
               )}
-              <Button variant="outline" onClick={reset}>Book another</Button>
+              <Button variant="outline" onClick={reset}>
+                Book another
+              </Button>
               {info.email && (
                 <a
                   href="/portal"
@@ -1002,7 +1415,10 @@ export function PublicBookingPage({
 
       <footer className="text-center text-[11px] text-muted-foreground py-6 flex items-center justify-center gap-3 flex-wrap">
         <span>
-          Powered by <span className="font-display text-foreground">Bookzenvo<span style={{ color: brand }}>.</span></span>
+          Powered by{" "}
+          <span className="font-display text-foreground">
+            Bookzenvo<span style={{ color: brand }}>.</span>
+          </span>
         </span>
         {footerExtra}
       </footer>
@@ -1029,7 +1445,9 @@ function SlotGroup({
       <div className="flex items-center gap-2 mb-2.5 text-xs uppercase tracking-[0.15em] text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
         {label}
-        <span className="text-muted-foreground/70 normal-case tracking-normal">· {slots.length}</span>
+        <span className="text-muted-foreground/70 normal-case tracking-normal">
+          · {slots.length}
+        </span>
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {slots.map((s) => (
@@ -1054,15 +1472,14 @@ function Stepper({ step, brand }: { step: Step; brand: string }) {
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-        <span>Step {idx + 1} of {STEPS.length}</span>
+        <span>
+          Step {idx + 1} of {STEPS.length}
+        </span>
         <span>{STEPS[idx]?.label}</span>
       </div>
       <div className="mt-2 flex gap-1.5">
         {STEPS.map((s, i) => (
-          <div
-            key={s.id}
-            className="h-1 flex-1 rounded-full bg-secondary overflow-hidden"
-          >
+          <div key={s.id} className="h-1 flex-1 rounded-full bg-secondary overflow-hidden">
             <div
               className="h-full transition-all duration-500"
               style={{

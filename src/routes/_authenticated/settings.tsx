@@ -19,6 +19,7 @@ import { WEEKDAYS } from "@/lib/format";
 import { toast } from "sonner";
 import { GalleryManager } from "@/components/gallery-manager";
 import { PageContentEditor } from "@/components/page-content-editor";
+import { StorefrontSettingsEditor } from "@/components/storefront-settings-editor";
 import { WhiteLabelEditor } from "@/components/white-label-editor";
 import { TwoFactorSettings } from "@/components/two-factor-settings";
 import { PlanSettings } from "@/components/plan-settings";
@@ -150,7 +151,10 @@ function SettingsPage() {
           </Section>
         </TabsContent>
         <TabsContent value="page">
-          <Section icon={FileText} title="Page content" description="Customise the text and layout of your booking page.">
+          <Section icon={FileText} title="Storefront sections" description="Choose which public-page sections appear, rename them, reorder them and control how much content is shown.">
+            <StorefrontSettingsEditor businessId={biz.id} />
+          </Section>
+          <Section icon={FileText} title="Page content" description="Customise booking information, policies and customer-facing options.">
             <PageContentEditor business={biz} />
           </Section>
         </TabsContent>

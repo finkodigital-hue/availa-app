@@ -989,18 +989,21 @@ export type Database = {
           blocks: Json
           business_id: string
           id: string
+          storefront_settings: Json
           updated_at: string
         }
         Insert: {
           blocks?: Json
           business_id: string
           id?: string
+          storefront_settings?: Json
           updated_at?: string
         }
         Update: {
           blocks?: Json
           business_id?: string
           id?: string
+          storefront_settings?: Json
           updated_at?: string
         }
         Relationships: [
