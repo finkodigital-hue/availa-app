@@ -8,6 +8,11 @@ import {
   Undo2,
   Redo2,
   LayoutTemplate,
+  SlidersHorizontal,
+  Eye,
+  FileText,
+  ChevronDown,
+  ImageIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
@@ -29,17 +34,51 @@ import { AddBlockPicker } from "@/components/page-builder/add-block-picker";
 import { BlockEditorPanel } from "@/components/page-builder/block-editor-panel";
 import { DesignSection } from "@/components/page-builder/design-section";
 import { AskClaudeSection } from "@/components/page-builder/ask-claude-section";
+import { StorefrontSettingsEditor } from "@/components/storefront-settings-editor";
+import { GalleryManager } from "@/components/gallery-manager";
+import { PageContentEditor, type PageContentSettings } from "@/components/page-content-editor";
 import { useUndoRedoState } from "@/lib/use-undo-redo-state";
 import { parseTheme, type Theme } from "@/lib/theme";
-import { BLOCK_LABELS, defaultConfigForType, type BlockType, type PageBlock } from "@/components/page-blocks";
+import {
+  BLOCK_LABELS,
+  defaultConfigForType,
+  type BlockType,
+  type PageBlock,
+} from "@/components/page-blocks";
 import { toast } from "sonner";
+import {
+  defaultStorefrontSettings,
+  parseStorefrontSettings,
+  type StorefrontSettings,
+} from "@/lib/storefront";
 
-type BuilderState = { blocks: PageBlock[]; theme: Theme };
+type BuilderState = {
+  blocks: PageBlock[];
+  theme: Theme;
+  storefront: StorefrontSettings;
+  content: PageContentSettings;
+};
+
+function pageContentFromBusiness(business: unknown): PageContentSettings {
+  const source = (business ?? {}) as Partial<PageContentSettings>;
+  return {
+    welcome_message: source.welcome_message ?? null,
+    booking_instructions: source.booking_instructions ?? null,
+    cancellation_policy: source.cancellation_policy ?? null,
+    terms: source.terms ?? null,
+    faq: Array.isArray(source.faq) ? source.faq : [],
+    show_prices: !!source.show_prices,
+    show_staff: !!source.show_staff,
+    show_durations: !!source.show_durations,
+    emergency_active: !!source.emergency_active,
+    emergency_message: source.emergency_message ?? null,
+  };
+}
 // The left panel's collapsible sections (Design, Ask AI) behave as a single
 // accordion — opening one closes the other, and re-clicking the open one
 // collapses to none. One piece of shared state instead of each section
 // tracking its own open/closed.
-type OpenSection = "design" | "ask-ai" | null;
+type OpenSection = "storefront" | "gallery" | "content" | "design" | "ask-ai" | null;
 
 export const Route = createFileRoute("/_authenticated/page-builder")({
   // `tab=design` is a pre-existing deep link from Settings > Branding — kept
@@ -55,6 +94,7 @@ function PageBuilderPage() {
   const qc = useQueryClient();
   const { data: biz } = useMyBusiness();
   const { tab } = Route.useSearch();
+  const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
 
   const { data: layout, isLoading } = useQuery({
     queryKey: ["page-layout", biz?.id],
@@ -70,7 +110,12 @@ function PageBuilderPage() {
     },
   });
 
-  const history = useUndoRedoState<BuilderState>({ blocks: [], theme: parseTheme(null) });
+  const history = useUndoRedoState<BuilderState>({
+    blocks: [],
+    theme: parseTheme(null),
+    storefront: defaultStorefrontSettings(),
+    content: pageContentFromBusiness(null),
+  });
   // Snapshot of the last-saved blocks, used as blocks_before when logging to
   // page_edit_history (page_edit_history has no theme column — version
   // history stays block-content-only, same scope as before this rewrite).
@@ -85,7 +130,12 @@ function PageBuilderPage() {
     if (!biz) return;
     const loaded = (layout?.blocks as unknown as PageBlock[]) ?? [];
     savedBlocksRef.current = loaded;
-    history.resetTo({ blocks: loaded, theme: parseTheme(biz.page_theme) });
+    history.resetTo({
+      blocks: loaded,
+      theme: parseTheme(biz.page_theme),
+      storefront: parseStorefrontSettings(layout?.storefront_settings),
+      content: pageContentFromBusiness(biz),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout?.id, biz?.id]);
 
@@ -102,19 +152,30 @@ function PageBuilderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { blocks, theme } = history.value;
+  const { blocks, theme, storefront, content } = history.value;
 
   const setBlocks = (updater: PageBlock[] | ((prev: PageBlock[]) => PageBlock[])) => {
     history.set((v) => ({
       ...v,
-      blocks: typeof updater === "function" ? (updater as (p: PageBlock[]) => PageBlock[])(v.blocks) : updater,
+      blocks:
+        typeof updater === "function"
+          ? (updater as (p: PageBlock[]) => PageBlock[])(v.blocks)
+          : updater,
     }));
   };
   const setTheme = (next: Theme) => history.set((v) => ({ ...v, theme: next }));
+  const setStorefront = (next: StorefrontSettings) =>
+    history.set((value) => ({ ...value, storefront: next }));
+  const setContent = (next: PageContentSettings) =>
+    history.set((value) => ({ ...value, content: next }));
 
   const addBlock = (type: BlockType) => {
     if (!biz) return;
-    const block = { id: crypto.randomUUID(), type, config: defaultConfigForType(type, biz.id) } as PageBlock;
+    const block = {
+      id: crypto.randomUUID(),
+      type,
+      config: defaultConfigForType(type, biz.id),
+    } as PageBlock;
     setBlocks((b) => {
       const idx = selectedBlockId ? b.findIndex((x) => x.id === selectedBlockId) : -1;
       if (idx === -1) return [...b, block];
@@ -158,12 +219,29 @@ function PageBuilderPage() {
     if (!biz) return false;
     setSaving(true);
     const [layoutRes, themeRes] = await Promise.all([
-      supabase
-        .from("page_layouts")
-        .upsert({ business_id: biz.id, blocks: next.blocks as unknown as Json }, { onConflict: "business_id" }),
+      supabase.from("page_layouts").upsert(
+        {
+          business_id: biz.id,
+          blocks: next.blocks as unknown as Json,
+          storefront_settings: next.storefront as unknown as Json,
+        },
+        { onConflict: "business_id" },
+      ),
       supabase
         .from("businesses")
-        .update({ page_theme: { ...next.theme, updatedAt: new Date().toISOString() } as unknown as Json })
+        .update({
+          page_theme: { ...next.theme, updatedAt: new Date().toISOString() } as unknown as Json,
+          welcome_message: next.content.welcome_message,
+          booking_instructions: next.content.booking_instructions,
+          cancellation_policy: next.content.cancellation_policy,
+          terms: next.content.terms,
+          faq: next.content.faq as unknown as Json,
+          show_prices: next.content.show_prices,
+          show_staff: next.content.show_staff,
+          show_durations: next.content.show_durations,
+          emergency_active: next.content.emergency_active,
+          emergency_message: next.content.emergency_message,
+        })
         .eq("id", biz.id),
     ]);
     const error = layoutRes.error ?? themeRes.error;
@@ -189,6 +267,9 @@ function PageBuilderPage() {
 
   const save = async () => {
     if (!biz) return;
+    if (content.emergency_active && !content.emergency_message?.trim()) {
+      return toast.error("Add an emergency closure message, or turn the banner off.");
+    }
     for (const b of blocks) {
       if (b.type === "hero" && !b.config.heading.trim())
         return toast.error("Every welcome banner needs a heading.");
@@ -202,7 +283,7 @@ function PageBuilderPage() {
 
   const acceptAiSuggestion = async (nextBlocks: PageBlock[], nextTheme: Theme, prompt: string) => {
     const baseline = blocks;
-    const next: BuilderState = { blocks: nextBlocks, theme: nextTheme };
+    const next: BuilderState = { blocks: nextBlocks, theme: nextTheme, storefront, content };
     history.set(next);
     history.commitNow();
     if (await persist(next, prompt, baseline)) {
@@ -226,7 +307,9 @@ function PageBuilderPage() {
   });
 
   const restoreVersion = async (entry: { blocks_after: unknown; created_at: string }) => {
-    const restored = ((entry.blocks_after as unknown as PageBlock[]) ?? []).filter((b) => b && b.type);
+    const restored = ((entry.blocks_after as unknown as PageBlock[]) ?? []).filter(
+      (b) => b && b.type,
+    );
     const label = `Reverted to version from ${new Date(entry.created_at).toLocaleString()}`;
     history.set((v) => ({ ...v, blocks: restored }));
     history.commitNow();
@@ -256,19 +339,32 @@ function PageBuilderPage() {
   }
 
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null;
+  const editableBlocks = blocks.filter((block) => block.type === "about");
 
   return (
-    <div className="p-5 sm:p-8 md:p-10 h-screen flex flex-col">
+    <div className="flex min-h-[100dvh] flex-col p-5 sm:p-8 lg:h-screen lg:min-h-0 lg:p-10">
       <PageHeader
         eyebrow="Public page"
         title="Page builder"
         subtitle="Click a block on the page to edit it. Everything updates live."
         action={
           <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="icon" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={history.undo}
+              disabled={!history.canUndo}
+              aria-label="Undo"
+            >
               <Undo2 className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={history.redo}
+              disabled={!history.canRedo}
+              aria-label="Redo"
+            >
               <Redo2 className="h-4 w-4" />
             </Button>
             <Button variant="outline" onClick={() => setHistoryOpen(true)}>
@@ -282,41 +378,155 @@ function PageBuilderPage() {
         }
       />
 
-      <div className="grid lg:grid-cols-[360px_1fr] gap-6 flex-1 min-h-0 mt-4">
+      <div className="mt-6 grid grid-cols-2 rounded-xl border bg-secondary/35 p-1 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileView("edit")}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors active:scale-[0.98] ${
+            mobileView === "edit"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <SlidersHorizontal className="h-4 w-4" /> Edit page
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileView("preview")}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors active:scale-[0.98] ${
+            mobileView === "preview"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Eye className="h-4 w-4" /> Live preview
+        </button>
+      </div>
+
+      <div className="mt-5 grid flex-1 gap-8 pb-24 lg:mt-6 lg:min-h-0 lg:grid-cols-[420px_minmax(0,1fr)] lg:pb-0 xl:grid-cols-[460px_minmax(0,1fr)]">
         {/* Left panel */}
-        <div className="overflow-y-auto space-y-4 pr-1">
-          <div className="rounded-xl border bg-card p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground inline-flex items-center gap-1.5">
-                <LayoutTemplate className="h-3.5 w-3.5" /> Blocks ({blocks.length})
+        <div
+          className={`${mobileView === "edit" ? "block" : "hidden"} space-y-5 lg:block lg:overflow-y-auto lg:pr-2`}
+        >
+          <div className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Page sections
+          </div>
+
+          <div className="overflow-hidden rounded-xl border bg-card">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary/25"
+              onClick={() =>
+                setOpenSection((current) => (current === "storefront" ? null : "storefront"))
+              }
+              aria-expanded={openSection === "storefront"}
+            >
+              <span className="inline-flex items-center gap-2">
+                <LayoutTemplate className="h-4 w-4" /> Storefront sections
               </span>
-              <Button variant="outline" size="sm" onClick={() => setAddPickerOpen(true)}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add
-              </Button>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${
+                  openSection === "storefront" ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {openSection === "storefront" && (
+              <div className="px-4 pb-4">
+                <StorefrontSettingsEditor
+                  businessId={biz.id}
+                  value={storefront}
+                  onChange={setStorefront}
+                  showSave={false}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="overflow-hidden rounded-xl border bg-card">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary/25"
+              onClick={() =>
+                setOpenSection((current) => (current === "content" ? null : "content"))
+              }
+              aria-expanded={openSection === "content"}
+            >
+              <span className="inline-flex items-center gap-2">
+                <FileText className="h-4 w-4" /> Page text and policies
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${
+                  openSection === "content" ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {openSection === "content" && (
+              <div className="px-4 pb-4">
+                <PageContentEditor value={content} onChange={setContent} />
+              </div>
+            )}
+          </div>
+
+          <div className="overflow-hidden rounded-xl border bg-card">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary/25"
+              onClick={() =>
+                setOpenSection((current) => (current === "gallery" ? null : "gallery"))
+              }
+              aria-expanded={openSection === "gallery"}
+            >
+              <span className="inline-flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" /> Gallery photos
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${
+                  openSection === "gallery" ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {openSection === "gallery" && (
+              <div className="px-4 pb-4">
+                <GalleryManager businessId={biz.id} />
+              </div>
+            )}
+          </div>
+
+          <div className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Optional content
+          </div>
+
+          <div className="rounded-xl border bg-card p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium">About your salon</div>
+                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                  Add a short introduction beneath the main page sections.
+                </p>
+              </div>
+              {editableBlocks.length === 0 && (
+                <Button variant="outline" size="sm" onClick={() => setAddPickerOpen(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add
+                </Button>
+              )}
             </div>
             {isLoading ? (
-              <Skeleton className="h-9 w-full" />
-            ) : blocks.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-3 text-center">
-                No blocks yet — add one to start building your page.
-              </p>
+              <Skeleton className="mt-3 h-9 w-full" />
             ) : (
-              <div className="space-y-1">
-                {blocks.map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => setSelectedBlockId(b.id)}
-                    className={`w-full text-left rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
-                      selectedBlockId === b.id
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-secondary/60"
-                    }`}
-                  >
-                    {BLOCK_LABELS[b.type]}
-                  </button>
-                ))}
-              </div>
+              editableBlocks.map((block) => (
+                <button
+                  key={block.id}
+                  type="button"
+                  onClick={() => setSelectedBlockId(block.id)}
+                  className={`mt-3 w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    selectedBlockId === block.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/35 hover:bg-secondary/60"
+                  }`}
+                >
+                  Edit about section
+                </button>
+              ))
             )}
           </div>
 
@@ -331,6 +541,10 @@ function PageBuilderPage() {
               />
             </div>
           )}
+
+          <div className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Appearance and assistance
+          </div>
 
           <DesignSection
             theme={theme}
@@ -351,7 +565,9 @@ function PageBuilderPage() {
         </div>
 
         {/* Right pane: the real public page, live */}
-        <div className="rounded-2xl border bg-secondary/10 overflow-y-auto">
+        <div
+          className={`${mobileView === "preview" ? "block" : "hidden"} min-h-[720px] overflow-y-auto rounded-2xl border bg-secondary/10 lg:block lg:min-h-0`}
+        >
           {isLoading ? (
             <div className="p-8 space-y-4">
               <Skeleton className="h-64 w-full rounded-2xl" />
@@ -359,9 +575,10 @@ function PageBuilderPage() {
             </div>
           ) : (
             <PageBuilderCanvas
-              business={biz}
+              business={{ ...biz, ...content }}
               theme={theme}
               blocks={blocks}
+              storefrontSettings={storefront}
               selectedBlockId={selectedBlockId}
               onSelectBlock={setSelectedBlockId}
               onReorder={reorderBlocks}
@@ -370,7 +587,12 @@ function PageBuilderPage() {
         </div>
       </div>
 
-      <AddBlockPicker open={addPickerOpen} onOpenChange={setAddPickerOpen} onAdd={addBlock} />
+      <AddBlockPicker
+        open={addPickerOpen}
+        onOpenChange={setAddPickerOpen}
+        onAdd={addBlock}
+        types={["about"]}
+      />
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -380,14 +602,21 @@ function PageBuilderPage() {
           </DialogHeader>
           <div className="space-y-2">
             {historyLoading &&
-              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+              Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 rounded-xl" />
+              ))}
             {!historyLoading && (!versionHistory || versionHistory.length === 0) && (
               <p className="text-sm text-muted-foreground py-6 text-center">No history yet.</p>
             )}
             {versionHistory?.map((entry) => (
-              <div key={entry.id} className="rounded-xl border p-3 flex items-start justify-between gap-3">
+              <div
+                key={entry.id}
+                className="rounded-xl border p-3 flex items-start justify-between gap-3"
+              >
                 <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">{entry.prompt ?? "Manual edit"}</div>
+                  <div className="text-sm font-medium truncate">
+                    {entry.prompt ?? "Manual edit"}
+                  </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {new Date(entry.created_at).toLocaleString()}
                   </div>

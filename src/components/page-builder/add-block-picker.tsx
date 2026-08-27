@@ -12,20 +12,26 @@ export function AddBlockPicker({
   open,
   onOpenChange,
   onAdd,
+  types = BLOCK_TYPES,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdd: (type: BlockType) => void;
+  types?: BlockType[];
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add a block</DialogTitle>
-          <DialogDescription>Inserted below the block you have selected.</DialogDescription>
+          <DialogTitle>{types.length === 1 ? "Add an about section" : "Add a block"}</DialogTitle>
+          <DialogDescription>
+            {types.length === 1
+              ? "Share your salon story beneath the main booking sections."
+              : "Inserted below the block you have selected."}
+          </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          {BLOCK_TYPES.map((type) => (
+        <div className={`grid gap-3 ${types.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+          {types.map((type) => (
             <button
               key={type}
               type="button"
