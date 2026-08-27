@@ -15,7 +15,6 @@ import {
   Loader2,
   Sparkles,
   Search,
-  Star,
   Navigation,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -651,7 +650,6 @@ export function PublicBookingPage({
   );
   const gallerySection = storefront.sections.find((section) => section.id === "gallery")!;
   const bookingSection = storefront.sections.find((section) => section.id === "booking")!;
-  const reviewSection = storefront.sections.find((section) => section.id === "reviews")!;
   const locationSection = storefront.sections.find((section) => section.id === "location")!;
   const galleryLimit = Math.max(1, gallerySection.itemLimit);
   const testshopPhotos =
@@ -670,14 +668,6 @@ export function PublicBookingPage({
     0,
     galleryLimit,
   );
-  const validReviews = storefront.reviews
-    .filter((review) => review.name.trim() && review.quote.trim())
-    .slice(0, reviewSection.itemLimit);
-  // The testshop reference supplied for this redesign includes this verified
-  // aggregate, but no individual quotes. We show the aggregate without
-  // inventing customer testimonials; owners can add genuine quotes in Settings.
-  const reviewScore = storefront.reviewScore ?? (biz.slug === "testshop" ? 5 : null);
-  const reviewCount = storefront.reviewCount ?? (biz.slug === "testshop" ? 3653 : null);
   const displayAddress =
     biz.address || (biz.slug === "testshop" ? "16 Inglis Street, Inverness" : null);
 
@@ -802,13 +792,6 @@ export function PublicBookingPage({
                             </div>
                           </div>
                           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/90">
-                            {reviewScore && (
-                              <span className="inline-flex items-center gap-1.5 font-medium">
-                                <Star className="h-4 w-4 fill-current text-amber-400" />
-                                {reviewScore.toFixed(1)}
-                                {reviewCount ? ` (${reviewCount.toLocaleString()} reviews)` : ""}
-                              </span>
-                            )}
                             {displayAddress && (
                               <span className="inline-flex items-center gap-1.5">
                                 <MapPin className="h-4 w-4" />
@@ -975,52 +958,6 @@ export function PublicBookingPage({
                     </section>
                   );
                 }
-
-                if (section.id === "reviews" && (validReviews.length > 0 || reviewScore))
-                  return (
-                    <section key={section.id} className="border-y py-12 sm:py-16">
-                      <div className="flex flex-wrap items-end justify-between gap-5">
-                        {section.heading && (
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                              Reviews
-                            </p>
-                            <h2 className="font-display text-3xl sm:text-5xl">{section.heading}</h2>
-                          </div>
-                        )}
-                        {reviewScore && (
-                          <div className="text-right">
-                            <div className="font-display text-5xl">{reviewScore.toFixed(1)}</div>
-                            <div className="mt-1 flex justify-end gap-0.5 text-amber-500">
-                              {Array.from({ length: 5 }).map((_, index) => (
-                                <Star key={index} className="h-4 w-4 fill-current" />
-                              ))}
-                            </div>
-                            {reviewCount && (
-                              <div className="mt-1 text-xs text-muted-foreground">
-                                {reviewCount.toLocaleString()} customer reviews
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-8 grid gap-4 md:grid-cols-2">
-                        {validReviews.map((review) => (
-                          <blockquote key={review.id} className="rounded-2xl border bg-card p-6">
-                            <div className="flex gap-0.5 text-amber-500">
-                              {Array.from({ length: review.rating }).map((_, index) => (
-                                <Star key={index} className="h-3.5 w-3.5 fill-current" />
-                              ))}
-                            </div>
-                            <p className="mt-4 font-display text-xl leading-relaxed">
-                              “{review.quote}”
-                            </p>
-                            <footer className="mt-5 text-sm font-medium">{review.name}</footer>
-                          </blockquote>
-                        ))}
-                      </div>
-                    </section>
-                  );
 
                 if (section.id === "location" && (displayAddress || sortedOpeningHours.length > 0))
                   return (
