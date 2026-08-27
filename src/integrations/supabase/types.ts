@@ -445,6 +445,7 @@ export type Database = {
           payment_mode: string
           phone: string | null
           plan: string
+          service_categories: string[]
           show_durations: boolean
           show_prices: boolean
           show_staff: boolean
@@ -496,6 +497,7 @@ export type Database = {
           payment_mode?: string
           phone?: string | null
           plan?: string
+          service_categories?: string[]
           show_durations?: boolean
           show_prices?: boolean
           show_staff?: boolean
@@ -547,6 +549,7 @@ export type Database = {
           payment_mode?: string
           phone?: string | null
           plan?: string
+          service_categories?: string[]
           show_durations?: boolean
           show_prices?: boolean
           show_staff?: boolean
@@ -757,6 +760,7 @@ export type Database = {
         Row: {
           brand: string | null
           business_id: string
+          category: string | null
           cost_cents: number | null
           created_at: string
           current_stock: number
@@ -769,6 +773,7 @@ export type Database = {
         Insert: {
           brand?: string | null
           business_id: string
+          category?: string | null
           cost_cents?: number | null
           created_at?: string
           current_stock?: number
@@ -781,6 +786,7 @@ export type Database = {
         Update: {
           brand?: string | null
           business_id?: string
+          category?: string | null
           cost_cents?: number | null
           created_at?: string
           current_stock?: number
@@ -1492,6 +1498,7 @@ export type Database = {
       staff: {
         Row: {
           active: boolean
+          archived_at: string | null
           bio: string | null
           bookable: boolean
           business_id: string
@@ -1507,6 +1514,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          archived_at?: string | null
           bio?: string | null
           bookable?: boolean
           business_id: string
@@ -1522,6 +1530,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          archived_at?: string | null
           bio?: string | null
           bookable?: boolean
           business_id?: string
@@ -1566,6 +1575,8 @@ export type Database = {
           closed: boolean
           id: string
           open_time: string | null
+          repeat_anchor: string | null
+          repeat_weeks: number
           staff_id: string
           weekday: number
         }
@@ -1575,6 +1586,8 @@ export type Database = {
           closed?: boolean
           id?: string
           open_time?: string | null
+          repeat_anchor?: string | null
+          repeat_weeks?: number
           staff_id: string
           weekday: number
         }
@@ -1584,6 +1597,8 @@ export type Database = {
           closed?: boolean
           id?: string
           open_time?: string | null
+          repeat_anchor?: string | null
+          repeat_weeks?: number
           staff_id?: string
           weekday?: number
         }

@@ -10,7 +10,19 @@ export type WeekdayOverride = {
   closed: boolean;
   open_time: string | null;
   close_time: string | null;
+  repeat_weeks?: number | null;
+  repeat_anchor?: string | null;
 } | null | undefined;
+
+function repeatsOnDate(hours: WeekdayOverride, date?: Date): boolean {
+  if (!hours || !date || (hours.repeat_weeks ?? 1) <= 1) return true;
+  if (!hours.repeat_anchor) return false;
+  const [year, month, day] = hours.repeat_anchor.split("-").map(Number);
+  const anchorUtc = Date.UTC(year, month - 1, day);
+  const dateUtc = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const weeksSinceAnchor = Math.floor((dateUtc - anchorUtc) / (7 * 24 * 60 * 60 * 1000));
+  return weeksSinceAnchor >= 0 && weeksSinceAnchor % (hours.repeat_weeks ?? 1) === 0;
+}
 
 // Sensible default hours for a brand-new business that hasn't configured
 // anything yet — Monday to Saturday, 9 am to 6 pm; Sunday closed. In
@@ -34,11 +46,13 @@ export function resolveDayPeriods(opts: {
   staffHours?: WeekdayOverride;
   bizPeriods: DayPeriod[];
   bizHours?: WeekdayOverride;
+  date?: Date;
 }): DayPeriod[] {
-  const { weekday, staffHours, bizPeriods, bizHours } = opts;
+  const { weekday, staffHours, bizPeriods, bizHours, date } = opts;
   // An explicit staff-hours row always wins. In particular, a closed row is
   // a deliberate day off; it must not fall back to the business schedule.
   if (staffHours) {
+    if (!repeatsOnDate(staffHours, date)) return [];
     if (staffHours.closed) return [];
     if (staffHours.open_time && staffHours.close_time) {
       return [{ open_time: staffHours.open_time, close_time: staffHours.close_time }];

@@ -305,7 +305,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { type: "p", text: "Add and edit services from the Services page. Each service has:" },
       { type: "list", items: [
         "Name and description",
-        "Category — a free-text tag (e.g. \"Hair\", \"Nails\") shown as a badge on the card; there's no separate category management screen",
+        "Category — choose a starting category or type your own. Use Manage categories to add, rename or delete category names",
         "Duration in minutes (5-minute increments) and price",
         "Buffer time before and after the appointment",
         "A calendar color, used as the accent bar on the card and in the calendar",
@@ -323,8 +323,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Linking products to services",
     summary: "Track how much stock a service uses, and see its real profit margin.",
     blocks: [
-      { type: "p", text: "On a service's edit form, use \"Products used\" to link inventory items from Stock and set how much of each is used per booking. This powers the cost, profit and margin shown on the service card, and the \"Most/least profitable services\" cards on the Stock page." },
-      { type: "note", text: "Linking a product doesn't automatically deduct stock when a booking is completed — it's used for cost and margin calculations only. Adjust your stock levels yourself as you use products; see \"Tracking inventory.\"" },
+      { type: "p", text: "On a service's edit form, use \"Attach stock item\" to choose an item from Stock, or create one without leaving the service. Set how much is used for each appointment to see the estimated appointments remaining." },
+      { type: "note", text: "Linked quantities are deducted automatically when a booking is completed. If a completion is reversed, the recorded stock deduction is restored." },
     ],
     keywords: ["recipe", "margin", "profit", "cost"],
   },
@@ -518,7 +518,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Tracking inventory",
     summary: "Add products, track quantities and log restocks.",
     blocks: [
-      { type: "p", text: "Add products from the Stock page: name, brand, unit (ml, g, unit, bottle, or your own), starting stock, a low-stock threshold, and cost." },
+      { type: "p", text: "Add products from the Stock page: name, brand, category, unit (ml, g, unit, bottle, or your own), starting stock, a low-stock threshold, and cost." },
+      { type: "p", text: "Categories group items into an easy-to-scan product shelf. Choose one of the starting categories or type your own category name." },
       { type: "note", text: "If you leave the low-stock threshold blank on a new item, it's set automatically to 20% of your starting stock." },
       { type: "p", text: "Adjust quantities with the quick +/- buttons on each item, or open \"Adjust\" for quick deltas (+50, +10, -5, -1) or a custom signed amount. You can also edit or delete an item entirely." },
       { type: "note", text: "There's no adjustment history log — each adjustment simply updates the current quantity, so it's worth keeping your own restock records if you need an audit trail." },
@@ -528,29 +529,32 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "stock-status-alerts",
     categorySlug: "stock",
     title: "Understanding stock status",
-    summary: "What Healthy, Running low and Out of stock mean.",
+    summary: "What Good, Low and Out mean.",
     blocks: [
       { type: "list", items: [
-        "Healthy — stock is above your low-stock threshold.",
-        "Running low — stock is at or below your low-stock threshold.",
-        "Out of stock — stock is at zero or below.",
+        "Good — stock is above your low-stock threshold.",
+        "Low — stock is at or below your low-stock threshold.",
+        "Out — stock is at zero or below.",
       ] },
-      { type: "p", text: "The top of the Stock page shows summary cards for products tracked, items needing attention, and total inventory value (quantity × cost across all products)." },
-      { type: "note", text: "Completing a booking does not automatically deduct stock, even if products are linked to that service — you'll need to adjust quantities yourself as you use them." },
+      { type: "p", text: "When something needs attention, a banner appears at the top of the Stock page. Use Review to show only the items that are low or out, and use the category buttons to narrow the shelf." },
+      { type: "p", text: "Stock value is the current quantity multiplied by cost across all products." },
+      { type: "note", text: "Completing a booking automatically deducts the quantities linked to that service. You can still make manual stock adjustments when you need to correct a count." },
     ],
     keywords: ["low stock", "out of stock", "alerts"],
   },
   {
-    slug: "profitable-services",
+    slug: "scan-stock-photo",
     categorySlug: "stock",
-    title: "Seeing which services are most profitable",
-    summary: "Compare service price against product cost to see real margins.",
+    title: "Scanning stock from a photo",
+    summary: "Create an editable stock draft from a shelf photo.",
     blocks: [
-      { type: "p", text: "If you've linked products to your services (see \"Linking products to services\"), the Stock page shows \"Most profitable services\" and \"Least profitable services\" cards, calculated as service price minus the cost of products used." },
+      { type: "p", text: "Choose Scan photo on the Stock page, then take or upload a clear photo with product labels facing the camera. The image is compressed for analysis and isn't saved to your salon gallery." },
+      { type: "p", text: "The scan always opens a review first. Edit any product name, brand, category, unit or count, and untick anything you don't want to apply." },
+      { type: "note", text: "Nothing changes until you choose Apply reviewed stock. A matching product updates its existing count; otherwise a new stock item is created." },
+      { type: "note", text: "AI counts are estimates, especially when products overlap or labels are hidden. Check every quantity before applying. AI stock scanning is available on Studio." },
     ],
-    keywords: ["margin", "profit"],
+    keywords: ["AI", "photo", "scan", "camera", "inventory count"],
   },
-
   // ---------------------------------------------------------------------
   // Payments
   // ---------------------------------------------------------------------
