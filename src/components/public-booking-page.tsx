@@ -675,11 +675,6 @@ export function PublicBookingPage({
   return (
     <div id={domId} className="min-h-screen bg-background text-foreground" style={brandStyle}>
       <style>{themeFontOverrideCss(theme, `#${domId}`)}</style>
-      <div
-        aria-hidden="true"
-        className="h-1 w-full"
-        style={{ background: `linear-gradient(90deg, ${brand}, ${accent})` }}
-      />
       <header className="border-b bg-background/95">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-4 sm:px-6">
           {theme.logoUrl ? (
