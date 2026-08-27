@@ -219,6 +219,7 @@ export function PublicBookingPage({
   }, [signedInUser, myProfile, infoTouched]);
 
   const brand = theme.colors.primary;
+  const accent = theme.colors.accent;
   const brandStyle = applyThemeVars(theme);
   const storefront = useMemo(
     () => parseStorefrontSettings(storefrontSettings),
@@ -672,8 +673,13 @@ export function PublicBookingPage({
     biz.address || (biz.slug === "testshop" ? "16 Inglis Street, Inverness" : null);
 
   return (
-    <div id={domId} className="min-h-screen bg-background" style={brandStyle}>
+    <div id={domId} className="min-h-screen bg-background text-foreground" style={brandStyle}>
       <style>{themeFontOverrideCss(theme, `#${domId}`)}</style>
+      <div
+        aria-hidden="true"
+        className="h-1 w-full"
+        style={{ background: `linear-gradient(90deg, ${brand}, ${accent})` }}
+      />
       <header className="border-b bg-background/95">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-4 sm:px-6">
           {theme.logoUrl ? (
@@ -866,7 +872,12 @@ export function PublicBookingPage({
                               setServiceSearch("");
                               setExpandedServices(false);
                             }}
-                            className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${!serviceSearch && activeCategory === category.name ? "bg-foreground text-background" : "bg-card hover:bg-secondary/50"}`}
+                            className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${!serviceSearch && activeCategory === category.name ? "font-medium text-white" : "bg-card hover:bg-secondary/50"}`}
+                            style={
+                              !serviceSearch && activeCategory === category.name
+                                ? { background: brand, borderColor: brand }
+                                : undefined
+                            }
                           >
                             {category.name}
                           </button>
@@ -883,7 +894,15 @@ export function PublicBookingPage({
                                 setServiceSearch("");
                                 setExpandedServices(false);
                               }}
-                              className={`w-full rounded-xl px-4 py-3 text-left text-sm ${!serviceSearch && activeCategory === category.name ? "bg-secondary font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                              className={`w-full rounded-xl px-4 py-3 text-left text-sm ${!serviceSearch && activeCategory === category.name ? "font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                              style={
+                                !serviceSearch && activeCategory === category.name
+                                  ? {
+                                      background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+                                      color: accent,
+                                    }
+                                  : undefined
+                              }
                             >
                               {category.name}
                               <span className="float-right text-xs">{category.groups.length}</span>
@@ -932,7 +951,13 @@ export function PublicBookingPage({
                                     <div className="font-display text-lg tabular-nums">
                                       {priceRange(group.variants, currency)}
                                     </div>
-                                    <div className="ml-auto mt-2 grid h-8 w-8 place-items-center rounded-full bg-secondary group-hover:bg-foreground group-hover:text-background">
+                                    <div
+                                      className="ml-auto mt-2 grid h-8 w-8 place-items-center rounded-full transition-transform group-hover:translate-x-0.5"
+                                      style={{
+                                        background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+                                        color: accent,
+                                      }}
+                                    >
                                       <ChevronRight className="h-4 w-4" />
                                     </div>
                                   </div>
@@ -985,7 +1010,8 @@ export function PublicBookingPage({
                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="mt-5 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-medium text-background"
+                            className="mt-5 inline-flex items-center gap-2 px-5 py-3 text-sm font-medium"
+                            style={themedButtonStyle(theme, "accent")}
                           >
                             <Navigation className="h-4 w-4" />
                             Get directions
