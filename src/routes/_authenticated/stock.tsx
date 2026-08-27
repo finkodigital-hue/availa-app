@@ -511,6 +511,7 @@ function StockPage() {
             <StockAiScanner
               businessId={bid}
               plan={biz?.plan}
+              demo={demoMode}
               categories={categories}
               existingItems={items}
               onApply={applyAiScan}
