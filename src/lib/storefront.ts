@@ -1,11 +1,4 @@
-export type StorefrontSectionId = "gallery" | "booking" | "reviews" | "location";
-
-export type StorefrontReview = {
-  id: string;
-  name: string;
-  quote: string;
-  rating: number;
-};
+export type StorefrontSectionId = "gallery" | "booking" | "location";
 
 export type StorefrontSection = {
   id: StorefrontSectionId;
@@ -16,24 +9,17 @@ export type StorefrontSection = {
 
 export type StorefrontSettings = {
   sections: StorefrontSection[];
-  reviewScore: number | null;
-  reviewCount: number | null;
-  reviews: StorefrontReview[];
 };
 
 const DEFAULT_SECTIONS: StorefrontSection[] = [
   { id: "gallery", visible: true, heading: "Our salon", itemLimit: 3 },
   { id: "booking", visible: true, heading: "What would you like to book?", itemLimit: 6 },
-  { id: "reviews", visible: true, heading: "Loved by our clients", itemLimit: 2 },
   { id: "location", visible: true, heading: "Find us", itemLimit: 7 },
 ];
 
 export function defaultStorefrontSettings(): StorefrontSettings {
   return {
     sections: DEFAULT_SECTIONS.map((section) => ({ ...section })),
-    reviewScore: null,
-    reviewCount: null,
-    reviews: [],
   };
 }
 
@@ -53,25 +39,11 @@ export function parseStorefrontSettings(raw: unknown): StorefrontSettings {
   });
   return {
     sections,
-    reviewScore: typeof value.reviewScore === "number" ? value.reviewScore : null,
-    reviewCount: typeof value.reviewCount === "number" ? value.reviewCount : null,
-    reviews: Array.isArray(value.reviews)
-      ? value.reviews
-          .filter(
-            (review) =>
-              review && typeof review.name === "string" && typeof review.quote === "string",
-          )
-          .map((review) => ({
-            ...review,
-            rating: Math.min(5, Math.max(1, Number(review.rating) || 5)),
-          }))
-      : [],
   };
 }
 
 export const STOREFRONT_SECTION_LABELS: Record<StorefrontSectionId, string> = {
   gallery: "Photo gallery",
   booking: "Booking services",
-  reviews: "Reviews",
   location: "Location & hours",
 };

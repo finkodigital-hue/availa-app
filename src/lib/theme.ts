@@ -34,20 +34,73 @@ export interface Theme {
 // full font-family fallback chain; `googleParam` is the family spec used to
 // build the Google Fonts CSS2 URL (weights cover body + display use).
 export const FONT_CHOICES: { id: string; label: string; stack: string; googleParam: string }[] = [
-  { id: "Inter", label: "Inter (modern sans)", stack: '"Inter", ui-sans-serif, system-ui, sans-serif', googleParam: "Inter:wght@400;500;600;700" },
-  { id: "Playfair Display", label: "Playfair Display (luxe serif)", stack: '"Playfair Display", ui-serif, Georgia, serif', googleParam: "Playfair+Display:wght@400;500;600;700" },
-  { id: "Space Grotesk", label: "Space Grotesk (technical)", stack: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif', googleParam: "Space+Grotesk:wght@400;500;600;700" },
-  { id: "Lato", label: "Lato (friendly)", stack: '"Lato", ui-sans-serif, system-ui, sans-serif', googleParam: "Lato:wght@400;700" },
-  { id: "Poppins", label: "Poppins (geometric)", stack: '"Poppins", ui-sans-serif, system-ui, sans-serif', googleParam: "Poppins:wght@400;500;600;700" },
-  { id: "Fraunces", label: "Fraunces (editorial serif)", stack: '"Fraunces", ui-serif, Georgia, serif', googleParam: "Fraunces:wght@400;500;600;700" },
-  { id: "DM Sans", label: "DM Sans (clean sans)", stack: '"DM Sans", ui-sans-serif, system-ui, sans-serif', googleParam: "DM+Sans:wght@400;500;600;700" },
-  { id: "Manrope", label: "Manrope (geometric)", stack: '"Manrope", ui-sans-serif, system-ui, sans-serif', googleParam: "Manrope:wght@400;500;600;700" },
-  { id: "Cormorant Garamond", label: "Cormorant Garamond (elegant serif)", stack: '"Cormorant Garamond", ui-serif, Georgia, serif', googleParam: "Cormorant+Garamond:wght@400;500;600;700" },
-  { id: "Work Sans", label: "Work Sans (neutral sans)", stack: '"Work Sans", ui-sans-serif, system-ui, sans-serif', googleParam: "Work+Sans:wght@400;500;600;700" },
+  {
+    id: "Inter",
+    label: "Inter (modern sans)",
+    stack: '"Inter", ui-sans-serif, system-ui, sans-serif',
+    googleParam: "Inter:wght@400;500;600;700",
+  },
+  {
+    id: "Playfair Display",
+    label: "Playfair Display (luxe serif)",
+    stack: '"Playfair Display", ui-serif, Georgia, serif',
+    googleParam: "Playfair+Display:wght@400;500;600;700",
+  },
+  {
+    id: "Space Grotesk",
+    label: "Space Grotesk (technical)",
+    stack: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
+    googleParam: "Space+Grotesk:wght@400;500;600;700",
+  },
+  {
+    id: "Lato",
+    label: "Lato (friendly)",
+    stack: '"Lato", ui-sans-serif, system-ui, sans-serif',
+    googleParam: "Lato:wght@400;700",
+  },
+  {
+    id: "Poppins",
+    label: "Poppins (geometric)",
+    stack: '"Poppins", ui-sans-serif, system-ui, sans-serif',
+    googleParam: "Poppins:wght@400;500;600;700",
+  },
+  {
+    id: "Fraunces",
+    label: "Fraunces (editorial serif)",
+    stack: '"Fraunces", ui-serif, Georgia, serif',
+    googleParam: "Fraunces:wght@400;500;600;700",
+  },
+  {
+    id: "DM Sans",
+    label: "DM Sans (clean sans)",
+    stack: '"DM Sans", ui-sans-serif, system-ui, sans-serif',
+    googleParam: "DM+Sans:wght@400;500;600;700",
+  },
+  {
+    id: "Manrope",
+    label: "Manrope (geometric)",
+    stack: '"Manrope", ui-sans-serif, system-ui, sans-serif',
+    googleParam: "Manrope:wght@400;500;600;700",
+  },
+  {
+    id: "Cormorant Garamond",
+    label: "Cormorant Garamond (elegant serif)",
+    stack: '"Cormorant Garamond", ui-serif, Georgia, serif',
+    googleParam: "Cormorant+Garamond:wght@400;500;600;700",
+  },
+  {
+    id: "Work Sans",
+    label: "Work Sans (neutral sans)",
+    stack: '"Work Sans", ui-sans-serif, system-ui, sans-serif',
+    googleParam: "Work+Sans:wght@400;500;600;700",
+  },
 ];
 
 function fontStack(name: string): string {
-  return FONT_CHOICES.find((f) => f.id === name)?.stack ?? `"${name}", ui-sans-serif, system-ui, sans-serif`;
+  return (
+    FONT_CHOICES.find((f) => f.id === name)?.stack ??
+    `"${name}", ui-sans-serif, system-ui, sans-serif`
+  );
 }
 
 // Tailwind v4's `@theme inline` bakes --font-display/--font-sans into the
@@ -56,7 +109,10 @@ function fontStack(name: string): string {
 // ancestor (via applyThemeVars) has no effect on elements using those
 // utility classes. A scoped, higher-specificity stylesheet is the only way
 // to actually override the fonts Tailwind already inlined.
-export function themeFontOverrideCss(theme: Pick<Theme, "typography">, scopeSelector: string): string {
+export function themeFontOverrideCss(
+  theme: Pick<Theme, "typography">,
+  scopeSelector: string,
+): string {
   const display = fontStack(theme.typography.displayFont);
   const body = fontStack(theme.typography.bodyFont);
   return `${scopeSelector} { font-family: ${body}; }
@@ -66,8 +122,13 @@ ${scopeSelector} h1, ${scopeSelector} h2, ${scopeSelector} h3, ${scopeSelector} 
 // Builds a single Google Fonts CSS2 stylesheet URL for the fonts a theme
 // actually uses, for use in a route's `head()` `links`.
 export function googleFontsHref(theme: Pick<Theme, "typography">): string {
-  const families = Array.from(new Set([theme.typography.displayFont, theme.typography.bodyFont]))
-    .map((name) => FONT_CHOICES.find((f) => f.id === name)?.googleParam ?? `${name.replace(/ /g, "+")}:wght@400;500;600;700`);
+  const families = Array.from(
+    new Set([theme.typography.displayFont, theme.typography.bodyFont]),
+  ).map(
+    (name) =>
+      FONT_CHOICES.find((f) => f.id === name)?.googleParam ??
+      `${name.replace(/ /g, "+")}:wght@400;500;600;700`,
+  );
   return `https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join("&")}&display=swap`;
 }
 
@@ -76,6 +137,26 @@ export const BUTTON_RADIUS_MAX = 24;
 
 export function applyThemeVars(theme: Theme): React.CSSProperties {
   return {
+    // Override the app's semantic colour tokens inside the public page so
+    // Tailwind utilities such as bg-background, bg-card and text-muted-
+    // foreground reflect the owner's theme instead of the Bookzenvo admin
+    // palette. Keeping these scoped on the page root prevents the storefront
+    // theme from leaking into the surrounding page-builder UI.
+    ["--background" as any]: theme.colors.background,
+    ["--foreground" as any]: theme.colors.text,
+    ["--card" as any]: theme.colors.surface,
+    ["--card-foreground" as any]: theme.colors.text,
+    ["--popover" as any]: theme.colors.surface,
+    ["--popover-foreground" as any]: theme.colors.text,
+    ["--primary" as any]: theme.colors.primary,
+    ["--accent" as any]: theme.colors.accent,
+    ["--secondary" as any]: `color-mix(in srgb, ${theme.colors.accent} 10%, ${theme.colors.background})`,
+    ["--secondary-foreground" as any]: theme.colors.text,
+    ["--muted" as any]: theme.colors.surface,
+    ["--muted-foreground" as any]: theme.colors.textMuted,
+    ["--border" as any]: `color-mix(in srgb, ${theme.colors.text} 14%, transparent)`,
+    ["--input" as any]: `color-mix(in srgb, ${theme.colors.text} 18%, transparent)`,
+    ["--ring" as any]: theme.colors.primary,
     ["--brand" as any]: theme.colors.primary,
     ["--brand-accent" as any]: theme.colors.accent,
     ["--brand-bg" as any]: theme.colors.background,
@@ -99,9 +180,19 @@ export function themedButtonStyle(
   const radius = `${theme.buttons.cornerRadius}px`;
   switch (theme.buttons.style) {
     case "outline":
-      return { background: "transparent", color, border: `1.5px solid ${color}`, borderRadius: radius };
+      return {
+        background: "transparent",
+        color,
+        border: `1.5px solid ${color}`,
+        borderRadius: radius,
+      };
     case "soft":
-      return { background: `color-mix(in oklab, ${color} 16%, transparent)`, color, border: "none", borderRadius: radius };
+      return {
+        background: `color-mix(in oklab, ${color} 16%, transparent)`,
+        color,
+        border: "none",
+        borderRadius: radius,
+      };
     case "solid":
     default:
       return { background: color, color: "#FFFFFF", border: "none", borderRadius: radius };
@@ -120,7 +211,10 @@ export interface DesignSuggestion {
   cornerRadius?: number;
 }
 
-export function applyDesignSuggestion(theme: Theme, design: DesignSuggestion | null | undefined): Theme {
+export function applyDesignSuggestion(
+  theme: Theme,
+  design: DesignSuggestion | null | undefined,
+): Theme {
   if (!design) return theme;
   return {
     ...theme,

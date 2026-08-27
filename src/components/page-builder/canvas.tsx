@@ -14,6 +14,7 @@ import { PublicBookingPage, type PublicBookingBusiness } from "@/components/publ
 import type { PageBlock } from "@/components/page-blocks";
 import type { Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import type { StorefrontSettings } from "@/lib/storefront";
 
 // The right-hand pane: the real public page, mounted in-process (same
 // pattern as WizardPagePreview) so it's never a fake preview and never an
@@ -25,6 +26,7 @@ export function PageBuilderCanvas({
   business,
   theme,
   blocks,
+  storefrontSettings,
   selectedBlockId,
   onSelectBlock,
   onReorder,
@@ -32,6 +34,7 @@ export function PageBuilderCanvas({
   business: PublicBookingBusiness;
   theme: Theme;
   blocks: PageBlock[];
+  storefrontSettings: StorefrontSettings;
   selectedBlockId: string | null;
   onSelectBlock: (id: string | null) => void;
   onReorder: (activeId: string, overId: string) => void;
@@ -52,6 +55,7 @@ export function PageBuilderCanvas({
           business={business}
           theme={theme}
           pageBlocks={blocks}
+          storefrontSettings={storefrontSettings}
           domId={`canvas-${reactId}`}
           renderBlock={(block, _index, children) => (
             <CanvasBlockShell
@@ -98,7 +102,11 @@ function CanvasBlockShell({
         setNodeRef(node);
         scrollRef.current = node;
       }}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
       // Capture phase, before the click ever reaches a real link/button inside
       // the block (hero CTA, a service "select" row, etc.) — selecting a block
       // for editing must never also trigger what it does on the real page.

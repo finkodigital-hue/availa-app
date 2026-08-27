@@ -1,7 +1,14 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, Trash2, Loader2, GripVertical, Image as ImageIcon } from "lucide-react";
-import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,14 +20,34 @@ import { toast } from "sonner";
 
 type Media = { id: string; kind: string; path: string; sort_order: number };
 
-const KINDS: { key: "cover" | "logo" | "interior" | "exterior" | "team" | "portfolio" | "before-after"; label: string; description: string; single: boolean }[] = [
-  { key: "cover", label: "Cover photo", description: "Wide hero image at the top of your booking page.", single: true },
+const KINDS: {
+  key: "cover" | "logo" | "interior" | "exterior" | "team" | "portfolio" | "before-after";
+  label: string;
+  description: string;
+  single: boolean;
+}[] = [
+  {
+    key: "cover",
+    label: "Cover photo",
+    description: "Wide hero image at the top of your booking page.",
+    single: true,
+  },
   { key: "logo", label: "Logo", description: "Square logo shown in the header.", single: true },
   { key: "interior", label: "Interior", description: "Photos of your space.", single: false },
-  { key: "exterior", label: "Exterior", description: "How customers find you from the outside.", single: false },
+  {
+    key: "exterior",
+    label: "Exterior",
+    description: "How customers find you from the outside.",
+    single: false,
+  },
   { key: "team", label: "Team", description: "Group photos of your team.", single: false },
   { key: "portfolio", label: "Portfolio", description: "Examples of your work.", single: false },
-  { key: "before-after", label: "Before & after", description: "Transformation results, side by side.", single: false },
+  {
+    key: "before-after",
+    label: "Before & after",
+    description: "Transformation results, side by side.",
+    single: false,
+  },
 ];
 
 export function GalleryManager({ businessId }: { businessId: string }) {
@@ -28,7 +55,12 @@ export function GalleryManager({ businessId }: { businessId: string }) {
   const { data: media, isLoading } = useQuery({
     queryKey: ["business-media", businessId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("business_media").select("*").eq("business_id", businessId).order("kind").order("sort_order");
+      const { data, error } = await supabase
+        .from("business_media")
+        .select("*")
+        .eq("business_id", businessId)
+        .order("kind")
+        .order("sort_order");
       if (error) throw error;
       return data as Media[];
     },
@@ -41,7 +73,9 @@ export function GalleryManager({ businessId }: { businessId: string }) {
       const blob = await compressImage(file);
       const ext = "jpg";
       const path = `${businessId}/gallery/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("business-assets").upload(path, blob, { contentType: "image/jpeg", upsert: false });
+      const { error: upErr } = await supabase.storage
+        .from("business-assets")
+        .upload(path, blob, { contentType: "image/jpeg", upsert: false });
       if (upErr) throw upErr;
       const def = KINDS.find((k) => k.key === kind);
       if (def?.single) {
@@ -53,12 +87,14 @@ export function GalleryManager({ businessId }: { businessId: string }) {
         }
       }
       const order = byKind(kind).length;
-      const { error } = await supabase.from("business_media").insert({ business_id: businessId, kind, path, sort_order: order });
+      const { error } = await supabase
+        .from("business_media")
+        .insert({ business_id: businessId, kind, path, sort_order: order });
       if (error) throw error;
       toast.success("Photo uploaded");
       qc.invalidateQueries({ queryKey: ["business-media", businessId] });
-    } catch (e: any) {
-      toast.error(e.message ?? "Upload failed");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Upload failed");
     }
   };
 
@@ -76,7 +112,14 @@ export function GalleryManager({ businessId }: { businessId: string }) {
     qc.invalidateQueries({ queryKey: ["business-media", businessId] });
   };
 
-  if (isLoading) return <div className="grid sm:grid-cols-2 gap-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>;
+  if (isLoading)
+    return (
+      <div className="grid sm:grid-cols-2 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 rounded-xl" />
+        ))}
+      </div>
+    );
 
   return (
     <div className="space-y-6">
@@ -95,7 +138,11 @@ export function GalleryManager({ businessId }: { businessId: string }) {
 }
 
 function GallerySection({
-  def, items, onUpload, onRemove, onReorder,
+  def,
+  items,
+  onUpload,
+  onRemove,
+  onReorder,
 }: {
   def: { key: string; label: string; description: string; single: boolean };
   items: Media[];
@@ -132,14 +179,20 @@ function GallerySection({
     <div className="rounded-xl border bg-card p-4">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="font-medium text-sm">{def.label}</h3>
-          <p className="text-xs text-muted-foreground">{def.description}</p>
+          <h3 className="font-sans text-sm font-semibold text-foreground">{def.label}</h3>
+          <p className="font-sans text-[13px] leading-5 text-muted-foreground">{def.description}</p>
         </div>
         {(!def.single || list.length === 0) && (
           <label className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs hover:bg-secondary/40 cursor-pointer">
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
             Upload
-            <input type="file" accept="image/*" className="hidden" onChange={onFile} disabled={busy} />
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onFile}
+              disabled={busy}
+            />
           </label>
         )}
       </div>
@@ -164,19 +217,34 @@ function GallerySection({
 }
 
 function SortablePhoto({ media, onRemove }: { media: Media; onRemove: () => Promise<void> }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: media.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: media.id,
+  });
   const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => { signedUrl(media.path).then(setUrl).catch(() => setUrl(null)); }, [media.path]);
+  useEffect(() => {
+    signedUrl(media.path)
+      .then(setUrl)
+      .catch(() => setUrl(null));
+  }, [media.path]);
 
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+      }}
       className="relative group rounded-lg overflow-hidden border bg-secondary aspect-square"
     >
-      {url ? <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" /> : <Skeleton className="w-full h-full" />}
+      {url ? (
+        <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+      ) : (
+        <Skeleton className="w-full h-full" />
+      )}
       <button
-        {...attributes} {...listeners}
+        {...attributes}
+        {...listeners}
         className="absolute top-1 left-1 h-7 w-7 grid place-items-center rounded bg-background/80 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
         aria-label="Reorder"
       >
