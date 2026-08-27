@@ -20,6 +20,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
+import { StockAiScanner, type ReviewedStockItem } from "@/components/stock-ai-scanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -429,6 +430,64 @@ function StockPage() {
     invalidate();
   };
 
+  const applyAiScan = async (reviewed: ReviewedStockItem[]) => {
+    if (!bid) throw new Error("Your workspace is still loading. Please try again.");
+
+    if (demoMode && !storedItems?.length) {
+      setDemoItems((current) => {
+        const next = [...current];
+        reviewed.forEach((reviewedItem) => {
+          const existingIndex = reviewedItem.existingId
+            ? next.findIndex((item) => item.id === reviewedItem.existingId)
+            : -1;
+          const previous = existingIndex >= 0 ? next[existingIndex] : null;
+          const item: InventoryItem = {
+            id: previous?.id ?? `demo-${crypto.randomUUID()}`,
+            business_id: "demo",
+            name: reviewedItem.name,
+            brand: reviewedItem.brand || null,
+            category: reviewedItem.category || "Other",
+            unit: reviewedItem.unit || "unit",
+            current_stock: reviewedItem.quantity,
+            low_stock_threshold:
+              previous?.low_stock_threshold ??
+              (reviewedItem.quantity ? Math.max(1, Math.round(reviewedItem.quantity * 0.2)) : null),
+            cost_cents: previous?.cost_cents ?? null,
+          };
+          if (existingIndex >= 0) next[existingIndex] = item;
+          else next.push(item);
+        });
+        return next;
+      });
+      return;
+    }
+
+    const existingById = new Map(items.map((item) => [item.id, item]));
+    const payload = reviewed.map((reviewedItem) => {
+      const previous = reviewedItem.existingId
+        ? existingById.get(reviewedItem.existingId)
+        : undefined;
+      return {
+        id: previous?.id ?? crypto.randomUUID(),
+        business_id: bid,
+        name: reviewedItem.name,
+        brand: reviewedItem.brand || null,
+        category: reviewedItem.category || "Other",
+        unit: reviewedItem.unit || "unit",
+        current_stock: reviewedItem.quantity,
+        low_stock_threshold:
+          previous?.low_stock_threshold ??
+          (reviewedItem.quantity ? Math.max(1, Math.round(reviewedItem.quantity * 0.2)) : null),
+        cost_cents: previous?.cost_cents ?? null,
+      };
+    });
+    const { error } = await supabase
+      .from("inventory_items")
+      .upsert(payload as never, { onConflict: "id" });
+    if (error) throw error;
+    await invalidate();
+  };
+
   return (
     <div
       className="min-w-0 max-w-full overflow-hidden p-5 sm:p-8 xl:p-10"
@@ -449,6 +508,13 @@ function StockPage() {
                 className="h-10 bg-card pl-9"
               />
             </div>
+            <StockAiScanner
+              businessId={bid}
+              plan={biz?.plan}
+              categories={categories}
+              existingItems={items}
+              onApply={applyAiScan}
+            />
             <Button onClick={openNew} className="h-10 shadow-glow">
               <Plus className="mr-2 h-4 w-4" /> Add stock item
             </Button>

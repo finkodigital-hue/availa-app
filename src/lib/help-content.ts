@@ -542,6 +542,19 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     keywords: ["low stock", "out of stock", "alerts"],
   },
+  {
+    slug: "scan-stock-photo",
+    categorySlug: "stock",
+    title: "Scanning stock from a photo",
+    summary: "Create an editable stock draft from a shelf photo.",
+    blocks: [
+      { type: "p", text: "Choose Scan photo on the Stock page, then take or upload a clear photo with product labels facing the camera. The image is compressed for analysis and isn't saved to your salon gallery." },
+      { type: "p", text: "The scan always opens a review first. Edit any product name, brand, category, unit or count, and untick anything you don't want to apply." },
+      { type: "note", text: "Nothing changes until you choose Apply reviewed stock. A matching product updates its existing count; otherwise a new stock item is created." },
+      { type: "note", text: "AI counts are estimates, especially when products overlap or labels are hidden. Check every quantity before applying. AI stock scanning is available on Studio." },
+    ],
+    keywords: ["AI", "photo", "scan", "camera", "inventory count"],
+  },
   // ---------------------------------------------------------------------
   // Payments
   // ---------------------------------------------------------------------

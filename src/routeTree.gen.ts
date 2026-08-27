@@ -27,6 +27,7 @@ import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
+import { Route as ApiStockScanRouteImport } from './routes/api/stock-scan'
 import { Route as ApiPublicGalleryRouteImport } from './routes/api/public-gallery'
 import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-suggest'
 import { Route as ApiClientErrorsRouteImport } from './routes/api/client-errors'
@@ -143,6 +144,11 @@ const BookSlugRoute = BookSlugRouteImport.update({
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe-webhook',
   path: '/api/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStockScanRoute = ApiStockScanRouteImport.update({
+  id: '/api/stock-scan',
+  path: '/api/stock-scan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicGalleryRoute = ApiPublicGalleryRouteImport.update({
@@ -325,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
+  '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
   '/help/$slug': typeof HelpSlugRoute
@@ -370,6 +377,7 @@ export interface FileRoutesByTo {
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
+  '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
   '/help/$slug': typeof HelpSlugRoute
@@ -419,6 +427,7 @@ export interface FileRoutesById {
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
+  '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
   '/help/$slug': typeof HelpSlugRoute
@@ -468,6 +477,7 @@ export interface FileRouteTypes {
     | '/api/client-errors'
     | '/api/page-ai-suggest'
     | '/api/public-gallery'
+    | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/book/$slug'
     | '/help/$slug'
@@ -513,6 +523,7 @@ export interface FileRouteTypes {
     | '/api/client-errors'
     | '/api/page-ai-suggest'
     | '/api/public-gallery'
+    | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/book/$slug'
     | '/help/$slug'
@@ -561,6 +572,7 @@ export interface FileRouteTypes {
     | '/api/client-errors'
     | '/api/page-ai-suggest'
     | '/api/public-gallery'
+    | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/book/$slug'
     | '/help/$slug'
@@ -593,6 +605,7 @@ export interface RootRouteChildren {
   ApiClientErrorsRoute: typeof ApiClientErrorsRoute
   ApiPageAiSuggestRoute: typeof ApiPageAiSuggestRoute
   ApiPublicGalleryRoute: typeof ApiPublicGalleryRoute
+  ApiStockScanRoute: typeof ApiStockScanRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   BookSlugRoute: typeof BookSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
@@ -731,6 +744,13 @@ declare module '@tanstack/react-router' {
       path: '/api/stripe-webhook'
       fullPath: '/api/stripe-webhook'
       preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stock-scan': {
+      id: '/api/stock-scan'
+      path: '/api/stock-scan'
+      fullPath: '/api/stock-scan'
+      preLoaderRoute: typeof ApiStockScanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public-gallery': {
@@ -1017,6 +1037,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiClientErrorsRoute: ApiClientErrorsRoute,
   ApiPageAiSuggestRoute: ApiPageAiSuggestRoute,
   ApiPublicGalleryRoute: ApiPublicGalleryRoute,
+  ApiStockScanRoute: ApiStockScanRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   BookSlugRoute: BookSlugRoute,
   InviteTokenRoute: InviteTokenRoute,
