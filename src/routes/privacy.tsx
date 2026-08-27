@@ -1,11 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LegalPage } from "@/components/legal-page";
 
+const legalLink =
+  "underline underline-offset-4 decoration-border hover:text-foreground transition-colors";
+
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
       { title: "Privacy Policy — Bookzenvo" },
-      { name: "description", content: "Privacy Policy for Bookzenvo." },
+      {
+        name: "description",
+        content: "How Bookzenvo collects, uses, shares and protects personal information.",
+      },
     ],
   }),
   component: PrivacyPage,
@@ -16,86 +22,244 @@ function PrivacyPage() {
     <LegalPage
       eyebrow="Legal"
       title="Privacy Policy"
-      intro="This policy explains what information Bookzenvo uses, why we use it and the choices available to you."
+      intro="This policy explains how Bookzenvo handles personal information for business accounts, booking clients, website visitors, support users and people recorded in a Bookzenvo workspace."
       sections={[
         {
-          title: "Information we use",
+          title: "1. Who is responsible for your information",
           content: (
             <>
               <p>
-                We use information provided when an account is created, such as a name, email
-                address, business name and account preferences. Businesses using Bookzenvo may also
-                add client information such as names, contact details, booking history and
-                appointment notes.
+                Bookzenvo is responsible for account administration, product operation, security,
+                support, subscription billing and its own website. Contact us at{" "}
+                <a href="mailto:help@finkodigital.com" className={legalLink}>
+                  help@finkodigital.com
+                </a>
+                .
               </p>
               <p>
-                We also collect limited technical information needed to operate and protect the
-                service, such as device, browser, IP address and security logs.
+                When a salon or other business uses Bookzenvo to manage its clients, staff and
+                bookings, that business normally decides why and how the information is used and is
+                the controller. Bookzenvo acts as its processor and provides the technology. Contact
+                the business first about its appointment records, notes or marketing.
               </p>
             </>
           ),
         },
         {
-          title: "How we use it",
+          title: "2. Information we collect",
           content: (
             <>
               <p>
-                We use personal information to provide booking and account features, send requested
-                service emails, provide support, prevent fraud and abuse, and improve the
-                reliability of Bookzenvo.
+                Account and business information may include names, email addresses, telephone
+                numbers, login and verification records, business details, staff roles,
+                availability, service settings, subscription status and support messages.
               </p>
               <p>
-                We do not sell personal information. We only share data with providers needed to run
-                Bookzenvo, such as hosting, authentication, email and payment providers, or where
-                required by law.
+                Booking and client information may include names, contact details, appointment
+                history, requested services, assigned staff, prices, payment status, cancellation
+                activity, preferences, addresses and notes entered by the client or business. Notes
+                may contain allergy, health or other sensitive information where a business chooses
+                to record it and has a lawful reason to do so.
+              </p>
+              <p>
+                Product content may include logos, staff photographs, salon gallery images, page
+                text, reviews, stock details and stock-scan photographs. We also process limited
+                technical information such as browser and device data, IP address, timestamps,
+                security events, error records and cookie or local-storage preferences.
               </p>
             </>
           ),
         },
         {
-          title: "Bookings made with a business",
+          title: "3. Where information comes from",
           content: (
             <>
               <p>
-                When you book an appointment through a Bookzenvo page, the business you book with
-                controls the information it collects and how it uses it. Contact that business
-                directly for questions about its services, appointment records, or marketing
-                communications.
+                We receive information directly from account holders and booking clients, from team
+                members authorised by a business, and from files a business chooses to import from
+                another booking provider. We also receive payment and account-status information
+                from Stripe and technical information automatically when the service is used.
               </p>
               <p>
-                Bookzenvo acts as the technology provider for these booking pages. We process the
-                information needed to deliver the booking service on the business&apos;s behalf.
+                A business is responsible for telling people when it imports their information into
+                Bookzenvo and for ensuring the import is lawful and accurate.
               </p>
             </>
           ),
         },
         {
-          title: "Your choices and rights",
+          title: "4. Why we use information and our lawful bases",
           content: (
             <>
               <p>
-                You can update much of your account information from within Bookzenvo. Depending on
-                where you live, you may also have rights to request access, correction, deletion or
-                restriction of your personal information.
+                We use information to create and secure accounts; provide booking, scheduling,
+                client, stock, payment-reference, page and reporting features; send requested
+                confirmations and reminders; provide support; process subscriptions; prevent fraud
+                and misuse; diagnose faults; comply with law; and improve service reliability.
               </p>
               <p>
-                To make a request or ask a privacy question, please use the{" "}
-                <Link to="/help" className="underline underline-offset-4 hover:text-foreground">
-                  Help Centre
-                </Link>
+                Depending on the activity, we rely on performance of a contract, legitimate
+                interests in operating and protecting Bookzenvo, compliance with legal obligations,
+                or consent where the law requires it. A business using client or staff information
+                chooses and is responsible for its own lawful basis and any additional condition
+                needed for sensitive information.
+              </p>
+              <p>
+                We do not sell personal information and do not use booking-client information for
+                Bookzenvo advertising. We do not make solely automated decisions about individuals
+                that produce legal or similarly significant effects.
+              </p>
+            </>
+          ),
+        },
+        {
+          title: "5. AI-assisted processing",
+          content: (
+            <>
+              <p>
+                Optional AI tools use Anthropic&apos;s commercial API. Depending on the feature, we
+                may send an owner&apos;s prompt, a temporary screenshot of the public booking page,
+                a stock photograph, or a limited summary of live business information needed to
+                answer the request. The summary can include operational booking data and client or
+                staff names where relevant.
+              </p>
+              <p>
+                A stock photograph is compressed and sent for analysis. Bookzenvo does not add it to
+                the salon gallery or save it as a stock photograph. The suggested products stay
+                editable and nothing changes until the owner reviews and applies the draft. Page
+                changes are also presented for review.
+              </p>
+              <p>
+                Anthropic states that commercial API inputs and outputs are not used to train its
+                models by default and are normally deleted from its backend within 30 days, subject
+                to safety, legal or separately agreed retention. Read the{" "}
+                <a
+                  href="https://privacy.anthropic.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={legalLink}
+                >
+                  Anthropic Privacy Centre
+                </a>{" "}
+                for current details. Businesses should avoid including unnecessary personal or
+                sensitive information in AI prompts and images.
+              </p>
+            </>
+          ),
+        },
+        {
+          title: "6. Who we share information with",
+          content: (
+            <>
+              <p>
+                We share only what is needed with service providers that help operate Bookzenvo,
+                including Supabase for database, storage and authentication; Cloudflare for hosting
+                and network security; Stripe for subscription and appointment payments; Resend for
+                booking emails; and Anthropic for optional AI features.
+              </p>
+              <p>
+                We may also disclose information to professional advisers, regulators, courts, law
+                enforcement or another party where required by law, needed to protect rights and
+                safety, or as part of a properly managed business sale or reorganisation. Payment
+                information supplied to Stripe is also handled under the{" "}
+                <a
+                  href="https://stripe.com/gb/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={legalLink}
+                >
+                  Stripe Privacy Policy
+                </a>
                 .
               </p>
             </>
           ),
         },
         {
-          title: "Cookies",
+          title: "7. International transfers",
           content: (
             <p>
-              We use essential cookies and similar technologies to keep Bookzenvo working, remember
-              relevant settings and protect accounts. Where optional cookies are used, you can
-              manage your preferences using the Cookie settings link in the site footer.
+              Some providers process information outside the United Kingdom. Where required, we use
+              recognised safeguards such as UK adequacy regulations, the UK International Data
+              Transfer Agreement or the UK Addendum to approved standard contractual clauses. You
+              can contact us for more information about safeguards relevant to your data.
             </p>
+          ),
+        },
+        {
+          title: "8. How long we keep information",
+          content: (
+            <>
+              <p>
+                We keep active account and workspace information while the account is open and as
+                needed to provide the service. If an owner permanently deletes a workspace, active
+                Bookzenvo database records and uploaded business files are deleted, subject to
+                secure provider backup cycles, fraud and security records, unresolved disputes, and
+                information we must keep for legal, tax or accounting reasons.
+              </p>
+              <p>
+                Support, payment and security records are kept only for as long as reasonably needed
+                for the purpose collected and applicable legal limitation or record-keeping periods.
+                A salon may keep its client and booking records for a period it chooses; contact the
+                salon about its retention policy. Stripe and other providers keep their independent
+                records under their own policies.
+              </p>
+            </>
+          ),
+        },
+        {
+          title: "9. Your rights",
+          content: (
+            <>
+              <p>
+                UK data-protection law may give you rights to access, correct or erase information;
+                restrict or object to processing; receive certain information in a portable format;
+                and withdraw consent where processing relies on consent. These rights can depend on
+                the circumstances and lawful basis.
+              </p>
+              <p>
+                For information controlled by a salon, contact that salon first. For a Bookzenvo
+                account or platform matter, use the{" "}
+                <Link to="/help" className={legalLink}>
+                  Help Centre
+                </Link>{" "}
+                or email{" "}
+                <a href="mailto:help@finkodigital.com" className={legalLink}>
+                  help@finkodigital.com
+                </a>
+                . We may need to verify your identity. You may also complain to the{" "}
+                <a
+                  href="https://ico.org.uk/make-a-complaint/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={legalLink}
+                >
+                  UK Information Commissioner&apos;s Office
+                </a>
+                .
+              </p>
+            </>
+          ),
+        },
+        {
+          title: "10. Security, cookies and changes",
+          content: (
+            <>
+              <p>
+                We use access controls, encryption in transit, tenant separation, restricted service
+                credentials and monitoring intended to protect information. No system can be
+                guaranteed completely secure. Account holders should use strong, unique credentials
+                and keep authorised-user access current.
+              </p>
+              <p>
+                Bookzenvo currently uses only essential cookies and local storage. See the{" "}
+                <Link to="/cookie-policy" className={legalLink}>
+                  Cookie Policy
+                </Link>{" "}
+                for details. We may update this policy when the product, providers or law changes.
+                We will take reasonable steps to highlight material changes.
+              </p>
+            </>
           ),
         },
       ]}

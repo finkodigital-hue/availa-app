@@ -37,7 +37,7 @@ export function LegalPage({
           {title}
         </h1>
         <p className="mt-5 text-[1rem] leading-7 text-muted-foreground max-w-[62ch]">{intro}</p>
-        <p className="mt-4 text-[.82rem] text-muted-foreground">Last updated: 23 July 2026</p>
+        <p className="mt-4 text-[.82rem] text-muted-foreground">Last updated: 27 August 2026</p>
         <div className="mt-12 space-y-9">
           {sections.map((section) => (
             <section key={section.title}>
