@@ -518,7 +518,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Tracking inventory",
     summary: "Add products, track quantities and log restocks.",
     blocks: [
-      { type: "p", text: "Add products from the Stock page: name, brand, unit (ml, g, unit, bottle, or your own), starting stock, a low-stock threshold, and cost." },
+      { type: "p", text: "Add products from the Stock page: name, brand, category, unit (ml, g, unit, bottle, or your own), starting stock, a low-stock threshold, and cost." },
+      { type: "p", text: "Categories group items into an easy-to-scan product shelf. Choose one of the starting categories or type your own category name." },
       { type: "note", text: "If you leave the low-stock threshold blank on a new item, it's set automatically to 20% of your starting stock." },
       { type: "p", text: "Adjust quantities with the quick +/- buttons on each item, or open \"Adjust\" for quick deltas (+50, +10, -5, -1) or a custom signed amount. You can also edit or delete an item entirely." },
       { type: "note", text: "There's no adjustment history log — each adjustment simply updates the current quantity, so it's worth keeping your own restock records if you need an audit trail." },
@@ -528,29 +529,19 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "stock-status-alerts",
     categorySlug: "stock",
     title: "Understanding stock status",
-    summary: "What Healthy, Running low and Out of stock mean.",
+    summary: "What Good, Low and Out mean.",
     blocks: [
       { type: "list", items: [
-        "Healthy — stock is above your low-stock threshold.",
-        "Running low — stock is at or below your low-stock threshold.",
-        "Out of stock — stock is at zero or below.",
+        "Good — stock is above your low-stock threshold.",
+        "Low — stock is at or below your low-stock threshold.",
+        "Out — stock is at zero or below.",
       ] },
-      { type: "p", text: "The top of the Stock page shows summary cards for products tracked, items needing attention, and total inventory value (quantity × cost across all products)." },
+      { type: "p", text: "When something needs attention, a banner appears at the top of the Stock page. Use Review to show only the items that are low or out, and use the category buttons to narrow the shelf." },
+      { type: "p", text: "Stock value is the current quantity multiplied by cost across all products." },
       { type: "note", text: "Completing a booking automatically deducts the quantities linked to that service. You can still make manual stock adjustments when you need to correct a count." },
     ],
     keywords: ["low stock", "out of stock", "alerts"],
   },
-  {
-    slug: "profitable-services",
-    categorySlug: "stock",
-    title: "Seeing which services are most profitable",
-    summary: "Compare service price against product cost to see real margins.",
-    blocks: [
-      { type: "p", text: "If you've linked products to your services (see \"Linking products to services\"), the Stock page shows \"Most profitable services\" and \"Least profitable services\" cards, calculated as service price minus the cost of products used." },
-    ],
-    keywords: ["margin", "profit"],
-  },
-
   // ---------------------------------------------------------------------
   // Payments
   // ---------------------------------------------------------------------

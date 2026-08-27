@@ -760,6 +760,7 @@ export type Database = {
         Row: {
           brand: string | null
           business_id: string
+          category: string | null
           cost_cents: number | null
           created_at: string
           current_stock: number
@@ -772,6 +773,7 @@ export type Database = {
         Insert: {
           brand?: string | null
           business_id: string
+          category?: string | null
           cost_cents?: number | null
           created_at?: string
           current_stock?: number
@@ -784,6 +786,7 @@ export type Database = {
         Update: {
           brand?: string | null
           business_id?: string
+          category?: string | null
           cost_cents?: number | null
           created_at?: string
           current_stock?: number

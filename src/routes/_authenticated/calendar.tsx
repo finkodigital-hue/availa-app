@@ -363,6 +363,10 @@ function CalendarPage() {
     setSelected((s: any) => (s && s.id === id ? { ...s, status } : s));
     qc.invalidateQueries({ queryKey: ["calendar"] });
     qc.invalidateQueries({ queryKey: ["dashboard"] });
+    // Completing (or un-completing) a booking updates inventory through the
+    // database trigger, so refresh both the stock shelf and its usage ledger.
+    qc.invalidateQueries({ queryKey: ["inventory_items"] });
+    qc.invalidateQueries({ queryKey: ["booking-stock-deductions", id] });
   };
 
   const openNewBooking = (cell?: { staffId?: string; isoTime?: string; date?: Date }) => {

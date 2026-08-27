@@ -88,3 +88,47 @@ final result: passed
 - Production build completed successfully.
 
 Final result: passed
+
+---
+
+# Stock redesign design QA
+
+- Source visual truth: `C:\Users\jakob\.codex\generated_images\01a03b8f-63b5-7440-8a02-4c8c88e6386c\exec-1885e275-d2bb-45b8-af1a-427b527d5bc7.png`
+- Browser-rendered implementation: `C:\Users\jakob\.codex\visualizations\2026\08\26\01a03b8f-63b5-7440-8a02-4c8c88e6386c\stock-qa\stock-implementation-clipped.png`
+- Full-view comparison: `C:\Users\jakob\.codex\visualizations\2026\08\26\01a03b8f-63b5-7440-8a02-4c8c88e6386c\stock-qa\stock-design-comparison.png`
+- Focused editor comparison: `C:\Users\jakob\.codex\visualizations\2026\08\26\01a03b8f-63b5-7440-8a02-4c8c88e6386c\stock-qa\stock-editor-comparison.png`
+- Route/state: `/stock?demo=stock`, desktop, light theme, populated product shelf with the Edit stock item modal open.
+- Target viewport: 1440 × 1024 CSS px.
+- Source pixels: 1487 × 1058. Implementation browser capture: 2620 × 1862 for a 1310 × 931 CSS-ratio comparison crop. Both were normalized to 1440 × 1024 for the full-view comparison; density-only differences were excluded from findings.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Fonts and typography: the implementation uses the product's existing Inter/Fraunces pairing and preserves the mock's sans-serif hierarchy with a restrained serif editor title.
+- Spacing and layout rhythm: header, attention banner, category controls, three-column shelf, cards, and centered editor follow the source hierarchy and remain responsive at narrower breakpoints.
+- Colors and visual tokens: existing Bookzenvo ivory, black, gold, muted border, and semantic amber/green/red tokens match the selected direction.
+- Image quality and asset fidelity: the selected design contains no raster imagery. Standard product/category marks use the app's established Lucide icon library rather than placeholders or custom drawings.
+- Copy and content: page, alert, status, filter, category, quantity, and editor copy match the intent of the visual target and use realistic salon inventory data in the QA-only development state.
+
+## Interaction verification
+
+- Category filtering: passed.
+- Stock search: passed.
+- Low-stock Review filter: passed; four low items shown in the populated QA state.
+- Add stock item modal: passed.
+- Edit stock item modal: passed.
+- Browser console warnings/errors: none.
+- Production build: passed.
+
+## Comparison history
+
+- Initial capture exposed an in-app-browser density/canvas mismatch. The evidence was recaptured and normalized to the source aspect ratio before judging the UI; this was a capture issue, not a product defect.
+- Post-normalization comparison found no P0/P1/P2 implementation differences.
+
+## Follow-up polish
+
+- P3: the mock includes decorative “View all” links beside category headings. They were intentionally omitted because every item is already visible and the links would not perform a useful action.
+- P3: category and unit fields accept owner-defined text via native suggestion lists, so their arrow treatment varies slightly by browser; this supports the requested custom categories.
+
+final result: passed
