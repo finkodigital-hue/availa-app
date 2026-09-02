@@ -36,7 +36,10 @@ type StripePaymentIntent = {
 
 function stripeSecretKey() {
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error("Stripe is not configured yet. Add STRIPE_SECRET_KEY to the server environment first.");
+  if (!key)
+    throw new Error(
+      "Stripe is not configured yet. Add STRIPE_SECRET_KEY to the server environment first.",
+    );
   return key;
 }
 
@@ -49,7 +52,8 @@ async function stripeRequest<T>(path: string, init: RequestInit = {}): Promise<T
     },
   });
   const body = await response.json();
-  if (!response.ok) throw new Error(body?.error?.message ?? "Stripe could not complete that request.");
+  if (!response.ok)
+    throw new Error(body?.error?.message ?? "Stripe could not complete that request.");
   return body as T;
 }
 
@@ -104,7 +108,8 @@ export const startStripeOnboarding = createServerFn({ method: "POST" })
         }),
       });
       accountId = account.id;
-      const { error: updateError } = await context.supabase
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: updateError } = await supabaseAdmin
         .from("businesses")
         .update({
           stripe_account_id: account.id,
@@ -130,8 +135,11 @@ export const refreshStripeAccount = createServerFn({ method: "POST" })
     if (error) throw error;
     if (!business?.stripe_account_id) throw new Error("Stripe is not connected yet.");
 
-    const account = await stripeRequest<StripeAccount>(`/v1/accounts/${business.stripe_account_id}`);
-    const { error: updateError } = await context.supabase
+    const account = await stripeRequest<StripeAccount>(
+      `/v1/accounts/${business.stripe_account_id}`,
+    );
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: updateError } = await supabaseAdmin
       .from("businesses")
       .update({
         stripe_charges_enabled: account.charges_enabled,
@@ -144,44 +152,79 @@ export const refreshStripeAccount = createServerFn({ method: "POST" })
 
 export const startBookingCheckout = createServerFn({ method: "POST" })
   .validator((data: CheckoutInput) => {
-    if (!data.businessId || !data.serviceId || !data.staffId || !data.customerName.trim() || !data.customerEmail.trim()) {
+    if (
+      !data.businessId ||
+      !data.serviceId ||
+      !data.staffId ||
+      !data.customerName.trim() ||
+      !data.customerEmail.trim()
+    ) {
       throw new Error("Please complete your booking details first.");
     }
-    if (data.customerName.length > 200 || data.customerEmail.length > 254 || data.customerPhone.length > 40 || data.notes.length > 500) {
+    if (
+      data.customerName.length > 200 ||
+      data.customerEmail.length > 254 ||
+      data.customerPhone.length > 40 ||
+      data.notes.length > 500
+    ) {
       throw new Error("One of the booking details is too long.");
     }
-    if (!/^\/book\/[a-z0-9-]+$/i.test(data.returnPath)) throw new Error("Invalid booking return path.");
-    if (Number.isNaN(Date.parse(data.startsAt)) || Number.isNaN(Date.parse(data.endsAt))) throw new Error("Invalid booking time.");
+    if (!/^\/book\/[a-z0-9-]+$/i.test(data.returnPath))
+      throw new Error("Invalid booking return path.");
+    if (Number.isNaN(Date.parse(data.startsAt)) || Number.isNaN(Date.parse(data.endsAt)))
+      throw new Error("Invalid booking time.");
     return data;
   })
   .handler(async ({ data }): Promise<{ checkoutUrl: string | null }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: business, error: businessError } = await supabaseAdmin
       .from("businesses")
-      .select("id, name, currency, payment_mode, deposit_percent, stripe_account_id, stripe_charges_enabled")
+      .select(
+        "id, name, currency, payment_mode, deposit_percent, stripe_account_id, stripe_charges_enabled",
+      )
       .eq("id", data.businessId)
       .maybeSingle();
     if (businessError) throw businessError;
     if (!business) throw new Error("This business is no longer available.");
     if (business.payment_mode === "none") return { checkoutUrl: null };
-    if (!business.stripe_account_id || !business.stripe_charges_enabled) throw new Error("Online payment is not available for this business yet.");
+    if (!business.stripe_account_id || !business.stripe_charges_enabled)
+      throw new Error("Online payment is not available for this business yet.");
 
-    const [{ data: service, error: serviceError }, { data: staff, error: staffError }] = await Promise.all([
-      supabaseAdmin.from("services").select("id, name, price_cents, active, gap_min, active_after_min").eq("id", data.serviceId).eq("business_id", business.id).maybeSingle(),
-      supabaseAdmin.from("staff").select("id").eq("id", data.staffId).eq("business_id", business.id).maybeSingle(),
-    ]);
+    const [{ data: service, error: serviceError }, { data: staff, error: staffError }] =
+      await Promise.all([
+        supabaseAdmin
+          .from("services")
+          .select("id, name, price_cents, active, gap_min, active_after_min")
+          .eq("id", data.serviceId)
+          .eq("business_id", business.id)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("staff")
+          .select("id")
+          .eq("id", data.staffId)
+          .eq("business_id", business.id)
+          .maybeSingle(),
+      ]);
     if (serviceError) throw serviceError;
     if (staffError) throw staffError;
-    if (!service?.active || !staff) throw new Error("That service or team member is no longer available.");
+    if (!service?.active || !staff)
+      throw new Error("That service or team member is no longer available.");
 
-    const amount = business.payment_mode === "deposit" ? Math.round(service.price_cents * (business.deposit_percent / 100)) : service.price_cents;
+    const amount =
+      business.payment_mode === "deposit"
+        ? Math.round(service.price_cents * (business.deposit_percent / 100))
+        : service.price_cents;
     if (amount < 50) throw new Error("This booking amount is too small for online payment.");
 
     const origin = appOrigin();
-    const paymentLabel = business.payment_mode === "deposit" ? `Deposit for ${service.name}` : service.name;
+    const paymentLabel =
+      business.payment_mode === "deposit" ? `Deposit for ${service.name}` : service.name;
     const session = await stripeRequest<{ url: string }>("/v1/checkout/sessions", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", "Stripe-Account": business.stripe_account_id },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Stripe-Account": business.stripe_account_id,
+      },
       body: formBody({
         mode: "payment",
         customer_creation: "always",
@@ -203,7 +246,8 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
         "metadata[notes]": data.notes.trim(),
         "metadata[payment_mode]": business.payment_mode,
         "metadata[gap_min]": service.gap_min != null ? String(service.gap_min) : "",
-        "metadata[active_after_min]": service.active_after_min != null ? String(service.active_after_min) : "",
+        "metadata[active_after_min]":
+          service.active_after_min != null ? String(service.active_after_min) : "",
         "payment_intent_data[metadata][business_id]": business.id,
         "payment_intent_data[metadata][service_id]": data.serviceId,
         "payment_intent_data[metadata][staff_id]": data.staffId,
@@ -232,7 +276,9 @@ export const startBalanceCheckout = createServerFn({ method: "POST" })
 
     const { data: booking, error: bookingError } = await context.supabase
       .from("bookings")
-      .select("id, customer_name, customer_email, price_cents, amount_paid_cents, payment_status, services(name)")
+      .select(
+        "id, customer_name, customer_email, price_cents, amount_paid_cents, payment_status, services(name)",
+      )
       .eq("id", data.bookingId)
       .eq("business_id", business.id)
       .maybeSingle();
@@ -264,7 +310,10 @@ export const startBalanceCheckout = createServerFn({ method: "POST" })
 
     const session = await stripeRequest<{ url: string }>("/v1/checkout/sessions", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", "Stripe-Account": business.stripe_account_id },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Stripe-Account": business.stripe_account_id,
+      },
       body: formBody(checkoutFields),
     });
     return { checkoutUrl: session.url };
@@ -351,14 +400,17 @@ export const takeSavedBalancePayment = createServerFn({ method: "POST" })
     if (intent.status !== "succeeded") return { charged: false };
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error: fulfilmentError } = await (supabaseAdmin as any).rpc("fulfill_stripe_balance_payment", {
-      p_booking_id: booking.id,
-      p_business_id: business.id,
-      p_amount_cents: amount,
-      p_currency: business.currency,
-      p_stripe_payment_intent_id: intent.id,
-      p_stripe_charge_id: null,
-    });
+    const { error: fulfilmentError } = await (supabaseAdmin as any).rpc(
+      "fulfill_stripe_balance_payment",
+      {
+        p_booking_id: booking.id,
+        p_business_id: business.id,
+        p_amount_cents: amount,
+        p_currency: business.currency,
+        p_stripe_payment_intent_id: intent.id,
+        p_stripe_charge_id: null,
+      },
+    );
     if (fulfilmentError) throw fulfilmentError;
     return { charged: true };
   });

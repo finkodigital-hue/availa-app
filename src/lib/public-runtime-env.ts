@@ -12,15 +12,19 @@ declare global {
 export function getPublicSupabaseEnvironment(): PublicRuntimeEnv {
   if (typeof window !== "undefined") {
     return {
-      supabaseUrl: import.meta.env.VITE_SUPABASE_URL || window.__BOOKZENVO_ENV__?.supabaseUrl,
-      supabasePublishableKey:
-        import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || window.__BOOKZENVO_ENV__?.supabasePublishableKey,
+      // The browser talks only to Bookzenvo's same-origin gateway. The real
+      // Supabase project URL and publishable key remain server-side.
+      supabaseUrl: `${window.location.origin}/api/supabase`,
+      // supabase-js requires a non-empty key. The gateway replaces this
+      // deliberately non-secret marker with the real server-side key.
+      supabasePublishableKey: "sb_publishable_browser_proxy",
     };
   }
 
   return {
-    supabaseUrl: import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
-    supabasePublishableKey:
-      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY,
+    // Never reference VITE_* Supabase variables here. Vite replaces them in
+    // browser bundles even when this server-only branch is not executed.
+    supabaseUrl: process.env.SUPABASE_URL,
+    supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
   };
 }

@@ -129,25 +129,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  const publicEnvironment =
-    typeof window === "undefined"
-      ? JSON.stringify({
-          supabaseUrl: process.env.SUPABASE_URL,
-          supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
-        }).replace(/</g, "\\u003c")
-      : null;
-
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
-        {publicEnvironment && (
-          <script
-            dangerouslySetInnerHTML={{ __html: `window.__BOOKZENVO_ENV__=${publicEnvironment};` }}
-          />
-        )}
         <script
           dangerouslySetInnerHTML={{
             // Supabase recovery links use a URL hash. If a project-level redirect
@@ -172,10 +159,7 @@ function RootComponent() {
     };
     const onRejection = (e: PromiseRejectionEvent) => {
       const reason = e.reason;
-      reportClientError(
-        reason?.message ?? String(reason ?? "Unhandled rejection"),
-        reason?.stack,
-      );
+      reportClientError(reason?.message ?? String(reason ?? "Unhandled rejection"), reason?.stack);
     };
     window.addEventListener("error", onError);
     window.addEventListener("unhandledrejection", onRejection);

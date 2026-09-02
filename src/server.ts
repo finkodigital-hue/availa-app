@@ -113,17 +113,6 @@ async function normalizeCatastrophicSsrResponse(
   if (isDocumentRequest && response.status >= 200 && response.status < 300) {
     const body = await response.clone().text();
     if (!body.trim()) {
-      // The browser client needs these public values before it can initialise
-      // Supabase. The normal SSR document adds them in RootShell, but an empty
-      // Nitro stream skips RootShell entirely. Without this script the fallback
-      // looks successful in a browser, then immediately crashes into a blank
-      // page while the client starts.
-      const bindings = await getRuntimeBindings(env);
-      const publicEnvironment = JSON.stringify({
-        supabaseUrl: process.env.SUPABASE_URL ?? bindings.SUPABASE_URL,
-        supabasePublishableKey:
-          process.env.SUPABASE_PUBLISHABLE_KEY ?? bindings.SUPABASE_PUBLISHABLE_KEY,
-      }).replace(/</g, "\\u003c");
       // `/client-entry.js` only exists once scripts/prepare-cloudflare-deploy.mjs
       // has run (production Cloudflare builds). Under `vite dev` that file is
       // never generated, so point at the real source instead — Vite's dev
@@ -137,7 +126,7 @@ async function normalizeCatastrophicSsrResponse(
         ? `<script type="module">import { injectIntoGlobalHook } from "/@react-refresh";injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>(type)=>type;</script>`
         : "";
       return new Response(
-        `<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Bookzenvo</title></head><body><script>window.__BOOKZENVO_ENV__=${publicEnvironment};</script><div id="root"></div>${reactRefreshPreamble}<script type="module" src="${clientEntryUrl}"></script></body></html>`,
+        `<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Bookzenvo</title></head><body><div id="root"></div>${reactRefreshPreamble}<script type="module" src="${clientEntryUrl}"></script></body></html>`,
         { status: response.status, headers: { "content-type": "text/html; charset=utf-8" } },
       );
     }

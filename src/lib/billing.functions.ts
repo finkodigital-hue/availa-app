@@ -41,7 +41,10 @@ export type StripeSubscription = {
 
 function stripeSecretKey() {
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error("Stripe is not configured yet. Add STRIPE_SECRET_KEY to the server environment first.");
+  if (!key)
+    throw new Error(
+      "Stripe is not configured yet. Add STRIPE_SECRET_KEY to the server environment first.",
+    );
   return key;
 }
 
@@ -54,7 +57,8 @@ async function stripeRequest<T>(path: string, init: RequestInit = {}): Promise<T
     },
   });
   const body = await response.json();
-  if (!response.ok) throw new Error(body?.error?.message ?? "Stripe could not complete that request.");
+  if (!response.ok)
+    throw new Error(body?.error?.message ?? "Stripe could not complete that request.");
   return body as T;
 }
 
@@ -99,7 +103,8 @@ export const startStudioCheckout = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw error;
     if (!business) throw new Error("Only the business owner can upgrade the plan.");
-    if ((business.plan ?? "free") !== "free") throw new Error("This workspace is already on Studio.");
+    if ((business.plan ?? "free") !== "free")
+      throw new Error("This workspace is already on Studio.");
 
     // Reuse the billing customer across attempts so Stripe keeps one tidy
     // record per business instead of one per abandoned checkout.
@@ -116,7 +121,8 @@ export const startStudioCheckout = createServerFn({ method: "POST" })
         }),
       });
       customerId = customer.id;
-      const { error: saveError } = await context.supabase
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: saveError } = await supabaseAdmin
         .from("businesses")
         .update({ stripe_billing_customer_id: customerId })
         .eq("id", business.id);
@@ -175,7 +181,8 @@ export const finalizeStudioCheckout = createServerFn({ method: "POST" })
     const active = subscription.status === "active" || subscription.status === "trialing";
     if (!active) return { activated: false };
 
-    const { error: updateError } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: updateError } = await supabaseAdmin
       .from("businesses")
       .update({
         plan: "studio",

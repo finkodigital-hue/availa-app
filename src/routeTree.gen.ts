@@ -51,6 +51,7 @@ import { Route as AuthenticatedBlockPreviewRouteImport } from './routes/_authent
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 import { Route as BookingActionRescheduleTokenRouteImport } from './routes/booking-action.reschedule.$token'
 import { Route as BookingActionActionTokenRouteImport } from './routes/booking-action.$action.$token'
+import { Route as ApiSupabaseSplatRouteImport } from './routes/api/supabase/$'
 import { Route as ApiCronSendRemindersRouteImport } from './routes/api/cron/send-reminders'
 import { Route as ApiBookingsSendConfirmationRouteImport } from './routes/api/bookings/send-confirmation'
 import { Route as ApiBookingActionsReschedulePeekRouteImport } from './routes/api/booking-actions/reschedule-peek'
@@ -271,6 +272,11 @@ const BookingActionActionTokenRoute =
     path: '/booking-action/$action/$token',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiSupabaseSplatRoute = ApiSupabaseSplatRouteImport.update({
+  id: '/api/supabase/$',
+  path: '/api/supabase/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronSendRemindersRoute = ApiCronSendRemindersRouteImport.update({
   id: '/api/cron/send-reminders',
   path: '/api/cron/send-reminders',
@@ -345,6 +351,7 @@ export interface FileRoutesByFullPath {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/supabase/$': typeof ApiSupabaseSplatRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
 }
@@ -391,6 +398,7 @@ export interface FileRoutesByTo {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/supabase/$': typeof ApiSupabaseSplatRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
 }
@@ -441,6 +449,7 @@ export interface FileRoutesById {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/supabase/$': typeof ApiSupabaseSplatRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
 }
@@ -491,6 +500,7 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/supabase/$'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -537,6 +547,7 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/supabase/$'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
   id:
@@ -586,6 +597,7 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/supabase/$'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
   fileRoutesById: FileRoutesById
@@ -614,6 +626,7 @@ export interface RootRouteChildren {
   ApiBookingActionsReschedulePeekRoute: typeof ApiBookingActionsReschedulePeekRoute
   ApiBookingsSendConfirmationRoute: typeof ApiBookingsSendConfirmationRoute
   ApiCronSendRemindersRoute: typeof ApiCronSendRemindersRoute
+  ApiSupabaseSplatRoute: typeof ApiSupabaseSplatRoute
   BookingActionActionTokenRoute: typeof BookingActionActionTokenRoute
   BookingActionRescheduleTokenRoute: typeof BookingActionRescheduleTokenRoute
 }
@@ -914,6 +927,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BookingActionActionTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/supabase/$': {
+      id: '/api/supabase/$'
+      path: '/api/supabase/$'
+      fullPath: '/api/supabase/$'
+      preLoaderRoute: typeof ApiSupabaseSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/send-reminders': {
       id: '/api/cron/send-reminders'
       path: '/api/cron/send-reminders'
@@ -1047,6 +1067,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBookingActionsReschedulePeekRoute: ApiBookingActionsReschedulePeekRoute,
   ApiBookingsSendConfirmationRoute: ApiBookingsSendConfirmationRoute,
   ApiCronSendRemindersRoute: ApiCronSendRemindersRoute,
+  ApiSupabaseSplatRoute: ApiSupabaseSplatRoute,
   BookingActionActionTokenRoute: BookingActionActionTokenRoute,
   BookingActionRescheduleTokenRoute: BookingActionRescheduleTokenRoute,
 }

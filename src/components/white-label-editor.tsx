@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Globe, Crown, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { compressImage, signedUrl } from "@/lib/image";
 import { toast } from "sonner";
+import { saveWhiteLabel } from "@/lib/business-settings.functions";
 
 export function WhiteLabelEditor({ business }: { business: any }) {
   const qc = useQueryClient();
@@ -17,12 +19,19 @@ export function WhiteLabelEditor({ business }: { business: any }) {
   const [saving, setSaving] = useState(false);
   const [favPreview, setFavPreview] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const saveWhiteLabelSettings = useServerFn(saveWhiteLabel);
 
   useEffect(() => {
     if (!business) return;
     setF(business);
-    if (business.favicon_url) signedUrl(business.favicon_url).then(setFavPreview).catch(() => {});
-    if (business.email_logo_url) signedUrl(business.email_logo_url).then(setLogoPreview).catch(() => {});
+    if (business.favicon_url)
+      signedUrl(business.favicon_url)
+        .then(setFavPreview)
+        .catch(() => {});
+    if (business.email_logo_url)
+      signedUrl(business.email_logo_url)
+        .then(setLogoPreview)
+        .catch(() => {});
   }, [business?.id]);
 
   const premium = (f.plan ?? "free") !== "free";
@@ -31,30 +40,41 @@ export function WhiteLabelEditor({ business }: { business: any }) {
     try {
       const blob = await compressImage(file, 512, 0.9);
       const path = `${business.id}/whitelabel/${kind}-${Date.now()}.jpg`;
-      const { error } = await supabase.storage.from("business-assets").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
+      const { error } = await supabase.storage
+        .from("business-assets")
+        .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
       if (error) throw error;
       if (kind === "favicon") setF((p: any) => ({ ...p, favicon_url: path }));
       else setF((p: any) => ({ ...p, email_logo_url: path }));
       const url = await signedUrl(path);
-      if (kind === "favicon") setFavPreview(url); else setLogoPreview(url);
+      if (kind === "favicon") setFavPreview(url);
+      else setLogoPreview(url);
       toast.success("Uploaded");
-    } catch (e: any) { toast.error(e.message ?? "Upload failed"); }
+    } catch (e: any) {
+      toast.error(e.message ?? "Upload failed");
+    }
   };
 
   const save = async () => {
     setSaving(true);
-    const { error } = await supabase.from("businesses").update({
-      custom_domain: f.custom_domain || null,
-      favicon_url: f.favicon_url || null,
-      browser_title: f.browser_title || null,
-      email_logo_url: f.email_logo_url || null,
-      email_footer: f.email_footer || null,
-      hide_powered_by: premium ? !!f.hide_powered_by : false,
-    }).eq("id", business.id);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("White-label saved");
-    qc.invalidateQueries({ queryKey: ["my-business"] });
+    try {
+      await saveWhiteLabelSettings({
+        data: {
+          customDomain: f.custom_domain || null,
+          faviconUrl: f.favicon_url || null,
+          browserTitle: f.browser_title || null,
+          emailLogoUrl: f.email_logo_url || null,
+          emailFooter: f.email_footer || null,
+          hidePoweredBy: premium && !!f.hide_powered_by,
+        },
+      });
+      toast.success("White-label saved");
+      qc.invalidateQueries({ queryKey: ["my-business"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save white-label settings");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -71,45 +91,84 @@ export function WhiteLabelEditor({ business }: { business: any }) {
           className="h-10"
         />
         <p className="text-[11px] text-muted-foreground mt-2">
-          Point a CNAME from <span className="font-mono">{f.custom_domain || "book.yourdomain.com"}</span> to <span className="font-mono">cname.bookzenvo.com</span>. SSL is provisioned automatically.
+          Point a CNAME from{" "}
+          <span className="font-mono">{f.custom_domain || "book.yourdomain.com"}</span> to{" "}
+          <span className="font-mono">cname.bookzenvo.com</span>. SSL is provisioned automatically.
         </p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="rounded-xl border bg-background p-4">
-          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Favicon</Label>
+          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Favicon
+          </Label>
           <div className="mt-2 flex items-center gap-3">
             <div className="h-12 w-12 rounded-lg border bg-muted grid place-items-center overflow-hidden">
-              {favPreview ? <img src={favPreview} alt="" className="h-full w-full object-cover" /> : <span className="text-[10px] text-muted-foreground">None</span>}
+              {favPreview ? (
+                <img src={favPreview} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-[10px] text-muted-foreground">None</span>
+              )}
             </div>
             <label className="inline-flex items-center justify-center h-9 px-3 rounded-md border bg-card text-xs cursor-pointer hover:bg-secondary/50 transition-colors">
               <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload
-              <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && upload("favicon", e.target.files[0])} />
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => e.target.files?.[0] && upload("favicon", e.target.files[0])}
+              />
             </label>
           </div>
         </div>
         <div className="rounded-xl border bg-background p-4">
-          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Browser title</Label>
-          <Input value={f.browser_title ?? ""} onChange={(e) => setF({ ...f, browser_title: e.target.value })} placeholder={`Book with ${business?.name}`} className="mt-2 h-10" />
+          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Browser title
+          </Label>
+          <Input
+            value={f.browser_title ?? ""}
+            onChange={(e) => setF({ ...f, browser_title: e.target.value })}
+            placeholder={`Book with ${business?.name}`}
+            className="mt-2 h-10"
+          />
         </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="rounded-xl border bg-background p-4">
-          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Email logo</Label>
+          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Email logo
+          </Label>
           <div className="mt-2 flex items-center gap-3">
             <div className="h-12 w-24 rounded-lg border bg-muted grid place-items-center overflow-hidden">
-              {logoPreview ? <img src={logoPreview} alt="" className="h-full w-full object-contain" /> : <span className="text-[10px] text-muted-foreground">None</span>}
+              {logoPreview ? (
+                <img src={logoPreview} alt="" className="h-full w-full object-contain" />
+              ) : (
+                <span className="text-[10px] text-muted-foreground">None</span>
+              )}
             </div>
             <label className="inline-flex items-center justify-center h-9 px-3 rounded-md border bg-card text-xs cursor-pointer hover:bg-secondary/50 transition-colors">
               <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload
-              <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && upload("email-logo", e.target.files[0])} />
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => e.target.files?.[0] && upload("email-logo", e.target.files[0])}
+              />
             </label>
           </div>
         </div>
         <div className="rounded-xl border bg-background p-4">
-          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Email footer</Label>
-          <Textarea value={f.email_footer ?? ""} onChange={(e) => setF({ ...f, email_footer: e.target.value })} placeholder="Address, contact, unsubscribe note…" className="mt-2" rows={3} />
+          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Email footer
+          </Label>
+          <Textarea
+            value={f.email_footer ?? ""}
+            onChange={(e) => setF({ ...f, email_footer: e.target.value })}
+            placeholder="Address, contact, unsubscribe note…"
+            className="mt-2"
+            rows={3}
+          />
         </div>
       </div>
 
@@ -119,13 +178,21 @@ export function WhiteLabelEditor({ business }: { business: any }) {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Remove "Powered by Bookzenvo"</span>
-              {!premium && <Badge variant="secondary" className="text-[10px]">Premium</Badge>}
+              {!premium && (
+                <Badge variant="secondary" className="text-[10px]">
+                  Premium
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               Hide Bookzenvo branding across your booking page, customer portal and emails.
             </p>
           </div>
-          <Switch checked={!!f.hide_powered_by && premium} onCheckedChange={(v) => setF({ ...f, hide_powered_by: v })} disabled={!premium} />
+          <Switch
+            checked={!!f.hide_powered_by && premium}
+            onCheckedChange={(v) => setF({ ...f, hide_powered_by: v })}
+            disabled={!premium}
+          />
         </div>
       </div>
 

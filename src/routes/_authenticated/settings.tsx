@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Building2,
   Clock,
@@ -18,6 +19,9 @@ import {
   CreditCard,
   Trash2,
   AlertTriangle,
+  ChevronRight,
+  ArrowLeft,
+  ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
@@ -31,7 +35,6 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WEEKDAYS } from "@/lib/format";
 import { toast } from "sonner";
 import { WhiteLabelEditor } from "@/components/white-label-editor";
@@ -39,6 +42,7 @@ import { TwoFactorSettings } from "@/components/two-factor-settings";
 import { PlanSettings } from "@/components/plan-settings";
 import { StripeSettings } from "@/components/stripe-settings";
 import { deleteMyAccount } from "@/lib/account.functions";
+import { saveBusinessProfile } from "@/lib/business-settings.functions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +57,7 @@ import {
 
 const SETTINGS_TABS = [
   "account",
+  "security",
   "plan",
   "profile",
   "payments",
@@ -74,6 +79,7 @@ function SettingsPage() {
   const { data: biz } = useMyBusiness();
   const { user } = useAuth();
   const { tab } = Route.useSearch();
+  const navigate = useNavigate();
 
   // A business is an "independent pro" if it's linked to at least one salon
   // as the pro side — that's what unlocks the chair-rentals tab below.
@@ -102,6 +108,35 @@ function SettingsPage() {
     },
   });
 
+  const {
+    data: hourPeriods,
+    isLoading: hoursSummaryLoading,
+    isError: hoursSummaryError,
+  } = useQuery({
+    queryKey: ["settings-hours-summary", biz?.id],
+    enabled: !!biz?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("business_hour_periods")
+        .select("weekday, open_time, close_time")
+        .eq("business_id", biz!.id)
+        .order("weekday")
+        .order("open_time");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: mfaEnabled, isError: mfaSummaryError } = useQuery({
+    queryKey: ["settings-mfa-summary", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+      return (data?.totp ?? []).some((factor) => factor.status === "verified");
+    },
+  });
+
   if (!biz)
     return (
       <div className="p-8">
@@ -111,42 +146,193 @@ function SettingsPage() {
 
   const isIndependentPro = (salonLinks?.length ?? 0) > 0;
 
-  return (
-    <div className="p-5 sm:p-8 md:p-10 max-w-4xl">
-      <PageHeader
-        eyebrow="Workspace"
-        title="Settings"
-        subtitle="Manage your account, business details and operational preferences."
-      />
+  const openSetting = (nextTab: (typeof SETTINGS_TABS)[number]) =>
+    navigate({ to: "/settings", search: { tab: nextTab } });
 
-      <Tabs defaultValue={tab ?? "profile"} className="space-y-5">
-        <TabsList className="flex flex-wrap h-auto justify-start gap-1 rounded-[10px] bg-card border p-1.5 shadow-soft">
-          <TabsTrigger value="account" className={TAB_CLS}>
-            <UserRound className="h-3.5 w-3.5 mr-1.5" /> Account
-          </TabsTrigger>
-          <TabsTrigger value="plan" className={TAB_CLS}>
-            <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Plan
-          </TabsTrigger>
-          <TabsTrigger value="profile" className={TAB_CLS}>
-            <Building2 className="h-3.5 w-3.5 mr-1.5" /> Business
-          </TabsTrigger>
-          <TabsTrigger value="payments" className={TAB_CLS}>
-            <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Payments
-          </TabsTrigger>
-          <TabsTrigger value="hours" className={TAB_CLS}>
-            <Clock className="h-3.5 w-3.5 mr-1.5" /> Hours
-          </TabsTrigger>
-          <TabsTrigger value="whitelabel" className={TAB_CLS}>
-            <Crown className="h-3.5 w-3.5 mr-1.5" /> White-label
-          </TabsTrigger>
+  if (!tab) {
+    const profileFields = [
+      biz.name,
+      biz.timezone,
+      biz.currency,
+      biz.email,
+      biz.phone,
+      biz.website,
+      biz.address,
+      biz.description,
+      biz.instagram,
+      biz.logo_url,
+    ];
+    const completedProfileFields = profileFields.filter(
+      (value) => typeof value === "string" && value.trim().length > 0,
+    ).length;
+    const todayLabel = new Intl.DateTimeFormat("en-GB", {
+      weekday: "short",
+      timeZone: biz.timezone || "Europe/London",
+    }).format(new Date());
+    const todayIndex = WEEKDAYS.findIndex((day) => day === todayLabel);
+    const todayPeriods = (hourPeriods ?? []).filter((period) => period.weekday === todayIndex);
+    const hoursSummary = hoursSummaryLoading
+      ? "Checking today’s hours…"
+      : hoursSummaryError
+        ? "Manage opening hours"
+        : todayPeriods.length === 0
+          ? "Closed today"
+          : `Open today · ${todayPeriods
+              .map(
+                (period) =>
+                  `${String(period.open_time).slice(0, 5)}–${String(period.close_time).slice(0, 5)}`,
+              )
+              .join(", ")}`;
+    const activeRentals = (salonLinks ?? []).filter((link) => link.status === "active").length;
+    const planSummary = (biz.plan ?? "free") === "free" ? "Solo · Free" : "Studio · £22/month";
+    const paymentSummary = biz.stripe_charges_enabled
+      ? "Stripe connected"
+      : biz.stripe_account_id
+        ? "Stripe setup needed"
+        : "Stripe not connected";
+
+    return (
+      <div className="w-full max-w-[1180px] p-5 sm:p-8 md:p-10">
+        <PageHeader
+          eyebrow="Workspace"
+          title="Settings"
+          subtitle="Manage your account, business details and operational preferences."
+          action={
+            biz.slug ? (
+              <Button variant="outline" asChild className="h-11 bg-background px-3 xl:px-5">
+                <a href={`/book/${biz.slug}`} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-4 w-4 xl:mr-2" />
+                  <span className="hidden xl:inline">View booking page</span>
+                </a>
+              </Button>
+            ) : undefined
+          }
+        />
+
+        <section className="mb-8 flex flex-col gap-5 rounded-2xl border border-[color:var(--gold)]/25 bg-[color:var(--cream)]/45 px-5 py-5 sm:px-6 lg:flex-row lg:items-center">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[color:var(--gold)]/15 text-[color:var(--gold-deep)]">
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-semibold">
+              {completedProfileFields === profileFields.length
+                ? "Your business profile is complete"
+                : "Finish your business profile"}
+            </p>
+            <div className="mt-1.5 flex flex-col gap-2 lg:flex-row lg:items-center">
+              <span className="whitespace-nowrap text-sm text-muted-foreground">
+                {completedProfileFields} of {profileFields.length} details complete
+              </span>
+              <div
+                className="h-1.5 w-full max-w-[300px] overflow-hidden rounded-full bg-border"
+                role="progressbar"
+                aria-valuenow={completedProfileFields}
+                aria-valuemin={0}
+                aria-valuemax={profileFields.length}
+                aria-label="Business profile completion"
+              >
+                <div
+                  className="h-full rounded-full bg-[color:var(--gold-deep)] transition-[width]"
+                  style={{ width: `${(completedProfileFields / profileFields.length) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          <Button className="shrink-0 px-6" onClick={() => openSetting("profile")}>
+            {completedProfileFields === profileFields.length ? "Review" : "Continue"}
+          </Button>
+        </section>
+
+        <SettingsGroup label="Your business">
+          <SettingsRow
+            icon={Building2}
+            title="Business profile"
+            description="Manage your salon name, location and contact details."
+            summary={`${biz.name} · ${biz.timezone || "Timezone not set"}`}
+            onClick={() => openSetting("profile")}
+          />
+          <SettingsRow
+            icon={Clock}
+            title="Opening hours"
+            description="Set your working hours and holiday closures."
+            summary={hoursSummary}
+            onClick={() => openSetting("hours")}
+          />
+          <SettingsRow
+            icon={Crown}
+            title="White-label"
+            description="Manage how Bookzenvo appears to your clients."
+            summary={biz.hide_powered_by ? "Bookzenvo branding hidden" : "Bookzenvo branding shown"}
+            onClick={() => openSetting("whitelabel")}
+          />
           {isIndependentPro && (
-            <TabsTrigger value="chairs" className={TAB_CLS}>
-              <Armchair className="h-3.5 w-3.5 mr-1.5" /> Chair rentals
-            </TabsTrigger>
+            <SettingsRow
+              icon={Armchair}
+              title="Chair rentals"
+              description="View and manage your active chair rentals."
+              summary={activeRentals === 0 ? "No active rentals" : `${activeRentals} active`}
+              onClick={() => openSetting("chairs")}
+            />
           )}
-        </TabsList>
+          <SettingsRow
+            icon={CreditCard}
+            title="Payments"
+            description="Manage payment collection, deposits and Stripe."
+            summary={paymentSummary}
+            onClick={() => openSetting("payments")}
+          />
+        </SettingsGroup>
 
-        <TabsContent value="account" className="space-y-5">
+        <SettingsGroup label="Money & plan">
+          <SettingsRow
+            icon={Sparkles}
+            title="Plan & billing"
+            description="View your plan, billing options and included features."
+            summary={planSummary}
+            onClick={() => openSetting("plan")}
+          />
+        </SettingsGroup>
+
+        <SettingsGroup label="Account">
+          <SettingsRow
+            icon={UserRound}
+            title="Your account"
+            description="Update your account details and password."
+            summary={user?.email || "Account details"}
+            onClick={() => openSetting("account")}
+          />
+          <SettingsRow
+            icon={ShieldCheck}
+            title="Security"
+            description="Manage two-factor authentication."
+            summary={
+              mfaSummaryError
+                ? "Manage sign-in protection"
+                : mfaEnabled === undefined
+                  ? "Checking protection…"
+                  : mfaEnabled
+                    ? "2-step verification on"
+                    : "2-step verification off"
+            }
+            onClick={() => openSetting("security")}
+          />
+        </SettingsGroup>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-4xl p-5 sm:p-8 md:p-10">
+      <button
+        type="button"
+        onClick={() => navigate({ to: "/settings", search: {} })}
+        className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to settings
+      </button>
+
+      {tab === "account" && (
+        <div className="space-y-5">
           <Section
             icon={UserRound}
             title="Your account"
@@ -155,71 +341,71 @@ function SettingsPage() {
             {user && <AccountEditor user={user} />}
           </Section>
           <Section
-            icon={ShieldCheck}
-            title="Security"
-            description="Extra protection for your sign-in."
-          >
-            <TwoFactorSettings />
-          </Section>
-          <Section
             icon={AlertTriangle}
             title="Danger zone"
             description="Permanently delete this workspace and everything in it."
           >
             <DeleteAccountSection biz={biz} />
           </Section>
-        </TabsContent>
-        <TabsContent value="plan">
-          <Section
-            icon={Sparkles}
-            title="Plan"
-            description="Free for one staff member — upgrade to Studio for unlimited staff and AI features."
-          >
-            <PlanSettings business={biz} />
-          </Section>
-        </TabsContent>
-        <TabsContent value="profile">
-          <Section
-            icon={Building2}
-            title="Business profile"
-            description="The core details customers and staff see across the app."
-          >
-            <ProfileEditor biz={biz} />
-          </Section>
-        </TabsContent>
-        <TabsContent value="payments">
-          <Section
-            icon={CreditCard}
-            title="Payments"
-            description="Connect Stripe, then choose whether bookings take a deposit or payment in full."
-          >
-            <StripeSettings business={biz} />
-          </Section>
-        </TabsContent>
-        <TabsContent value="hours">
-          <Section
-            icon={Clock}
-            title="Opening hours"
-            description="Your weekly schedule, split shifts and holiday closures."
-          >
-            <HoursEditor biz={biz} />
-          </Section>
-        </TabsContent>
-        <TabsContent value="whitelabel">
-          <Section
-            icon={Crown}
-            title="White-label"
-            description="Remove Bookzenvo branding for your customers."
-          >
-            <WhiteLabelEditor business={biz} />
-          </Section>
-        </TabsContent>
-        {isIndependentPro && (
-          <TabsContent value="chairs">
-            <ChairRentalsEditor businessId={biz.id} links={salonLinks ?? []} />
-          </TabsContent>
-        )}
-      </Tabs>
+        </div>
+      )}
+      {tab === "security" && (
+        <Section
+          icon={ShieldCheck}
+          title="Security"
+          description="Add extra protection to your Bookzenvo sign-in."
+        >
+          <TwoFactorSettings />
+        </Section>
+      )}
+      {tab === "plan" && (
+        <Section
+          icon={Sparkles}
+          title="Plan"
+          description="Free for one staff member — upgrade to Studio for unlimited staff and AI features."
+        >
+          <PlanSettings business={biz} />
+        </Section>
+      )}
+      {tab === "profile" && (
+        <Section
+          icon={Building2}
+          title="Business profile"
+          description="The core details customers and staff see across the app."
+        >
+          <ProfileEditor biz={biz} />
+        </Section>
+      )}
+      {tab === "payments" && (
+        <Section
+          icon={CreditCard}
+          title="Payments"
+          description="Connect Stripe, then choose whether bookings take a deposit or payment in full."
+        >
+          <StripeSettings business={biz} />
+        </Section>
+      )}
+      {tab === "hours" && (
+        <Section
+          icon={Clock}
+          title="Opening hours"
+          description="Your weekly schedule, split shifts and holiday closures."
+        >
+          <HoursEditor biz={biz} />
+        </Section>
+      )}
+      {tab === "whitelabel" && (
+        <Section
+          icon={Crown}
+          title="White-label"
+          description="Remove Bookzenvo branding for your customers."
+        >
+          <WhiteLabelEditor business={biz} />
+        </Section>
+      )}
+      {tab === "chairs" && isIndependentPro && (
+        <ChairRentalsEditor businessId={biz.id} links={salonLinks ?? []} />
+      )}
     </div>
   );
 }
@@ -446,9 +632,49 @@ function DeleteAccountSection({ biz }: { biz: { id: string; name: string } }) {
   );
 }
 
-const TAB_CLS =
-  "rounded-[7px] px-3.5 py-2 text-xs font-medium text-muted-foreground transition-all duration-200 " +
-  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold";
+function SettingsGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-7">
+      <h2 className="mb-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </h2>
+      <div className="overflow-hidden rounded-2xl border bg-card shadow-soft">{children}</div>
+    </section>
+  );
+}
+
+function SettingsRow({
+  icon: Icon,
+  title,
+  description,
+  summary,
+  onClick,
+}: {
+  icon: typeof Building2;
+  title: string;
+  description: string;
+  summary: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b px-4 py-4 text-left transition-colors last:border-b-0 hover:bg-secondary/35 focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:grid-cols-[auto_minmax(180px,0.85fr)_minmax(220px,1.35fr)_minmax(160px,0.8fr)_auto] lg:gap-5 lg:px-6"
+      aria-label={`Open ${title} settings`}
+    >
+      <Icon className="h-5 w-5 shrink-0 text-foreground" />
+      <span className="min-w-0 text-sm font-semibold lg:text-[15px]">{title}</span>
+      <span className="col-span-2 row-start-2 min-w-0 text-xs leading-5 text-muted-foreground lg:col-span-1 lg:row-start-auto lg:text-sm">
+        {description}
+      </span>
+      <span className="hidden min-w-0 truncate text-right text-sm text-muted-foreground lg:block">
+        {summary}
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+    </button>
+  );
+}
 
 function Section({
   icon: Icon,
@@ -651,6 +877,7 @@ function ProfileEditor({ biz }: { biz: any }) {
   const [form, setForm] = useState<any>(biz);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const saveProfileSettings = useServerFn(saveBusinessProfile);
   useEffect(() => {
     setForm(biz);
   }, [biz?.id]);
@@ -660,33 +887,33 @@ function ProfileEditor({ biz }: { biz: any }) {
   const save = async () => {
     if (!form.name?.trim()) return toast.error("Business name is required");
     setSaving(true);
-    // reminder_hours_before is cast via `as any` — the generated Supabase
-    // types haven't been regenerated to include it yet (see the migration
-    // that adds the column; types regenerate once it's applied).
-    const { error } = await supabase
-      .from("businesses")
-      .update({
-        name: form.name.trim(),
-        description: form.description,
-        address: form.address,
-        phone: form.phone,
-        email: form.email,
-        website: form.website,
-        timezone: form.timezone,
-        currency: form.currency || "GBP",
-        instagram: form.instagram,
-        facebook: form.facebook,
-        tiktok: form.tiktok,
-        twitter: form.twitter,
-        reminder_hours_before: premium
-          ? Number(form.reminder_hours_before) || 24
-          : (biz.reminder_hours_before ?? 24),
-      } as any)
-      .eq("id", biz.id);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Profile saved");
-    qc.invalidateQueries({ queryKey: ["my-business"] });
+    try {
+      await saveProfileSettings({
+        data: {
+          name: form.name.trim(),
+          description: form.description,
+          address: form.address,
+          phone: form.phone,
+          email: form.email,
+          website: form.website,
+          timezone: form.timezone,
+          currency: form.currency || "GBP",
+          instagram: form.instagram,
+          facebook: form.facebook,
+          tiktok: form.tiktok,
+          twitter: form.twitter,
+          reminderHoursBefore: premium
+            ? Number(form.reminder_hours_before) || 24
+            : (biz.reminder_hours_before ?? 24),
+        },
+      });
+      toast.success("Profile saved");
+      qc.invalidateQueries({ queryKey: ["my-business"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save business profile");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
