@@ -21,7 +21,6 @@ const FORWARDED_REQUEST_HEADERS = [
 const FORWARDED_RESPONSE_HEADERS = [
   "accept-ranges",
   "content-disposition",
-  "content-length",
   "content-range",
   "content-type",
   "etag",
@@ -133,14 +132,33 @@ async function proxySupabaseRequest(request: Request) {
     headers.set("authorization", `Bearer ${publishableKey}`);
   }
 
-  const upstream = await fetch(upstreamUrl, {
-    method: request.method,
-    headers,
-    body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
-    redirect: "manual",
-    // Streaming uploads must opt in when running in Node-compatible dev mode.
-    duplex: "half",
-  } as RequestInit & { duplex: "half" });
+  let upstream: Response;
+  try {
+    upstream = await fetch(upstreamUrl, {
+      method: request.method,
+      headers,
+      body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
+      redirect: "manual",
+      // Streaming uploads must opt in when running in Node-compatible dev mode.
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
+  } catch (error) {
+    console.error("[Supabase gateway] Upstream request failed", error);
+    return Response.json(
+      {
+        code: 502,
+        error_code: "upstream_unavailable",
+        msg: "The Bookzenvo service is temporarily unavailable. Please try again.",
+      },
+      {
+        status: 502,
+        headers: {
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+        },
+      },
+    );
+  }
 
   const responseHeaders = new Headers();
   for (const name of FORWARDED_RESPONSE_HEADERS) {

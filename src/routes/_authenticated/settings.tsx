@@ -43,6 +43,7 @@ import { PlanSettings } from "@/components/plan-settings";
 import { StripeSettings } from "@/components/stripe-settings";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { saveBusinessProfile } from "@/lib/business-settings.functions";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -547,7 +548,8 @@ function DeleteAccountSection({ biz }: { biz: { id: string; name: string } }) {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await deleteMyAccount({ data: { confirmName: confirmText.trim() } });
+      const headers = await getServerFnAuthHeaders();
+      await deleteMyAccount({ data: { confirmName: confirmText.trim() }, headers });
       toast.success("Your account and all its data have been deleted.");
       try {
         await supabase.auth.signOut();
@@ -888,6 +890,7 @@ function ProfileEditor({ biz }: { biz: any }) {
     if (!form.name?.trim()) return toast.error("Business name is required");
     setSaving(true);
     try {
+      const headers = await getServerFnAuthHeaders();
       await saveProfileSettings({
         data: {
           name: form.name.trim(),
@@ -906,6 +909,7 @@ function ProfileEditor({ biz }: { biz: any }) {
             ? Number(form.reminder_hours_before) || 24
             : (biz.reminder_hours_before ?? 24),
         },
+        headers,
       });
       toast.success("Profile saved");
       qc.invalidateQueries({ queryKey: ["my-business"] });

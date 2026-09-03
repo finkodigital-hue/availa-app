@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { compressImage, signedUrl } from "@/lib/image";
 import { toast } from "sonner";
 import { saveWhiteLabel } from "@/lib/business-settings.functions";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
 export function WhiteLabelEditor({ business }: { business: any }) {
   const qc = useQueryClient();
@@ -58,6 +59,7 @@ export function WhiteLabelEditor({ business }: { business: any }) {
   const save = async () => {
     setSaving(true);
     try {
+      const headers = await getServerFnAuthHeaders();
       await saveWhiteLabelSettings({
         data: {
           customDomain: f.custom_domain || null,
@@ -67,6 +69,7 @@ export function WhiteLabelEditor({ business }: { business: any }) {
           emailFooter: f.email_footer || null,
           hidePoweredBy: premium && !!f.hide_powered_by,
         },
+        headers,
       });
       toast.success("White-label saved");
       qc.invalidateQueries({ queryKey: ["my-business"] });

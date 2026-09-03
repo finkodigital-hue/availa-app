@@ -82,8 +82,16 @@ function AuthPage() {
         toast.success("Password updated.");
         navigate({ to: "/dashboard", replace: true });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        if (!data.session) throw new Error("Your sign-in could not be completed. Please try again.");
+
+        // Do not rely solely on the AuthProvider listener to move the user
+        // away from this page. The session is already persisted by
+        // supabase-js at this point, so navigating explicitly makes a
+        // successful sign-in deterministic even if the auth-state event is
+        // delivered after the form handler finishes.
+        navigate({ to: "/dashboard", replace: true });
       }
     } catch (err: any) {
       const msg: string = err.message ?? "";
@@ -91,6 +99,8 @@ function AuthPage() {
         toast.error("Please enter a valid email address");
       } else if (msg.includes("RATE_LIMITED")) {
         toast.error("Too many requests right now — please try again in a minute");
+      } else if (msg.toLowerCase().includes("invalid login credentials")) {
+        toast.error("That email or password is not correct");
       } else {
         toast.error(msg || "Something went wrong");
       }

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { finalizeStudioCheckout, openBillingPortal, startStudioCheckout } from "@/lib/billing.functions";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
 const FREE_FEATURES = ["One staff member", "Unlimited bookings", "Deposits & online payments", "Branded booking page & client book"];
 const STUDIO_FEATURES = [
@@ -43,7 +44,8 @@ export function PlanSettings({ business }: { business: PlanBusiness }) {
     }
     if (billing !== "success" || !sessionId) return;
     setFinalizing(true);
-    finalizeStudioCheckout({ data: { sessionId } })
+    getServerFnAuthHeaders()
+      .then((headers) => finalizeStudioCheckout({ data: { sessionId }, headers }))
       .then((r) => {
         if (r.activated) {
           toast.success("Welcome to Studio! Everything is unlocked.");
@@ -62,7 +64,8 @@ export function PlanSettings({ business }: { business: PlanBusiness }) {
   const upgrade = async () => {
     setBusy(true);
     try {
-      const { checkoutUrl } = await startStudioCheckout();
+      const headers = await getServerFnAuthHeaders();
+      const { checkoutUrl } = await startStudioCheckout({ headers });
       window.location.assign(checkoutUrl);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Could not start checkout");
@@ -73,7 +76,8 @@ export function PlanSettings({ business }: { business: PlanBusiness }) {
   const manageBilling = async () => {
     setBusy(true);
     try {
-      const { url } = await openBillingPortal();
+      const headers = await getServerFnAuthHeaders();
+      const { url } = await openBillingPortal({ headers });
       window.location.assign(url);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Could not open billing");

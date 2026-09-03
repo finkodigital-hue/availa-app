@@ -39,12 +39,17 @@ function optionalText(value: string | null | undefined, max: number) {
 async function ownedBusiness(context: { supabase: SupabaseClient<Database>; userId: string }) {
   const { data, error } = await context.supabase
     .from("businesses")
-    .select("id, plan")
+    .select("id, plan, reminder_hours_before, hide_powered_by")
     .eq("owner_id", context.userId)
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("Only the business owner can change these settings.");
-  return data as { id: string; plan: string };
+  return data as {
+    id: string;
+    plan: string;
+    reminder_hours_before: number | null;
+    hide_powered_by: boolean | null;
+  };
 }
 
 export const saveBusinessProfile = createServerFn({ method: "POST" })
@@ -60,7 +65,6 @@ export const saveBusinessProfile = createServerFn({ method: "POST" })
     const business = await ownedBusiness(context);
     const studio = business.plan === "studio";
     const reminderHours = Math.max(1, Math.min(168, Number(data.reminderHoursBefore) || 24));
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const payload = {
       name: data.name,
       description: optionalText(data.description, 2000),
@@ -74,13 +78,22 @@ export const saveBusinessProfile = createServerFn({ method: "POST" })
       facebook: optionalText(data.facebook, 200),
       tiktok: optionalText(data.tiktok, 200),
       twitter: optionalText(data.twitter, 200),
-      ...(studio ? { reminder_hours_before: reminderHours } : {}),
     };
-    const { error } = await supabaseAdmin
+    const { error } = await context.supabase
       .from("businesses")
       .update(payload as never)
       .eq("id", business.id);
     if (error) throw error;
+
+    const savedReminderHours = Number(business.reminder_hours_before) || 24;
+    if (studio && reminderHours !== savedReminderHours) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: reminderError } = await supabaseAdmin
+        .from("businesses")
+        .update({ reminder_hours_before: reminderHours })
+        .eq("id", business.id);
+      if (reminderError) throw reminderError;
+    }
     return { saved: true };
   });
 
@@ -101,8 +114,8 @@ export const saveWhiteLabel = createServerFn({ method: "POST" })
       }
       return path;
     };
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const hidePoweredBy = studio && data.hidePoweredBy;
+    const { error } = await context.supabase
       .from("businesses")
       .update({
         custom_domain: customDomain,
@@ -110,9 +123,17 @@ export const saveWhiteLabel = createServerFn({ method: "POST" })
         browser_title: optionalText(data.browserTitle, 120),
         email_logo_url: safeAssetPath(data.emailLogoUrl),
         email_footer: optionalText(data.emailFooter, 1000),
-        hide_powered_by: studio && data.hidePoweredBy,
       })
       .eq("id", business.id);
     if (error) throw error;
+
+    if (hidePoweredBy !== Boolean(business.hide_powered_by)) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: brandingError } = await supabaseAdmin
+        .from("businesses")
+        .update({ hide_powered_by: hidePoweredBy })
+        .eq("id", business.id);
+      if (brandingError) throw brandingError;
+    }
     return { saved: true };
   });

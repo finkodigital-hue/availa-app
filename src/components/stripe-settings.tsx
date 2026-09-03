@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { refreshStripeAccount, startStripeOnboarding } from "@/lib/stripe-connect.functions";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
 type Business = {
   id: string;
@@ -32,7 +33,8 @@ export function StripeSettings({ business }: { business: Business }) {
   const connect = async () => {
     setConnecting(true);
     try {
-      const result = await startStripeOnboarding();
+      const headers = await getServerFnAuthHeaders();
+      const result = await startStripeOnboarding({ headers });
       window.location.assign(result.url);
     } catch (error: any) {
       toast.error(error.message ?? "Could not start Stripe setup");
@@ -43,7 +45,8 @@ export function StripeSettings({ business }: { business: Business }) {
   const refresh = async () => {
     setRefreshing(true);
     try {
-      const result = await refreshStripeAccount();
+      const headers = await getServerFnAuthHeaders();
+      const result = await refreshStripeAccount({ headers });
       await queryClient.invalidateQueries({ queryKey: ["my-business"] });
       toast.success(result.chargesEnabled ? "Stripe is ready to take payments" : "Stripe setup still needs a little more information");
     } catch (error: any) {
