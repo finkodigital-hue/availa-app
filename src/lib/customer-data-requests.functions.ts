@@ -39,6 +39,10 @@ export type CustomerDataExport = {
     notes: string | null;
     createdAt: string;
     photoStoragePath: string | null;
+    authUserId: string | null;
+    stripeCustomerId: string | null;
+    externalId: string | null;
+    importBatchId: string | null;
   };
   bookings: ExportBooking[];
   payments: ExportPayment[];
@@ -84,7 +88,9 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
 
     const { data: customer, error: customerError } = await context.supabase
       .from("customers")
-      .select("id, name, email, phone, address, notes, avatar_url, created_at")
+      .select(
+        "id, name, email, phone, address, notes, avatar_url, auth_user_id, stripe_customer_id, external_id, import_batch_id, created_at",
+      )
       .eq("id", request.customer_id)
       .eq("business_id", business.id)
       .maybeSingle();
@@ -133,6 +139,10 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
         // forwarded, and a live signed URL to a private photo shouldn't
         // travel with it.
         photoStoragePath: customer.avatar_url,
+        authUserId: customer.auth_user_id,
+        stripeCustomerId: customer.stripe_customer_id,
+        externalId: customer.external_id,
+        importBatchId: customer.import_batch_id,
       },
       bookings: (bookings ?? []) as ExportBooking[],
       payments,

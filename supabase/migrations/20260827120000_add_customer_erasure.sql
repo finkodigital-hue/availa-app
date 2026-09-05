@@ -109,7 +109,15 @@ BEGIN
   SELECT count(*) INTO v_payments_scrubbed FROM scrubbed;
 
   UPDATE customers
-  SET name = 'Deleted customer', email = NULL, phone = NULL, address = NULL, notes = NULL, avatar_url = NULL
+  SET name = 'Deleted customer',
+      email = NULL,
+      phone = NULL,
+      address = NULL,
+      notes = NULL,
+      avatar_url = NULL,
+      auth_user_id = NULL,
+      stripe_customer_id = NULL,
+      external_id = NULL
   WHERE id = p_customer_id;
 
   UPDATE customer_data_requests

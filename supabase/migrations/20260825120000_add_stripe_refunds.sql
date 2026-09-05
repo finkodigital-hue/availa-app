@@ -10,6 +10,13 @@
 ALTER TABLE public.payments
   ADD COLUMN IF NOT EXISTS initiated_by_user_id uuid REFERENCES auth.users(id);
 
+-- A refund and its original charge deliberately share a payment intent.
+-- Keep charge fulfilment idempotent without blocking refund/failure audit rows.
+DROP INDEX IF EXISTS public.payments_stripe_payment_intent_unique;
+CREATE UNIQUE INDEX payments_stripe_payment_intent_unique
+  ON public.payments (stripe_payment_intent_id)
+  WHERE stripe_payment_intent_id IS NOT NULL AND type = 'charge';
+
 CREATE UNIQUE INDEX IF NOT EXISTS payments_stripe_refund_unique
   ON public.payments (stripe_refund_id)
   WHERE stripe_refund_id IS NOT NULL;

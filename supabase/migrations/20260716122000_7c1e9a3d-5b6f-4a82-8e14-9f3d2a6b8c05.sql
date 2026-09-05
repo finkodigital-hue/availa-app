@@ -39,6 +39,10 @@ $$;
 
 -- salon_brand_color was assigned client-side but never actually rendered —
 -- dropped rather than replaced.
+-- PostgreSQL cannot change the row shape of a RETURNS TABLE function via
+-- CREATE OR REPLACE, so remove the previous 16-column version first.
+DROP FUNCTION IF EXISTS public.get_invitation_by_token(text);
+
 CREATE OR REPLACE FUNCTION public.get_invitation_by_token(_token text)
 RETURNS TABLE (
   id uuid,
