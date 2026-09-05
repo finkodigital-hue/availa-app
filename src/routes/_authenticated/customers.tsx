@@ -848,9 +848,15 @@ function CustomerDetailPanel({
       .from("bookings")
       .delete()
       .eq("customer_id", customerId);
-    if (bookingsError) return toast.error(bookingsError.message);
+    if (bookingsError) {
+      toast.error(bookingsError.message);
+      return;
+    }
     const { error } = await supabase.from("customers").delete().eq("id", customerId);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Customer deleted");
     onDelete();
   };

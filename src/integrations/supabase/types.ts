@@ -445,6 +445,7 @@ export type Database = {
           payment_mode: string
           phone: string | null
           plan: string
+          reminder_hours_before: number
           service_categories: string[]
           show_durations: boolean
           show_prices: boolean
@@ -497,6 +498,7 @@ export type Database = {
           payment_mode?: string
           phone?: string | null
           plan?: string
+          reminder_hours_before?: number
           service_categories?: string[]
           show_durations?: boolean
           show_prices?: boolean
@@ -549,6 +551,7 @@ export type Database = {
           payment_mode?: string
           phone?: string | null
           plan?: string
+          reminder_hours_before?: number
           service_categories?: string[]
           show_durations?: boolean
           show_prices?: boolean
@@ -587,6 +590,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           phone_normalized: string | null
+          stripe_customer_id: string | null
           updated_at: string
         }
         Insert: {
@@ -603,6 +607,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           phone_normalized?: string | null
+          stripe_customer_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -619,6 +624,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           phone_normalized?: string | null
+          stripe_customer_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2068,6 +2074,10 @@ export type Database = {
       }
       reassign_staff_bookings: {
         Args: { _from_staff: string; _only_future?: boolean; _to_staff: string }
+        Returns: number
+      }
+      request_customer_data_action: {
+        Args: { p_kind: string }
         Returns: number
       }
       salon_pro_permission: {

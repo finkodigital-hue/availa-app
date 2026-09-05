@@ -3,6 +3,9 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "prettier": {
+    "endOfLine": "auto"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && node scripts/prepare-cloudflare-deploy.mjs && node scripts/verify-security-boundary.mjs",

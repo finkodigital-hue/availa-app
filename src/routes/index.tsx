@@ -68,7 +68,7 @@ const NAV_ITEMS = [
   "Services",
   "Payments",
   "Settings",
-];
+] as const;
 
 const STATS = [
   { target: 12, prefix: "", label: "Bookings today", delta: "+3 vs last Tuesday" },
@@ -369,45 +369,6 @@ function CalendarPreview() {
 
 function ProductPreview({ section }: { section: Exclude<(typeof NAV_ITEMS)[number], "Today"> }) {
   if (section === "Calendar") return <CalendarPreview />;
-
-  if (section === "Calendar") {
-    return (
-      <div className="rounded-[10px] border border-border overflow-hidden">
-        <div className="grid grid-cols-[64px_repeat(5,minmax(0,1fr))] bg-background border-b border-border text-[.68rem] uppercase tracking-[.1em] text-muted-foreground">
-          <span className="p-3" />
-          {["Mon 6", "Tue 7", "Wed 8", "Thu 9", "Fri 10"].map((day) => (
-            <span key={day} className="p-3 text-center">
-              {day}
-            </span>
-          ))}
-        </div>
-        {["9:00", "10:30", "12:00", "1:30", "3:00"].map((time, row) => (
-          <div
-            key={time}
-            className="grid grid-cols-[64px_repeat(5,minmax(0,1fr))] min-h-14 border-b border-border last:border-b-0"
-          >
-            <span className="p-3 text-[.72rem] text-muted-foreground">{time}</span>
-            {[0, 1, 2, 3, 4].map((day) => {
-              const booked =
-                (row === 0 && day === 1) || (row === 2 && day === 3) || (row === 3 && day === 0);
-              return (
-                <span
-                  key={day}
-                  className={`border-l border-border p-1.5 ${booked ? "bg-[color:var(--gold-wash)]" : ""}`}
-                >
-                  {booked && (
-                    <span className="block rounded bg-[color:var(--gold)] px-1.5 py-1 text-[.62rem] font-semibold text-foreground">
-                      {day === 1 ? "Maya · 9:00" : "Booked"}
-                    </span>
-                  )}
-                </span>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    );
-  }
 
   if (section === "Bookings") {
     return (
