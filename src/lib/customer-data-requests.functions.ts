@@ -155,7 +155,7 @@ export type EraseCustomerResult = {
   paymentsScrubbed: number;
   notificationsDeleted: number;
   photosDeleted: number;
-  authAccountRemoved: boolean;
+  authAccountStatus: "removed" | "preserved_shared" | "not_found" | "not_applicable";
   manualCheckNotice: string[];
 };
 
@@ -252,7 +252,11 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       throw eraseError;
     }
 
-    let authAccountRemoved = false;
+    let authAccountStatus: EraseCustomerResult["authAccountStatus"] = result.had_email
+      ? result.other_business_has_live_email
+        ? "preserved_shared"
+        : "not_found"
+      : "not_applicable";
     if (result.had_email && !result.other_business_has_live_email && customerEmail) {
       // No other business still has a live customers row for this email —
       // safe to remove the shared portal auth account. If some other
@@ -270,7 +274,7 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       if (authUserId) {
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
         if (deleteError) throw deleteError;
-        authAccountRemoved = true;
+        authAccountStatus = "removed";
       }
     }
 
@@ -279,7 +283,7 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       paymentsScrubbed: result.payments_scrubbed ?? 0,
       notificationsDeleted: result.notifications_deleted ?? 0,
       photosDeleted,
-      authAccountRemoved,
+      authAccountStatus,
       manualCheckNotice: NOT_COVERED_NOTICE,
     };
   });

@@ -556,7 +556,11 @@ function DataRequestsBanner({
       <DataRequestActionDialog
         request={acting}
         onClose={() => setActing(null)}
-        onDone={() => qc.invalidateQueries({ queryKey: ["customer-data-requests", businessId] })}
+        onDone={() => {
+          qc.invalidateQueries({ queryKey: ["customer-data-requests", businessId] });
+          qc.invalidateQueries({ queryKey: ["customers"] });
+          qc.invalidateQueries({ queryKey: ["customer-detail"] });
+        }}
       />
     </div>
   );
@@ -654,9 +658,13 @@ function DataRequestActionDialog({
               identity removed, {eraseResult.notificationsDeleted} notification
               {eraseResult.notificationsDeleted === 1 ? "" : "s"} deleted, {eraseResult.photosDeleted} photo
               {eraseResult.photosDeleted === 1 ? "" : "s"} deleted from storage.
-              {eraseResult.authAccountRemoved
+              {eraseResult.authAccountStatus === "removed"
                 ? " Their portal sign-in has been removed entirely."
-                : " Their portal sign-in was left in place — it's still in use by another business's customer record for the same email."}
+                : eraseResult.authAccountStatus === "preserved_shared"
+                  ? " Their portal sign-in was kept because another business still has a customer record for the same email."
+                  : eraseResult.authAccountStatus === "not_found"
+                    ? " No matching portal sign-in existed."
+                    : " No portal sign-in was linked to this customer."}
             </p>
             <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
               <p className="font-medium text-foreground">Not covered automatically — please check manually:</p>
