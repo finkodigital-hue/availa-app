@@ -26,6 +26,7 @@ export const Route = createFileRoute("/api/public-reviews")({
           )
           .eq("business_id", businessId)
           .eq("status", "published")
+          .not("publication_consent_at", "is", null)
           .order("submitted_at", { ascending: false })
           .limit(50);
         if (error) return Response.json({ reviews: [] }, { status: 500 });

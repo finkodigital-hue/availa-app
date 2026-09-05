@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, Lock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -42,6 +43,7 @@ function ReviewPage() {
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [agreedToPublish, setAgreedToPublish] = useState(false);
 
   useEffect(() => {
     fetch("/api/reviews/peek", {
@@ -69,13 +71,17 @@ function ReviewPage() {
     if (!rating) return setError("Choose a star rating first.");
     if (body.trim().length < 2)
       return setError("Tell us a little about your visit.");
+    if (!agreedToPublish)
+      return setError(
+        "Please agree to the publication details before submitting.",
+      );
     setSubmitting(true);
     setError("");
     try {
       const response = await fetch("/api/reviews/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, rating, body }),
+        body: JSON.stringify({ token, rating, body, agreedToPublish }),
       });
       const payload = await response
         .json()
@@ -133,7 +139,8 @@ function ReviewPage() {
               />
               <h2 className="mt-5 font-display text-3xl">Thank you</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Your review has been shared with {details.businessName}.
+                Your review is now published on {details.businessName}&apos;s
+                booking page.
               </p>
             </div>
           )}
@@ -203,6 +210,42 @@ function ReviewPage() {
                   <span>Be honest, specific and respectful.</span>
                   <span>{body.length}/1000</span>
                 </div>
+                <div className="mt-6 flex items-start gap-3 rounded-xl border bg-muted/30 p-4">
+                  <Checkbox
+                    id="publication-consent"
+                    checked={agreedToPublish}
+                    onCheckedChange={(checked) =>
+                      setAgreedToPublish(checked === true)
+                    }
+                    className="mt-0.5"
+                  />
+                  <Label
+                    htmlFor="publication-consent"
+                    className="text-sm font-normal leading-6"
+                  >
+                    I agree that my rating, review, first name and surname
+                    initial will be published on {details.businessName}&apos;s
+                    booking page. I can ask the business to remove it. Read the{" "}
+                    <a
+                      href="/review-policy"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium underline underline-offset-4"
+                    >
+                      review policy
+                    </a>{" "}
+                    and{" "}
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium underline underline-offset-4"
+                    >
+                      privacy policy
+                    </a>
+                    .
+                  </Label>
+                </div>
                 {error && (
                   <p role="alert" className="mt-4 text-sm text-destructive">
                     {error}
@@ -211,7 +254,7 @@ function ReviewPage() {
                 <Button
                   className="mt-6 h-12 w-full"
                   onClick={submit}
-                  disabled={submitting}
+                  disabled={submitting || !agreedToPublish}
                   style={themedButtonStyle(theme, "primary")}
                 >
                   {submitting && (

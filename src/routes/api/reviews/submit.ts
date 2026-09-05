@@ -10,6 +10,7 @@ export const Route = createFileRoute("/api/reviews/submit")({
           token?: string;
           rating?: number;
           body?: string;
+          agreedToPublish?: boolean;
         };
         const body = input.body?.trim() ?? "";
         if (
@@ -18,7 +19,8 @@ export const Route = createFileRoute("/api/reviews/submit")({
           input.rating! < 1 ||
           input.rating! > 5 ||
           body.length < 2 ||
-          body.length > 1000
+          body.length > 1000 ||
+          input.agreedToPublish !== true
         ) {
           return Response.json(
             { ok: false, reason: "invalid_content" },
@@ -31,6 +33,7 @@ export const Route = createFileRoute("/api/reviews/submit")({
             p_token_hash: await sha256Hex(input.token),
             p_rating: input.rating,
             p_body: body,
+            p_consent_version: "review-publication-v1",
           },
         );
         if (error) {

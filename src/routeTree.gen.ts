@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as ReviewPolicyRouteImport } from './routes/review-policy'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as HelpRouteImport } from './routes/help'
@@ -70,6 +71,11 @@ const TermsRoute = TermsRouteImport.update({
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewPolicyRoute = ReviewPolicyRouteImport.update({
+  id: '/review-policy',
+  path: '/review-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -338,6 +344,7 @@ export interface FileRoutesByFullPath {
   '/help': typeof HelpRouteWithChildren
   '/portal': typeof PortalRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/review-policy': typeof ReviewPolicyRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
@@ -389,6 +396,7 @@ export interface FileRoutesByTo {
   '/cookie-policy': typeof CookiePolicyRoute
   '/faq': typeof FaqRoute
   '/privacy': typeof PrivacyRoute
+  '/review-policy': typeof ReviewPolicyRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
@@ -444,6 +452,7 @@ export interface FileRoutesById {
   '/help': typeof HelpRouteWithChildren
   '/portal': typeof PortalRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/review-policy': typeof ReviewPolicyRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
@@ -499,6 +508,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/portal'
     | '/privacy'
+    | '/review-policy'
     | '/status'
     | '/terms'
     | '/assistant'
@@ -550,6 +560,7 @@ export interface FileRouteTypes {
     | '/cookie-policy'
     | '/faq'
     | '/privacy'
+    | '/review-policy'
     | '/status'
     | '/terms'
     | '/assistant'
@@ -604,6 +615,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/portal'
     | '/privacy'
+    | '/review-policy'
     | '/status'
     | '/terms'
     | '/_authenticated/assistant'
@@ -659,6 +671,7 @@ export interface RootRouteChildren {
   HelpRoute: typeof HelpRouteWithChildren
   PortalRoute: typeof PortalRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
+  ReviewPolicyRoute: typeof ReviewPolicyRoute
   StatusRoute: typeof StatusRoute
   TermsRoute: typeof TermsRoute
   ApiChatRoute: typeof ApiChatRoute
@@ -697,6 +710,13 @@ declare module '@tanstack/react-router' {
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/review-policy': {
+      id: '/review-policy'
+      path: '/review-policy'
+      fullPath: '/review-policy'
+      preLoaderRoute: typeof ReviewPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -1131,6 +1151,7 @@ const rootRouteChildren: RootRouteChildren = {
   HelpRoute: HelpRouteWithChildren,
   PortalRoute: PortalRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
+  ReviewPolicyRoute: ReviewPolicyRoute,
   StatusRoute: StatusRoute,
   TermsRoute: TermsRoute,
   ApiChatRoute: ApiChatRoute,
