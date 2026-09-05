@@ -49,7 +49,13 @@ export interface HoursLocationConfig {
 }
 
 export type BlockType =
-  "hero" | "about" | "gallery" | "services-list" | "staff-spotlight" | "testimonial" | "hours-location";
+  | "hero"
+  | "about"
+  | "gallery"
+  | "services-list"
+  | "staff-spotlight"
+  | "testimonial"
+  | "hours-location";
 
 export const BLOCK_LABELS: Record<BlockType, string> = {
   hero: "Welcome banner",
@@ -61,7 +67,16 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   "hours-location": "Hours & location",
 };
 
-export const BLOCK_TYPES = Object.keys(BLOCK_LABELS) as BlockType[];
+// Testimonials remain in the persisted union only so old layouts still parse.
+// New customer reviews come from verified completed bookings instead.
+export const BLOCK_TYPES: BlockType[] = [
+  "hero",
+  "about",
+  "gallery",
+  "services-list",
+  "staff-spotlight",
+  "hours-location",
+];
 
 // The shape persisted in page_layouts.blocks. `id` is a client-generated key
 // for list rendering/reordering, independent of any database id.
@@ -74,7 +89,10 @@ export type PageBlock =
   | { id: string; type: "testimonial"; config: TestimonialConfig }
   | { id: string; type: "hours-location"; config: HoursLocationConfig };
 
-export function defaultConfigForType(type: BlockType, businessId: string): PageBlock["config"] {
+export function defaultConfigForType(
+  type: BlockType,
+  businessId: string,
+): PageBlock["config"] {
   switch (type) {
     case "hero":
       return { variant: "text-only", heading: "Your heading here" };

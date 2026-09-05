@@ -27,6 +27,15 @@ type ExportPayment = {
   created_at: string;
 };
 
+type ExportReview = {
+  id: string;
+  booking_id: string;
+  rating: number;
+  body: string;
+  status: string;
+  submitted_at: string;
+};
+
 export type CustomerDataExport = {
   generatedAt: string;
   business: { id: string; name: string };
@@ -46,11 +55,11 @@ export type CustomerDataExport = {
   };
   bookings: ExportBooking[];
   payments: ExportPayment[];
+  reviews: ExportReview[];
   notCovered: string[];
 };
 
 const NOT_COVERED_NOTICE = [
-  "Page Builder testimonials: remove any testimonial that names this customer.",
   "Older bell notifications: remove any that mention this customer by name.",
 ];
 
@@ -74,7 +83,9 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
     if (businessError) throw businessError;
     if (!business) throw new Error("Business not found.");
 
-    const { data: request, error: requestError } = await (context.supabase as any)
+    const { data: request, error: requestError } = await (
+      context.supabase as any
+    )
       .from("customer_data_requests")
       .select("id, customer_id, kind, status")
       .eq("id", data.requestId)
@@ -82,9 +93,14 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
       .maybeSingle();
     if (requestError) throw requestError;
     if (!request) throw new Error("Request not found.");
-    if (request.kind !== "export") throw new Error("This request isn't an export request.");
-    if (request.status !== "pending") throw new Error("This request has already been resolved.");
-    if (!request.customer_id) throw new Error("This customer's record could not be found. It may have already been merged or removed.");
+    if (request.kind !== "export")
+      throw new Error("This request isn't an export request.");
+    if (request.status !== "pending")
+      throw new Error("This request has already been resolved.");
+    if (!request.customer_id)
+      throw new Error(
+        "This customer's record could not be found. It may have already been merged or removed.",
+      );
 
     const { data: customer, error: customerError } = await context.supabase
       .from("customers")
@@ -95,11 +111,16 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
       .eq("business_id", business.id)
       .maybeSingle();
     if (customerError) throw customerError;
-    if (!customer) throw new Error("This customer's record could not be found. It may have already been merged or removed.");
+    if (!customer)
+      throw new Error(
+        "This customer's record could not be found. It may have already been merged or removed.",
+      );
 
     const { data: bookings, error: bookingsError } = await context.supabase
       .from("bookings")
-      .select("id, starts_at, ends_at, price_cents, amount_paid_cents, amount_refunded_cents, payment_status, status, services(name)")
+      .select(
+        "id, starts_at, ends_at, price_cents, amount_paid_cents, amount_refunded_cents, payment_status, status, services(name)",
+      )
       .eq("customer_id", customer.id)
       .eq("business_id", business.id)
       .order("starts_at", { ascending: false });
@@ -108,9 +129,13 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
     const bookingIds = (bookings ?? []).map((b: any) => b.id);
     let payments: ExportPayment[] = [];
     if (bookingIds.length > 0) {
-      const { data: paymentRows, error: paymentsError } = await (context.supabase as any)
+      const { data: paymentRows, error: paymentsError } = await (
+        context.supabase as any
+      )
         .from("payments")
-        .select("id, booking_id, type, status, amount_cents, currency, created_at")
+        .select(
+          "id, booking_id, type, status, amount_cents, currency, created_at",
+        )
         .in("booking_id", bookingIds)
         .eq("business_id", business.id)
         .order("created_at", { ascending: false });
@@ -118,9 +143,23 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
       payments = paymentRows ?? [];
     }
 
+    const { data: reviews, error: reviewsError } = await (
+      context.supabase as any
+    )
+      .from("customer_reviews")
+      .select("id, booking_id, rating, body, status, submitted_at")
+      .eq("customer_id", customer.id)
+      .eq("business_id", business.id)
+      .order("submitted_at", { ascending: false });
+    if (reviewsError) throw reviewsError;
+
     const { error: resolveError } = await (context.supabase as any)
       .from("customer_data_requests")
-      .update({ status: "completed", resolved_at: new Date().toISOString(), resolved_by: context.userId })
+      .update({
+        status: "completed",
+        resolved_at: new Date().toISOString(),
+        resolved_by: context.userId,
+      })
       .eq("id", request.id);
     if (resolveError) throw resolveError;
 
@@ -146,6 +185,7 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
       },
       bookings: (bookings ?? []) as ExportBooking[],
       payments,
+      reviews: reviews ?? [],
       notCovered: NOT_COVERED_NOTICE,
     };
   });
@@ -155,7 +195,11 @@ export type EraseCustomerResult = {
   paymentsScrubbed: number;
   notificationsDeleted: number;
   photosDeleted: number;
-  authAccountStatus: "removed" | "preserved_shared" | "not_found" | "not_applicable";
+  authAccountStatus:
+    | "removed"
+    | "preserved_shared"
+    | "not_found"
+    | "not_applicable";
   manualCheckNotice: string[];
 };
 
@@ -180,7 +224,9 @@ export const eraseCustomer = createServerFn({ method: "POST" })
     if (businessError) throw businessError;
     if (!business) throw new Error("Business not found.");
 
-    const { data: request, error: requestError } = await (context.supabase as any)
+    const { data: request, error: requestError } = await (
+      context.supabase as any
+    )
       .from("customer_data_requests")
       .select("id, customer_id, kind, status")
       .eq("id", data.requestId)
@@ -188,9 +234,14 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       .maybeSingle();
     if (requestError) throw requestError;
     if (!request) throw new Error("Request not found.");
-    if (request.kind !== "deletion") throw new Error("This request isn't a deletion request.");
-    if (request.status !== "pending") throw new Error("This request has already been resolved.");
-    if (!request.customer_id) throw new Error("This customer's record could not be found. It may have already been merged or removed.");
+    if (request.kind !== "deletion")
+      throw new Error("This request isn't a deletion request.");
+    if (request.status !== "pending")
+      throw new Error("This request has already been resolved.");
+    if (!request.customer_id)
+      throw new Error(
+        "This customer's record could not be found. It may have already been merged or removed.",
+      );
 
     const { data: customer, error: customerError } = await context.supabase
       .from("customers")
@@ -199,7 +250,10 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       .eq("business_id", business.id)
       .maybeSingle();
     if (customerError) throw customerError;
-    if (!customer) throw new Error("This customer's record could not be found. It may have already been merged or removed.");
+    if (!customer)
+      throw new Error(
+        "This customer's record could not be found. It may have already been merged or removed.",
+      );
     // erase_customer nulls customers.email as part of anonymising the row,
     // so this is the only chance to capture it — needed afterward to decide
     // whether the shared portal auth account is safe to remove.
@@ -209,12 +263,13 @@ export const eraseCustomer = createServerFn({ method: "POST" })
     // below re-checks this itself (authoritative, race-safe) — this first
     // check exists so a blocked erasure never gets as far as deleting a
     // photo for nothing.
-    const { count: upcomingCount, error: upcomingError } = await context.supabase
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("customer_id", customer.id)
-      .neq("status", "cancelled")
-      .gt("starts_at", new Date().toISOString());
+    const { count: upcomingCount, error: upcomingError } =
+      await context.supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("customer_id", customer.id)
+        .neq("status", "cancelled")
+        .gt("starts_at", new Date().toISOString());
     if (upcomingError) throw upcomingError;
     if ((upcomingCount ?? 0) > 0) {
       throw new Error(
@@ -222,7 +277,8 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       );
     }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
 
     const photoPrefix = `${business.id}/customers`;
     const { data: photoFiles, error: listError } = await supabaseAdmin.storage
@@ -232,12 +288,16 @@ export const eraseCustomer = createServerFn({ method: "POST" })
     let photosDeleted = 0;
     if (photoFiles && photoFiles.length > 0) {
       const paths = photoFiles.map((f) => `${photoPrefix}/${f.name}`);
-      const { error: removeError } = await supabaseAdmin.storage.from("business-assets").remove(paths);
+      const { error: removeError } = await supabaseAdmin.storage
+        .from("business-assets")
+        .remove(paths);
       if (removeError) throw removeError;
       photosDeleted = paths.length;
     }
 
-    const { data: result, error: eraseError } = await (supabaseAdmin as any).rpc("erase_customer", {
+    const { data: result, error: eraseError } = await (
+      supabaseAdmin as any
+    ).rpc("erase_customer", {
       p_business_id: business.id,
       p_customer_id: customer.id,
       p_request_id: request.id,
@@ -247,17 +307,24 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       const match = /^UPCOMING_BOOKINGS:(\d+)/.exec(eraseError.message ?? "");
       if (match) {
         const n = Number(match[1]);
-        throw new Error(`This customer has ${n} upcoming booking${n === 1 ? "" : "s"}. Cancel or reassign ${n === 1 ? "it" : "them"} first, then try again.`);
+        throw new Error(
+          `This customer has ${n} upcoming booking${n === 1 ? "" : "s"}. Cancel or reassign ${n === 1 ? "it" : "them"} first, then try again.`,
+        );
       }
       throw eraseError;
     }
 
-    let authAccountStatus: EraseCustomerResult["authAccountStatus"] = result.had_email
-      ? result.other_business_has_live_email
-        ? "preserved_shared"
-        : "not_found"
-      : "not_applicable";
-    if (result.had_email && !result.other_business_has_live_email && customerEmail) {
+    let authAccountStatus: EraseCustomerResult["authAccountStatus"] =
+      result.had_email
+        ? result.other_business_has_live_email
+          ? "preserved_shared"
+          : "not_found"
+        : "not_applicable";
+    if (
+      result.had_email &&
+      !result.other_business_has_live_email &&
+      customerEmail
+    ) {
       // No other business still has a live customers row for this email —
       // safe to remove the shared portal auth account. If some other
       // business still needs it, we deliberately leave it alone: deleting
@@ -266,13 +333,13 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       // customers.email (already done above) is enough on its own — it's
       // the join key get_portal_customer_records() matches on, so this
       // business's history simply stops appearing to them.
-      const { data: authUserId, error: lookupError } = await (supabaseAdmin as any).rpc(
-        "find_auth_user_id_by_email",
-        { p_email: customerEmail },
-      );
+      const { data: authUserId, error: lookupError } = await (
+        supabaseAdmin as any
+      ).rpc("find_auth_user_id_by_email", { p_email: customerEmail });
       if (lookupError) throw lookupError;
       if (authUserId) {
-        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+        const { error: deleteError } =
+          await supabaseAdmin.auth.admin.deleteUser(authUserId);
         if (deleteError) throw deleteError;
         authAccountStatus = "removed";
       }

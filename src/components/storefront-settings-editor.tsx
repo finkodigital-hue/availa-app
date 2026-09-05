@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { ReviewManager } from "@/components/review-manager";
 import {
   STOREFRONT_SECTION_LABELS,
   defaultStorefrontSettings,
@@ -28,9 +29,12 @@ export function StorefrontSettingsEditor({
   showSave?: boolean;
 }) {
   const qc = useQueryClient();
-  const [draft, setDraft] = useState<StorefrontSettings>(defaultStorefrontSettings());
+  const [draft, setDraft] = useState<StorefrontSettings>(
+    defaultStorefrontSettings(),
+  );
   const [saving, setSaving] = useState(false);
-  const [expandedSectionId, setExpandedSectionId] = useState<StorefrontSectionId | null>("booking");
+  const [expandedSectionId, setExpandedSectionId] =
+    useState<StorefrontSectionId | null>("booking");
   const { data, isLoading } = useQuery({
     queryKey: ["storefront-settings", businessId],
     enabled: value === undefined,
@@ -145,7 +149,9 @@ export function StorefrontSettingsEditor({
                   size="icon"
                   className="h-8 w-8"
                   onClick={() =>
-                    setExpandedSectionId((current) => (current === section.id ? null : section.id))
+                    setExpandedSectionId((current) =>
+                      current === section.id ? null : section.id,
+                    )
                   }
                   aria-label={`${expandedSectionId === section.id ? "Close" : "Edit"} ${STOREFRONT_SECTION_LABELS[section.id]}`}
                   aria-expanded={expandedSectionId === section.id}
@@ -159,47 +165,60 @@ export function StorefrontSettingsEditor({
               </div>
             </div>
             {expandedSectionId === section.id && (
-              <div className="grid gap-4 pt-4 sm:grid-cols-[minmax(0,1fr)_120px]">
-                <div>
-                  <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    Section heading
-                  </Label>
-                  <Input
-                    className="mt-1.5"
-                    value={section.heading}
-                    onChange={(event) =>
-                      updateDraft({
-                        ...draft,
-                        sections: draft.sections.map((item) =>
-                          item.id === section.id ? { ...item, heading: event.target.value } : item,
-                        ),
-                      })
-                    }
-                    placeholder="Leave blank for no heading"
-                  />
+              <div className="pt-4">
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_120px]">
+                  <div>
+                    <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Section heading
+                    </Label>
+                    <Input
+                      className="mt-1.5"
+                      value={section.heading}
+                      onChange={(event) =>
+                        updateDraft({
+                          ...draft,
+                          sections: draft.sections.map((item) =>
+                            item.id === section.id
+                              ? { ...item, heading: event.target.value }
+                              : item,
+                          ),
+                        })
+                      }
+                      placeholder="Leave blank for no heading"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Items shown
+                    </Label>
+                    <Input
+                      className="mt-1.5"
+                      type="number"
+                      min={1}
+                      max={section.id === "location" ? 7 : 12}
+                      value={section.itemLimit}
+                      onChange={(event) =>
+                        updateDraft({
+                          ...draft,
+                          sections: draft.sections.map((item) =>
+                            item.id === section.id
+                              ? {
+                                  ...item,
+                                  itemLimit: Math.max(
+                                    1,
+                                    Number(event.target.value) || 1,
+                                  ),
+                                }
+                              : item,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    Items shown
-                  </Label>
-                  <Input
-                    className="mt-1.5"
-                    type="number"
-                    min={1}
-                    max={section.id === "location" ? 7 : 12}
-                    value={section.itemLimit}
-                    onChange={(event) =>
-                      updateDraft({
-                        ...draft,
-                        sections: draft.sections.map((item) =>
-                          item.id === section.id
-                            ? { ...item, itemLimit: Math.max(1, Number(event.target.value) || 1) }
-                            : item,
-                        ),
-                      })
-                    }
-                  />
-                </div>
+                {section.id === "reviews" && (
+                  <ReviewManager businessId={businessId} />
+                )}
               </div>
             )}
           </div>
@@ -209,7 +228,8 @@ export function StorefrontSettingsEditor({
       {showSave && (
         <div className="flex justify-end">
           <Button onClick={save} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Save storefront
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Save
+            storefront
           </Button>
         </div>
       )}

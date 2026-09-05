@@ -1,4 +1,8 @@
-export type StorefrontSectionId = "gallery" | "booking" | "location";
+export type StorefrontSectionId =
+  | "gallery"
+  | "booking"
+  | "reviews"
+  | "location";
 
 export type StorefrontSection = {
   id: StorefrontSectionId;
@@ -13,7 +17,18 @@ export type StorefrontSettings = {
 
 const DEFAULT_SECTIONS: StorefrontSection[] = [
   { id: "gallery", visible: true, heading: "Our salon", itemLimit: 3 },
-  { id: "booking", visible: true, heading: "What would you like to book?", itemLimit: 6 },
+  {
+    id: "booking",
+    visible: true,
+    heading: "What would you like to book?",
+    itemLimit: 6,
+  },
+  {
+    id: "reviews",
+    visible: true,
+    heading: "Loved by our clients",
+    itemLimit: 6,
+  },
   { id: "location", visible: true, heading: "Find us", itemLimit: 7 },
 ];
 
@@ -45,5 +60,6 @@ export function parseStorefrontSettings(raw: unknown): StorefrontSettings {
 export const STOREFRONT_SECTION_LABELS: Record<StorefrontSectionId, string> = {
   gallery: "Photo gallery",
   booking: "Booking services",
+  reviews: "Customer reviews",
   location: "Location & hours",
 };

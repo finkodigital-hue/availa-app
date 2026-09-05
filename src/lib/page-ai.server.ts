@@ -1,6 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
-import { BLOCK_TYPES, type BlockType, type PageBlock } from "@/components/page-blocks";
+import {
+  BLOCK_TYPES,
+  type BlockType,
+  type PageBlock,
+} from "@/components/page-blocks";
 import {
   FONT_CHOICES,
   BUTTON_RADIUS_MIN,
@@ -47,7 +51,6 @@ Fixed block types — never invent any other type:
 - "gallery": { "layout": 3 | 6 | 9, "photos": { "url": string, "alt"?: string }[] }
 - "services-list": { "heading"?: string } — this block always pulls the business's real active services automatically; never invent services or prices.
 - "staff-spotlight": { "heading"?: string, "staffIds"?: string[] } — never invent staff ids; only reuse ids already present in the current blocks, or omit staffIds to show every bookable staff member.
-- "testimonial": { "quote": string (required), "name": string (required), "role"?: string } — never invent a quote, name, or role that isn't already present in the current blocks or explicitly given in the owner's instruction.
 - "hours-location": { "heading"?: string } — this block always pulls the business's real hours and address automatically; never add address or phone fields.
 
 Per-block color/font fields do not exist — never add or invent any. Visual styling is controlled by the separate top-level "design" object:
@@ -60,8 +63,8 @@ Only include "design" (non-null) when the owner's request actually implies a vis
 Rules:
 - Keep the "id" of any block you are not meaningfully changing exactly as given.
 - For a new block you are adding, use a short placeholder id like "new-1", "new-2".
-- Never output a block type other than the seven listed above.
-- Never fabricate customer testimonials, staff members, services, or factual claims about the business.
+- Never output a block type other than the six listed above. Customer reviews are managed separately and cannot be written or changed by AI.
+- Never fabricate customer reviews, staff members, services, or factual claims about the business.
 - Output nothing but the JSON object — no leading or trailing text, no code fences.`;
 
 export async function suggestPageBlocks({
@@ -79,10 +82,18 @@ export async function suggestPageBlocks({
   theme: Theme;
   prompt: string;
 }): Promise<{ blocks: PageBlock[]; design: DesignSuggestion | null }> {
-  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_PUBLISHABLE_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        storage: undefined,
+      },
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    },
+  );
 
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error("Unauthorized");
@@ -95,7 +106,9 @@ export async function suggestPageBlocks({
     .maybeSingle();
   if (!business) throw new Error("Not found");
   if ((business.plan ?? "free") === "free") {
-    throw new PlanRequiredError("The AI page editor is a Studio feature. Upgrade to Studio to use it.");
+    throw new PlanRequiredError(
+      "The AI page editor is a Studio feature. Upgrade to Studio to use it.",
+    );
   }
 
   const currentBlocks = blocks as PageBlock[];
@@ -105,7 +118,11 @@ export async function suggestPageBlocks({
   const client = new Anthropic();
   const originalIds = new Set(
     blocks
-      .map((b) => (b && typeof b === "object" && "id" in b ? (b as { id: unknown }).id : null))
+      .map((b) =>
+        b && typeof b === "object" && "id" in b
+          ? (b as { id: unknown }).id
+          : null,
+      )
       .filter((id): id is string => typeof id === "string"),
   );
 
@@ -162,7 +179,9 @@ export async function suggestPageBlocks({
   try {
     parsed = JSON.parse(stripCodeFence(text));
   } catch {
-    throw new PageAiError("The AI didn't return valid JSON. Try rephrasing your request.");
+    throw new PageAiError(
+      "The AI didn't return valid JSON. Try rephrasing your request.",
+    );
   }
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -176,18 +195,25 @@ export async function suggestPageBlocks({
 
   const sanitized = rawBlocks.map((item): PageBlock => {
     if (!item || typeof item !== "object" || Array.isArray(item)) {
-      throw new PageAiError("The AI's response included a block that wasn't an object.");
+      throw new PageAiError(
+        "The AI's response included a block that wasn't an object.",
+      );
     }
     const type = (item as { type?: unknown }).type;
     if (typeof type !== "string" || !BLOCK_TYPES.includes(type as BlockType)) {
-      throw new PageAiError(`The AI included an unrecognized block type: "${String(type)}".`);
+      throw new PageAiError(
+        `The AI included an unrecognized block type: "${String(type)}".`,
+      );
     }
     const config = (item as { config?: unknown }).config;
     if (!config || typeof config !== "object" || Array.isArray(config)) {
-      throw new PageAiError(`The "${type}" block the AI returned is missing a valid config.`);
+      throw new PageAiError(
+        `The "${type}" block the AI returned is missing a valid config.`,
+      );
     }
     const id = (item as { id?: unknown }).id;
-    const finalId = typeof id === "string" && originalIds.has(id) ? id : crypto.randomUUID();
+    const finalId =
+      typeof id === "string" && originalIds.has(id) ? id : crypto.randomUUID();
     return { id: finalId, type, config } as PageBlock;
   });
 
@@ -210,14 +236,23 @@ function sanitizeDesign(raw: unknown): DesignSuggestion | null {
   if (typeof r.accentColor === "string" && HEX_RE.test(r.accentColor)) {
     out.accentColor = r.accentColor;
   }
-  if (typeof r.displayFont === "string" && FONT_CHOICES.some((f) => f.id === r.displayFont)) {
+  if (
+    typeof r.displayFont === "string" &&
+    FONT_CHOICES.some((f) => f.id === r.displayFont)
+  ) {
     out.displayFont = r.displayFont;
   }
-  if (typeof r.buttonStyle === "string" && BUTTON_STYLES.includes(r.buttonStyle as ButtonStyle)) {
+  if (
+    typeof r.buttonStyle === "string" &&
+    BUTTON_STYLES.includes(r.buttonStyle as ButtonStyle)
+  ) {
     out.buttonStyle = r.buttonStyle as ButtonStyle;
   }
   if (typeof r.cornerRadius === "number" && Number.isFinite(r.cornerRadius)) {
-    out.cornerRadius = Math.min(BUTTON_RADIUS_MAX, Math.max(BUTTON_RADIUS_MIN, r.cornerRadius));
+    out.cornerRadius = Math.min(
+      BUTTON_RADIUS_MAX,
+      Math.max(BUTTON_RADIUS_MIN, r.cornerRadius),
+    );
   }
 
   return Object.keys(out).length > 0 ? out : null;
@@ -227,7 +262,11 @@ function sanitizeDesign(raw: unknown): DesignSuggestion | null {
 // preview-mode query params book.$slug.tsx already understands, so the
 // screenshot — and Claude's visual context — reflect the actual page
 // components/branding rather than a synthetic approximation.
-function buildPreviewUrl(siteOrigin: string, slug: string, blocks: PageBlock[]): string {
+function buildPreviewUrl(
+  siteOrigin: string,
+  slug: string,
+  blocks: PageBlock[],
+): string {
   const url = new URL(`/book/${slug}`, siteOrigin);
   url.searchParams.set("preview", "1");
   url.searchParams.set("previewBlocks", JSON.stringify(blocks));

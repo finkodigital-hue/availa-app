@@ -1,0 +1,58 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { peekBookingActionToken } from "@/lib/booking-tokens.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { parseTheme } from "@/lib/theme";
+
+export const Route = createFileRoute("/api/reviews/peek")({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const { token } = (await request.json().catch(() => ({}))) as {
+          token?: string;
+        };
+        if (!token)
+          return Response.json(
+            { ok: false, reason: "invalid" },
+            { status: 400 },
+          );
+        const lookup = await peekBookingActionToken(token, "review");
+        if (!lookup.ok) return Response.json(lookup, { status: 400 });
+        const { data: booking } = await (supabaseAdmin as any)
+          .from("bookings")
+          .select(
+            "id, status, starts_at, ends_at, services(name), staff(name), businesses(name, page_theme, timezone)",
+          )
+          .eq("id", lookup.bookingId)
+          .maybeSingle();
+        if (
+          !booking ||
+          booking.status !== "completed" ||
+          new Date(booking.ends_at).getTime() > Date.now()
+        )
+          return Response.json(
+            { ok: false, reason: "not_completed" },
+            { status: 400 },
+          );
+        const { data: existing } = await (supabaseAdmin as any)
+          .from("customer_reviews")
+          .select("id")
+          .eq("booking_id", booking.id)
+          .maybeSingle();
+        if (existing)
+          return Response.json(
+            { ok: false, reason: "already_submitted" },
+            { status: 409 },
+          );
+        return Response.json({
+          ok: true,
+          businessName: booking.businesses?.name ?? "Your salon",
+          serviceName: booking.services?.name ?? "Appointment",
+          staffName: booking.staff?.name ?? null,
+          startsAt: booking.starts_at,
+          timezone: booking.businesses?.timezone || "UTC",
+          theme: parseTheme(booking.businesses?.page_theme),
+        });
+      },
+    },
+  },
+});

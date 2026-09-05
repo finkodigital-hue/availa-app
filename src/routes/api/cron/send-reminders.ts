@@ -4,6 +4,7 @@ import { parseTheme } from "@/lib/theme";
 import { mintBookingActionToken } from "@/lib/booking-tokens.server";
 import { buildReminderEmail } from "@/lib/emails/reminder-email.server";
 import { buildConfirmationEmail } from "@/lib/emails/confirmation-email.server";
+import { buildReviewRequestEmail } from "@/lib/emails/review-request-email.server";
 import { sendEmail, EmailSendError } from "@/lib/resend.server";
 
 // Woken up every 15 minutes by a Supabase pg_cron + pg_net job (see
@@ -40,14 +41,18 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           return new Response("Not configured", { status: 500 });
         }
         const auth = request.headers.get("authorization") ?? "";
-        const provided = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7) : "";
+        const provided = auth.toLowerCase().startsWith("bearer ")
+          ? auth.slice(7)
+          : "";
         if (!provided || !timingSafeEqual(provided, secret)) {
           return new Response("Unauthorized", { status: 401 });
         }
 
         const { data: businesses, error: bizErr } = await (supabaseAdmin as any)
           .from("businesses")
-          .select("id, name, timezone, currency, address, page_theme, reminder_hours_before")
+          .select(
+            "id, name, timezone, currency, address, page_theme, reminder_hours_before",
+          )
           .eq("plan", "studio");
         if (bizErr) {
           console.error("[send-reminders] failed to load businesses", bizErr);
@@ -60,11 +65,18 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
 
         for (const business of businesses ?? []) {
           const now = new Date();
-          const windowEnd = new Date(now.getTime() + (business.reminder_hours_before ?? 24) * 60 * 60 * 1000);
+          const windowEnd = new Date(
+            now.getTime() +
+              (business.reminder_hours_before ?? 24) * 60 * 60 * 1000,
+          );
 
-          const { data: dueBookings, error: bkErr } = await (supabaseAdmin as any)
+          const { data: dueBookings, error: bkErr } = await (
+            supabaseAdmin as any
+          )
             .from("bookings")
-            .select("id, starts_at, price_cents, customer_email, customer_name, customers(email), services(name), staff(name)")
+            .select(
+              "id, starts_at, price_cents, customer_email, customer_name, customers(email), services(name), staff(name)",
+            )
             .eq("business_id", business.id)
             .is("reminder_sent_at", null)
             .not("status", "in", "(cancelled,completed,no_show)")
@@ -72,7 +84,11 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
             .lte("starts_at", windowEnd.toISOString());
 
           if (bkErr) {
-            console.error("[send-reminders] failed to load bookings", business.id, bkErr);
+            console.error(
+              "[send-reminders] failed to load bookings",
+              business.id,
+              bkErr,
+            );
             continue;
           }
 
@@ -82,7 +98,8 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
             // to the linked customer record's email so reminders still
             // reach a salon's imported client base, not just bookings made
             // through the live public-booking/walk-in paths.
-            const recipientEmail = booking.customer_email || booking.customers?.email;
+            const recipientEmail =
+              booking.customer_email || booking.customers?.email;
             if (!recipientEmail) continue;
 
             const { data: claimedRow } = await (supabaseAdmin as any)
@@ -97,11 +114,24 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
 
             try {
               const theme = parseTheme(business.page_theme);
-              const [confirmToken, cancelToken, rescheduleToken] = await Promise.all([
-                mintBookingActionToken(booking.id, "confirm", booking.starts_at),
-                mintBookingActionToken(booking.id, "cancel", booking.starts_at),
-                mintBookingActionToken(booking.id, "reschedule", booking.starts_at),
-              ]);
+              const [confirmToken, cancelToken, rescheduleToken] =
+                await Promise.all([
+                  mintBookingActionToken(
+                    booking.id,
+                    "confirm",
+                    booking.starts_at,
+                  ),
+                  mintBookingActionToken(
+                    booking.id,
+                    "cancel",
+                    booking.starts_at,
+                  ),
+                  mintBookingActionToken(
+                    booking.id,
+                    "reschedule",
+                    booking.starts_at,
+                  ),
+                ]);
 
               const { subject, html } = buildReminderEmail({
                 theme,
@@ -118,14 +148,31 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 rescheduleToken,
               });
 
-              await sendEmail({ businessId: business.id, to: recipientEmail, subject, html });
+              await sendEmail({
+                businessId: business.id,
+                to: recipientEmail,
+                subject,
+                html,
+              });
               sent++;
             } catch (err) {
               failed++;
-              const message = err instanceof EmailSendError ? err.message : String((err as Error)?.message ?? err);
-              console.error("[send-reminders] send failed", booking.id, message);
-              await (supabaseAdmin as any).from("bookings").update({ reminder_sent_at: null }).eq("id", booking.id);
-              await (supabaseAdmin as any).from("reminder_send_failures").insert({ booking_id: booking.id, error: message });
+              const message =
+                err instanceof EmailSendError
+                  ? err.message
+                  : String((err as Error)?.message ?? err);
+              console.error(
+                "[send-reminders] send failed",
+                booking.id,
+                message,
+              );
+              await (supabaseAdmin as any)
+                .from("bookings")
+                .update({ reminder_sent_at: null })
+                .eq("id", booking.id);
+              await (supabaseAdmin as any)
+                .from("reminder_send_failures")
+                .insert({ booking_id: booking.id, error: message });
             }
           }
         }
@@ -135,10 +182,16 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         let confirmationsSent = 0;
         let confirmationsFailed = 0;
 
-        const cutoff = new Date(Date.now() - CONFIRMATION_BACKSTOP_WINDOW_MS).toISOString();
-        const { data: unconfirmed, error: unconfirmedErr } = await (supabaseAdmin as any)
+        const cutoff = new Date(
+          Date.now() - CONFIRMATION_BACKSTOP_WINDOW_MS,
+        ).toISOString();
+        const { data: unconfirmed, error: unconfirmedErr } = await (
+          supabaseAdmin as any
+        )
           .from("bookings")
-          .select("id, business_id, created_at, starts_at, ends_at, price_cents, customer_email, customers(email), status, services(name), staff(name), businesses(name, timezone, currency, address, page_theme)")
+          .select(
+            "id, business_id, created_at, starts_at, ends_at, price_cents, customer_email, customers(email), status, services(name), staff(name), businesses(name, timezone, currency, address, page_theme)",
+          )
           .is("confirmation_sent_at", null)
           .neq("status", "cancelled")
           .gte("created_at", cutoff)
@@ -148,10 +201,14 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           .gt("starts_at", new Date().toISOString());
 
         if (unconfirmedErr) {
-          console.error("[send-reminders] failed to load unconfirmed bookings", unconfirmedErr);
+          console.error(
+            "[send-reminders] failed to load unconfirmed bookings",
+            unconfirmedErr,
+          );
         } else {
           for (const booking of unconfirmed ?? []) {
-            const recipientEmail = booking.customer_email || booking.customers?.email;
+            const recipientEmail =
+              booking.customer_email || booking.customers?.email;
             if (!recipientEmail) continue;
 
             const { data: claimedRow } = await (supabaseAdmin as any)
@@ -179,14 +236,138 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 currency: business?.currency || "GBP",
                 location: business?.address ?? null,
               });
-              await sendEmail({ businessId: booking.business_id, to: recipientEmail, subject, html, attachments });
+              await sendEmail({
+                businessId: booking.business_id,
+                to: recipientEmail,
+                subject,
+                html,
+                attachments,
+              });
               confirmationsSent++;
             } catch (err) {
               confirmationsFailed++;
-              const message = err instanceof EmailSendError ? err.message : String((err as Error)?.message ?? err);
-              console.error("[send-reminders] confirmation backstop send failed", booking.id, message);
-              await (supabaseAdmin as any).from("bookings").update({ confirmation_sent_at: null }).eq("id", booking.id);
-              await (supabaseAdmin as any).from("reminder_send_failures").insert({ booking_id: booking.id, error: `confirmation: ${message}` });
+              const message =
+                err instanceof EmailSendError
+                  ? err.message
+                  : String((err as Error)?.message ?? err);
+              console.error(
+                "[send-reminders] confirmation backstop send failed",
+                booking.id,
+                message,
+              );
+              await (supabaseAdmin as any)
+                .from("bookings")
+                .update({ confirmation_sent_at: null })
+                .eq("id", booking.id);
+              await (supabaseAdmin as any)
+                .from("reminder_send_failures")
+                .insert({
+                  booking_id: booking.id,
+                  error: `confirmation: ${message}`,
+                });
+            }
+          }
+        }
+
+        // --- Completed-booking review requests (all plans) ---
+        let reviewRequestsClaimed = 0;
+        let reviewRequestsSent = 0;
+        let reviewRequestsFailed = 0;
+        const { data: reviewBusinesses, error: reviewBizErr } = await (
+          supabaseAdmin as any
+        )
+          .from("businesses")
+          .select("id, name, timezone, page_theme, reviews_enabled_at")
+          .eq("review_requests_enabled", true);
+        if (reviewBizErr) {
+          console.error(
+            "[send-reminders] failed to load review businesses",
+            reviewBizErr,
+          );
+        } else {
+          for (const business of reviewBusinesses ?? []) {
+            const { data: completed, error: completedErr } = await (
+              supabaseAdmin as any
+            )
+              .from("bookings")
+              .select(
+                "id, starts_at, ends_at, customer_email, customers(email), services(name), customer_reviews(id)",
+              )
+              .eq("business_id", business.id)
+              .eq("status", "completed")
+              .is("review_request_sent_at", null)
+              .lte("ends_at", new Date().toISOString())
+              .gte("ends_at", business.reviews_enabled_at)
+              .limit(50);
+            if (completedErr) {
+              console.error(
+                "[send-reminders] failed to load completed bookings",
+                business.id,
+                completedErr,
+              );
+              continue;
+            }
+            for (const booking of completed ?? []) {
+              if (
+                booking.customer_reviews?.id ||
+                booking.customer_reviews?.length
+              )
+                continue;
+              const recipientEmail =
+                booking.customer_email || booking.customers?.email;
+              if (!recipientEmail) continue;
+              const { data: claim } = await (supabaseAdmin as any)
+                .from("bookings")
+                .update({ review_request_sent_at: new Date().toISOString() })
+                .eq("id", booking.id)
+                .is("review_request_sent_at", null)
+                .select("id")
+                .maybeSingle();
+              if (!claim) continue;
+              reviewRequestsClaimed++;
+              try {
+                const reviewToken = await mintBookingActionToken(
+                  booking.id,
+                  "review",
+                  booking.ends_at,
+                );
+                const { subject, html } = buildReviewRequestEmail({
+                  theme: parseTheme(business.page_theme),
+                  businessName: business.name,
+                  serviceName: booking.services?.name ?? "Appointment",
+                  startsAtIso: booking.starts_at,
+                  timezone: business.timezone || "UTC",
+                  reviewToken,
+                });
+                await sendEmail({
+                  businessId: business.id,
+                  to: recipientEmail,
+                  subject,
+                  html,
+                });
+                reviewRequestsSent++;
+              } catch (err) {
+                reviewRequestsFailed++;
+                const message =
+                  err instanceof EmailSendError
+                    ? err.message
+                    : String((err as Error)?.message ?? err);
+                console.error(
+                  "[send-reminders] review request failed",
+                  booking.id,
+                  message,
+                );
+                await (supabaseAdmin as any)
+                  .from("bookings")
+                  .update({ review_request_sent_at: null })
+                  .eq("id", booking.id);
+                await (supabaseAdmin as any)
+                  .from("reminder_send_failures")
+                  .insert({
+                    booking_id: booking.id,
+                    error: `review: ${message}`,
+                  });
+              }
             }
           }
         }
@@ -202,8 +383,12 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
 
         const stripeKey = process.env.STRIPE_SECRET_KEY;
         if (stripeKey) {
-          const staleBefore = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-          const { data: subscribed, error: subErr } = await (supabaseAdmin as any)
+          const staleBefore = new Date(
+            Date.now() - 6 * 60 * 60 * 1000,
+          ).toISOString();
+          const { data: subscribed, error: subErr } = await (
+            supabaseAdmin as any
+          )
             .from("businesses")
             .select("id, stripe_subscription_id, billing_synced_at")
             .eq("plan", "studio")
@@ -212,7 +397,10 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
             .limit(20);
 
           if (subErr) {
-            console.error("[send-reminders] failed to load subscribed businesses", subErr);
+            console.error(
+              "[send-reminders] failed to load subscribed businesses",
+              subErr,
+            );
           } else {
             for (const biz of subscribed ?? []) {
               try {
@@ -220,25 +408,39 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                   `https://api.stripe.com/v1/subscriptions/${encodeURIComponent(biz.stripe_subscription_id)}`,
                   { headers: { Authorization: `Bearer ${stripeKey}` } },
                 );
-                const sub = (await res.json()) as { status?: string; error?: { message?: string } };
-                if (!res.ok) throw new Error(sub.error?.message ?? "Stripe error");
+                const sub = (await res.json()) as {
+                  status?: string;
+                  error?: { message?: string };
+                };
+                if (!res.ok)
+                  throw new Error(sub.error?.message ?? "Stripe error");
                 subscriptionsChecked++;
 
                 const status = sub.status ?? "unknown";
                 // past_due keeps access while Stripe retries the card; only
                 // genuinely-terminal states lose Studio.
-                const terminal = ["canceled", "unpaid", "incomplete_expired"].includes(status);
+                const terminal = [
+                  "canceled",
+                  "unpaid",
+                  "incomplete_expired",
+                ].includes(status);
                 await (supabaseAdmin as any)
                   .from("businesses")
                   .update({
                     stripe_subscription_status: status,
                     billing_synced_at: new Date().toISOString(),
-                    ...(terminal ? { plan: "free", stripe_subscription_id: null } : {}),
+                    ...(terminal
+                      ? { plan: "free", stripe_subscription_id: null }
+                      : {}),
                   })
                   .eq("id", biz.id);
                 if (terminal) subscriptionsDowngraded++;
               } catch (err) {
-                console.error("[send-reminders] subscription sync failed", biz.id, err);
+                console.error(
+                  "[send-reminders] subscription sync failed",
+                  biz.id,
+                  err,
+                );
               }
             }
           }
@@ -251,6 +453,9 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           confirmationsClaimed,
           confirmationsSent,
           confirmationsFailed,
+          reviewRequestsClaimed,
+          reviewRequestsSent,
+          reviewRequestsFailed,
           subscriptionsChecked,
           subscriptionsDowngraded,
         });

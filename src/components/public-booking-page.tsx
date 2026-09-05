@@ -16,9 +16,15 @@ import {
   Sparkles,
   Search,
   Navigation,
+  Star,
+  BadgeCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { expandBookingSegments, expandCandidateSegments, segmentsOverlap } from "@/lib/slots";
+import {
+  expandBookingSegments,
+  expandCandidateSegments,
+  segmentsOverlap,
+} from "@/lib/slots";
 import { resolveDayPeriods } from "@/lib/staff-hours";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,13 +34,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fmtMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { BlockRenderer, type PageBlock } from "@/components/page-blocks";
-import { applyThemeVars, themeFontOverrideCss, themedButtonStyle, type Theme } from "@/lib/theme";
+import {
+  applyThemeVars,
+  themeFontOverrideCss,
+  themedButtonStyle,
+  type Theme,
+} from "@/lib/theme";
 import { startBookingCheckout } from "@/lib/stripe-connect.functions";
 import { useAuth } from "@/lib/auth";
 import { usePortalCustomer } from "@/lib/portal-customer";
 import { BookingSignIn } from "@/components/booking-sign-in";
 import { AddToCalendar } from "@/components/add-to-calendar";
-import { parseStorefrontSettings, type StorefrontSection } from "@/lib/storefront";
+import {
+  parseStorefrontSettings,
+  type StorefrontSection,
+} from "@/lib/storefront";
 
 // The real public booking page renderer — used both at /book/$slug and,
 // embedded/scaled/non-interactive, as the live preview in the setup wizard
@@ -73,14 +87,33 @@ type Service = {
   color?: string | null;
   business_id: string;
 };
-type Staff = { id: string; name: string; role: string | null; business_id: string };
+type Staff = {
+  id: string;
+  name: string;
+  role: string | null;
+  business_id: string;
+};
+type PublicReview = {
+  id: string;
+  rating: number;
+  body: string;
+  reviewerName: string;
+  submittedAt: string;
+  serviceName: string | null;
+  verified: boolean;
+};
 type Step = "service" | "staff" | "time" | "info" | "done";
 
 // Services with the same (trimmed, case-insensitive) name across the salon
 // and its linked independent pros are shown as one card — customers pick a
 // person, not a business, on the next step. Independent pros stay invisible
 // as separate businesses throughout.
-type ServiceGroup = { key: string; name: string; description: string | null; variants: Service[] };
+type ServiceGroup = {
+  key: string;
+  name: string;
+  description: string | null;
+  variants: Service[];
+};
 
 function groupServices(services: Service[]): ServiceGroup[] {
   const map = new Map<string, Service[]>();
@@ -107,15 +140,25 @@ function priceRange(variants: Service[], currency: string) {
   return `${fmtMoney(min, currency)} to ${fmtMoney(max, currency)}`;
 }
 
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 function inferServiceCategory(name: string) {
   const value = name.toLowerCase();
-  if (/colour|color|balayage|highlight|tint|foil|bleach|toner/.test(value)) return "Colour";
+  if (/colour|color|balayage|highlight|tint|foil|bleach|toner/.test(value))
+    return "Colour";
   if (/extension/.test(value)) return "Extensions";
   if (/treatment|keratin|mask|conditioning/.test(value)) return "Treatments";
   if (/cut|trim|blow|style|hair up/.test(value)) return "Cuts & styling";
-  if (/brow|lash|nail|makeup|wax|facial|massage/.test(value)) return "Beauty & finishing";
+  if (/brow|lash|nail|makeup|wax|facial|massage/.test(value))
+    return "Beauty & finishing";
   return "Other services";
 }
 
@@ -164,7 +207,11 @@ export function PublicBookingPage({
   // hover/select/drag-handle shell without forking BlockRenderer or the
   // block components themselves. Real visitors and every other embed get
   // the identity default.
-  renderBlock?: (block: PageBlock, index: number, children: React.ReactNode) => React.ReactNode;
+  renderBlock?: (
+    block: PageBlock,
+    index: number,
+    children: React.ReactNode,
+  ) => React.ReactNode;
 }) {
   const biz = business;
   const currency = business.currency ?? "GBP";
@@ -189,10 +236,17 @@ export function PublicBookingPage({
   // gets treated as the SAME calendar event by their calendar app (an update,
   // not a duplicate), rather than two unrelated events for one appointment.
   const [bookedBookingId, setBookedBookingId] = useState<string | null>(null);
-  const [info, setInfo] = useState({ name: "", email: "", phone: "", notes: "" });
+  const [info, setInfo] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    notes: "",
+  });
   const [infoTouched, setInfoTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [paymentReturn, setPaymentReturn] = useState<"success" | "cancelled" | null>(null);
+  const [paymentReturn, setPaymentReturn] = useState<
+    "success" | "cancelled" | null
+  >(null);
   const [serviceSearch, setServiceSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [expandedServices, setExpandedServices] = useState(false);
@@ -232,9 +286,12 @@ export function PublicBookingPage({
   const { data: pros } = useQuery({
     queryKey: ["pub-pros", biz.id],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("get_public_salon_professionals", {
-        _salon_business_id: biz.id,
-      });
+      const { data, error } = await (supabase as any).rpc(
+        "get_public_salon_professionals",
+        {
+          _salon_business_id: biz.id,
+        },
+      );
       // Degrade to salon-only booking (this page's original behavior) if the
       // RPC isn't available yet — e.g. its migration hasn't been applied —
       // rather than getting the whole booking page stuck.
@@ -247,8 +304,14 @@ export function PublicBookingPage({
     },
   });
 
-  const proBusinessIds = useMemo(() => (pros ?? []).map((p) => p.pro_business_id), [pros]);
-  const bizIds = useMemo(() => [biz.id, ...proBusinessIds], [biz.id, proBusinessIds]);
+  const proBusinessIds = useMemo(
+    () => (pros ?? []).map((p) => p.pro_business_id),
+    [pros],
+  );
+  const bizIds = useMemo(
+    () => [biz.id, ...proBusinessIds],
+    [biz.id, proBusinessIds],
+  );
 
   const { data: services, isLoading: loadingServices } = useQuery({
     queryKey: ["pub-services", biz.id, proBusinessIds.join(",")],
@@ -282,7 +345,9 @@ export function PublicBookingPage({
   const { data: galleryPhotos = [] } = useQuery({
     queryKey: ["public-storefront-gallery", biz.id],
     queryFn: async () => {
-      const response = await fetch(`/api/public-gallery?business_id=${encodeURIComponent(biz.id)}`);
+      const response = await fetch(
+        `/api/public-gallery?business_id=${encodeURIComponent(biz.id)}`,
+      );
       if (!response.ok) return [];
       const payload = (await response.json()) as {
         photos?: { id: string; kind: string; url: string }[];
@@ -291,7 +356,22 @@ export function PublicBookingPage({
     },
   });
 
-  const serviceGroups = useMemo(() => groupServices(services ?? []), [services]);
+  const { data: customerReviews = [] } = useQuery({
+    queryKey: ["public-customer-reviews", biz.id],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/public-reviews?business_id=${encodeURIComponent(biz.id)}`,
+      );
+      if (!response.ok) return [];
+      const payload = (await response.json()) as { reviews?: PublicReview[] };
+      return payload.reviews ?? [];
+    },
+  });
+
+  const serviceGroups = useMemo(
+    () => groupServices(services ?? []),
+    [services],
+  );
   const serviceCategories = useMemo(() => {
     const categories = new Map<string, ServiceGroup[]>();
     for (const group of serviceGroups) {
@@ -308,11 +388,13 @@ export function PublicBookingPage({
     const needle = serviceSearch.trim().toLowerCase();
     if (needle)
       return serviceGroups.filter((group) =>
-        `${group.name} ${group.description ?? ""}`.toLowerCase().includes(needle),
+        `${group.name} ${group.description ?? ""}`
+          .toLowerCase()
+          .includes(needle),
       );
     return (
-      serviceCategories.find((category) => category.name === activeCategory)?.groups ??
-      serviceGroups
+      serviceCategories.find((category) => category.name === activeCategory)
+        ?.groups ?? serviceGroups
     );
   }, [activeCategory, serviceCategories, serviceGroups, serviceSearch]);
   const sortedOpeningHours = useMemo(
@@ -343,7 +425,8 @@ export function PublicBookingPage({
       const fallbackBizIds: string[] = [];
       for (const v of variants) {
         const linked = linkedByService.get(v.id);
-        if (linked && linked.length > 0) linked.forEach((id) => staffIds.add(id));
+        if (linked && linked.length > 0)
+          linked.forEach((id) => staffIds.add(id));
         else fallbackBizIds.push(v.business_id);
       }
       const results: Staff[] = [];
@@ -378,39 +461,42 @@ export function PublicBookingPage({
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
       const weekday = date.getDay();
-      const [hoursR, periodsR, staffHoursR, bookingsR, blockedR] = await Promise.all([
-        supabase
-          .from("business_hours")
-          .select("*")
-          .eq("business_id", service!.business_id)
-          .eq("weekday", weekday)
-          .maybeSingle(),
-        supabase
-          .from("business_hour_periods")
-          .select("open_time, close_time")
-          .eq("business_id", service!.business_id)
-          .eq("weekday", weekday)
-          .order("open_time"),
-        supabase
-          .from("staff_hours")
-          .select("closed, open_time, close_time, repeat_weeks, repeat_anchor")
-          .eq("staff_id", staff!.id)
-          .eq("weekday", weekday)
-          .maybeSingle(),
-        (supabase as any)
-          .from("public_booking_slots")
-          .select("starts_at, ends_at, gap_min, active_after_min")
-          .eq("business_id", service!.business_id)
-          .eq("staff_id", staff!.id)
-          .gte("starts_at", dayStart.toISOString())
-          .lte("starts_at", dayEnd.toISOString()),
-        supabase
-          .from("blocked_dates")
-          .select("*")
-          .eq("business_id", service!.business_id)
-          .lt("starts_at", dayEnd.toISOString())
-          .gt("ends_at", dayStart.toISOString()),
-      ]);
+      const [hoursR, periodsR, staffHoursR, bookingsR, blockedR] =
+        await Promise.all([
+          supabase
+            .from("business_hours")
+            .select("*")
+            .eq("business_id", service!.business_id)
+            .eq("weekday", weekday)
+            .maybeSingle(),
+          supabase
+            .from("business_hour_periods")
+            .select("open_time, close_time")
+            .eq("business_id", service!.business_id)
+            .eq("weekday", weekday)
+            .order("open_time"),
+          supabase
+            .from("staff_hours")
+            .select(
+              "closed, open_time, close_time, repeat_weeks, repeat_anchor",
+            )
+            .eq("staff_id", staff!.id)
+            .eq("weekday", weekday)
+            .maybeSingle(),
+          (supabase as any)
+            .from("public_booking_slots")
+            .select("starts_at, ends_at, gap_min, active_after_min")
+            .eq("business_id", service!.business_id)
+            .eq("staff_id", staff!.id)
+            .gte("starts_at", dayStart.toISOString())
+            .lte("starts_at", dayEnd.toISOString()),
+          supabase
+            .from("blocked_dates")
+            .select("*")
+            .eq("business_id", service!.business_id)
+            .lt("starts_at", dayEnd.toISOString())
+            .gt("ends_at", dayStart.toISOString()),
+        ]);
       return {
         periods: resolveDayPeriods({
           weekday,
@@ -437,10 +523,13 @@ export function PublicBookingPage({
     const bufAfter = service.buffer_after_min ?? 0;
     const gapMin = service.gap_min ?? 0;
     const activeAfterMin = service.active_after_min ?? 0;
-    const totalMin = service.duration_minutes + bufBefore + bufAfter + gapMin + activeAfterMin;
+    const totalMin =
+      service.duration_minutes + bufBefore + bufAfter + gapMin + activeAfterMin;
     const result: { time: string; iso: string; hour: number }[] = [];
     const now = new Date();
-    const existingSegments = dayData.bookings.map((b) => expandBookingSegments(b));
+    const existingSegments = dayData.bookings.map((b) =>
+      expandBookingSegments(b),
+    );
     for (const period of dayData.periods) {
       const [oh, om] = period.open_time.split(":").map(Number);
       const [ch, cm] = period.close_time.split(":").map(Number);
@@ -455,18 +544,26 @@ export function PublicBookingPage({
       ) {
         if (t < now) continue;
         const candidateSegments = expandCandidateSegments(t.getTime(), service);
-        const conflict = existingSegments.some((segs) => segmentsOverlap(candidateSegments, segs));
+        const conflict = existingSegments.some((segs) =>
+          segmentsOverlap(candidateSegments, segs),
+        );
         const blocked = dayData.blocked.some((b: any) => {
           if (b.staff_id && b.staff_id !== staff?.id) return false;
           const blockedSeg = [
-            { start: new Date(b.starts_at).getTime(), end: new Date(b.ends_at).getTime() },
+            {
+              start: new Date(b.starts_at).getTime(),
+              end: new Date(b.ends_at).getTime(),
+            },
           ];
           return segmentsOverlap(candidateSegments, blockedSeg);
         });
         if (!conflict && !blocked) {
           const start = new Date(t.getTime() + bufBefore * 60000);
           result.push({
-            time: start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+            time: start.toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            }),
             iso: start.toISOString(),
             hour: start.getHours(),
           });
@@ -515,7 +612,9 @@ export function PublicBookingPage({
   };
 
   const pickStaff = (p: Staff) => {
-    const variant = serviceGroup?.variants.find((v) => v.business_id === p.business_id);
+    const variant = serviceGroup?.variants.find(
+      (v) => v.business_id === p.business_id,
+    );
     if (!variant) return;
     setService(variant);
     setStaff(p);
@@ -543,14 +642,19 @@ export function PublicBookingPage({
       const gapMin = service.gap_min ?? 0;
       const activeAfterMin = service.active_after_min ?? 0;
       const totalMin = service.duration_minutes + gapMin + activeAfterMin;
-      const ends_at = new Date(new Date(starts_at).getTime() + totalMin * 60000).toISOString();
+      const ends_at = new Date(
+        new Date(starts_at).getTime() + totalMin * 60000,
+      ).toISOString();
       const { data: clashRows } = await (supabase as any)
         .from("public_booking_slots")
         .select("starts_at, ends_at, gap_min, active_after_min")
         .eq("staff_id", staff.id)
         .lt("starts_at", ends_at)
         .gt("ends_at", starts_at);
-      const candidateSegments = expandCandidateSegments(new Date(starts_at).getTime(), service);
+      const candidateSegments = expandCandidateSegments(
+        new Date(starts_at).getTime(),
+        service,
+      );
       const clash = (clashRows ?? []).some((b: any) =>
         segmentsOverlap(candidateSegments, expandBookingSegments(b)),
       );
@@ -579,19 +683,22 @@ export function PublicBookingPage({
         window.location.assign(checkout.checkoutUrl);
         return;
       }
-      const { data: bookingId, error } = await supabase.rpc("create_public_booking", {
-        p_business_id: service.business_id,
-        p_service_id: service.id,
-        p_staff_id: staff.id,
-        p_customer_name: info.name,
-        p_customer_email: info.email || "",
-        p_customer_phone: info.phone || "",
-        p_starts_at: starts_at,
-        p_ends_at: ends_at,
-        p_notes: info.notes || "",
-        p_gap_min: service.gap_min ?? null,
-        p_active_after_min: service.active_after_min ?? null,
-      });
+      const { data: bookingId, error } = await supabase.rpc(
+        "create_public_booking",
+        {
+          p_business_id: service.business_id,
+          p_service_id: service.id,
+          p_staff_id: staff.id,
+          p_customer_name: info.name,
+          p_customer_email: info.email || "",
+          p_customer_phone: info.phone || "",
+          p_starts_at: starts_at,
+          p_ends_at: ends_at,
+          p_notes: info.notes || "",
+          p_gap_min: service.gap_min ?? null,
+          p_active_after_min: service.active_after_min ?? null,
+        },
+      );
       if (error) throw error;
       setBookedEndsAt(ends_at);
       setBookedBookingId(bookingId ?? null);
@@ -617,7 +724,9 @@ export function PublicBookingPage({
         setStep("time");
         setTime(null);
       } else if (msg.includes("RATE_LIMITED")) {
-        toast.error("Too many booking attempts — please wait a few minutes and try again.");
+        toast.error(
+          "Too many booking attempts — please wait a few minutes and try again.",
+        );
       } else {
         toast.error(msg || "Could not book");
       }
@@ -649,15 +758,36 @@ export function PublicBookingPage({
   const customBlocks: PageBlock[] = (pageBlocks ?? []).filter(
     (block) => !storefrontOwnedBlockTypes.has(block.type),
   );
-  const gallerySection = storefront.sections.find((section) => section.id === "gallery")!;
-  const bookingSection = storefront.sections.find((section) => section.id === "booking")!;
-  const locationSection = storefront.sections.find((section) => section.id === "location")!;
+  const gallerySection = storefront.sections.find(
+    (section) => section.id === "gallery",
+  )!;
+  const bookingSection = storefront.sections.find(
+    (section) => section.id === "booking",
+  )!;
+  const reviewsSection = storefront.sections.find(
+    (section) => section.id === "reviews",
+  )!;
+  const locationSection = storefront.sections.find(
+    (section) => section.id === "location",
+  )!;
+  const reviewAverage = customerReviews.length
+    ? customerReviews.reduce((sum, review) => sum + review.rating, 0) /
+      customerReviews.length
+    : 0;
   const galleryLimit = Math.max(1, gallerySection.itemLimit);
   const testshopPhotos =
     biz.slug === "testshop"
       ? [
-          { id: "testshop-main", kind: "interior", url: "/storefront/testshop-salon-main.jpg" },
-          { id: "testshop-wash", kind: "interior", url: "/storefront/testshop-salon-wash.jpg" },
+          {
+            id: "testshop-main",
+            kind: "interior",
+            url: "/storefront/testshop-salon-main.jpg",
+          },
+          {
+            id: "testshop-wash",
+            kind: "interior",
+            url: "/storefront/testshop-salon-wash.jpg",
+          },
           {
             id: "testshop-reception",
             kind: "interior",
@@ -665,20 +795,28 @@ export function PublicBookingPage({
           },
         ]
       : [];
-  const heroPhotos = (galleryPhotos.length > 0 ? galleryPhotos : testshopPhotos).slice(
-    0,
-    galleryLimit,
-  );
+  const heroPhotos = (
+    galleryPhotos.length > 0 ? galleryPhotos : testshopPhotos
+  ).slice(0, galleryLimit);
   const displayAddress =
-    biz.address || (biz.slug === "testshop" ? "16 Inglis Street, Inverness" : null);
+    biz.address ||
+    (biz.slug === "testshop" ? "16 Inglis Street, Inverness" : null);
 
   return (
-    <div id={domId} className="min-h-screen bg-background text-foreground" style={brandStyle}>
+    <div
+      id={domId}
+      className="min-h-screen bg-background text-foreground"
+      style={brandStyle}
+    >
       <style>{themeFontOverrideCss(theme, `#${domId}`)}</style>
       <header className="border-b bg-background/95">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-4 sm:px-6">
           {theme.logoUrl ? (
-            <img src={theme.logoUrl} alt={biz.name} className="h-11 w-11 rounded-xl object-cover" />
+            <img
+              src={theme.logoUrl}
+              alt={biz.name}
+              className="h-11 w-11 rounded-xl object-cover"
+            />
           ) : (
             <div
               className="grid h-11 w-11 place-items-center rounded-xl text-lg font-display text-white"
@@ -699,7 +837,9 @@ export function PublicBookingPage({
       {customBlocks.length > 0 && (
         <div className="max-w-5xl mx-auto px-5 sm:px-6 pt-8 space-y-8">
           {customBlocks.map((block, index) => (
-            <div key={block.id}>{renderBlock(block, index, <BlockRenderer block={block} />)}</div>
+            <div key={block.id}>
+              {renderBlock(block, index, <BlockRenderer block={block} />)}
+            </div>
           ))}
         </div>
       )}
@@ -712,23 +852,37 @@ export function PublicBookingPage({
         )}
         {paymentReturn === "cancelled" && (
           <div className="rounded-2xl border bg-secondary/50 p-4 text-sm mb-6">
-            Payment cancelled — no money was taken. You can choose a time and try again whenever
-            you’re ready.
+            Payment cancelled — no money was taken. You can choose a time and
+            try again whenever you’re ready.
           </div>
         )}
         {biz.description && step === "service" && (
-          <p className="text-muted-foreground mb-8 text-pretty">{biz.description}</p>
+          <p className="text-muted-foreground mb-8 text-pretty">
+            {biz.description}
+          </p>
         )}
 
-        {step !== "done" && step !== "service" && <Stepper step={step} brand={brand} />}
+        {step !== "done" && step !== "service" && (
+          <Stepper step={step} brand={brand} />
+        )}
 
         {/* Selection summary */}
         {(serviceGroup || staff || time) && step !== "done" && (
           <div className="rounded-2xl border bg-card/60 backdrop-blur p-4 mb-6 flex flex-wrap gap-2 text-xs animate-rise">
             {serviceGroup && (
-              <Chip onClick={() => setStep("service")} icon={Sparkles} label={serviceGroup.name} />
+              <Chip
+                onClick={() => setStep("service")}
+                icon={Sparkles}
+                label={serviceGroup.name}
+              />
             )}
-            {staff && <Chip onClick={() => setStep("staff")} icon={User} label={staff.name} />}
+            {staff && (
+              <Chip
+                onClick={() => setStep("staff")}
+                icon={User}
+                label={staff.name}
+              />
+            )}
             {time && (
               <Chip
                 onClick={() => setStep("time")}
@@ -834,14 +988,21 @@ export function PublicBookingPage({
                       ? visibleServiceGroups
                       : visibleServiceGroups.slice(0, bookingSection.itemLimit);
                   return (
-                    <section key={section.id} id={`${domId}-booking`} className="scroll-mt-5">
+                    <section
+                      key={section.id}
+                      id={`${domId}-booking`}
+                      className="scroll-mt-5"
+                    >
                       <Stepper step={step} brand={brand} />
                       <div className="mt-10 max-w-3xl">
                         {section.heading && (
-                          <h2 className="font-display text-3xl sm:text-5xl">{section.heading}</h2>
+                          <h2 className="font-display text-3xl sm:text-5xl">
+                            {section.heading}
+                          </h2>
                         )}
                         <p className="mt-2 text-sm text-muted-foreground">
-                          Search or browse by category, then choose the service that suits you.
+                          Search or browse by category, then choose the service
+                          that suits you.
                         </p>
                       </div>
                       <div className="relative mt-6">
@@ -879,7 +1040,10 @@ export function PublicBookingPage({
                         ))}
                       </div>
                       <div className="mt-7 grid gap-7 md:grid-cols-[190px_minmax(0,1fr)]">
-                        <nav className="hidden space-y-1 md:block" aria-label="Service categories">
+                        <nav
+                          className="hidden space-y-1 md:block"
+                          aria-label="Service categories"
+                        >
                           {serviceCategories.map((category) => (
                             <button
                               key={category.name}
@@ -891,7 +1055,8 @@ export function PublicBookingPage({
                               }}
                               className={`w-full rounded-xl px-4 py-3 text-left text-sm ${!serviceSearch && activeCategory === category.name ? "font-medium" : "text-muted-foreground hover:text-foreground"}`}
                               style={
-                                !serviceSearch && activeCategory === category.name
+                                !serviceSearch &&
+                                activeCategory === category.name
                                   ? {
                                       background: `color-mix(in srgb, ${accent} 14%, transparent)`,
                                       color: accent,
@@ -900,14 +1065,18 @@ export function PublicBookingPage({
                               }
                             >
                               {category.name}
-                              <span className="float-right text-xs">{category.groups.length}</span>
+                              <span className="float-right text-xs">
+                                {category.groups.length}
+                              </span>
                             </button>
                           ))}
                         </nav>
                         <div>
                           <div className="mb-3 flex items-center justify-between">
                             <h3 className="font-display text-2xl">
-                              {serviceSearch ? "Search results" : activeCategory}
+                              {serviceSearch
+                                ? "Search results"
+                                : activeCategory}
                             </h3>
                             <span className="text-xs text-muted-foreground">
                               {visibleServiceGroups.length} services
@@ -915,7 +1084,10 @@ export function PublicBookingPage({
                           </div>
                           {loadingServices &&
                             Array.from({ length: 3 }).map((_, i) => (
-                              <Skeleton key={i} className="mb-2 h-24 rounded-2xl" />
+                              <Skeleton
+                                key={i}
+                                className="mb-2 h-24 rounded-2xl"
+                              />
                             ))}
                           {!loadingServices && shownGroups.length === 0 && (
                             <div className="rounded-2xl border border-dashed p-12 text-center text-muted-foreground">
@@ -931,7 +1103,9 @@ export function PublicBookingPage({
                               >
                                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4">
                                   <div>
-                                    <h3 className="font-display text-xl">{group.name}</h3>
+                                    <h3 className="font-display text-xl">
+                                      {group.name}
+                                    </h3>
                                     {group.description && (
                                       <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                                         {group.description}
@@ -961,12 +1135,15 @@ export function PublicBookingPage({
                             ))}
                           </div>
                           {!serviceSearch &&
-                            visibleServiceGroups.length > bookingSection.itemLimit && (
+                            visibleServiceGroups.length >
+                              bookingSection.itemLimit && (
                               <Button
                                 type="button"
                                 variant="outline"
                                 className="mx-auto mt-5 flex rounded-full"
-                                onClick={() => setExpandedServices((value) => !value)}
+                                onClick={() =>
+                                  setExpandedServices((value) => !value)
+                                }
                               >
                                 {expandedServices
                                   ? "Show fewer services"
@@ -979,7 +1156,110 @@ export function PublicBookingPage({
                   );
                 }
 
-                if (section.id === "location" && (displayAddress || sortedOpeningHours.length > 0))
+                if (section.id === "reviews" && customerReviews.length > 0)
+                  return (
+                    <section
+                      key={section.id}
+                      aria-labelledby={`${domId}-reviews-heading`}
+                    >
+                      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                            Customer experiences
+                          </p>
+                          {section.heading && (
+                            <h2
+                              id={`${domId}-reviews-heading`}
+                              className="mt-1 font-display text-3xl sm:text-5xl"
+                            >
+                              {section.heading}
+                            </h2>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-display text-3xl">
+                            {reviewAverage.toFixed(1)}
+                          </span>
+                          <div>
+                            <div
+                              className="flex"
+                              aria-label={`${reviewAverage.toFixed(1)} out of 5 stars`}
+                            >
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className="h-4 w-4"
+                                  fill={
+                                    star <= Math.round(reviewAverage)
+                                      ? brand
+                                      : "transparent"
+                                  }
+                                  style={{ color: brand }}
+                                />
+                              ))}
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              From {customerReviews.length} verified{" "}
+                              {customerReviews.length === 1
+                                ? "visit"
+                                : "visits"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-7 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {customerReviews
+                          .slice(0, reviewsSection.itemLimit)
+                          .map((review) => (
+                            <article
+                              key={review.id}
+                              className="flex min-h-56 flex-col rounded-2xl border bg-card p-6"
+                            >
+                              <div
+                                className="flex"
+                                aria-label={`${review.rating} out of 5 stars`}
+                              >
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className="h-4 w-4"
+                                    fill={
+                                      star <= review.rating
+                                        ? brand
+                                        : "transparent"
+                                    }
+                                    style={{ color: brand }}
+                                  />
+                                ))}
+                              </div>
+                              <blockquote className="mt-5 flex-1 text-sm leading-6 text-foreground/80">
+                                “{review.body}”
+                              </blockquote>
+                              <footer className="mt-5 border-t pt-4">
+                                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                                  {review.reviewerName}
+                                  {review.verified && (
+                                    <BadgeCheck
+                                      className="h-4 w-4"
+                                      style={{ color: brand }}
+                                      aria-label="Verified booking"
+                                    />
+                                  )}
+                                </div>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {review.serviceName ?? "Verified booking"}
+                                </p>
+                              </footer>
+                            </article>
+                          ))}
+                      </div>
+                    </section>
+                  );
+
+                if (
+                  section.id === "location" &&
+                  (displayAddress || sortedOpeningHours.length > 0)
+                )
                   return (
                     <section
                       key={section.id}
@@ -991,7 +1271,9 @@ export function PublicBookingPage({
                             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                               Visit us
                             </p>
-                            <h2 className="font-display text-3xl sm:text-4xl">{section.heading}</h2>
+                            <h2 className="font-display text-3xl sm:text-4xl">
+                              {section.heading}
+                            </h2>
                           </>
                         )}
                         {displayAddress && (
@@ -1013,18 +1295,23 @@ export function PublicBookingPage({
                           </a>
                         )}
                         <div className="mt-7 space-y-2 text-sm">
-                          {sortedOpeningHours.slice(0, locationSection.itemLimit).map((hours) => (
-                            <div key={hours.weekday} className="flex justify-between gap-4">
-                              <span className="text-muted-foreground">
-                                {WEEKDAYS[hours.weekday]}
-                              </span>
-                              <span className="tabular-nums">
-                                {hours.closed
-                                  ? "Closed"
-                                  : `${displayTime(hours.open_time)} – ${displayTime(hours.close_time)}`}
-                              </span>
-                            </div>
-                          ))}
+                          {sortedOpeningHours
+                            .slice(0, locationSection.itemLimit)
+                            .map((hours) => (
+                              <div
+                                key={hours.weekday}
+                                className="flex justify-between gap-4"
+                              >
+                                <span className="text-muted-foreground">
+                                  {WEEKDAYS[hours.weekday]}
+                                </span>
+                                <span className="tabular-nums">
+                                  {hours.closed
+                                    ? "Closed"
+                                    : `${displayTime(hours.open_time)} – ${displayTime(hours.close_time)}`}
+                                </span>
+                              </div>
+                            ))}
                         </div>
                       </div>
                       {displayAddress && (
@@ -1067,7 +1354,11 @@ export function PublicBookingPage({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="font-medium truncate">{p.name}</div>
-                  {p.role && <div className="text-xs text-muted-foreground truncate">{p.role}</div>}
+                  {p.role && (
+                    <div className="text-xs text-muted-foreground truncate">
+                      {p.role}
+                    </div>
+                  )}
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
               </button>
@@ -1084,7 +1375,11 @@ export function PublicBookingPage({
               <div className="flex items-center justify-between mb-2 px-1">
                 <div className="font-display text-base inline-flex items-center gap-2">
                   <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                  {date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+                  {date.toLocaleDateString([], {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </div>
                 <div className="flex gap-1">
                   <Button
@@ -1094,7 +1389,8 @@ export function PublicBookingPage({
                     onClick={() => {
                       const d = new Date(date);
                       d.setDate(d.getDate() - 1);
-                      if (d >= new Date(new Date().setHours(0, 0, 0, 0))) setDate(d);
+                      if (d >= new Date(new Date().setHours(0, 0, 0, 0)))
+                        setDate(d);
                     }}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -1206,8 +1502,12 @@ export function PublicBookingPage({
                 background: `linear-gradient(135deg, ${brand}, color-mix(in oklab, ${brand} 70%, black))`,
               }}
             >
-              <div className="text-[11px] uppercase tracking-[0.2em] opacity-80">Almost there</div>
-              <div className="font-display text-xl mt-1">{serviceGroup?.name ?? service.name}</div>
+              <div className="text-[11px] uppercase tracking-[0.2em] opacity-80">
+                Almost there
+              </div>
+              <div className="font-display text-xl mt-1">
+                {serviceGroup?.name ?? service.name}
+              </div>
               <div className="text-sm opacity-90 mt-2 flex flex-wrap gap-x-3 gap-y-1">
                 <span className="inline-flex items-center gap-1">
                   <User className="h-3 w-3" />
@@ -1230,13 +1530,20 @@ export function PublicBookingPage({
               <div className="flex items-center justify-between gap-2 rounded-xl border bg-secondary/20 px-4 py-3 text-sm">
                 <span className="text-muted-foreground">
                   Signed in as{" "}
-                  <span className="text-foreground font-medium">{signedInUser.email}</span>
+                  <span className="text-foreground font-medium">
+                    {signedInUser.email}
+                  </span>
                 </span>
                 <button
                   type="button"
                   onClick={async () => {
                     await supabase.auth.signOut();
-                    setInfo({ name: "", email: "", phone: "", notes: info.notes });
+                    setInfo({
+                      name: "",
+                      email: "",
+                      phone: "",
+                      notes: info.notes,
+                    });
                     setInfoTouched(false);
                   }}
                   className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 shrink-0"
@@ -1306,7 +1613,10 @@ export function PublicBookingPage({
             </div>
             <div>
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                Notes <span className="text-muted-foreground/60 normal-case">(optional)</span>
+                Notes{" "}
+                <span className="text-muted-foreground/60 normal-case">
+                  (optional)
+                </span>
               </Label>
               <Textarea
                 value={info.notes}
@@ -1328,7 +1638,8 @@ export function PublicBookingPage({
             >
               {submitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparing secure checkout…
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparing
+                  secure checkout…
                 </>
               ) : (
                 <>Continue to secure payment</>
@@ -1349,7 +1660,9 @@ export function PublicBookingPage({
             >
               <Check className="h-9 w-9" />
             </div>
-            <h2 className="font-display text-3xl sm:text-4xl mt-8 text-balance">You're booked.</h2>
+            <h2 className="font-display text-3xl sm:text-4xl mt-8 text-balance">
+              You're booked.
+            </h2>
             <p className="text-muted-foreground mt-3 text-pretty">
               We'll see you{" "}
               {new Date(time).toLocaleDateString([], {
@@ -1357,12 +1670,23 @@ export function PublicBookingPage({
                 month: "long",
                 day: "numeric",
               })}{" "}
-              at {new Date(time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.
+              at{" "}
+              {new Date(time).toLocaleTimeString([], {
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+              .
             </p>
             <div className="mt-8 mx-auto max-w-sm rounded-2xl border bg-card p-5 text-left text-sm">
-              <SummaryRow label="Service" value={serviceGroup?.name ?? service.name} />
+              <SummaryRow
+                label="Service"
+                value={serviceGroup?.name ?? service.name}
+              />
               <SummaryRow label="With" value={staff.name} />
-              <SummaryRow label="Total" value={fmtMoney(service.price_cents, currency)} />
+              <SummaryRow
+                label="Total"
+                value={fmtMoney(service.price_cents, currency)}
+              />
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               {bookedEndsAt && (
@@ -1459,7 +1783,10 @@ function Stepper({ step, brand }: { step: Step; brand: string }) {
       </div>
       <div className="mt-2 flex gap-1.5">
         {STEPS.map((s, i) => (
-          <div key={s.id} className="h-1 flex-1 rounded-full bg-secondary overflow-hidden">
+          <div
+            key={s.id}
+            className="h-1 flex-1 rounded-full bg-secondary overflow-hidden"
+          >
             <div
               className="h-full transition-all duration-500"
               style={{
@@ -1480,12 +1807,21 @@ function BackBtn({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-4 group"
     >
-      <ChevronLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" /> Back
+      <ChevronLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />{" "}
+      Back
     </button>
   );
 }
 
-function Chip({ icon: Icon, label, onClick }: { icon: any; label: string; onClick: () => void }) {
+function Chip({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: any;
+  label: string;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
@@ -1497,10 +1833,18 @@ function Chip({ icon: Icon, label, onClick }: { icon: any; label: string; onClic
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: React.ReactNode }) {
+function SummaryRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
     <div className="flex justify-between gap-4 py-1.5 border-b last:border-b-0">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
       <span className="font-medium">{value}</span>
     </div>
   );

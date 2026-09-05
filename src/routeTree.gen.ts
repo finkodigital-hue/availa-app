@@ -21,6 +21,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as HelpIndexRouteImport } from './routes/help.index'
+import { Route as ReviewTokenRouteImport } from './routes/review.$token'
 import { Route as PortalProfileRouteImport } from './routes/portal.profile'
 import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
@@ -28,6 +29,7 @@ import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
 import { Route as ApiStockScanRouteImport } from './routes/api/stock-scan'
+import { Route as ApiPublicReviewsRouteImport } from './routes/api/public-reviews'
 import { Route as ApiPublicGalleryRouteImport } from './routes/api/public-gallery'
 import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-suggest'
 import { Route as ApiClientErrorsRouteImport } from './routes/api/client-errors'
@@ -52,6 +54,8 @@ import { Route as AuthenticatedAssistantRouteImport } from './routes/_authentica
 import { Route as BookingActionRescheduleTokenRouteImport } from './routes/booking-action.reschedule.$token'
 import { Route as BookingActionActionTokenRouteImport } from './routes/booking-action.$action.$token'
 import { Route as ApiSupabaseSplatRouteImport } from './routes/api/supabase/$'
+import { Route as ApiReviewsSubmitRouteImport } from './routes/api/reviews/submit'
+import { Route as ApiReviewsPeekRouteImport } from './routes/api/reviews/peek'
 import { Route as ApiCronSendRemindersRouteImport } from './routes/api/cron/send-reminders'
 import { Route as ApiBookingsSendConfirmationRouteImport } from './routes/api/bookings/send-confirmation'
 import { Route as ApiBookingActionsReschedulePeekRouteImport } from './routes/api/booking-actions/reschedule-peek'
@@ -117,6 +121,11 @@ const HelpIndexRoute = HelpIndexRouteImport.update({
   path: '/',
   getParentRoute: () => HelpRoute,
 } as any)
+const ReviewTokenRoute = ReviewTokenRouteImport.update({
+  id: '/review/$token',
+  path: '/review/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortalProfileRoute = PortalProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -150,6 +159,11 @@ const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
 const ApiStockScanRoute = ApiStockScanRouteImport.update({
   id: '/api/stock-scan',
   path: '/api/stock-scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicReviewsRoute = ApiPublicReviewsRouteImport.update({
+  id: '/api/public-reviews',
+  path: '/api/public-reviews',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicGalleryRoute = ApiPublicGalleryRouteImport.update({
@@ -277,6 +291,16 @@ const ApiSupabaseSplatRoute = ApiSupabaseSplatRouteImport.update({
   path: '/api/supabase/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiReviewsSubmitRoute = ApiReviewsSubmitRouteImport.update({
+  id: '/api/reviews/submit',
+  path: '/api/reviews/submit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReviewsPeekRoute = ApiReviewsPeekRouteImport.update({
+  id: '/api/reviews/peek',
+  path: '/api/reviews/peek',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronSendRemindersRoute = ApiCronSendRemindersRouteImport.update({
   id: '/api/cron/send-reminders',
   path: '/api/cron/send-reminders',
@@ -337,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
+  '/api/public-reviews': typeof ApiPublicReviewsRoute
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
@@ -344,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/review/$token': typeof ReviewTokenRoute
   '/help/': typeof HelpIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/booking-actions/act': typeof ApiBookingActionsActRoute
@@ -351,6 +377,8 @@ export interface FileRoutesByFullPath {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/reviews/peek': typeof ApiReviewsPeekRoute
+  '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
@@ -384,6 +412,7 @@ export interface FileRoutesByTo {
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
+  '/api/public-reviews': typeof ApiPublicReviewsRoute
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
@@ -391,6 +420,7 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/review/$token': typeof ReviewTokenRoute
   '/help': typeof HelpIndexRoute
   '/portal': typeof PortalIndexRoute
   '/api/booking-actions/act': typeof ApiBookingActionsActRoute
@@ -398,6 +428,8 @@ export interface FileRoutesByTo {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/reviews/peek': typeof ApiReviewsPeekRoute
+  '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
@@ -435,6 +467,7 @@ export interface FileRoutesById {
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
+  '/api/public-reviews': typeof ApiPublicReviewsRoute
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
@@ -442,6 +475,7 @@ export interface FileRoutesById {
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/review/$token': typeof ReviewTokenRoute
   '/help/': typeof HelpIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/booking-actions/act': typeof ApiBookingActionsActRoute
@@ -449,6 +483,8 @@ export interface FileRoutesById {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/reviews/peek': typeof ApiReviewsPeekRoute
+  '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
@@ -486,6 +522,7 @@ export interface FileRouteTypes {
     | '/api/client-errors'
     | '/api/page-ai-suggest'
     | '/api/public-gallery'
+    | '/api/public-reviews'
     | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/book/$slug'
@@ -493,6 +530,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
+    | '/review/$token'
     | '/help/'
     | '/portal/'
     | '/api/booking-actions/act'
@@ -500,6 +538,8 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/reviews/peek'
+    | '/api/reviews/submit'
     | '/api/supabase/$'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
@@ -533,6 +573,7 @@ export interface FileRouteTypes {
     | '/api/client-errors'
     | '/api/page-ai-suggest'
     | '/api/public-gallery'
+    | '/api/public-reviews'
     | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/book/$slug'
@@ -540,6 +581,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
+    | '/review/$token'
     | '/help'
     | '/portal'
     | '/api/booking-actions/act'
@@ -547,6 +589,8 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/reviews/peek'
+    | '/api/reviews/submit'
     | '/api/supabase/$'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
@@ -583,6 +627,7 @@ export interface FileRouteTypes {
     | '/api/client-errors'
     | '/api/page-ai-suggest'
     | '/api/public-gallery'
+    | '/api/public-reviews'
     | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/book/$slug'
@@ -590,6 +635,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/portal/bookings'
     | '/portal/profile'
+    | '/review/$token'
     | '/help/'
     | '/portal/'
     | '/api/booking-actions/act'
@@ -597,6 +643,8 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/reviews/peek'
+    | '/api/reviews/submit'
     | '/api/supabase/$'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
@@ -617,15 +665,19 @@ export interface RootRouteChildren {
   ApiClientErrorsRoute: typeof ApiClientErrorsRoute
   ApiPageAiSuggestRoute: typeof ApiPageAiSuggestRoute
   ApiPublicGalleryRoute: typeof ApiPublicGalleryRoute
+  ApiPublicReviewsRoute: typeof ApiPublicReviewsRoute
   ApiStockScanRoute: typeof ApiStockScanRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   BookSlugRoute: typeof BookSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  ReviewTokenRoute: typeof ReviewTokenRoute
   ApiBookingActionsActRoute: typeof ApiBookingActionsActRoute
   ApiBookingActionsRescheduleCommitRoute: typeof ApiBookingActionsRescheduleCommitRoute
   ApiBookingActionsReschedulePeekRoute: typeof ApiBookingActionsReschedulePeekRoute
   ApiBookingsSendConfirmationRoute: typeof ApiBookingsSendConfirmationRoute
   ApiCronSendRemindersRoute: typeof ApiCronSendRemindersRoute
+  ApiReviewsPeekRoute: typeof ApiReviewsPeekRoute
+  ApiReviewsSubmitRoute: typeof ApiReviewsSubmitRoute
   ApiSupabaseSplatRoute: typeof ApiSupabaseSplatRoute
   BookingActionActionTokenRoute: typeof BookingActionActionTokenRoute
   BookingActionRescheduleTokenRoute: typeof BookingActionRescheduleTokenRoute
@@ -717,6 +769,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HelpIndexRouteImport
       parentRoute: typeof HelpRoute
     }
+    '/review/$token': {
+      id: '/review/$token'
+      path: '/review/$token'
+      fullPath: '/review/$token'
+      preLoaderRoute: typeof ReviewTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portal/profile': {
       id: '/portal/profile'
       path: '/profile'
@@ -764,6 +823,13 @@ declare module '@tanstack/react-router' {
       path: '/api/stock-scan'
       fullPath: '/api/stock-scan'
       preLoaderRoute: typeof ApiStockScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public-reviews': {
+      id: '/api/public-reviews'
+      path: '/api/public-reviews'
+      fullPath: '/api/public-reviews'
+      preLoaderRoute: typeof ApiPublicReviewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public-gallery': {
@@ -934,6 +1000,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSupabaseSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/reviews/submit': {
+      id: '/api/reviews/submit'
+      path: '/api/reviews/submit'
+      fullPath: '/api/reviews/submit'
+      preLoaderRoute: typeof ApiReviewsSubmitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reviews/peek': {
+      id: '/api/reviews/peek'
+      path: '/api/reviews/peek'
+      fullPath: '/api/reviews/peek'
+      preLoaderRoute: typeof ApiReviewsPeekRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/send-reminders': {
       id: '/api/cron/send-reminders'
       path: '/api/cron/send-reminders'
@@ -1057,16 +1137,20 @@ const rootRouteChildren: RootRouteChildren = {
   ApiClientErrorsRoute: ApiClientErrorsRoute,
   ApiPageAiSuggestRoute: ApiPageAiSuggestRoute,
   ApiPublicGalleryRoute: ApiPublicGalleryRoute,
+  ApiPublicReviewsRoute: ApiPublicReviewsRoute,
   ApiStockScanRoute: ApiStockScanRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   BookSlugRoute: BookSlugRoute,
   InviteTokenRoute: InviteTokenRoute,
+  ReviewTokenRoute: ReviewTokenRoute,
   ApiBookingActionsActRoute: ApiBookingActionsActRoute,
   ApiBookingActionsRescheduleCommitRoute:
     ApiBookingActionsRescheduleCommitRoute,
   ApiBookingActionsReschedulePeekRoute: ApiBookingActionsReschedulePeekRoute,
   ApiBookingsSendConfirmationRoute: ApiBookingsSendConfirmationRoute,
   ApiCronSendRemindersRoute: ApiCronSendRemindersRoute,
+  ApiReviewsPeekRoute: ApiReviewsPeekRoute,
+  ApiReviewsSubmitRoute: ApiReviewsSubmitRoute,
   ApiSupabaseSplatRoute: ApiSupabaseSplatRoute,
   BookingActionActionTokenRoute: BookingActionActionTokenRoute,
   BookingActionRescheduleTokenRoute: BookingActionRescheduleTokenRoute,

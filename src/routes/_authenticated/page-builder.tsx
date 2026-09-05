@@ -36,7 +36,10 @@ import { DesignSection } from "@/components/page-builder/design-section";
 import { AskClaudeSection } from "@/components/page-builder/ask-claude-section";
 import { StorefrontSettingsEditor } from "@/components/storefront-settings-editor";
 import { GalleryManager } from "@/components/gallery-manager";
-import { PageContentEditor, type PageContentSettings } from "@/components/page-content-editor";
+import {
+  PageContentEditor,
+  type PageContentSettings,
+} from "@/components/page-content-editor";
 import { useUndoRedoState } from "@/lib/use-undo-redo-state";
 import { parseTheme, type Theme } from "@/lib/theme";
 import {
@@ -78,7 +81,13 @@ function pageContentFromBusiness(business: unknown): PageContentSettings {
 // accordion — opening one closes the other, and re-clicking the open one
 // collapses to none. One piece of shared state instead of each section
 // tracking its own open/closed.
-type OpenSection = "storefront" | "gallery" | "content" | "design" | "ask-ai" | null;
+type OpenSection =
+  | "storefront"
+  | "gallery"
+  | "content"
+  | "design"
+  | "ask-ai"
+  | null;
 
 export const Route = createFileRoute("/_authenticated/page-builder")({
   // `tab=design` is a pre-existing deep link from Settings > Branding — kept
@@ -124,11 +133,15 @@ function PageBuilderPage() {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [openSection, setOpenSection] = useState<OpenSection>(tab === "design" ? "design" : null);
+  const [openSection, setOpenSection] = useState<OpenSection>(
+    tab === "design" ? "design" : null,
+  );
 
   useEffect(() => {
     if (!biz) return;
-    const loaded = (layout?.blocks as unknown as PageBlock[]) ?? [];
+    const loaded = ((layout?.blocks as unknown as PageBlock[]) ?? []).filter(
+      (block) => block.type !== "testimonial",
+    );
     savedBlocksRef.current = loaded;
     history.resetTo({
       blocks: loaded,
@@ -154,7 +167,9 @@ function PageBuilderPage() {
 
   const { blocks, theme, storefront, content } = history.value;
 
-  const setBlocks = (updater: PageBlock[] | ((prev: PageBlock[]) => PageBlock[])) => {
+  const setBlocks = (
+    updater: PageBlock[] | ((prev: PageBlock[]) => PageBlock[]),
+  ) => {
     history.set((v) => ({
       ...v,
       blocks:
@@ -177,7 +192,9 @@ function PageBuilderPage() {
       config: defaultConfigForType(type, biz.id),
     } as PageBlock;
     setBlocks((b) => {
-      const idx = selectedBlockId ? b.findIndex((x) => x.id === selectedBlockId) : -1;
+      const idx = selectedBlockId
+        ? b.findIndex((x) => x.id === selectedBlockId)
+        : -1;
       if (idx === -1) return [...b, block];
       return [...b.slice(0, idx + 1), block, ...b.slice(idx + 1)];
     });
@@ -192,7 +209,9 @@ function PageBuilderPage() {
   };
 
   const updateBlockConfig = (id: string, config: PageBlock["config"]) => {
-    setBlocks((b) => b.map((x) => (x.id === id ? ({ ...x, config } as PageBlock) : x)));
+    setBlocks((b) =>
+      b.map((x) => (x.id === id ? ({ ...x, config } as PageBlock) : x)),
+    );
   };
 
   const reorderBlocks = (activeId: string, overId: string) => {
@@ -230,7 +249,10 @@ function PageBuilderPage() {
       supabase
         .from("businesses")
         .update({
-          page_theme: { ...next.theme, updatedAt: new Date().toISOString() } as unknown as Json,
+          page_theme: {
+            ...next.theme,
+            updatedAt: new Date().toISOString(),
+          } as unknown as Json,
           welcome_message: next.content.welcome_message,
           booking_instructions: next.content.booking_instructions,
           cancellation_policy: next.content.cancellation_policy,
@@ -268,22 +290,31 @@ function PageBuilderPage() {
   const save = async () => {
     if (!biz) return;
     if (content.emergency_active && !content.emergency_message?.trim()) {
-      return toast.error("Add an emergency closure message, or turn the banner off.");
+      return toast.error(
+        "Add an emergency closure message, or turn the banner off.",
+      );
     }
     for (const b of blocks) {
       if (b.type === "hero" && !b.config.heading.trim())
         return toast.error("Every welcome banner needs a heading.");
       if (b.type === "about" && !b.config.bio.trim())
         return toast.error("Every about block needs a bio.");
-      if (b.type === "testimonial" && (!b.config.quote.trim() || !b.config.name.trim()))
-        return toast.error("Every testimonial needs a quote and a name.");
     }
     if (await persist(history.value, null)) toast.success("Page saved");
   };
 
-  const acceptAiSuggestion = async (nextBlocks: PageBlock[], nextTheme: Theme, prompt: string) => {
+  const acceptAiSuggestion = async (
+    nextBlocks: PageBlock[],
+    nextTheme: Theme,
+    prompt: string,
+  ) => {
     const baseline = blocks;
-    const next: BuilderState = { blocks: nextBlocks, theme: nextTheme, storefront, content };
+    const next: BuilderState = {
+      blocks: nextBlocks,
+      theme: nextTheme,
+      storefront,
+      content,
+    };
     history.set(next);
     history.commitNow();
     if (await persist(next, prompt, baseline)) {
@@ -306,10 +337,13 @@ function PageBuilderPage() {
     },
   });
 
-  const restoreVersion = async (entry: { blocks_after: unknown; created_at: string }) => {
-    const restored = ((entry.blocks_after as unknown as PageBlock[]) ?? []).filter(
-      (b) => b && b.type,
-    );
+  const restoreVersion = async (entry: {
+    blocks_after: unknown;
+    created_at: string;
+  }) => {
+    const restored = (
+      (entry.blocks_after as unknown as PageBlock[]) ?? []
+    ).filter((b) => b && b.type);
     const label = `Reverted to version from ${new Date(entry.created_at).toLocaleString()}`;
     history.set((v) => ({ ...v, blocks: restored }));
     history.commitNow();
@@ -331,7 +365,8 @@ function PageBuilderPage() {
         business={biz}
         onComplete={() => {
           toast.success("Your page is live!", {
-            description: "Tweak anything here — click a block on the page to edit it.",
+            description:
+              "Tweak anything here — click a block on the page to edit it.",
           });
         }}
       />
@@ -417,7 +452,9 @@ function PageBuilderPage() {
               type="button"
               className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary/25"
               onClick={() =>
-                setOpenSection((current) => (current === "storefront" ? null : "storefront"))
+                setOpenSection((current) =>
+                  current === "storefront" ? null : "storefront",
+                )
               }
               aria-expanded={openSection === "storefront"}
             >
@@ -447,7 +484,9 @@ function PageBuilderPage() {
               type="button"
               className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary/25"
               onClick={() =>
-                setOpenSection((current) => (current === "content" ? null : "content"))
+                setOpenSection((current) =>
+                  current === "content" ? null : "content",
+                )
               }
               aria-expanded={openSection === "content"}
             >
@@ -472,7 +511,9 @@ function PageBuilderPage() {
               type="button"
               className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary/25"
               onClick={() =>
-                setOpenSection((current) => (current === "gallery" ? null : "gallery"))
+                setOpenSection((current) =>
+                  current === "gallery" ? null : "gallery",
+                )
               }
               aria-expanded={openSection === "gallery"}
             >
@@ -505,7 +546,11 @@ function PageBuilderPage() {
                 </p>
               </div>
               {editableBlocks.length === 0 && (
-                <Button variant="outline" size="sm" onClick={() => setAddPickerOpen(true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAddPickerOpen(true)}
+                >
                   <Plus className="h-3.5 w-3.5 mr-1" /> Add
                 </Button>
               )}
@@ -535,7 +580,9 @@ function PageBuilderPage() {
               <BlockEditorPanel
                 block={selectedBlock}
                 businessId={biz.id}
-                onChange={(config) => updateBlockConfig(selectedBlock.id, config)}
+                onChange={(config) =>
+                  updateBlockConfig(selectedBlock.id, config)
+                }
                 onRemove={() => removeBlock(selectedBlock.id)}
                 onDeselect={() => setSelectedBlockId(null)}
               />
@@ -598,16 +645,21 @@ function PageBuilderPage() {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Version history</DialogTitle>
-            <DialogDescription>Restore an earlier version of your page layout.</DialogDescription>
+            <DialogDescription>
+              Restore an earlier version of your page layout.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {historyLoading &&
               Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-16 rounded-xl" />
               ))}
-            {!historyLoading && (!versionHistory || versionHistory.length === 0) && (
-              <p className="text-sm text-muted-foreground py-6 text-center">No history yet.</p>
-            )}
+            {!historyLoading &&
+              (!versionHistory || versionHistory.length === 0) && (
+                <p className="text-sm text-muted-foreground py-6 text-center">
+                  No history yet.
+                </p>
+              )}
             {versionHistory?.map((entry) => (
               <div
                 key={entry.id}
