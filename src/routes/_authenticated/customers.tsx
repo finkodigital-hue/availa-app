@@ -21,6 +21,7 @@ import {
   MoreHorizontal,
   Clock3,
   Filter,
+  CheckCircle2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
@@ -619,9 +620,17 @@ function DataRequestActionDialog({
 
   return (
     <Dialog open={!!request} onOpenChange={(o) => !o && close()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isExport ? "Generate data export" : "Erase customer data"}</DialogTitle>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="text-left">
+          <DialogTitle>
+            {isExport
+              ? exportResult
+                ? "Export downloaded"
+                : "Generate data export"
+              : eraseResult
+                ? "Customer data erased"
+                : "Erase customer data"}
+          </DialogTitle>
           {!eraseResult && !exportResult && (
             <DialogDescription>
               Requested by <span className="font-medium">{request.email}</span>
@@ -640,35 +649,77 @@ function DataRequestActionDialog({
                 <span className="font-medium">{exportResult.customer.name}</span>. The request has been marked resolved.
               </p>
               <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
-                <p className="font-medium text-foreground">Not included automatically — check manually if relevant:</p>
+                <p className="font-medium text-foreground">Check these manually</p>
                 {exportResult.notCovered.map((n) => <p key={n}>• {n}</p>)}
               </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Compiles everything on file for this customer — profile, bookings and payment history — into a JSON file
-              that downloads immediately, and marks this request resolved.
+              Downloads the customer's profile, bookings and payment history as a JSON file, then marks this request
+              as resolved.
             </p>
           )
         ) : eraseResult ? (
-          <div className="space-y-3 text-sm">
-            <p>
-              Erased. {eraseResult.bookingsScrubbed} booking{eraseResult.bookingsScrubbed === 1 ? "" : "s"} and{" "}
-              {eraseResult.paymentsScrubbed} payment{eraseResult.paymentsScrubbed === 1 ? "" : "s"} kept for records with
-              identity removed, {eraseResult.notificationsDeleted} notification
-              {eraseResult.notificationsDeleted === 1 ? "" : "s"} deleted, {eraseResult.photosDeleted} photo
-              {eraseResult.photosDeleted === 1 ? "" : "s"} deleted from storage.
-              {eraseResult.authAccountStatus === "removed"
-                ? " Their portal sign-in has been removed entirely."
-                : eraseResult.authAccountStatus === "preserved_shared"
-                  ? " Their portal sign-in was kept because another business still has a customer record for the same email."
-                  : eraseResult.authAccountStatus === "not_found"
-                    ? " No matching portal sign-in existed."
-                    : " No portal sign-in was linked to this customer."}
-            </p>
-            <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
-              <p className="font-medium text-foreground">Not covered automatically — please check manually:</p>
-              {eraseResult.manualCheckNotice.map((n) => <p key={n}>• {n}</p>)}
+          <div className="space-y-5 text-sm">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium text-foreground">Personal information removed</p>
+                <p className="leading-relaxed text-muted-foreground">
+                  The customer can no longer be identified. Booking and payment records needed for your accounts were
+                  kept safely.
+                </p>
+              </div>
+            </div>
+
+            <dl className="overflow-hidden rounded-xl border bg-background text-sm">
+              <div className="flex items-start justify-between gap-4 px-4 py-3">
+                <dt className="text-muted-foreground">Records kept</dt>
+                <dd className="text-right font-medium text-foreground">
+                  {eraseResult.bookingsScrubbed} booking{eraseResult.bookingsScrubbed === 1 ? "" : "s"} and{" "}
+                  {eraseResult.paymentsScrubbed} payment{eraseResult.paymentsScrubbed === 1 ? "" : "s"}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-4 border-t px-4 py-3">
+                <dt className="text-muted-foreground">Items deleted</dt>
+                <dd className="text-right font-medium text-foreground">
+                  {eraseResult.notificationsDeleted} notification
+                  {eraseResult.notificationsDeleted === 1 ? "" : "s"} and {eraseResult.photosDeleted} photo
+                  {eraseResult.photosDeleted === 1 ? "" : "s"}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-4 border-t px-4 py-3">
+                <dt className="text-muted-foreground">Portal access</dt>
+                <dd className="max-w-[16rem] text-right font-medium text-foreground">
+                  {eraseResult.authAccountStatus === "removed"
+                    ? "Sign-in removed"
+                    : eraseResult.authAccountStatus === "preserved_shared"
+                      ? "Kept for another business"
+                      : eraseResult.authAccountStatus === "not_found"
+                        ? "No sign-in found"
+                        : "No sign-in was linked"}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="rounded-xl border bg-muted/35 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Search className="h-4 w-4 text-foreground" aria-hidden="true" />
+                <p className="font-medium text-foreground">One final check</p>
+              </div>
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                These mentions cannot be matched to a customer automatically:
+              </p>
+              <ul className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+                {eraseResult.manualCheckNotice.map((notice) => (
+                  <li key={notice} className="flex gap-2">
+                    <span className="text-foreground" aria-hidden="true">•</span>
+                    <span>{notice}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         ) : (
@@ -689,12 +740,12 @@ function DataRequestActionDialog({
                 <ul className="text-muted-foreground space-y-0.5">
                   <li>Booking dates, services, staff, status</li>
                   <li>Payment amounts and dates</li>
-                  <li>(identity stripped — for reports/financial records)</li>
+                  <li>Identity removed for reports and financial records</li>
                 </ul>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Blocked if this customer has any upcoming bookings — cancel or reassign those first. This cannot be undone.
+              If this customer has an upcoming booking, cancel or reassign it first. This cannot be undone.
             </p>
             <div>
               <Label htmlFor="confirm-erase-name" className="text-xs">
@@ -713,7 +764,7 @@ function DataRequestActionDialog({
 
         <DialogFooter>
           {eraseResult || exportResult ? (
-            <Button onClick={close}>Close</Button>
+            <Button className="w-full" onClick={close}>Done</Button>
           ) : isExport ? (
             <>
               <Button variant="ghost" onClick={close} disabled={busy}>Cancel</Button>

@@ -50,8 +50,8 @@ export type CustomerDataExport = {
 };
 
 const NOT_COVERED_NOTICE = [
-  "Testimonials on your public booking page (Page Builder) are free text you write yourself — this export can't detect whether one names this customer. Check manually if relevant.",
-  "In-app notifications (the bell icon) reference customers by name only, with no reliable link back to a specific record — not included here.",
+  "Page Builder testimonials: remove any testimonial that names this customer.",
+  "Older bell notifications: remove any that mention this customer by name.",
 ];
 
 // Export needs no new DB function: owners already have SELECT on their own
@@ -84,7 +84,7 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
     if (!request) throw new Error("Request not found.");
     if (request.kind !== "export") throw new Error("This request isn't an export request.");
     if (request.status !== "pending") throw new Error("This request has already been resolved.");
-    if (!request.customer_id) throw new Error("This customer's record could not be found — it may have already been merged or removed.");
+    if (!request.customer_id) throw new Error("This customer's record could not be found. It may have already been merged or removed.");
 
     const { data: customer, error: customerError } = await context.supabase
       .from("customers")
@@ -95,7 +95,7 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
       .eq("business_id", business.id)
       .maybeSingle();
     if (customerError) throw customerError;
-    if (!customer) throw new Error("This customer's record could not be found — it may have already been merged or removed.");
+    if (!customer) throw new Error("This customer's record could not be found. It may have already been merged or removed.");
 
     const { data: bookings, error: bookingsError } = await context.supabase
       .from("bookings")
@@ -190,7 +190,7 @@ export const eraseCustomer = createServerFn({ method: "POST" })
     if (!request) throw new Error("Request not found.");
     if (request.kind !== "deletion") throw new Error("This request isn't a deletion request.");
     if (request.status !== "pending") throw new Error("This request has already been resolved.");
-    if (!request.customer_id) throw new Error("This customer's record could not be found — it may have already been merged or removed.");
+    if (!request.customer_id) throw new Error("This customer's record could not be found. It may have already been merged or removed.");
 
     const { data: customer, error: customerError } = await context.supabase
       .from("customers")
@@ -199,7 +199,7 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       .eq("business_id", business.id)
       .maybeSingle();
     if (customerError) throw customerError;
-    if (!customer) throw new Error("This customer's record could not be found — it may have already been merged or removed.");
+    if (!customer) throw new Error("This customer's record could not be found. It may have already been merged or removed.");
     // erase_customer nulls customers.email as part of anonymising the row,
     // so this is the only chance to capture it — needed afterward to decide
     // whether the shared portal auth account is safe to remove.
@@ -218,7 +218,7 @@ export const eraseCustomer = createServerFn({ method: "POST" })
     if (upcomingError) throw upcomingError;
     if ((upcomingCount ?? 0) > 0) {
       throw new Error(
-        `This customer has ${upcomingCount} upcoming booking${upcomingCount === 1 ? "" : "s"} — cancel or reassign ${upcomingCount === 1 ? "it" : "them"} first, then try again.`,
+        `This customer has ${upcomingCount} upcoming booking${upcomingCount === 1 ? "" : "s"}. Cancel or reassign ${upcomingCount === 1 ? "it" : "them"} first, then try again.`,
       );
     }
 
@@ -247,7 +247,7 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       const match = /^UPCOMING_BOOKINGS:(\d+)/.exec(eraseError.message ?? "");
       if (match) {
         const n = Number(match[1]);
-        throw new Error(`This customer has ${n} upcoming booking${n === 1 ? "" : "s"} — cancel or reassign ${n === 1 ? "it" : "them"} first, then try again.`);
+        throw new Error(`This customer has ${n} upcoming booking${n === 1 ? "" : "s"}. Cancel or reassign ${n === 1 ? "it" : "them"} first, then try again.`);
       }
       throw eraseError;
     }
