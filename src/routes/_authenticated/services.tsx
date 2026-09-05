@@ -326,7 +326,8 @@ function ServicesPage() {
         .eq("category", original);
       if (error) {
         await saveCategoryNames(managedCategories);
-        return toast.error(error.message);
+        toast.error(error.message);
+        return;
       }
       if (edit?.category === original) setEdit({ ...edit, category: name });
       if (categoryFilter === original) setCategoryFilter(name);
@@ -352,7 +353,8 @@ function ServicesPage() {
         .eq("category", category);
       if (error) {
         await saveCategoryNames(managedCategories);
-        return toast.error(error.message);
+        toast.error(error.message);
+        return;
       }
       if (edit?.category === category) setEdit({ ...edit, category: null });
       if (categoryFilter === category) setCategoryFilter("all");
@@ -1288,8 +1290,8 @@ function ServicesPage() {
                     <span className="text-xs font-medium">Attach</span>
                   </button>
                 ))}
-              {inventory?.length > 0 &&
-                inventory.every((item) =>
+              {(inventory?.length ?? 0) > 0 &&
+                (inventory ?? []).every((item) =>
                   recipe.some((line) => line.inventory_item_id === item.id),
                 ) && (
                   <p className="rounded-xl bg-secondary/60 p-3 text-sm text-muted-foreground">

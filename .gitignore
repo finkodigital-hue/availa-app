@@ -35,3 +35,7 @@ dist-ssr
 # Environment variables
 .env
 test-data/
+
+# Supabase CLI local runtime state and generated secrets
+supabase/.branches/
+supabase/.temp/start-secrets/

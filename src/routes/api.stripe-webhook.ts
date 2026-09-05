@@ -13,6 +13,39 @@ export const Route = createFileRoute("/api/stripe-webhook")({
 
         let event: any;
         try { event = JSON.parse(rawBody); } catch { return new Response("Invalid JSON", { status: 400 }); }
+
+        if (event.type === "refund.updated") {
+          const refund = event.data?.object;
+          if (refund?.status !== "succeeded") return Response.json({ received: true });
+          const metadata = refund.metadata ?? {};
+          if (!metadata.business_id || !metadata.booking_id || !refund.payment_intent || !event.account) {
+            return new Response("Missing refund details", { status: 400 });
+          }
+          try {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { data: business, error: businessError } = await supabaseAdmin
+              .from("businesses").select("stripe_account_id").eq("id", metadata.business_id).maybeSingle();
+            if (businessError) throw businessError;
+            if (!business?.stripe_account_id || business.stripe_account_id !== event.account) {
+              return new Response("Connected account mismatch", { status: 400 });
+            }
+            const { error } = await (supabaseAdmin as any).rpc("fulfill_stripe_refund", {
+              p_business_id: metadata.business_id,
+              p_booking_id: metadata.booking_id,
+              p_amount_cents: refund.amount,
+              p_currency: refund.currency,
+              p_stripe_refund_id: refund.id,
+              p_stripe_payment_intent_id: refund.payment_intent,
+              p_initiated_by_user_id: metadata.initiated_by_user_id || null,
+            });
+            if (error) throw error;
+          } catch (error) {
+            console.error("Stripe refund fulfilment failed", error);
+            return new Response("Could not fulfil refund", { status: 500 });
+          }
+          return Response.json({ received: true });
+        }
+
         if (event.type !== "checkout.session.completed" || event.data?.object?.payment_status !== "paid") {
           return Response.json({ received: true });
         }

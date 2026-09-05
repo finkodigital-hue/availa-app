@@ -7,6 +7,10 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
+type RuntimeGlobal = typeof globalThis & {
+  __env__?: Record<string, unknown>;
+};
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 let cloudflareBindingsPromise: Promise<Record<string, unknown>> | undefined;
 
@@ -39,8 +43,9 @@ async function getRuntimeBindings(env: unknown): Promise<Record<string, unknown>
   // Nitro's Cloudflare adapter stores the request bindings here before it
   // invokes TanStack's SSR handler. The SSR handler itself only receives the
   // Request, so `env` above can be undefined in production.
+  const runtimeGlobal = globalThis as RuntimeGlobal;
   const nitroBindings =
-    globalThis.__env__ && typeof globalThis.__env__ === "object" ? globalThis.__env__ : {};
+    runtimeGlobal.__env__ && typeof runtimeGlobal.__env__ === "object" ? runtimeGlobal.__env__ : {};
   return {
     ...(await getCloudflareBindings()),
     ...(nitroBindings as Record<string, unknown>),

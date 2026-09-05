@@ -877,10 +877,10 @@ function StockEditor({
   onSave: () => void;
 }) {
   const categoryOptions = Array.from(new Set([...BASE_CATEGORIES, ...categories]));
-  const selectedCategory = categoryOptions.includes(edit?.category ?? "")
-    ? edit?.category
-    : "__custom__";
-  const selectedUnit = UNIT_PRESETS.includes(edit?.unit ?? "") ? edit?.unit : "__custom__";
+  const categoryValue = edit?.category ?? "";
+  const unitValue = edit?.unit ?? "";
+  const selectedCategory = categoryOptions.includes(categoryValue) ? categoryValue : "__custom__";
+  const selectedUnit = UNIT_PRESETS.includes(unitValue) ? unitValue : "__custom__";
 
   return (
     <Dialog open={!!edit} onOpenChange={(open) => !open && setEdit(null)}>
