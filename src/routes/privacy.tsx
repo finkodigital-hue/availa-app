@@ -14,6 +14,7 @@ export const Route = createFileRoute("/privacy")({
           "How Bookzenvo collects, uses, shares and protects personal information.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://bookzenvo.com/privacy" }],
   }),
   component: PrivacyPage,
 });

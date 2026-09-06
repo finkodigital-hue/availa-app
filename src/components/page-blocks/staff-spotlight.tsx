@@ -53,7 +53,12 @@ export function StaffSpotlight({ config }: { config: StaffSpotlightConfig }) {
               className="h-16 w-16 mx-auto rounded-full bg-secondary overflow-hidden grid place-items-center font-display text-xl"
             >
               {s.photo_url ? (
-                <img src={s.photo_url} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={s.photo_url}
+                  alt={`${s.name}${s.role ? ` — ${s.role}` : ""}`}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
               ) : (
                 s.name.charAt(0).toUpperCase()
               )}

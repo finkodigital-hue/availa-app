@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://bookzenvo.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://bookzenvo.com/faq</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://bookzenvo.com/help</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://bookzenvo.com/privacy</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://bookzenvo.com/terms</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://bookzenvo.com/cookie-policy</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://bookzenvo.com/review-policy</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://bookzenvo.com/status</loc><changefreq>daily</changefreq><priority>0.3</priority></url>
+</urlset>

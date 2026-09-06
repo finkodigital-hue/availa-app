@@ -7,6 +7,7 @@ export const Route = createFileRoute("/cookie-policy")({
       { title: "Cookie Policy — Bookzenvo" },
       { name: "description", content: "Cookie Policy for Bookzenvo." },
     ],
+    links: [{ rel: "canonical", href: "https://bookzenvo.com/cookie-policy" }],
   }),
   component: CookiePolicyPage,
 });

@@ -67,7 +67,10 @@ export const Route = createFileRoute("/book/$slug")({
       { property: "og:description", content: loaderData?.description ?? "" },
     ],
     links: loaderData
-      ? [{ rel: "stylesheet", href: googleFontsHref(parseTheme(loaderData.page_theme)) }]
+      ? [
+          { rel: "canonical", href: `https://bookzenvo.com/book/${loaderData.slug}` },
+          { rel: "stylesheet", href: googleFontsHref(parseTheme(loaderData.page_theme)) },
+        ]
       : [],
   }),
   errorComponent: ({ error }) => (

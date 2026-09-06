@@ -13,6 +13,7 @@ export const Route = createFileRoute("/terms")({
         content: "Terms for businesses and clients using Bookzenvo booking services.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://bookzenvo.com/terms" }],
   }),
   component: TermsPage,
 });

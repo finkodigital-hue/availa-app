@@ -30,6 +30,7 @@ export const Route = createFileRoute("/help/")({
           "Guides and answers for getting the most out of Bookzenvo — booking pages, staff, payments, reports and more.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://bookzenvo.com/help" }],
   }),
   component: HelpCentre,
 });

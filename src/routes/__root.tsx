@@ -100,15 +100,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:site_name", content: "Bookzenvo" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Bookzenvo — Bookings made beautiful" },
       {
         name: "twitter:description",
         content:
           "A multi-tenant booking platform for modern studios, salons and service businesses.",
       },
-      { property: "og:image", content: "https://bookzenvo.com/favicon.png" },
-      { name: "twitter:image", content: "https://bookzenvo.com/favicon.png" },
+      { property: "og:image", content: "https://bookzenvo.com/bookzenvo-social-share.png" },
+      { property: "og:image:width", content: "1730" },
+      { property: "og:image:height", content: "909" },
+      { property: "og:image:alt", content: "Bookzenvo — Bookings made beautiful" },
+      { name: "twitter:image", content: "https://bookzenvo.com/bookzenvo-social-share.png" },
+      { name: "twitter:image:alt", content: "Bookzenvo — Bookings made beautiful" },
     ],
     links: [
       { rel: "icon", type: "image/png", href: "/favicon.png" },

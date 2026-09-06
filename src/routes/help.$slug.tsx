@@ -14,6 +14,9 @@ export const Route = createFileRoute("/help/$slug")({
       { title: loaderData ? `${loaderData.article.title} — Bookzenvo Help Centre` : "Help Centre" },
       { name: "description", content: loaderData?.article.summary ?? "Bookzenvo Help Centre" },
     ],
+    links: loaderData
+      ? [{ rel: "canonical", href: `https://bookzenvo.com/help/${loaderData.article.slug}` }]
+      : [],
   }),
   notFoundComponent: () => (
     <div className="min-h-screen flex items-center justify-center p-6 text-center">

@@ -10,6 +10,7 @@ export const Route = createFileRoute("/status")({
         content: "Service notices and incident updates for Bookzenvo.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://bookzenvo.com/status" }],
   }),
   component: StatusPage,
 });

@@ -14,6 +14,7 @@ export const Route = createFileRoute("/review-policy")({
           "How verified customer reviews are collected, published and moderated.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://bookzenvo.com/review-policy" }],
   }),
   component: ReviewPolicyPage,
 });

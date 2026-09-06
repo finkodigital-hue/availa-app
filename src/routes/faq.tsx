@@ -49,6 +49,7 @@ export const Route = createFileRoute("/faq")({
       { title: "Frequently Asked Questions — Bookzenvo" },
       { name: "description", content: "Answers to common Bookzenvo questions." },
     ],
+    links: [{ rel: "canonical", href: "https://bookzenvo.com/faq" }],
   }),
   component: FaqPage,
 });

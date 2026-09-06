@@ -15,6 +15,12 @@ const search = z
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s) => search.parse(s) ?? {},
+  head: () => ({
+    meta: [
+      { title: "Sign in — Bookzenvo" },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   component: AuthPage,
 });
 

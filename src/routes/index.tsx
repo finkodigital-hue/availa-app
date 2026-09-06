@@ -26,6 +26,7 @@ export const Route = createFileRoute("/")({
           "A branded booking page, a no-clash calendar and a client book — whether you own the salon or rent one chair in it.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://bookzenvo.com/" }],
   }),
   component: Landing,
 });
