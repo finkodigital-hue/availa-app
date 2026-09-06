@@ -585,9 +585,9 @@ function DashboardPreview() {
               <div className="text-[.8rem] text-muted-foreground uppercase tracking-[0.1em] mb-1.5">
                 {activeItem === "Today" ? "Tuesday, July 7" : PREVIEW_DATA[activeItem].eyebrow}
               </div>
-              <h3 className="font-display font-medium text-[2rem] leading-[1.05]">
+              <h2 className="font-display font-medium text-[2rem] leading-[1.05]">
                 {activeItem === "Today" ? "Good morning, Nora." : PREVIEW_DATA[activeItem].title}
-              </h3>
+              </h2>
             </div>
             <button
               type="button"
@@ -854,9 +854,9 @@ function Landing() {
           <div className="max-w-[1120px] mx-auto px-6">
             <div className="mb-14">
               <SectionLabel>How it works</SectionLabel>
-              <div className="font-display font-medium text-[clamp(2rem,4.2vw,3.2rem)] tracking-[-0.015em] leading-[1.05] max-w-[20ch]">
+              <h2 className="font-display font-medium text-[clamp(2rem,4.2vw,3.2rem)] tracking-[-0.015em] leading-[1.05] max-w-[20ch]">
                 Three steps, and the diary starts filling itself.
-              </div>
+              </h2>
             </div>
             <div className="grid md:grid-cols-3">
               {steps.map((s, i) => (
@@ -884,9 +884,9 @@ function Landing() {
           <div className="max-w-[1120px] mx-auto px-6 py-20 md:py-24">
             <div className="mb-14">
               <SectionLabel>What's inside</SectionLabel>
-              <div className="font-display font-medium text-[clamp(2rem,4.2vw,3.2rem)] tracking-[-0.015em] leading-[1.05] max-w-[20ch]">
+              <h2 className="font-display font-medium text-[clamp(2rem,4.2vw,3.2rem)] tracking-[-0.015em] leading-[1.05] max-w-[20ch]">
                 Everything the chair needs. Nothing it doesn't.
-              </div>
+              </h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-border">
               {features.map((f) => (
@@ -911,9 +911,9 @@ function Landing() {
           <div className="max-w-[1120px] mx-auto px-6">
             <div className="mb-14">
               <SectionLabel>Pricing</SectionLabel>
-              <div className="font-display font-medium text-[clamp(2rem,4.2vw,3.2rem)] tracking-[-0.015em] leading-[1.05] max-w-[20ch]">
+              <h2 className="font-display font-medium text-[clamp(2rem,4.2vw,3.2rem)] tracking-[-0.015em] leading-[1.05] max-w-[20ch]">
                 Free while it's just you and the chair.
-              </div>
+              </h2>
             </div>
             <div className="grid md:grid-cols-2 gap-5 max-w-[440px] md:max-w-[720px] mx-auto">
               {tiers.map((t) => {

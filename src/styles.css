@@ -1,3 +1,14 @@
+@import "@fontsource/cormorant-garamond/latin-400.css";
+@import "@fontsource/cormorant-garamond/latin-400-italic.css";
+@import "@fontsource/cormorant-garamond/latin-500.css";
+@import "@fontsource/cormorant-garamond/latin-500-italic.css";
+@import "@fontsource/cormorant-garamond/latin-600.css";
+@import "@fontsource/cormorant-garamond/latin-600-italic.css";
+@import "@fontsource/cormorant-garamond/latin-700.css";
+@import "@fontsource/dm-sans/latin-400.css";
+@import "@fontsource/dm-sans/latin-500.css";
+@import "@fontsource/dm-sans/latin-600.css";
+@import "@fontsource/dm-sans/latin-700.css";
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -72,7 +83,7 @@
   --charcoal: #1A1A1A;
   --charcoal-soft: #4A4742;
   --gold: #C8A97E;
-  --gold-deep: #A98B5F;
+  --gold-deep: #80633A;
   --gold-wash: #F4EDE1;
   --hairline: #EAE6DE;
   --confirmed: #748563;
@@ -91,7 +102,7 @@
   --secondary: var(--gold-wash);
   --secondary-foreground: var(--charcoal);
   --muted: #F3F1EB;
-  --muted-foreground: #8B857B;
+  --muted-foreground: #746F67;
   --accent: var(--gold-wash);
   --accent-foreground: var(--charcoal);
   --destructive: oklch(0.58 0.22 28);
