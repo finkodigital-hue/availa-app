@@ -133,6 +133,12 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <a
+          href="#main-content"
+          className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background shadow-lg transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          Skip to main content
+        </a>
         <script
           dangerouslySetInnerHTML={{
             // Supabase recovery links use a URL hash. If a project-level redirect
@@ -141,7 +147,9 @@ function RootShell({ children }: { children: ReactNode }) {
             __html: `if (window.location.pathname === '/' && /(?:^|&)type=recovery(?:&|$)/.test(window.location.hash.slice(1))) { window.location.replace('/auth?mode=update' + window.location.hash); }`,
           }}
         />
-        {children}
+        <div id="main-content" tabIndex={-1} className="outline-none">
+          {children}
+        </div>
         <Scripts />
       </body>
     </html>

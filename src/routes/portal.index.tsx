@@ -92,6 +92,7 @@ function PortalSignIn() {
                 <Mail className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="email" type="email" required autoFocus inputMode="email"
+                  autoComplete="email"
                   className="pl-9"
                   placeholder="you@example.com"
                   value={email}
@@ -111,6 +112,7 @@ function PortalSignIn() {
                 <KeyRound className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="code" required autoFocus inputMode="numeric" maxLength={6}
+                  autoComplete="one-time-code"
                   className="pl-9 tracking-[0.5em] text-lg text-center font-mono"
                   placeholder="000000"
                   value={code}

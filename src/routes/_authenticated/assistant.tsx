@@ -180,6 +180,7 @@ function AssistantInner({ endpoint, token }: { endpoint: string; token: string }
           className="mt-4 flex gap-2 items-end"
         >
           <Textarea
+            aria-label="Message to Bookzenvo assistant"
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}

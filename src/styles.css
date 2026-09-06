@@ -528,3 +528,16 @@
 @media (min-width: 768px) {
   [data-calendar-page]:not([data-calendar-expanded="true"]) { max-width: 104rem; padding: 2.6rem 3rem 4rem !important; }
 }
+
+/* Respect the visitor's operating-system motion preference. This keeps the
+   interface usable for people who experience dizziness or discomfort from
+   animated movement while preserving the normal experience for everyone else. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -62,6 +62,8 @@ export function BookingSignIn({ onSignedIn }: { onSignedIn: (email: string) => v
       <button
         type="button"
         onClick={() => setOpen(true)}
+        aria-expanded={false}
+        aria-controls="booking-quick-sign-in"
         className="w-full flex items-center justify-between gap-2 rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/30 transition-colors mb-4"
       >
         <span className="inline-flex items-center gap-2">
@@ -74,10 +76,12 @@ export function BookingSignIn({ onSignedIn }: { onSignedIn: (email: string) => v
   }
 
   return (
-    <div className="rounded-xl border bg-secondary/20 p-4 mb-4">
+    <div id="booking-quick-sign-in" className="rounded-xl border bg-secondary/20 p-4 mb-4">
       <button
         type="button"
         onClick={() => setOpen(false)}
+        aria-expanded={true}
+        aria-controls="booking-quick-sign-in"
         className="w-full flex items-center justify-between gap-2 text-sm font-medium mb-3"
       >
         <span className="inline-flex items-center gap-2">
@@ -94,6 +98,8 @@ export function BookingSignIn({ onSignedIn }: { onSignedIn: (email: string) => v
               type="email"
               required
               inputMode="email"
+              autoComplete="email"
+              aria-label="Email address"
               className="pl-9 h-10 bg-background"
               placeholder="you@example.com"
               value={email}
@@ -112,6 +118,8 @@ export function BookingSignIn({ onSignedIn }: { onSignedIn: (email: string) => v
               required
               autoFocus
               inputMode="numeric"
+              autoComplete="one-time-code"
+              aria-label="Verification code"
               maxLength={6}
               className="pl-9 h-10 bg-background tracking-[0.4em] font-mono"
               placeholder="000000"

@@ -231,8 +231,9 @@ function InviteAcceptPage() {
               </span>
             </div>
             <div>
-              <Label>Your business name</Label>
+              <Label htmlFor="existing-business-name">Your business name</Label>
               <Input
+                id="existing-business-name"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
                 placeholder="Sarah Hair Studio"
@@ -250,6 +251,7 @@ function InviteAcceptPage() {
               <button
                 type="button"
                 onClick={() => setMode("signup")}
+                aria-pressed={mode === "signup"}
                 className={`flex-1 px-3 py-1.5 rounded-full transition-colors ${mode === "signup" ? "bg-foreground text-background shadow-soft" : "text-muted-foreground hover:text-foreground"}`}
               >
                 Create account
@@ -257,6 +259,7 @@ function InviteAcceptPage() {
               <button
                 type="button"
                 onClick={() => setMode("signin")}
+                aria-pressed={mode === "signin"}
                 className={`flex-1 px-3 py-1.5 rounded-full transition-colors ${mode === "signin" ? "bg-foreground text-background shadow-soft" : "text-muted-foreground hover:text-foreground"}`}
               >
                 Already have a Bookzenvo account
@@ -264,21 +267,22 @@ function InviteAcceptPage() {
             </div>
             {mode === "signup" && (
               <div>
-                <Label>Your name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5 h-11" required />
+                <Label htmlFor="invite-name">Your name</Label>
+                <Input id="invite-name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5 h-11" required />
               </div>
             )}
             <div>
-              <Label>Email</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 h-11" required />
+              <Label htmlFor="invite-email">Email</Label>
+              <Input id="invite-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 h-11" required />
             </div>
             <div>
-              <Label>Password</Label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5 h-11" required minLength={6} />
+              <Label htmlFor="invite-password">Password</Label>
+              <Input id="invite-password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5 h-11" required minLength={6} />
             </div>
             <div>
-              <Label>Your business name</Label>
+              <Label htmlFor="invite-business-name">Your business name</Label>
               <Input
+                id="invite-business-name"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
                 placeholder="Sarah Hair Studio"

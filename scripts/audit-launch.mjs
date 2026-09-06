@@ -1,4 +1,4 @@
-const origin = new URL(process.env.BOOKZENVO_AUDIT_URL || "https://bookzenvo.com");
+const origin = new URL(process.argv[2] || process.env.BOOKZENVO_AUDIT_URL || "https://bookzenvo.com");
 const requiredPages = [
   "/",
   "/faq",

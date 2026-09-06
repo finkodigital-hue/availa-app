@@ -69,10 +69,14 @@ export function MfaChallengeGate({ onVerified }: { onVerified: () => void }) {
           Open your authenticator app and enter the current 6-digit code.
         </p>
         <Input
+          aria-label="Six-digit authentication code"
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
           placeholder="123456"
           inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          required
           autoFocus
           className="mt-6 h-11 tracking-[0.3em] text-center font-mono"
         />
