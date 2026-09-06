@@ -1,6 +1,6 @@
-\set ON_ERROR_STOP on
-
 BEGIN;
+
+SELECT plan(1);
 
 DO $$
 BEGIN
@@ -312,6 +312,7 @@ BEGIN
 END;
 $$;
 
-ROLLBACK;
+SELECT pass('refund and GDPR permission, erasure and idempotency safeguards passed');
+SELECT * FROM finish();
 
-\echo 'refunds_gdpr_local: all assertions passed'
+ROLLBACK;
