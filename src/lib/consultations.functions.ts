@@ -105,7 +105,7 @@ export const getConsultationWorkspace = createServerFn({ method: "GET" })
         .order("name"),
       db
         .from("consultation_submissions")
-        .select("id, status, signed_at, expires_at, withdrawn_at, signer_name, signature_data, evidence_hash, patch_test_outcome, patch_tested_at, patch_tested_by, staff_notes, created_at, customer_id, booking_id, template_id, template_snapshot, answers, customers(name, email), bookings(starts_at, services(name)), consultation_templates(name, kind)")
+        .select("id, status, signed_at, expires_at, withdrawn_at, signer_name, signature_data, evidence_hash, patch_test_outcome, patch_tested_at, patch_tested_by, staff_notes, created_at, customer_id, booking_id, template_id, template_snapshot, answers, customers(name, email), bookings(starts_at, services(name)), consultation_templates(id, name, description, kind, questions, consent_text, validity_days, version)")
         .eq("business_id", business.id)
         .order("created_at", { ascending: false })
         .limit(250),

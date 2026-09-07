@@ -470,12 +470,13 @@ function RecordDialog({ record, onClose, onSaved }: { record: any | null; onClos
 
         {pending ? (
           <section className={`space-y-5 ${isPatchTest ? "border-t pt-5" : ""}`}>
-            <div><h3 className="font-semibold">{isPatchTest ? "2. Client review and signature" : "Complete and sign with the client"}</h3><p className="text-xs text-muted-foreground mt-1">Let the client review the details, answer the questions and sign on this device.</p></div>
+            <div><h3 className="font-semibold">Customer form</h3><p className="text-xs text-muted-foreground mt-1">The customer answers the questions, reviews the consent wording and signs below on this device.</p></div>
             {questions.map((question) => <QuestionField key={question.id} question={question} value={answers[question.id]} onChange={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))} />)}
             <div className="rounded-xl border bg-secondary/30 p-4"><div className="flex gap-3"><ShieldCheck className="h-5 w-5 shrink-0 text-primary" /><div><div className="text-sm font-semibold">Explicit consent to process health information</div><p className="text-xs text-muted-foreground mt-2 leading-relaxed">{content?.consent_text}</p><label className="mt-4 flex items-start gap-2 text-sm font-medium"><Checkbox checked={consented} onCheckedChange={(checked) => setConsented(checked === true)} className="mt-0.5" />I explicitly consent to the processing described above.</label></div></div></div>
             <div><Label>Client’s full name</Label><Input className="mt-1.5" value={signerName} onChange={(event) => setSignerName(event.target.value)} autoComplete="name" /></div>
             <div><Label>Client’s signature</Label><p className="text-xs text-muted-foreground mt-1 mb-2">The client should draw their own signature below.</p><SignaturePad key={`${record.id}-${record.patch_tested_at ?? "new"}`} onChange={setSignatureData} /></div>
             {!patchTestReady && <p className="text-xs text-amber-700">Save the completed skin-test details before collecting the client’s signature.</p>}
+            {!requiredComplete && <p className="text-xs text-muted-foreground">Answer every question marked with an asterisk before signing.</p>}
             <Button onClick={sign} disabled={saving || !patchTestReady || !requiredComplete || !signerName.trim() || !signatureData || !consented}>{saving ? "Saving signed record…" : "Sign and lock record"}</Button>
           </section>
         ) : snapshot ? (
