@@ -38,6 +38,16 @@ const QUESTION_TYPES = new Set<ConsultationQuestionType>([
   "date",
   "select",
 ]);
+const OPTIONAL_STARTER_QUESTION_IDS = new Set(["allergy_details", "reaction_details", "anything_else"]);
+
+function answerIsRequired(question: ConsultationQuestion, index: number, questions: ConsultationQuestion[], answers: Record<string, unknown>) {
+  if (!question.required || OPTIONAL_STARTER_QUESTION_IDS.has(question.id)) return false;
+  if (/^if yes\b/i.test(question.label.trim())) {
+    const parent = questions.slice(0, index).reverse().find((item) => item.type === "yes_no");
+    return parent ? answers[parent.id] === true : false;
+  }
+  return true;
+}
 
 function text(value: unknown, max: number, required = false) {
   const clean = typeof value === "string" ? value.trim() : "";
@@ -372,10 +382,10 @@ export const signConsultationSubmission = createServerFn({ method: "POST" })
     }
     const questions = sanitiseQuestions(template.questions);
     const answers: Record<string, string | boolean> = {};
-    for (const question of questions) {
+    for (const [index, question] of questions.entries()) {
       const raw = data.answers[question.id];
       const answer = typeof raw === "boolean" ? raw : text(raw, 2000);
-      if (question.required && (answer === "" || answer === undefined || answer === null)) {
+      if (answerIsRequired(question, index, questions, data.answers) && (answer === "" || answer === undefined || answer === null)) {
         throw new Error(`Please answer “${question.label}”.`);
       }
       if (question.type === "yes_no" && typeof answer !== "boolean") throw new Error(`Choose yes or no for “${question.label}”.`);

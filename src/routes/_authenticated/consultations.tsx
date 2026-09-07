@@ -78,6 +78,22 @@ const STARTER_QUESTIONS: Record<"consultation" | "patch_test", ConsultationQuest
     { id: "skin_condition", label: "Do you currently have irritation, broken skin or a skin condition near the test area?", type: "yes_no", required: true },
   ],
 };
+const OPTIONAL_STARTER_QUESTION_IDS = new Set(["allergy_details", "reaction_details", "anything_else"]);
+
+function customerQuestionRequired(question: ConsultationQuestion, index: number, questions: ConsultationQuestion[], answers: Record<string, string | boolean>) {
+  if (!question.required || OPTIONAL_STARTER_QUESTION_IDS.has(question.id)) return false;
+  if (/^if yes\b/i.test(question.label.trim())) {
+    const parent = questions.slice(0, index).reverse().find((item) => item.type === "yes_no");
+    return parent ? answers[parent.id] === true : false;
+  }
+  return true;
+}
+
+function customerQuestionVisible(question: ConsultationQuestion, index: number, questions: ConsultationQuestion[], answers: Record<string, string | boolean>) {
+  if (!/^if yes\b/i.test(question.label.trim())) return true;
+  const parent = questions.slice(0, index).reverse().find((item) => item.type === "yes_no");
+  return parent ? answers[parent.id] === true : true;
+}
 
 type Editor = ConsultationTemplateInput;
 
@@ -409,7 +425,7 @@ function RecordDialog({ record, onClose, onSaved }: { record: any | null; onClos
   const customer = relationOne(record.customers);
   const pending = record.status === "pending";
   const patchTestReady = !isPatchTest || Boolean(record.patch_test_outcome && record.patch_tested_at && record.patch_tested_by);
-  const requiredComplete = questions.every((question) => !question.required || answers[question.id] === true || answers[question.id] === false || String(answers[question.id] ?? "").trim());
+  const requiredComplete = questions.every((question, index) => !customerQuestionRequired(question, index, questions, answers) || answers[question.id] === true || answers[question.id] === false || String(answers[question.id] ?? "").trim());
 
   const saveOutcome = async () => {
     setSaving(true);
@@ -471,7 +487,7 @@ function RecordDialog({ record, onClose, onSaved }: { record: any | null; onClos
         {pending ? (
           <section className={`space-y-5 ${isPatchTest ? "border-t pt-5" : ""}`}>
             <div><h3 className="font-semibold">Customer form</h3><p className="text-xs text-muted-foreground mt-1">The customer answers the questions, reviews the consent wording and signs below on this device.</p></div>
-            {questions.map((question) => <QuestionField key={question.id} question={question} value={answers[question.id]} onChange={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))} />)}
+            {questions.map((question, index) => customerQuestionVisible(question, index, questions, answers) ? <QuestionField key={question.id} question={{ ...question, required: customerQuestionRequired(question, index, questions, answers) }} value={answers[question.id]} onChange={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))} /> : null)}
             <div className="rounded-xl border bg-secondary/30 p-4"><div className="flex gap-3"><ShieldCheck className="h-5 w-5 shrink-0 text-primary" /><div><div className="text-sm font-semibold">Explicit consent to process health information</div><p className="text-xs text-muted-foreground mt-2 leading-relaxed">{content?.consent_text}</p><label className="mt-4 flex items-start gap-2 text-sm font-medium"><Checkbox checked={consented} onCheckedChange={(checked) => setConsented(checked === true)} className="mt-0.5" />I explicitly consent to the processing described above.</label></div></div></div>
             <div><Label>Client’s full name</Label><Input className="mt-1.5" value={signerName} onChange={(event) => setSignerName(event.target.value)} autoComplete="name" /></div>
             <div><Label>Client’s signature</Label><p className="text-xs text-muted-foreground mt-1 mb-2">The client should draw their own signature below.</p><SignaturePad key={`${record.id}-${record.patch_tested_at ?? "new"}`} onChange={setSignatureData} /></div>
