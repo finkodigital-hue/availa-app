@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Calendar, LayoutDashboard, Scissors, Search, UserCircle, Users } from "lucide-react";
+import { Calendar, ClipboardCheck, LayoutDashboard, Scissors, Search, UserCircle, Users } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
@@ -21,6 +21,7 @@ const QUICK_LINKS = [
   { label: "Calendar", to: "/calendar", icon: Calendar },
   { label: "Bookings", to: "/bookings", icon: Calendar },
   { label: "Customers", to: "/customers", icon: UserCircle },
+  { label: "Consultations", to: "/consultations", icon: ClipboardCheck },
   { label: "Staff", to: "/staff", icon: Users },
   { label: "Services", to: "/services", icon: Scissors },
 ] as const;

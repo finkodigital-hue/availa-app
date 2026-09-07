@@ -28,6 +28,9 @@ const browserClient = await read("src/integrations/supabase/client.ts");
 const securityMigration = await read(
   "supabase/migrations/20260902120000_server_api_security_boundary.sql",
 );
+const consultationsMigration = await read(
+  "supabase/migrations/20260904120000_add_consultation_forms.sql",
+);
 
 assert(
   runtimeEnv.includes("${window.location.origin}/api/supabase"),
@@ -65,6 +68,20 @@ assert(
     "REVOKE ALL PRIVILEGES ON TABLE public.payments FROM anon, authenticated",
   ),
   "Browser roles must not be able to alter the verified payment ledger directly.",
+);
+assert(
+  consultationsMigration.includes("protect_signed_consultation_evidence") &&
+    consultationsMigration.includes("Signed consultation evidence is immutable"),
+  "Signed salon consultation evidence must be protected from later edits.",
+);
+assert(
+  consultationsMigration.includes(
+    "revoke all on public.consultation_submissions from anon, authenticated",
+  ) &&
+    !consultationsMigration.includes(
+      "grant select on public.consultation_submissions to authenticated",
+    ),
+  "Salon health-data records must remain accessible only through the server API.",
 );
 
 const sourceFiles = (await walk("src")).filter((file) => /\.(?:ts|tsx|js|jsx)$/.test(file));

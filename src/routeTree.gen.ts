@@ -48,6 +48,7 @@ import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authentic
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
+import { Route as AuthenticatedConsultationsRouteImport } from './routes/_authenticated/consultations'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
 import { Route as AuthenticatedBlockPreviewRouteImport } from './routes/_authenticated/block-preview'
@@ -259,6 +260,12 @@ const AuthenticatedCustomersRoute = AuthenticatedCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedConsultationsRoute =
+  AuthenticatedConsultationsRouteImport.update({
+    id: '/consultations',
+    path: '/consultations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -351,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/consultations': typeof AuthenticatedConsultationsRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/import': typeof AuthenticatedImportRoute
@@ -403,6 +411,7 @@ export interface FileRoutesByTo {
   '/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/consultations': typeof AuthenticatedConsultationsRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/import': typeof AuthenticatedImportRoute
@@ -459,6 +468,7 @@ export interface FileRoutesById {
   '/_authenticated/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/_authenticated/consultations': typeof AuthenticatedConsultationsRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
@@ -515,6 +525,7 @@ export interface FileRouteTypes {
     | '/block-preview'
     | '/bookings'
     | '/calendar'
+    | '/consultations'
     | '/customers'
     | '/dashboard'
     | '/import'
@@ -567,6 +578,7 @@ export interface FileRouteTypes {
     | '/block-preview'
     | '/bookings'
     | '/calendar'
+    | '/consultations'
     | '/customers'
     | '/dashboard'
     | '/import'
@@ -622,6 +634,7 @@ export interface FileRouteTypes {
     | '/_authenticated/block-preview'
     | '/_authenticated/bookings'
     | '/_authenticated/calendar'
+    | '/_authenticated/consultations'
     | '/_authenticated/customers'
     | '/_authenticated/dashboard'
     | '/_authenticated/import'
@@ -971,6 +984,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCustomersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/consultations': {
+      id: '/_authenticated/consultations'
+      path: '/consultations'
+      fullPath: '/consultations'
+      preLoaderRoute: typeof AuthenticatedConsultationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/calendar': {
       id: '/_authenticated/calendar'
       path: '/calendar'
@@ -1077,6 +1097,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBlockPreviewRoute: typeof AuthenticatedBlockPreviewRoute
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedConsultationsRoute: typeof AuthenticatedConsultationsRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
@@ -1097,6 +1118,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBlockPreviewRoute: AuthenticatedBlockPreviewRoute,
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedConsultationsRoute: AuthenticatedConsultationsRoute,
   AuthenticatedCustomersRoute: AuthenticatedCustomersRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,

@@ -33,6 +33,7 @@ import { AddTimeOffDialog } from "@/components/time-off-editor";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { startBalanceCheckout, takeSavedBalancePayment } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
+import { BookingConsultationStatus } from "@/components/booking-consultation-status";
 import { fmtMoney as formatMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
 import { resolveDayPeriods, isMinuteWithinPeriods, type DayPeriod } from "@/lib/staff-hours";
 import {
@@ -760,6 +761,9 @@ function CalendarPage() {
           )}
           {selected && selected.status === "completed" && (
             <StockUsedPanel bookingId={selected.id} />
+          )}
+          {selected && selected.business_id === bid && (
+            <BookingConsultationStatus bookingId={selected.id} />
           )}
           {selected && (
             <div className="space-y-2">

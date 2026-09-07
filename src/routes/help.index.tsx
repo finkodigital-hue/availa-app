@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   Upload,
+  ClipboardCheck,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -65,6 +66,7 @@ const ICONS: Record<string, LucideIcon> = {
   Settings,
   ShieldCheck,
   Upload,
+  ClipboardCheck,
 };
 
 function articleHaystack(article: HelpArticle) {

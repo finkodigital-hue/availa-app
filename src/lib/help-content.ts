@@ -54,6 +54,12 @@ export const HELP_CATEGORIES: HelpCategory[] = [
     icon: "UserCircle",
   },
   {
+    slug: "consultations",
+    title: "Consultations & Patch Tests",
+    description: "Create, request and review secure signed salon forms.",
+    icon: "ClipboardCheck",
+  },
+  {
     slug: "stock",
     title: "Stock",
     description: "Track products and see what's running low.",
@@ -750,6 +756,45 @@ export const HELP_ARTICLES: HelpArticle[] = [
         text: "If the same client ends up with two records — for example, they booked once under a different email — open one of the records from the Customers page and use the merge option to combine their booking history into a single customer.",
       },
     ],
+  },
+
+  // ---------------------------------------------------------------------
+  // Consultations & Patch Tests
+  // ---------------------------------------------------------------------
+  {
+    slug: "creating-consultation-forms",
+    categorySlug: "consultations",
+    title: "Creating a consultation or patch-test form",
+    summary: "Build a reusable form and assign it to the services that need it.",
+    blocks: [
+      { type: "p", text: "Open Consultations and choose New form. Start with a salon consultation or patch-test form, then add only the questions genuinely needed to provide the selected services safely." },
+      { type: "p", text: "Choose how long the completed form remains current and select every service that requires it. Matching bookings automatically receive a form request." },
+      { type: "note", text: "Health and allergy answers may be special-category personal data. The starter wording is not legal advice: have your final questions, consent wording, privacy information and retention policy reviewed for your salon before launch." },
+    ],
+    keywords: ["consultation", "patch test", "allergy", "consent", "signature", "forms"],
+  },
+  {
+    slug: "client-signing-consultations",
+    categorySlug: "consultations",
+    title: "Completing and signing a form in the salon",
+    summary: "Record the salon test, then let the client review and sign on your device.",
+    blocks: [
+      { type: "p", text: "Open the client record from Consultations on the salon’s computer or tablet. For a patch test, staff record the completed test details first. Then hand the device to the client so they can review the information, answer the required questions, actively agree to the separate health-data statement and draw their own signature." },
+      { type: "p", text: "Bookzenvo saves an exact snapshot of the questions, answers and consent wording they signed. Editing the template later creates a new version and never changes older signed evidence." },
+      { type: "p", text: "If a client later withdraws consent, they should contact the salon. Open the signed record and choose Withdraw consent so it is clearly marked for staff review." },
+    ],
+    keywords: ["in salon", "sign", "withdraw", "expired", "health data", "tablet"],
+  },
+  {
+    slug: "recording-patch-test-results",
+    categorySlug: "consultations",
+    title: "Recording a patch-test result",
+    summary: "Record the salon's observed result before the client signs.",
+    blocks: [
+      { type: "p", text: "Open the client record from Consultations. Record whether the completed patch test passed, caused a reaction or requires a retest, together with the test date, staff member and private notes. Save those details, then let the client review and sign the finished record on the same device." },
+      { type: "note", text: "The result and client signature are locked together once signed. Follow the product manufacturer’s instructions, timings, professional guidance and your insurer’s requirements." },
+    ],
+    keywords: ["result", "passed", "failed", "retest", "colour"],
   },
 
   // ---------------------------------------------------------------------

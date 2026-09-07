@@ -56,6 +56,7 @@ import { downloadCsv, downloadJson } from "@/lib/csv";
 import { generateCustomerDataExport, eraseCustomer, type CustomerDataExport, type EraseCustomerResult } from "@/lib/customer-data-requests.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { toast } from "sonner";
+import { CustomerConsultationSummary } from "@/components/customer-consultation-summary";
 
 // PostgREST caps any single response at 1000 rows regardless of .limit() —
 // a business the size of a real Fresha import (~1,000+ customers) needs
@@ -1235,6 +1236,8 @@ function CustomerDetailPanel({
             <ProfileStat label="Total spent" value={formatMoney(stats.spent, currency)} />
             <ProfileStat label="Average visit" value={formatMoney(stats.avg, currency)} />
           </div>
+
+          <CustomerConsultationSummary customerId={c.id} />
 
           <div className="mt-5 rounded-xl border bg-secondary/15 p-4">
             <div className="flex items-center justify-between gap-3">

@@ -17,6 +17,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { fmtMoney as formatMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
 import { startBalanceCheckout, takeSavedBalancePayment } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
+import { BookingConsultationStatus } from "@/components/booking-consultation-status";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
   component: BookingsPage,
@@ -219,6 +220,7 @@ function BookingsPage() {
               )}
             </div>
           )}
+          {selected && <BookingConsultationStatus bookingId={selected.id} />}
           {selected && (
             <div className="space-y-2">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Change status</div>

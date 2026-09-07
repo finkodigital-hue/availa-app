@@ -19,6 +19,7 @@ import {
   Package,
   LayoutTemplate,
   HelpCircle,
+  ClipboardCheck,
 } from "lucide-react";
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -47,6 +48,7 @@ const NAV = [
   { to: "/calendar", icon: Calendar, label: "Calendar" },
   { to: "/bookings", icon: CalendarCheck, label: "Bookings" },
   { to: "/customers", icon: UserCircle, label: "Customers" },
+  { to: "/consultations", icon: ClipboardCheck, label: "Consultations" },
   { to: "/staff", icon: Users, label: "Staff" },
   { to: "/professionals", icon: UserPlus, label: "Professionals" },
   { to: "/services", icon: Scissors, label: "Services" },

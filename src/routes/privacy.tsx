@@ -70,6 +70,15 @@ function PrivacyPage() {
                 lawful reason to do so.
               </p>
               <p>
+                Consultation and patch-test information may include answers
+                about allergies, sensitivities, previous product reactions,
+                relevant skin or scalp concerns, consent statements,
+                signatures, form versions, signing times, expiry dates,
+                staff-recorded patch-test outcomes and an audit history. This
+                information may be health data and therefore special-category
+                personal data.
+              </p>
+              <p>
                 Product content may include logos, staff photographs, salon
                 gallery images, page text, reviews, stock details and stock-scan
                 photographs. We also process limited technical information such
@@ -118,6 +127,15 @@ function PrivacyPage() {
                 requires it. A business using client or staff information
                 chooses and is responsible for its own lawful basis and any
                 additional condition needed for sensitive information.
+              </p>
+              <p>
+                Consultation forms present health-data consent separately from
+                other permissions. Where a salon relies on explicit consent,
+                the client can withdraw it by contacting the salon, which can
+                mark the record as withdrawn in Bookzenvo. Withdrawal does not
+                make earlier lawful processing unlawful. A signed form is
+                locked as an evidence record; later template changes create a
+                new version rather than altering what was signed.
               </p>
               <p>
                 We do not sell personal information and do not use
@@ -264,6 +282,14 @@ function PrivacyPage() {
                 salon about its retention policy. Stripe and other providers
                 keep their independent records under their own policies.
               </p>
+              <p>
+                Each business must set and communicate an appropriate retention period for
+                consultation and patch-test records. Bookzenvo provides validity, access,
+                withdrawal and signed-version controls but does not choose the business&apos;s lawful
+                retention period. Signed evidence may need to be restricted rather than immediately erased
+                where the business demonstrates an overriding legal obligation or a need to
+                establish, exercise or defend legal claims.
+              </p>
             </>
           ),
         },
@@ -310,9 +336,11 @@ function PrivacyPage() {
               <p>
                 We use access controls, encryption in transit, tenant
                 separation, restricted service credentials and monitoring
-                intended to protect information. No system can be guaranteed
-                completely secure. Account holders should use strong, unique
-                credentials and keep authorised-user access current.
+                intended to protect information. Signed salon records also use
+                immutable snapshots and evidence checks. No system can be
+                guaranteed completely secure. Account holders should use
+                strong, unique credentials and keep authorised-user access
+                current.
               </p>
               <p>
                 Bookzenvo currently uses only essential cookies and local

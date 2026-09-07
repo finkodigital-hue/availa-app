@@ -32,7 +32,8 @@ function TermsPage() {
               <p>
                 Bookzenvo provides booking pages, appointment management, client records, staff
                 scheduling, service and stock tools, communications, payments support, reporting,
-                page-building and optional AI features for service businesses.
+                page-building, consultation and patch-test records, and optional AI features for
+                service businesses.
               </p>
               <p>
                 You must be at least 18 and able to enter a binding agreement to create a business
@@ -68,6 +69,23 @@ function TermsPage() {
                 imports or creates. Appointment notes should be relevant and proportionate. Health,
                 allergy or other sensitive information must only be recorded where the business has
                 a valid legal condition and has given the individual any required notice.
+              </p>
+              <p>
+                A business using consultation or patch-test forms must decide and document its
+                Article 6 lawful basis and, for health information, an applicable special-category
+                condition. It is responsible for using suitable, service-specific questions and
+                consent wording; collecting only necessary information; responding to withdrawals
+                and rights requests; setting a defensible retention period; restricting staff
+                access; and obtaining any parent or guardian authority required for a child. A
+                digital signature records what was submitted but does not itself make unnecessary
+                or otherwise unlawful processing lawful.
+              </p>
+              <p>
+                Bookzenvo consultation records support salon decision-making but do not provide
+                medical, legal, insurance or product-manufacturer advice. Businesses remain
+                responsible for following manufacturer instructions, patch-test timings,
+                professional standards, insurance conditions and deciding whether a service can be
+                performed safely.
               </p>
             </>
           ),
@@ -194,7 +212,9 @@ function TermsPage() {
                 the controller and Bookzenvo acts as its processor. The processing covers hosting,
                 organising, retrieving, displaying, communicating, backing up and deleting booking,
                 client, staff, service, payment-reference, note and uploaded-image data for the life
-                of the account.
+                of the account. This may also include consultation answers, signatures, explicit
+                consent records, patch-test outcomes and the audit information needed to preserve
+                the signed version.
               </p>
               <p>
                 Bookzenvo will process that data on the business&apos;s documented instructions,

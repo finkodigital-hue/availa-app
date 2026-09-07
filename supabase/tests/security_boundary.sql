@@ -2,13 +2,19 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(13);
+select plan(19);
 
 select has_trigger(
   'public',
   'businesses',
   'protect_business_system_fields',
   'businesses protects server-managed plan, billing, and premium fields'
+);
+select has_trigger(
+  'public',
+  'consultation_submissions',
+  'protect_signed_consultation_evidence',
+  'signed salon consultation evidence is immutable'
 );
 select has_trigger(
   'public',
@@ -51,6 +57,22 @@ select ok(
   not has_table_privilege('anon', 'public.payments', 'TRUNCATE'),
   'anonymous users cannot truncate the payment ledger'
 );
+select ok(
+  not has_table_privilege('authenticated', 'public.consultation_templates', 'INSERT'),
+  'browser sessions cannot create consultation templates directly'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.consultation_submissions', 'SELECT'),
+  'browser sessions cannot read health-data submissions directly'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.consultation_submissions', 'UPDATE'),
+  'browser sessions cannot alter signed health-data submissions directly'
+);
+select ok(
+  not has_table_privilege('anon', 'public.consultation_submissions', 'SELECT'),
+  'anonymous users cannot read consultation submissions'
+);
 
 select is(
   (
@@ -80,6 +102,14 @@ select ok(
     'EXECUTE'
   ),
   'anonymous users cannot invoke the booking guard directly'
+);
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'public.sign_consultation_submission_server(uuid,integer,jsonb,jsonb,text,text,timestamp with time zone,timestamp with time zone,text,uuid)',
+    'EXECUTE'
+  ),
+  'browser sessions cannot invoke the consultation evidence writer directly'
 );
 
 select * from finish();
