@@ -24,6 +24,13 @@ export type ConsultationTemplateInput = {
   serviceIds: string[];
 };
 
+export type StartConsultationInput = {
+  templateId: string;
+  customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+};
+
 const QUESTION_TYPES = new Set<ConsultationQuestionType>([
   "yes_no",
   "text",
@@ -112,6 +119,77 @@ export const getConsultationWorkspace = createServerFn({ method: "GET" })
       services: servicesResult.data ?? [],
       submissions: submissionsResult.data ?? [],
     };
+  });
+
+export const startConsultationSubmission = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: StartConsultationInput) => {
+    if (!validUuid(data.templateId) || !data.templateId) throw new Error("Choose a consultation form.");
+    const customerName = text(data.customerName, 150, true);
+    const customerEmail = text(data.customerEmail, 254).toLowerCase() || null;
+    const customerPhone = text(data.customerPhone, 50) || null;
+    if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) throw new Error("Enter a valid email address or leave it blank.");
+    return { templateId: data.templateId, customerName, customerEmail, customerPhone };
+  })
+  .handler(async ({ data, context }) => {
+    const business = await ownedBusiness(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = supabaseAdmin as any;
+    const { data: template, error: templateError } = await db
+      .from("consultation_templates")
+      .select("id")
+      .eq("id", data.templateId)
+      .eq("business_id", business.id)
+      .eq("active", true)
+      .maybeSingle();
+    if (templateError) throw templateError;
+    if (!template) throw new Error("That consultation form is not available.");
+
+    let customer: { id: string } | null = null;
+    if (data.customerEmail) {
+      const { data: matches, error } = await db.from("customers").select("id").eq("business_id", business.id).ilike("email", data.customerEmail).limit(1);
+      if (error) throw error;
+      customer = matches?.[0] ?? null;
+    }
+    if (!customer && data.customerPhone) {
+      const { data: matches, error } = await db.from("customers").select("id").eq("business_id", business.id).eq("phone", data.customerPhone).limit(1);
+      if (error) throw error;
+      customer = matches?.[0] ?? null;
+    }
+    if (!customer) {
+      const { data: created, error } = await db
+        .from("customers")
+        .insert({ business_id: business.id, name: data.customerName, email: data.customerEmail, phone: data.customerPhone })
+        .select("id")
+        .single();
+      if (error) throw error;
+      customer = created;
+    }
+
+    const { data: existing, error: existingError } = await db
+      .from("consultation_submissions")
+      .select("id")
+      .eq("business_id", business.id)
+      .eq("template_id", data.templateId)
+      .eq("customer_id", customer.id)
+      .is("booking_id", null)
+      .eq("status", "pending")
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (existing) return { id: existing.id };
+
+    const { data: submission, error: submissionError } = await db
+      .from("consultation_submissions")
+      .insert({ business_id: business.id, template_id: data.templateId, booking_id: null, customer_id: customer.id, status: "pending" })
+      .select("id")
+      .single();
+    if (submissionError) throw submissionError;
+    const { error: auditError } = await db.from("consultation_audit_events").insert({ submission_id: submission.id, business_id: business.id, actor_user_id: context.userId, action: "requested", metadata: { reason: "started_in_salon" } });
+    if (auditError) {
+      await db.from("consultation_submissions").delete().eq("id", submission.id).eq("business_id", business.id);
+      throw auditError;
+    }
+    return { id: submission.id };
   });
 
 export const getBookingConsultationStatus = createServerFn({ method: "GET" })

@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   ChevronRight,
   GripVertical,
+  UserRoundPlus,
   X,
 } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
@@ -51,6 +52,7 @@ import {
   recordPatchTestOutcome,
   saveConsultationTemplate,
   signConsultationSubmission,
+  startConsultationSubmission,
   withdrawConsultationConsent,
   type ConsultationQuestion,
   type ConsultationTemplateInput,
@@ -101,6 +103,7 @@ function relationOne(value: any) {
 
 function ConsultationsPage() {
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [startingForm, setStartingForm] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -170,14 +173,36 @@ function ConsultationsPage() {
     }
   };
 
+  const startSigning = async (details: { templateId: string; customerName: string; customerEmail: string; customerPhone: string }) => {
+    setSaving(true);
+    try {
+      const headers = await getServerFnAuthHeaders();
+      const started = await startConsultationSubmission({ data: details, headers });
+      const refreshed = await query.refetch();
+      const record = refreshed.data?.submissions.find((item: any) => item.id === started.id);
+      if (!record) throw new Error("The new client form could not be opened. Refresh and try again.");
+      setStartingForm(false);
+      setSelectedRecord(record);
+      toast.success("Client form ready to sign");
+    } catch (error: any) {
+      toast.error(error.message ?? "The client form could not be started");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="page-wrap max-w-7xl mx-auto px-5 sm:px-8 py-8 sm:py-12">
       <PageHeader
         eyebrow="Client safety"
         title="Consultations"
-        subtitle="Replace paper consultation and patch-test files with secure, signed online records."
-        action={<Button onClick={() => setEditor(newEditor())}><Plus className="h-4 w-4" />New form</Button>}
+        subtitle="Enter the client’s details, hand them this device to sign, and keep the completed record securely."
+        action={<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setEditor(newEditor())}><Plus className="h-4 w-4" />New form</Button><Button onClick={() => setStartingForm(true)} disabled={!templates.some((template: any) => template.active)}><UserRoundPlus className="h-4 w-4" />Get customer signature</Button></div>}
       />
+
+      <button type="button" onClick={() => setStartingForm(true)} disabled={!templates.some((template: any) => template.active)} className="mb-7 w-full rounded-2xl border bg-card p-5 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60">
+        <div className="flex items-center gap-4"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground"><FileSignature className="h-6 w-6" /></div><div className="min-w-0 flex-1"><div className="font-semibold">Start a form for a customer</div><p className="mt-1 text-sm text-muted-foreground">Add their name and contact details, then let them complete and sign it here in the salon.</p></div><ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" /></div>
+      </button>
 
       <div className="grid gap-3 sm:grid-cols-3 mb-7">
         <SummaryCard icon={FileSignature} label="Form templates" value={templates.length} />
@@ -244,6 +269,7 @@ function ConsultationsPage() {
       </Tabs>
 
       <TemplateEditor editor={editor} services={services} saving={saving} onChange={setEditor} onSave={save} onClose={() => setEditor(null)} />
+      <StartSigningDialog open={startingForm} templates={templates} saving={saving} onStart={startSigning} onClose={() => setStartingForm(false)} />
       <RecordDialog record={selectedRecord} onClose={() => setSelectedRecord(null)} onSaved={async () => { const refreshed = await query.refetch(); setSelectedRecord(refreshed.data?.submissions.find((record: any) => record.id === selectedRecord?.id) ?? null); }} />
     </div>
   );
@@ -252,6 +278,39 @@ function ConsultationsPage() {
 function SummaryCard({ icon: Icon, label, value, tone }: { icon: any; label: string; value: number; tone?: "amber" | "green" }) {
   const color = tone === "green" ? "bg-emerald-100 text-emerald-700" : tone === "amber" ? "bg-amber-100 text-amber-700" : "bg-secondary text-foreground";
   return <div className="rounded-xl border bg-card px-4 py-4 flex items-center gap-3"><div className={`h-10 w-10 rounded-xl grid place-items-center ${color}`}><Icon className="h-5 w-5" /></div><div><div className="text-2xl font-semibold leading-none">{value}</div><div className="text-xs text-muted-foreground mt-1">{label}</div></div></div>;
+}
+
+function StartSigningDialog({ open, templates, saving, onStart, onClose }: { open: boolean; templates: any[]; saving: boolean; onStart: (details: { templateId: string; customerName: string; customerEmail: string; customerPhone: string }) => Promise<void>; onClose: () => void }) {
+  const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
+  const [templateId, setTemplateId] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  useEffect(() => {
+    if (!open) return;
+    setTemplateId(activeTemplates[0]?.id ?? "");
+    setCustomerName("");
+    setCustomerEmail("");
+    setCustomerPhone("");
+  }, [open, activeTemplates]);
+
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle className="font-display text-2xl">Get customer signature</DialogTitle><DialogDescription>Enter the customer’s details, then hand them this device to complete and sign the form.</DialogDescription></DialogHeader>
+        <div className="space-y-4 py-2">
+          <div><Label>Form</Label><Select value={templateId} onValueChange={setTemplateId}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Choose a form" /></SelectTrigger><SelectContent>{activeTemplates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</SelectContent></Select></div>
+          <div><Label>Customer’s full name</Label><Input className="mt-1.5" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Full name" autoComplete="name" /></div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div><Label>Phone <span className="font-normal text-muted-foreground">(optional)</span></Label><Input className="mt-1.5" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="Phone number" autoComplete="tel" /></div>
+            <div><Label>Email <span className="font-normal text-muted-foreground">(optional)</span></Label><Input className="mt-1.5" type="email" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} placeholder="Email address" autoComplete="email" /></div>
+          </div>
+          <div className="rounded-xl bg-secondary/40 px-4 py-3 text-sm text-muted-foreground"><ShieldCheck className="mr-2 inline h-4 w-4" />Nothing is signed until the customer reviews the form and draws their own signature.</div>
+        </div>
+        <DialogFooter><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={() => onStart({ templateId, customerName, customerEmail, customerPhone })} disabled={saving || !templateId || !customerName.trim()}>{saving ? "Preparing…" : "Continue to signature"}<ChevronRight className="h-4 w-4" /></Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function TemplateEditor({ editor, services, saving, onChange, onSave, onClose }: { editor: Editor | null; services: any[]; saving: boolean; onChange: (value: Editor | null) => void; onSave: () => void; onClose: () => void }) {
@@ -310,7 +369,7 @@ function TemplateEditor({ editor, services, saving, onChange, onSave, onClose }:
 
 function RecordsTable({ records, onOpen, loading }: { records: any[]; onOpen: (record: any) => void; loading: boolean }) {
   if (loading) return <Skeleton className="h-72 rounded-2xl" />;
-  if (!records.length) return <EmptyState icon={FileSignature} title="No client forms yet" description="Signed and waiting consultation forms will appear here after a booking uses an assigned service." />;
+  if (!records.length) return <EmptyState icon={FileSignature} title="No client forms yet" description="Use Get customer signature to enter their details and open a form for them to sign in the salon." />;
   return <div className="rounded-2xl border bg-card overflow-hidden"><div className="hidden sm:grid grid-cols-[1.3fr_1fr_1fr_150px_30px] gap-4 px-5 py-3 border-b text-[10px] uppercase tracking-wider text-muted-foreground"><span>Client</span><span>Form</span><span>Appointment</span><span>Status</span><span /></div>{records.map((record) => { const customer = relationOne(record.customers); const booking = relationOne(record.bookings); const template = relationOne(record.consultation_templates); const name = template?.name ?? record.template_snapshot?.name ?? "Deleted form"; return <button key={record.id} onClick={() => onOpen(record)} className="w-full text-left grid gap-2 sm:grid-cols-[1.3fr_1fr_1fr_150px_30px] sm:items-center px-5 py-4 border-b last:border-0 hover:bg-secondary/30"><div><div className="font-medium">{customer?.name ?? "Customer"}</div><div className="text-xs text-muted-foreground">{customer?.email ?? "No email"}</div></div><div className="text-sm">{name}</div><div className="text-sm text-muted-foreground">{booking?.starts_at ? new Date(booking.starts_at).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" }) : "—"}</div><StatusBadge status={record.status} /><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>; })}</div>;
 }
 
@@ -336,10 +395,10 @@ function RecordDialog({ record, onClose, onSaved }: { record: any | null; onClos
     setTestedBy(record?.patch_tested_by ?? "");
     setNotes(record?.staff_notes ?? "");
     setAnswers(record?.answers ?? {});
-    setSignerName(record?.signer_name ?? "");
+    setSignerName(record?.signer_name ?? relationOne(record?.customers)?.name ?? "");
     setSignatureData(null);
     setConsented(false);
-  }, [record?.id, record?.status, record?.answers, record?.signer_name, record?.patch_test_outcome, record?.patch_tested_at, record?.patch_tested_by, record?.staff_notes]);
+  }, [record?.id, record?.status, record?.answers, record?.signer_name, record?.patch_test_outcome, record?.patch_tested_at, record?.patch_tested_by, record?.staff_notes, record?.customers]);
   if (!record) return null;
   const snapshot = record.template_snapshot;
   const template = relationOne(record.consultation_templates);
