@@ -92,6 +92,7 @@ type Staff = {
   name: string;
   role: string | null;
   business_id: string;
+  photoUrl: string | null;
 };
 type PublicReview = {
   id: string;
@@ -406,49 +407,13 @@ export function PublicBookingPage({
     queryKey: ["pub-staff", serviceGroup?.key, proBusinessIds.join(",")],
     enabled: !!serviceGroup,
     queryFn: async () => {
-      const variants = serviceGroup!.variants;
-      const variantIds = variants.map((v) => v.id);
-      const linkedRes = await supabase
-        .from("service_staff")
-        .select("staff_id, service_id")
-        .in("service_id", variantIds);
-      const linkedByService = new Map<string, string[]>();
-      for (const row of linkedRes.data ?? []) {
-        const arr = linkedByService.get(row.service_id) ?? [];
-        arr.push(row.staff_id);
-        linkedByService.set(row.service_id, arr);
-      }
-      // A variant with no explicit service_staff links is bookable with any
-      // of that business's staff (existing single-business behavior),
-      // preserved per-business here.
-      const staffIds = new Set<string>();
-      const fallbackBizIds: string[] = [];
-      for (const v of variants) {
-        const linked = linkedByService.get(v.id);
-        if (linked && linked.length > 0)
-          linked.forEach((id) => staffIds.add(id));
-        else fallbackBizIds.push(v.business_id);
-      }
-      const results: Staff[] = [];
-      if (staffIds.size > 0) {
-        const { data, error } = await (supabase as any)
-          .from("public_staff")
-          .select("id, name, role, business_id")
-          .in("id", Array.from(staffIds));
-        if (error) throw error;
-        results.push(...(data as Staff[]));
-      }
-      if (fallbackBizIds.length > 0) {
-        const { data, error } = await (supabase as any)
-          .from("public_staff")
-          .select("id, name, role, business_id")
-          .in("business_id", fallbackBizIds);
-        if (error) throw error;
-        results.push(...(data as Staff[]));
-      }
-      const dedup = Array.from(new Map(results.map((s) => [s.id, s])).values());
-      dedup.sort((a, b) => a.name.localeCompare(b.name));
-      return dedup;
+      const serviceIds = serviceGroup!.variants.map((variant) => variant.id);
+      const response = await fetch(
+        `/api/public-booking-staff?service_ids=${encodeURIComponent(serviceIds.join(","))}`,
+      );
+      if (!response.ok) throw new Error("Unable to load staff");
+      const payload = (await response.json()) as { staff?: Staff[] };
+      return payload.staff ?? [];
     },
   });
 
@@ -1349,8 +1314,17 @@ export function PublicBookingPage({
                 onClick={() => pickStaff(p)}
                 className={`group w-full text-left rounded-2xl border bg-card p-5 flex items-center gap-4 card-hover animate-rise stagger-${(i % 6) + 1}`}
               >
-                <div className="h-12 w-12 rounded-full bg-secondary grid place-items-center font-display text-lg shrink-0">
-                  {p.name.charAt(0).toUpperCase()}
+                <div className="relative h-12 w-12 rounded-full bg-secondary overflow-hidden grid place-items-center font-display text-lg shrink-0">
+                  <span>{p.name.charAt(0).toUpperCase()}</span>
+                  {p.photoUrl && (
+                    <img
+                      src={p.photoUrl}
+                      alt={`${p.name}${p.role ? ` — ${p.role}` : ""}`}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      loading="lazy"
+                      onError={(event) => event.currentTarget.remove()}
+                    />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="font-medium truncate">{p.name}</div>
@@ -1595,14 +1569,16 @@ export function PublicBookingPage({
                   Phone
                 </Label>
                 <Input
+                  type="tel"
                   value={info.phone}
                   onChange={(e) => {
                     setInfoTouched(true);
                     setInfo({ ...info, phone: sanitizePhone(e.target.value) });
                   }}
                   className="mt-1.5 h-11"
-                  placeholder="(555) 000-0000"
+                  placeholder="07123 456789"
                   inputMode="tel"
+                  autoComplete="tel"
                 />
                 {info.phone.length > 0 && !isValidPhone(info.phone) && (
                   <p className="mt-1 text-xs text-destructive">

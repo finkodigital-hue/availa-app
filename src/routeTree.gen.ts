@@ -32,6 +32,7 @@ import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhoo
 import { Route as ApiStockScanRouteImport } from './routes/api/stock-scan'
 import { Route as ApiPublicReviewsRouteImport } from './routes/api/public-reviews'
 import { Route as ApiPublicGalleryRouteImport } from './routes/api/public-gallery'
+import { Route as ApiPublicBookingStaffRouteImport } from './routes/api/public-booking-staff'
 import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-suggest'
 import { Route as ApiClientErrorsRouteImport } from './routes/api/client-errors'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -176,6 +177,11 @@ const ApiPublicReviewsRoute = ApiPublicReviewsRouteImport.update({
 const ApiPublicGalleryRoute = ApiPublicGalleryRouteImport.update({
   id: '/api/public-gallery',
   path: '/api/public-gallery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBookingStaffRoute = ApiPublicBookingStaffRouteImport.update({
+  id: '/api/public-booking-staff',
+  path: '/api/public-booking-staff',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPageAiSuggestRoute = ApiPageAiSuggestRouteImport.update({
@@ -375,6 +381,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
+  '/api/public-booking-staff': typeof ApiPublicBookingStaffRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
   '/api/public-reviews': typeof ApiPublicReviewsRoute
   '/api/stock-scan': typeof ApiStockScanRoute
@@ -428,6 +435,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
+  '/api/public-booking-staff': typeof ApiPublicBookingStaffRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
   '/api/public-reviews': typeof ApiPublicReviewsRoute
   '/api/stock-scan': typeof ApiStockScanRoute
@@ -485,6 +493,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
+  '/api/public-booking-staff': typeof ApiPublicBookingStaffRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
   '/api/public-reviews': typeof ApiPublicReviewsRoute
   '/api/stock-scan': typeof ApiStockScanRoute
@@ -542,6 +551,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/client-errors'
     | '/api/page-ai-suggest'
+    | '/api/public-booking-staff'
     | '/api/public-gallery'
     | '/api/public-reviews'
     | '/api/stock-scan'
@@ -595,6 +605,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/client-errors'
     | '/api/page-ai-suggest'
+    | '/api/public-booking-staff'
     | '/api/public-gallery'
     | '/api/public-reviews'
     | '/api/stock-scan'
@@ -651,6 +662,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/client-errors'
     | '/api/page-ai-suggest'
+    | '/api/public-booking-staff'
     | '/api/public-gallery'
     | '/api/public-reviews'
     | '/api/stock-scan'
@@ -690,6 +702,7 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiClientErrorsRoute: typeof ApiClientErrorsRoute
   ApiPageAiSuggestRoute: typeof ApiPageAiSuggestRoute
+  ApiPublicBookingStaffRoute: typeof ApiPublicBookingStaffRoute
   ApiPublicGalleryRoute: typeof ApiPublicGalleryRoute
   ApiPublicReviewsRoute: typeof ApiPublicReviewsRoute
   ApiStockScanRoute: typeof ApiStockScanRoute
@@ -870,6 +883,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public-gallery'
       fullPath: '/api/public-gallery'
       preLoaderRoute: typeof ApiPublicGalleryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public-booking-staff': {
+      id: '/api/public-booking-staff'
+      path: '/api/public-booking-staff'
+      fullPath: '/api/public-booking-staff'
+      preLoaderRoute: typeof ApiPublicBookingStaffRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/page-ai-suggest': {
@@ -1179,6 +1199,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiClientErrorsRoute: ApiClientErrorsRoute,
   ApiPageAiSuggestRoute: ApiPageAiSuggestRoute,
+  ApiPublicBookingStaffRoute: ApiPublicBookingStaffRoute,
   ApiPublicGalleryRoute: ApiPublicGalleryRoute,
   ApiPublicReviewsRoute: ApiPublicReviewsRoute,
   ApiStockScanRoute: ApiStockScanRoute,
