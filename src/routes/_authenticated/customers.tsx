@@ -560,6 +560,7 @@ type DataRequest = {
   email: string;
   kind: "export" | "deletion";
   created_at: string;
+  due_at: string;
 };
 
 function DataRequestsBanner({
@@ -576,7 +577,7 @@ function DataRequestsBanner({
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("customer_data_requests")
-        .select("id, customer_id, email, kind, created_at")
+        .select("id, customer_id, email, kind, created_at, due_at")
         .eq("business_id", businessId)
         .eq("status", "pending")
         .order("created_at", { ascending: true });
@@ -602,6 +603,10 @@ function DataRequestsBanner({
             <span>
               <span className="font-medium">{r.email}</span> requested{" "}
               {r.kind === "deletion" ? "account deletion" : "a data export"}
+              <span className="block text-xs text-muted-foreground">
+                Received {fmtDate(r.created_at)} · respond by{" "}
+                {fmtDate(r.due_at)}
+              </span>
             </span>
             <div className="flex gap-1.5">
               {r.customer_id && (
@@ -748,7 +753,11 @@ function DataRequestActionDialog({
                 <span className="font-medium">
                   {exportResult.customer.name}
                 </span>
-                . The request has been marked resolved.
+                , plus {exportResult.consultations.length} consultation or
+                patch-test record
+                {exportResult.consultations.length === 1 ? "" : "s"}. The
+                request has been marked resolved. Deliver the file securely to
+                the verified requester.
               </p>
               <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground">
@@ -761,8 +770,10 @@ function DataRequestActionDialog({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Downloads the customer's profile, bookings and payment history as
-              a JSON file, then marks this request as resolved.
+              Downloads the customer's profile, bookings, payments, reviews,
+              consultations and patch-test records as a JSON file, then marks
+              this request as resolved. Confirm the requester’s identity and use
+              a secure delivery method before sending it.
             </p>
           )
         ) : eraseResult ? (
@@ -798,7 +809,9 @@ function DataRequestActionDialog({
                   {eraseResult.notificationsDeleted} notification
                   {eraseResult.notificationsDeleted === 1 ? "" : "s"} and{" "}
                   {eraseResult.photosDeleted} photo
-                  {eraseResult.photosDeleted === 1 ? "" : "s"}
+                  {eraseResult.photosDeleted === 1 ? "" : "s"}, plus{" "}
+                  {eraseResult.consultationsDeleted} consultation or patch-test
+                  record{eraseResult.consultationsDeleted === 1 ? "" : "s"}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4 border-t px-4 py-3">
@@ -848,6 +861,7 @@ function DataRequestActionDialog({
                   <li>Name/email/phone on their bookings and payments</li>
                   <li>Notes on their bookings</li>
                   <li>Matching notifications</li>
+                  <li>Consultation forms, health answers and signatures</li>
                   <li>Portal sign-in, if no other business needs it</li>
                 </ul>
               </div>
@@ -862,7 +876,9 @@ function DataRequestActionDialog({
             </div>
             <p className="text-xs text-muted-foreground">
               If this customer has an upcoming booking, cancel or reassign it
-              first. This cannot be undone.
+              first. Do not continue if you need to preserve a particular record
+              for a documented legal claim or duty; assess that request
+              separately. This cannot be undone.
             </p>
             <div>
               <Label htmlFor="confirm-erase-name" className="text-xs">

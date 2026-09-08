@@ -33,6 +33,12 @@ const securityMigration = await read(
 const consultationsMigration = await read(
   "supabase/migrations/20260904120000_add_consultation_forms.sql",
 );
+const dataRightsHealthMigration = await read(
+  "supabase/migrations/20260908210000_complete_data_rights_health_records.sql",
+);
+const dataRightsFunctions = await read(
+  "src/lib/customer-data-requests.functions.ts",
+);
 const customerMutationMigration = await read(
   "supabase/migrations/20260908150000_harden_customer_mutations.sql",
 );
@@ -95,6 +101,18 @@ assert(
       "grant select on public.consultation_submissions to authenticated",
     ),
   "Salon health-data records must remain accessible only through the server API.",
+);
+assert(
+  dataRightsHealthMigration.includes("delete from consultation_submissions") &&
+    dataRightsHealthMigration.includes("consultations_deleted") &&
+    dataRightsHealthMigration.includes("due_at"),
+  "Erasure must delete consultation health records and rights requests must carry a deadline.",
+);
+assert(
+  dataRightsFunctions.includes('.from("consultation_submissions")') &&
+    dataRightsFunctions.includes("signature_data") &&
+    dataRightsFunctions.includes("consultations:"),
+  "Customer access exports must include consultation answers and signature evidence.",
 );
 assert(
   customerMutationMigration.includes("guard_customer_booking_updates") &&

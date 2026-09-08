@@ -72,11 +72,10 @@ function PrivacyPage() {
               <p>
                 Consultation and patch-test information may include answers
                 about allergies, sensitivities, previous product reactions,
-                relevant skin or scalp concerns, consent statements,
-                signatures, form versions, signing times, expiry dates,
-                staff-recorded patch-test outcomes and an audit history. This
-                information may be health data and therefore special-category
-                personal data.
+                relevant skin or scalp concerns, consent statements, signatures,
+                form versions, signing times, expiry dates, staff-recorded
+                patch-test outcomes and an audit history. This information may
+                be health data and therefore special-category personal data.
               </p>
               <p>
                 Product content may include logos, staff photographs, salon
@@ -130,12 +129,12 @@ function PrivacyPage() {
               </p>
               <p>
                 Consultation forms present health-data consent separately from
-                other permissions. Where a salon relies on explicit consent,
-                the client can withdraw it by contacting the salon, which can
-                mark the record as withdrawn in Bookzenvo. Withdrawal does not
-                make earlier lawful processing unlawful. A signed form is
-                locked as an evidence record; later template changes create a
-                new version rather than altering what was signed.
+                other permissions. Where a salon relies on explicit consent, the
+                client can withdraw it by contacting the salon, which can mark
+                the record as withdrawn in Bookzenvo. Withdrawal does not make
+                earlier lawful processing unlawful. A signed form is locked as
+                an evidence record; later template changes create a new version
+                rather than altering what was signed.
               </p>
               <p>
                 We do not sell personal information and do not use
@@ -283,12 +282,16 @@ function PrivacyPage() {
                 keep their independent records under their own policies.
               </p>
               <p>
-                Each business must set and communicate an appropriate retention period for
-                consultation and patch-test records. Bookzenvo provides validity, access,
-                withdrawal and signed-version controls but does not choose the business&apos;s lawful
-                retention period. Signed evidence may need to be restricted rather than immediately erased
-                where the business demonstrates an overriding legal obligation or a need to
-                establish, exercise or defend legal claims.
+                Each business must set and communicate an appropriate retention
+                period for consultation and patch-test records. Bookzenvo
+                provides validity, access, withdrawal and signed-version
+                controls but does not choose the business&apos;s lawful
+                retention period. Confirmed erasure removes consultation
+                answers, signatures and their audit trail. A business that
+                believes it must preserve a particular record for an overriding
+                legal duty or legal claim must assess and document that position
+                before running erasure; Bookzenvo does not decide that exemption
+                for it.
               </p>
             </>
           ),
@@ -303,6 +306,14 @@ function PrivacyPage() {
                 certain information in a portable format; and withdraw consent
                 where processing relies on consent. These rights can depend on
                 the circumstances and lawful basis.
+              </p>
+              <p>
+                Portal users can submit export and deletion requests to each
+                business they have booked with. Bookzenvo shows the business the
+                receipt date and a one-month response deadline. The business
+                must verify identity where reasonably needed, respond securely
+                and decide whether any lawful exception applies; generating a
+                file alone does not deliver it to the requester.
               </p>
               <p>
                 For information controlled by a salon, contact that salon first.
@@ -338,9 +349,8 @@ function PrivacyPage() {
                 separation, restricted service credentials and monitoring
                 intended to protect information. Signed salon records also use
                 immutable snapshots and evidence checks. No system can be
-                guaranteed completely secure. Account holders should use
-                strong, unique credentials and keep authorised-user access
-                current.
+                guaranteed completely secure. Account holders should use strong,
+                unique credentials and keep authorised-user access current.
               </p>
               <p>
                 Bookzenvo currently uses only essential cookies and local

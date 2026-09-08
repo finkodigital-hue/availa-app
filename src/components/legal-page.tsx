@@ -1,5 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import {
+  hasPublishableOperatorIdentity,
+  legalOperator,
+} from "@/lib/legal-operator";
 
 type LegalSection = { title: string; content: ReactNode };
 
@@ -48,6 +52,56 @@ export function LegalPage({
           Last updated: {lastUpdated}
         </p>
         <div className="mt-12 space-y-9">
+          <section
+            data-legal-operator={
+              hasPublishableOperatorIdentity ? "complete" : "incomplete"
+            }
+            className="rounded-xl border border-border bg-white px-5 py-5"
+          >
+            <h2 className="font-display text-[1.45rem] leading-tight mb-3">
+              Platform operator
+            </h2>
+            {hasPublishableOperatorIdentity ? (
+              <div className="space-y-1 text-[.92rem] leading-6 text-muted-foreground">
+                <p>
+                  <span className="font-medium text-foreground">
+                    {legalOperator.name}
+                  </span>
+                  {legalOperator.legalForm
+                    ? ` · ${legalOperator.legalForm}`
+                    : ""}
+                </p>
+                <p>{legalOperator.serviceAddress}</p>
+                {legalOperator.companyNumber && (
+                  <p>Company number: {legalOperator.companyNumber}</p>
+                )}
+                {legalOperator.registeredIn && (
+                  <p>Registered in: {legalOperator.registeredIn}</p>
+                )}
+                {legalOperator.vatNumber && (
+                  <p>VAT number: {legalOperator.vatNumber}</p>
+                )}
+                {legalOperator.icoRegistration && (
+                  <p>ICO registration: {legalOperator.icoRegistration}</p>
+                )}
+                <p>
+                  Contact:{" "}
+                  <a
+                    className="underline underline-offset-4"
+                    href={`mailto:${legalOperator.contactEmail}`}
+                  >
+                    {legalOperator.contactEmail}
+                  </a>
+                </p>
+              </div>
+            ) : (
+              <p className="text-[.92rem] leading-6 text-muted-foreground">
+                The operator’s verified legal name, legal form and service
+                address must be published here before launch. These details have
+                deliberately not been guessed.
+              </p>
+            )}
+          </section>
           {sections.map((section) => (
             <section key={section.title}>
               <h2 className="font-display text-[1.7rem] leading-tight mb-3">

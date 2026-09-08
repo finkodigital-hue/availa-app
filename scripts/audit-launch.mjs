@@ -80,6 +80,14 @@ while (queue.length) {
 
     const path = new URL(url).pathname.replace(/\/$/, "") || "/";
     if (
+      path === "/privacy" &&
+      !/data-legal-operator=["']complete["']/i.test(html)
+    ) {
+      failures.push(
+        `Platform operator legal identity is incomplete on ${url}. Set the verified VITE_LEGAL_OPERATOR_* production values.`,
+      );
+    }
+    if (
       canonicalPages.has(path) &&
       !/<link[^>]+rel=["']canonical["']/i.test(html)
     ) {

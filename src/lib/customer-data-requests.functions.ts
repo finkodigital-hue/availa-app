@@ -36,6 +36,26 @@ type ExportReview = {
   submitted_at: string;
 };
 
+type ExportConsultation = {
+  id: string;
+  booking_id: string;
+  status: string;
+  template_snapshot: unknown;
+  answers: unknown;
+  explicit_health_consent: boolean;
+  signer_name: string | null;
+  signature_data: string | null;
+  signed_at: string | null;
+  expires_at: string | null;
+  withdrawn_at: string | null;
+  withdrawal_reason: string | null;
+  patch_test_outcome: string | null;
+  patch_tested_at: string | null;
+  patch_tested_by: string | null;
+  staff_notes: string | null;
+  created_at: string;
+};
+
 export type CustomerDataExport = {
   generatedAt: string;
   business: { id: string; name: string };
@@ -56,6 +76,7 @@ export type CustomerDataExport = {
   bookings: ExportBooking[];
   payments: ExportPayment[];
   reviews: ExportReview[];
+  consultations: ExportConsultation[];
   notCovered: string[];
 };
 
@@ -153,6 +174,24 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
       .order("submitted_at", { ascending: false });
     if (reviewsError) throw reviewsError;
 
+    // Consultation answers and signatures are deliberately unavailable to the
+    // browser client. The server has already proved that the caller owns this
+    // business and that the request belongs to this customer, so use the admin
+    // client with both tenant and customer predicates.
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { data: consultations, error: consultationsError } = await (
+      supabaseAdmin as any
+    )
+      .from("consultation_submissions")
+      .select(
+        "id, booking_id, status, template_snapshot, answers, explicit_health_consent, signer_name, signature_data, signed_at, expires_at, withdrawn_at, withdrawal_reason, patch_test_outcome, patch_tested_at, patch_tested_by, staff_notes, created_at",
+      )
+      .eq("business_id", business.id)
+      .eq("customer_id", customer.id)
+      .order("created_at", { ascending: false });
+    if (consultationsError) throw consultationsError;
+
     const { error: resolveError } = await (context.supabase as any)
       .from("customer_data_requests")
       .update({
@@ -186,6 +225,7 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
       bookings: (bookings ?? []) as ExportBooking[],
       payments,
       reviews: reviews ?? [],
+      consultations: consultations ?? [],
       notCovered: NOT_COVERED_NOTICE,
     };
   });
@@ -195,6 +235,7 @@ export type EraseCustomerResult = {
   paymentsScrubbed: number;
   notificationsDeleted: number;
   photosDeleted: number;
+  consultationsDeleted: number;
   authAccountStatus:
     | "removed"
     | "preserved_shared"
@@ -350,6 +391,7 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       paymentsScrubbed: result.payments_scrubbed ?? 0,
       notificationsDeleted: result.notifications_deleted ?? 0,
       photosDeleted,
+      consultationsDeleted: result.consultations_deleted ?? 0,
       authAccountStatus,
       manualCheckNotice: NOT_COVERED_NOTICE,
     };
