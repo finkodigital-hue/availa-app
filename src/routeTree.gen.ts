@@ -65,11 +65,14 @@ import { Route as ApiSupabaseSplatRouteImport } from './routes/api/supabase/$'
 import { Route as ApiReviewsSubmitRouteImport } from './routes/api/reviews/submit'
 import { Route as ApiReviewsPeekRouteImport } from './routes/api/reviews/peek'
 import { Route as ApiMonitoringClientErrorsRouteImport } from './routes/api/monitoring/client-errors'
+import { Route as ApiInternalCalendarSyncRouteImport } from './routes/api/internal/calendar-sync'
 import { Route as ApiCronSendRemindersRouteImport } from './routes/api/cron/send-reminders'
 import { Route as ApiBookingsSendConfirmationRouteImport } from './routes/api/bookings/send-confirmation'
 import { Route as ApiBookingActionsReschedulePeekRouteImport } from './routes/api/booking-actions/reschedule-peek'
 import { Route as ApiBookingActionsRescheduleCommitRouteImport } from './routes/api/booking-actions/reschedule-commit'
 import { Route as ApiBookingActionsActRouteImport } from './routes/api/booking-actions/act'
+import { Route as ApiCalendarProviderConnectRouteImport } from './routes/api/calendar/$provider/connect'
+import { Route as ApiCalendarProviderCallbackRouteImport } from './routes/api/calendar/$provider/callback'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -357,6 +360,11 @@ const ApiMonitoringClientErrorsRoute =
     path: '/api/monitoring/client-errors',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiInternalCalendarSyncRoute = ApiInternalCalendarSyncRouteImport.update({
+  id: '/api/internal/calendar-sync',
+  path: '/api/internal/calendar-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronSendRemindersRoute = ApiCronSendRemindersRouteImport.update({
   id: '/api/cron/send-reminders',
   path: '/api/cron/send-reminders',
@@ -385,6 +393,18 @@ const ApiBookingActionsActRoute = ApiBookingActionsActRouteImport.update({
   path: '/api/booking-actions/act',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCalendarProviderConnectRoute =
+  ApiCalendarProviderConnectRouteImport.update({
+    id: '/api/calendar/$provider/connect',
+    path: '/api/calendar/$provider/connect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiCalendarProviderCallbackRoute =
+  ApiCalendarProviderCallbackRouteImport.update({
+    id: '/api/calendar/$provider/callback',
+    path: '/api/calendar/$provider/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -441,12 +461,15 @@ export interface FileRoutesByFullPath {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/internal/calendar-sync': typeof ApiInternalCalendarSyncRoute
   '/api/monitoring/client-errors': typeof ApiMonitoringClientErrorsRoute
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
+  '/api/calendar/$provider/callback': typeof ApiCalendarProviderCallbackRoute
+  '/api/calendar/$provider/connect': typeof ApiCalendarProviderConnectRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -501,12 +524,15 @@ export interface FileRoutesByTo {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/internal/calendar-sync': typeof ApiInternalCalendarSyncRoute
   '/api/monitoring/client-errors': typeof ApiMonitoringClientErrorsRoute
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
+  '/api/calendar/$provider/callback': typeof ApiCalendarProviderCallbackRoute
+  '/api/calendar/$provider/connect': typeof ApiCalendarProviderConnectRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -565,12 +591,15 @@ export interface FileRoutesById {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/internal/calendar-sync': typeof ApiInternalCalendarSyncRoute
   '/api/monitoring/client-errors': typeof ApiMonitoringClientErrorsRoute
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
+  '/api/calendar/$provider/callback': typeof ApiCalendarProviderCallbackRoute
+  '/api/calendar/$provider/connect': typeof ApiCalendarProviderConnectRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -629,12 +658,15 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/internal/calendar-sync'
     | '/api/monitoring/client-errors'
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
+    | '/api/calendar/$provider/callback'
+    | '/api/calendar/$provider/connect'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -689,12 +721,15 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/internal/calendar-sync'
     | '/api/monitoring/client-errors'
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
+    | '/api/calendar/$provider/callback'
+    | '/api/calendar/$provider/connect'
   id:
     | '__root__'
     | '/'
@@ -752,12 +787,15 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/internal/calendar-sync'
     | '/api/monitoring/client-errors'
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
+    | '/api/calendar/$provider/callback'
+    | '/api/calendar/$provider/connect'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -793,12 +831,15 @@ export interface RootRouteChildren {
   ApiBookingActionsReschedulePeekRoute: typeof ApiBookingActionsReschedulePeekRoute
   ApiBookingsSendConfirmationRoute: typeof ApiBookingsSendConfirmationRoute
   ApiCronSendRemindersRoute: typeof ApiCronSendRemindersRoute
+  ApiInternalCalendarSyncRoute: typeof ApiInternalCalendarSyncRoute
   ApiMonitoringClientErrorsRoute: typeof ApiMonitoringClientErrorsRoute
   ApiReviewsPeekRoute: typeof ApiReviewsPeekRoute
   ApiReviewsSubmitRoute: typeof ApiReviewsSubmitRoute
   ApiSupabaseSplatRoute: typeof ApiSupabaseSplatRoute
   BookingActionActionTokenRoute: typeof BookingActionActionTokenRoute
   BookingActionRescheduleTokenRoute: typeof BookingActionRescheduleTokenRoute
+  ApiCalendarProviderCallbackRoute: typeof ApiCalendarProviderCallbackRoute
+  ApiCalendarProviderConnectRoute: typeof ApiCalendarProviderConnectRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1195,6 +1236,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMonitoringClientErrorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/internal/calendar-sync': {
+      id: '/api/internal/calendar-sync'
+      path: '/api/internal/calendar-sync'
+      fullPath: '/api/internal/calendar-sync'
+      preLoaderRoute: typeof ApiInternalCalendarSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/send-reminders': {
       id: '/api/cron/send-reminders'
       path: '/api/cron/send-reminders'
@@ -1228,6 +1276,20 @@ declare module '@tanstack/react-router' {
       path: '/api/booking-actions/act'
       fullPath: '/api/booking-actions/act'
       preLoaderRoute: typeof ApiBookingActionsActRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/calendar/$provider/connect': {
+      id: '/api/calendar/$provider/connect'
+      path: '/api/calendar/$provider/connect'
+      fullPath: '/api/calendar/$provider/connect'
+      preLoaderRoute: typeof ApiCalendarProviderConnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/calendar/$provider/callback': {
+      id: '/api/calendar/$provider/callback'
+      path: '/api/calendar/$provider/callback'
+      fullPath: '/api/calendar/$provider/callback'
+      preLoaderRoute: typeof ApiCalendarProviderCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -1339,12 +1401,15 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBookingActionsReschedulePeekRoute: ApiBookingActionsReschedulePeekRoute,
   ApiBookingsSendConfirmationRoute: ApiBookingsSendConfirmationRoute,
   ApiCronSendRemindersRoute: ApiCronSendRemindersRoute,
+  ApiInternalCalendarSyncRoute: ApiInternalCalendarSyncRoute,
   ApiMonitoringClientErrorsRoute: ApiMonitoringClientErrorsRoute,
   ApiReviewsPeekRoute: ApiReviewsPeekRoute,
   ApiReviewsSubmitRoute: ApiReviewsSubmitRoute,
   ApiSupabaseSplatRoute: ApiSupabaseSplatRoute,
   BookingActionActionTokenRoute: BookingActionActionTokenRoute,
   BookingActionRescheduleTokenRoute: BookingActionRescheduleTokenRoute,
+  ApiCalendarProviderCallbackRoute: ApiCalendarProviderCallbackRoute,
+  ApiCalendarProviderConnectRoute: ApiCalendarProviderConnectRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
