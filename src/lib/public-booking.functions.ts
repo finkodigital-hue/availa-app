@@ -14,6 +14,7 @@ type PublicBookingInput = {
   notes?: string;
   gapMin?: number | null;
   activeAfterMin?: number | null;
+  smsReminderConsent?: boolean;
 };
 
 const UUID =
@@ -93,5 +94,23 @@ export const createPublicBooking = createServerFn({ method: "POST" })
       },
     );
     if (error) throw error;
+    if (bookingId && data.smsReminderConsent && data.customerPhone) {
+      const { supabaseAdmin } =
+        await import("@/integrations/supabase/client.server");
+      const { error: consentError } = await (supabaseAdmin as any)
+        .from("bookings")
+        .update({
+          sms_reminder_consent_at: new Date().toISOString(),
+          sms_reminder_consent_version: "appointment-sms-v1",
+        })
+        .eq("id", bookingId)
+        .eq("business_id", data.businessId);
+      if (consentError)
+        console.error(
+          "Could not record SMS reminder consent",
+          bookingId,
+          consentError,
+        );
+    }
     return { bookingId };
   });

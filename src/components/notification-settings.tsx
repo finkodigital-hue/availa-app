@@ -46,6 +46,11 @@ const OPTIONS = [
     "Appointment reminders",
     "Email eligible customers before their appointment.",
   ],
+  [
+    "customer_booking_reminder_sms",
+    "SMS appointment reminders",
+    "Text customers who explicitly opt in and provide an international-format mobile number.",
+  ],
 ] as const;
 
 export function NotificationSettings({ businessId }: { businessId: string }) {
@@ -101,7 +106,7 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
         ))}
       </div>
       <div>
-        <h3 className="text-sm font-semibold">Recent email delivery</h3>
+        <h3 className="text-sm font-semibold">Recent message delivery</h3>
         <div className="mt-2 divide-y rounded-2xl border bg-card">
           {(query.data?.deliveries ?? []).slice(0, 20).map((item: any) => (
             <div
@@ -111,6 +116,7 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
               <div className="min-w-0">
                 <div className="truncate font-medium">{item.subject}</div>
                 <div className="text-xs text-muted-foreground">
+                  {item.channel === "sms" ? "SMS" : "Email"} ·{" "}
                   {item.recipient_masked} ·{" "}
                   {new Date(item.created_at).toLocaleString()}
                 </div>
@@ -122,7 +128,7 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
           ))}
           {!query.isLoading && !query.data?.deliveries?.length && (
             <div className="p-6 text-center text-sm text-muted-foreground">
-              No emails have been queued yet.
+              No messages have been queued yet.
             </div>
           )}
         </div>

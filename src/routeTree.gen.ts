@@ -30,6 +30,7 @@ import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
+import { Route as ApiTwilioSmsWebhookRouteImport } from './routes/api.twilio-sms-webhook'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
 import { Route as ApiStockScanRouteImport } from './routes/api/stock-scan'
 import { Route as ApiResendWebhookRouteImport } from './routes/api.resend-webhook'
@@ -172,6 +173,11 @@ const HelpSlugRoute = HelpSlugRouteImport.update({
 const BookSlugRoute = BookSlugRouteImport.update({
   id: '/book/$slug',
   path: '/book/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTwilioSmsWebhookRoute = ApiTwilioSmsWebhookRouteImport.update({
+  id: '/api/twilio-sms-webhook',
+  path: '/api/twilio-sms-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
@@ -420,6 +426,7 @@ export interface FileRoutesByFullPath {
   '/api/resend-webhook': typeof ApiResendWebhookRoute
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
+  '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/book/$slug': typeof BookSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -479,6 +486,7 @@ export interface FileRoutesByTo {
   '/api/resend-webhook': typeof ApiResendWebhookRoute
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
+  '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/book/$slug': typeof BookSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -542,6 +550,7 @@ export interface FileRoutesById {
   '/api/resend-webhook': typeof ApiResendWebhookRoute
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
+  '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/book/$slug': typeof BookSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -605,6 +614,7 @@ export interface FileRouteTypes {
     | '/api/resend-webhook'
     | '/api/stock-scan'
     | '/api/stripe-webhook'
+    | '/api/twilio-sms-webhook'
     | '/book/$slug'
     | '/help/$slug'
     | '/invite/$token'
@@ -664,6 +674,7 @@ export interface FileRouteTypes {
     | '/api/resend-webhook'
     | '/api/stock-scan'
     | '/api/stripe-webhook'
+    | '/api/twilio-sms-webhook'
     | '/book/$slug'
     | '/help/$slug'
     | '/invite/$token'
@@ -726,6 +737,7 @@ export interface FileRouteTypes {
     | '/api/resend-webhook'
     | '/api/stock-scan'
     | '/api/stripe-webhook'
+    | '/api/twilio-sms-webhook'
     | '/book/$slug'
     | '/help/$slug'
     | '/invite/$token'
@@ -771,6 +783,7 @@ export interface RootRouteChildren {
   ApiResendWebhookRoute: typeof ApiResendWebhookRoute
   ApiStockScanRoute: typeof ApiStockScanRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
+  ApiTwilioSmsWebhookRoute: typeof ApiTwilioSmsWebhookRoute
   BookSlugRoute: typeof BookSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ReviewTokenRoute: typeof ReviewTokenRoute
@@ -935,6 +948,13 @@ declare module '@tanstack/react-router' {
       path: '/book/$slug'
       fullPath: '/book/$slug'
       preLoaderRoute: typeof BookSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/twilio-sms-webhook': {
+      id: '/api/twilio-sms-webhook'
+      path: '/api/twilio-sms-webhook'
+      fullPath: '/api/twilio-sms-webhook'
+      preLoaderRoute: typeof ApiTwilioSmsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/stripe-webhook': {
@@ -1308,6 +1328,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiResendWebhookRoute: ApiResendWebhookRoute,
   ApiStockScanRoute: ApiStockScanRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
+  ApiTwilioSmsWebhookRoute: ApiTwilioSmsWebhookRoute,
   BookSlugRoute: BookSlugRoute,
   InviteTokenRoute: InviteTokenRoute,
   ReviewTokenRoute: ReviewTokenRoute,

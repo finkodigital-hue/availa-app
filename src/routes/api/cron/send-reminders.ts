@@ -6,6 +6,8 @@ import { buildReminderEmail } from "@/lib/emails/reminder-email.server";
 import { buildConfirmationEmail } from "@/lib/emails/confirmation-email.server";
 import { buildReviewRequestEmail } from "@/lib/emails/review-request-email.server";
 import { sendEmail, EmailSendError } from "@/lib/resend.server";
+import { sendSms, SmsSendError } from "@/lib/sms.server";
+import { buildReminderSms } from "@/lib/sms/reminder-sms.server";
 
 // Woken up every 15 minutes by a Supabase pg_cron + pg_net job (see
 // supabase/migrations/20260723150000_add_booking_reminders.sql). This route,
@@ -63,6 +65,8 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         let claimed = 0;
         let sent = 0;
         let failed = 0;
+        let smsSent = 0;
+        let smsFailed = 0;
 
         for (const business of businesses ?? []) {
           const now = new Date();
@@ -178,6 +182,70 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 .insert({ booking_id: booking.id, error: message });
             }
           }
+
+          const { data: smsPreference } = await (supabaseAdmin as any)
+            .from("notification_preferences")
+            .select("customer_booking_reminder_sms")
+            .eq("business_id", business.id)
+            .maybeSingle();
+          if (smsPreference?.customer_booking_reminder_sms === true) {
+            const { data: smsBookings, error: smsError } = await (
+              supabaseAdmin as any
+            )
+              .from("bookings")
+              .select(
+                "id,starts_at,customer_phone,customers(phone),services(name)",
+              )
+              .eq("business_id", business.id)
+              .not("sms_reminder_consent_at", "is", null)
+              .is("sms_reminder_sent_at", null)
+              .not("status", "in", "(cancelled,completed,no_show)")
+              .gt("starts_at", now.toISOString())
+              .lte("starts_at", windowEnd.toISOString());
+            if (smsError)
+              console.error(
+                "[send-reminders] failed to load SMS bookings",
+                business.id,
+                smsError,
+              );
+            for (const booking of smsBookings ?? []) {
+              const phone = booking.customer_phone || booking.customers?.phone;
+              if (!phone) continue;
+              try {
+                const result = await sendSms({
+                  businessId: business.id,
+                  to: phone,
+                  body: buildReminderSms({
+                    businessName: business.name,
+                    serviceName: booking.services?.name ?? "appointment",
+                    startsAtIso: booking.starts_at,
+                    timezone: business.timezone || "UTC",
+                  }),
+                  messageType: "booking_reminder_sms",
+                  idempotencyKey: `booking:${booking.id}:sms-reminder:${booking.starts_at}`,
+                });
+                if (result.status !== "deferred") {
+                  await (supabaseAdmin as any)
+                    .from("bookings")
+                    .update({ sms_reminder_sent_at: new Date().toISOString() })
+                    .eq("id", booking.id)
+                    .is("sms_reminder_sent_at", null);
+                  smsSent++;
+                }
+              } catch (err) {
+                smsFailed++;
+                const message =
+                  err instanceof SmsSendError
+                    ? err.message
+                    : String((err as Error)?.message ?? err);
+                console.error(
+                  "[send-reminders] SMS failed",
+                  booking.id,
+                  message,
+                );
+              }
+            }
+          }
         }
 
         // --- Confirmation-email backstop (all plans) ---
@@ -281,11 +349,11 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         const { data: reviewBusinesses, error: reviewBizErr } = await (
           supabaseAdmin as any
         )
-            .from("businesses")
-            .select("id, name, timezone, page_theme, reviews_enabled_at")
-            .eq("review_requests_enabled", true)
-            .eq("plan", "studio")
-            .is("deletion_requested_at", null);
+          .from("businesses")
+          .select("id, name, timezone, page_theme, reviews_enabled_at")
+          .eq("review_requests_enabled", true)
+          .eq("plan", "studio")
+          .is("deletion_requested_at", null);
         if (reviewBizErr) {
           console.error(
             "[send-reminders] failed to load review businesses",
@@ -459,6 +527,8 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           claimed,
           sent,
           failed,
+          smsSent,
+          smsFailed,
           confirmationsClaimed,
           confirmationsSent,
           confirmationsFailed,

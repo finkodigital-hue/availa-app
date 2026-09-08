@@ -20,6 +20,10 @@ Keep these values in Cloudflare's encrypted production secrets (never as
   failed and bounced email events.
 - `CRON_REMINDER_SECRET` — existing reminder sweep secret, matching Supabase
   Vault's `cron_reminder_secret`.
+- `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` — server-only Twilio credentials.
+- `TWILIO_MESSAGING_SERVICE_SID` — preferred SMS sender configuration. If a
+  Messaging Service is not used, set `TWILIO_FROM_NUMBER` to an SMS-capable
+  E.164 sender number instead.
 
 `APP_ENV=production` remains the explicit live-delivery switch. Preview and
 local environments should leave it unset; messages will be recorded as
@@ -48,6 +52,14 @@ operators can use Supabase Studio with service-role access:
 Do not grant `anon` or `authenticated` direct access to either support table.
 Attachments are intentionally disabled until a private bucket, file-type and
 size validation, retention rules, and malware scanning are available.
+
+## SMS reminder setup
+
+Apply `supabase/migrations/20260908200000_add_sms_appointment_reminders.sql`
+before enabling SMS. In Twilio, complete any sender registration required for
+the destination countries. Bookzenvo supplies a signed delivery-status callback
+automatically when `APP_URL` is HTTPS. SMS has no development redirect: outside
+production it is always logged as suppressed and no provider request is made.
 
 ## Normal release
 

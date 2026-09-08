@@ -51,6 +51,8 @@ const supportMigration = await read(
 const supportFunctions = await read("src/lib/support.functions.ts");
 const emailProvider = await read("src/lib/resend.server.ts");
 const emailWebhook = await read("src/routes/api.resend-webhook.ts");
+const smsProvider = await read("src/lib/sms.server.ts");
+const smsWebhook = await read("src/routes/api.twilio-sms-webhook.ts");
 
 assert(
   runtimeEnv.includes("${window.location.origin}/api/supabase"),
@@ -159,6 +161,17 @@ assert(
   emailWebhook.includes("validStandardWebhook") &&
     emailWebhook.includes("status: state"),
   "Provider delivery events must be signature-verified before delivery state is updated.",
+);
+assert(
+  smsProvider.includes('process.env.APP_ENV !== "production"') &&
+    smsProvider.includes('channel: "sms"') &&
+    !smsProvider.includes("VITE_TWILIO"),
+  "SMS must remain server-only, logged, and suppressed outside production.",
+);
+assert(
+  smsWebhook.includes("validTwilioSignature") &&
+    smsWebhook.includes('provider_message_id", messageId'),
+  "Twilio delivery callbacks must be authenticated before updating delivery state.",
 );
 
 const sourceFiles = (await walk("src")).filter((file) =>

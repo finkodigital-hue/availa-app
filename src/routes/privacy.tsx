@@ -159,6 +159,13 @@ function PrivacyPage() {
               </p>
               <p>
                 A review is not published unless the customer actively agrees.
+                If you explicitly opt in during booking, we use your phone
+                number to send a one-off appointment reminder by SMS. Your
+                consent is recorded against that booking, and delivery is
+                handled by our messaging provider. You can book without opting
+                in.
+              </p>
+              <p>
                 The public booking page shows the rating, review text, first
                 name, surname initial and a verified booking label. The business
                 can see the full reviewer name and related appointment so it can
