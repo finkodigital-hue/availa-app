@@ -17,11 +17,14 @@ import {
   ShieldCheck,
   Sparkles,
   CreditCard,
+  Bell,
   Trash2,
   AlertTriangle,
   ChevronRight,
   ArrowLeft,
   ExternalLink,
+  Download,
+  RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
@@ -41,9 +44,11 @@ import { WhiteLabelEditor } from "@/components/white-label-editor";
 import { TwoFactorSettings } from "@/components/two-factor-settings";
 import { PlanSettings } from "@/components/plan-settings";
 import { StripeSettings } from "@/components/stripe-settings";
-import { deleteMyAccount } from "@/lib/account.functions";
+import { cancelAccountDeletion, deleteMyAccount, exportMyWorkspace } from "@/lib/account.functions";
+import { downloadJson } from "@/lib/csv";
 import { saveBusinessProfile } from "@/lib/business-settings.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
+import { NotificationSettings } from "@/components/notification-settings";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +70,7 @@ const SETTINGS_TABS = [
   "hours",
   "whitelabel",
   "chairs",
+  "notifications",
 ] as const;
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -295,6 +301,7 @@ function SettingsPage() {
         </SettingsGroup>
 
         <SettingsGroup label="Account">
+          <SettingsRow icon={Bell} title="Notifications" description="Owner alerts, customer messages and delivery history." summary="Manage preferences" onClick={() => openSetting("notifications")} />
           <SettingsRow
             icon={UserRound}
             title="Your account"
@@ -344,7 +351,7 @@ function SettingsPage() {
           <Section
             icon={AlertTriangle}
             title="Danger zone"
-            description="Permanently delete this workspace and everything in it."
+            description="Export your data or close this workspace with a 30-day recovery window."
           >
             <DeleteAccountSection biz={biz} />
           </Section>
@@ -406,6 +413,11 @@ function SettingsPage() {
       )}
       {tab === "chairs" && isIndependentPro && (
         <ChairRentalsEditor businessId={biz.id} links={salonLinks ?? []} />
+      )}
+      {tab === "notifications" && (
+        <Section icon={Bell} title="Notifications" description="Owner alerts, customer messages and delivery history.">
+          <NotificationSettings businessId={biz.id} />
+        </Section>
       )}
     </div>
   );
@@ -539,39 +551,67 @@ function AccountEditor({ user }: { user: { id: string; email?: string } }) {
   );
 }
 
-function DeleteAccountSection({ biz }: { biz: { id: string; name: string } }) {
+function DeleteAccountSection({ biz }: { biz: { id: string; name: string; deletion_scheduled_for?: string | null } }) {
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const canConfirm = confirmText.trim().length > 0 && confirmText.trim() === biz.name.trim();
 
   const handleDelete = async () => {
     setDeleting(true);
     try {
       const headers = await getServerFnAuthHeaders();
-      await deleteMyAccount({ data: { confirmName: confirmText.trim() }, headers });
-      toast.success("Your account and all its data have been deleted.");
-      try {
-        await supabase.auth.signOut();
-      } catch {
-        // The account is already gone server-side either way — don't let a
-        // sign-out hiccup stop the redirect below.
-      }
-      setTimeout(() => window.location.assign("/"), 1200);
+      const result = await deleteMyAccount({ data: { confirmName: confirmText.trim() }, headers });
+      toast.success(`Workspace closed. You can recover it until ${new Date(result.scheduledFor).toLocaleDateString()}.`);
+      setOpen(false);
+      setTimeout(() => window.location.reload(), 800);
     } catch (error: any) {
       toast.error(error.message ?? "Could not delete the account");
       setDeleting(false);
     }
   };
 
+  const exportWorkspace = async () => {
+    setExporting(true);
+    try {
+      const headers = await getServerFnAuthHeaders();
+      const data = await exportMyWorkspace({ headers });
+      const slug = biz.name.trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "bookzenvo";
+      downloadJson(`${slug}-workspace-${new Date().toISOString().slice(0, 10)}.json`, data);
+      toast.success("Workspace export downloaded");
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not export the workspace");
+    } finally { setExporting(false); }
+  };
+
+  const recoverWorkspace = async () => {
+    try {
+      const headers = await getServerFnAuthHeaders();
+      await cancelAccountDeletion({ headers });
+      toast.success("Workspace closure cancelled");
+      setTimeout(() => window.location.reload(), 500);
+    } catch (error: any) { toast.error(error.message ?? "Could not recover the workspace"); }
+  };
+
   return (
     <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-      <p className="text-sm font-medium">Delete {biz.name}</p>
+      <p className="text-sm font-medium">Workspace data</p>
       <p className="text-xs text-muted-foreground mt-1 mb-4 text-pretty">
-        Permanently deletes this business, every booking, customer, staff member and setting,
-        cancels your Studio subscription if you have one, and removes your sign-in. This cannot be
-        undone.
+        Download a portable JSON copy of business data and a manifest of stored files before closing.
       </p>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Button type="button" variant="outline" onClick={exportWorkspace} disabled={exporting}>
+          {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+          Export workspace
+        </Button>
+        {biz.deletion_scheduled_for && (
+          <Button type="button" variant="outline" onClick={recoverWorkspace}>
+            <RotateCcw className="h-4 w-4 mr-2" /> Cancel closure
+          </Button>
+        )}
+      </div>
+      {biz.deletion_scheduled_for && <p className="mb-4 text-xs text-destructive">Closed and recoverable until {new Date(biz.deletion_scheduled_for).toLocaleDateString()}.</p>}
       <AlertDialog
         open={open}
         onOpenChange={(o) => {
@@ -594,9 +634,9 @@ function DeleteAccountSection({ biz }: { biz: { id: string; name: string } }) {
               Delete {biz.name}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This immediately and permanently deletes the business, all bookings, customers, staff,
-              hours and page content, cancels any active subscription, and signs you out for good.
-              There's no undo — type the business name below to confirm.
+              This closes the public workspace and cancels any active subscription. Data and stored
+              files are retained for 30 days, during which you can cancel closure here. Type the
+              business name below to confirm.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Input
@@ -625,7 +665,7 @@ function DeleteAccountSection({ biz }: { biz: { id: string; name: string } }) {
               ) : (
                 <Trash2 className="h-4 w-4 mr-2" />
               )}
-              Permanently delete
+              Close workspace
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

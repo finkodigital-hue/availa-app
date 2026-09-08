@@ -6,13 +6,18 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  Circle,
   Clock3,
   CreditCard,
   Eye,
   FileSignature,
   Package,
+  Palette,
   Plus,
+  ShieldCheck,
+  Store,
   TimerOff,
+  Upload,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -103,6 +108,7 @@ function Dashboard() {
         </div>
       ) : (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)]">
+          {data?.setup && <SetupChecklist setup={data.setup} />}
           <div className="space-y-5">
             <NextBookingCard
               booking={data?.nextBooking ?? null}
@@ -147,6 +153,81 @@ function Dashboard() {
         />
       )}
     </div>
+  );
+}
+
+type SetupState = NonNullable<Awaited<ReturnType<typeof getDashboardOverview>>>["setup"];
+
+const setupItems = [
+  { key: "profile", title: "Business profile", description: "Add your location and contact details.", to: "/settings", icon: Store },
+  { key: "openingHours", title: "Opening hours", description: "Set at least one day clients can book.", to: "/settings", icon: Clock3 },
+  { key: "staff", title: "Staff", description: "Add the people clients can book with.", to: "/staff", icon: Users },
+  { key: "services", title: "Services", description: "Add at least one active treatment or service.", to: "/services", icon: FileSignature },
+  { key: "appearance", title: "Booking-page appearance", description: "Save the look and content of your public page.", to: "/page-builder", icon: Palette },
+] as const;
+
+function SetupChecklist({ setup }: { setup: SetupState }) {
+  const completed = setupItems.filter((item) => setup[item.key]).length;
+  const percent = Math.round((completed / setupItems.length) * 100);
+
+  return (
+    <section className="overflow-hidden rounded-2xl border bg-card lg:col-span-2" aria-labelledby="setup-title">
+      <div className="grid gap-6 border-b p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-end">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--gold-deep)]">
+            <ShieldCheck className="h-4 w-4" /> Guided setup
+          </div>
+          <h2 id="setup-title" className="mt-3 font-display text-3xl">Get ready for your first booking</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Your progress updates only after each change is saved. Finish the essentials, then check your booking page before sharing it.
+          </p>
+        </div>
+        <div>
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="font-medium">{completed} of {setupItems.length} essentials saved</span>
+            <span className="tabular-nums text-muted-foreground">{percent}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 xl:grid-cols-3">
+        {setupItems.map(({ key, title, description, to, icon: Icon }) => {
+          const done = setup[key];
+          return (
+            <Link key={key} to={to as any} className="group flex min-h-32 gap-4 border-b p-5 transition-colors hover:bg-secondary/35 sm:border-r">
+              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${done ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
+                {done ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 text-sm font-semibold">{title}<ArrowRight className="h-3.5 w-3.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" /></span>
+                <span className="mt-1 block text-xs leading-5 text-muted-foreground">{done ? "Saved and complete" : description}</span>
+              </span>
+            </Link>
+          );
+        })}
+        <Link to="/import" className="group flex min-h-32 gap-4 border-b p-5 transition-colors hover:bg-secondary/35 sm:border-r">
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${setup.imported ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
+            {setup.imported ? <CheckCircle2 className="h-5 w-5" /> : <Upload className="h-5 w-5" />}
+          </span>
+          <span>
+            <span className="flex items-center gap-2 text-sm font-semibold">Import existing data <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Optional</span></span>
+            <span className="mt-1 block text-xs leading-5 text-muted-foreground">{setup.imported ? "A completed import is saved" : "Move records from another booking system."}</span>
+          </span>
+        </Link>
+        <Link to="/preview" className="group flex min-h-32 gap-4 p-5 transition-colors hover:bg-secondary/35 sm:border-r">
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${setup.ready ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
+            {setup.ready ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
+          </span>
+          <span>
+            <span className="flex items-center gap-2 text-sm font-semibold">Readiness check <ArrowRight className="h-3.5 w-3.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" /></span>
+            <span className="mt-1 block text-xs leading-5 text-muted-foreground">{setup.ready ? "Essentials saved — preview the customer journey before sharing." : "Completes automatically when every essential above is saved."}</span>
+          </span>
+        </Link>
+      </div>
+    </section>
   );
 }
 

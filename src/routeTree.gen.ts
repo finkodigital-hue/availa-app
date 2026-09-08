@@ -31,10 +31,12 @@ import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
 import { Route as ApiStockScanRouteImport } from './routes/api/stock-scan'
+import { Route as ApiResendWebhookRouteImport } from './routes/api.resend-webhook'
 import { Route as ApiPublicReviewsRouteImport } from './routes/api/public-reviews'
 import { Route as ApiPublicGalleryRouteImport } from './routes/api/public-gallery'
 import { Route as ApiPublicBookingStaffRouteImport } from './routes/api/public-booking-staff'
 import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-suggest'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiClientErrorsRouteImport } from './routes/api/client-errors'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
@@ -175,6 +177,11 @@ const ApiStockScanRoute = ApiStockScanRouteImport.update({
   path: '/api/stock-scan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiResendWebhookRoute = ApiResendWebhookRouteImport.update({
+  id: '/api/resend-webhook',
+  path: '/api/resend-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicReviewsRoute = ApiPublicReviewsRouteImport.update({
   id: '/api/public-reviews',
   path: '/api/public-reviews',
@@ -193,6 +200,11 @@ const ApiPublicBookingStaffRoute = ApiPublicBookingStaffRouteImport.update({
 const ApiPageAiSuggestRoute = ApiPageAiSuggestRouteImport.update({
   id: '/api/page-ai-suggest',
   path: '/api/page-ai-suggest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiClientErrorsRoute = ApiClientErrorsRouteImport.update({
@@ -387,10 +399,12 @@ export interface FileRoutesByFullPath {
   '/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/public-booking-staff': typeof ApiPublicBookingStaffRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
   '/api/public-reviews': typeof ApiPublicReviewsRoute
+  '/api/resend-webhook': typeof ApiResendWebhookRoute
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
@@ -442,10 +456,12 @@ export interface FileRoutesByTo {
   '/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/public-booking-staff': typeof ApiPublicBookingStaffRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
   '/api/public-reviews': typeof ApiPublicReviewsRoute
+  '/api/resend-webhook': typeof ApiResendWebhookRoute
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
@@ -501,10 +517,12 @@ export interface FileRoutesById {
   '/_authenticated/stock': typeof AuthenticatedStockRoute
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/page-ai-suggest': typeof ApiPageAiSuggestRoute
   '/api/public-booking-staff': typeof ApiPublicBookingStaffRoute
   '/api/public-gallery': typeof ApiPublicGalleryRoute
   '/api/public-reviews': typeof ApiPublicReviewsRoute
+  '/api/resend-webhook': typeof ApiResendWebhookRoute
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/book/$slug': typeof BookSlugRoute
@@ -560,10 +578,12 @@ export interface FileRouteTypes {
     | '/stock'
     | '/api/chat'
     | '/api/client-errors'
+    | '/api/health'
     | '/api/page-ai-suggest'
     | '/api/public-booking-staff'
     | '/api/public-gallery'
     | '/api/public-reviews'
+    | '/api/resend-webhook'
     | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/book/$slug'
@@ -615,10 +635,12 @@ export interface FileRouteTypes {
     | '/stock'
     | '/api/chat'
     | '/api/client-errors'
+    | '/api/health'
     | '/api/page-ai-suggest'
     | '/api/public-booking-staff'
     | '/api/public-gallery'
     | '/api/public-reviews'
+    | '/api/resend-webhook'
     | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/book/$slug'
@@ -673,10 +695,12 @@ export interface FileRouteTypes {
     | '/_authenticated/stock'
     | '/api/chat'
     | '/api/client-errors'
+    | '/api/health'
     | '/api/page-ai-suggest'
     | '/api/public-booking-staff'
     | '/api/public-gallery'
     | '/api/public-reviews'
+    | '/api/resend-webhook'
     | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/book/$slug'
@@ -714,10 +738,12 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiClientErrorsRoute: typeof ApiClientErrorsRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   ApiPageAiSuggestRoute: typeof ApiPageAiSuggestRoute
   ApiPublicBookingStaffRoute: typeof ApiPublicBookingStaffRoute
   ApiPublicGalleryRoute: typeof ApiPublicGalleryRoute
   ApiPublicReviewsRoute: typeof ApiPublicReviewsRoute
+  ApiResendWebhookRoute: typeof ApiResendWebhookRoute
   ApiStockScanRoute: typeof ApiStockScanRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   BookSlugRoute: typeof BookSlugRoute
@@ -891,6 +917,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStockScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/resend-webhook': {
+      id: '/api/resend-webhook'
+      path: '/api/resend-webhook'
+      fullPath: '/api/resend-webhook'
+      preLoaderRoute: typeof ApiResendWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public-reviews': {
       id: '/api/public-reviews'
       path: '/api/public-reviews'
@@ -917,6 +950,13 @@ declare module '@tanstack/react-router' {
       path: '/api/page-ai-suggest'
       fullPath: '/api/page-ai-suggest'
       preLoaderRoute: typeof ApiPageAiSuggestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/client-errors': {
@@ -1219,10 +1259,12 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiChatRoute: ApiChatRoute,
   ApiClientErrorsRoute: ApiClientErrorsRoute,
+  ApiHealthRoute: ApiHealthRoute,
   ApiPageAiSuggestRoute: ApiPageAiSuggestRoute,
   ApiPublicBookingStaffRoute: ApiPublicBookingStaffRoute,
   ApiPublicGalleryRoute: ApiPublicGalleryRoute,
   ApiPublicReviewsRoute: ApiPublicReviewsRoute,
+  ApiResendWebhookRoute: ApiResendWebhookRoute,
   ApiStockScanRoute: ApiStockScanRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   BookSlugRoute: BookSlugRoute,

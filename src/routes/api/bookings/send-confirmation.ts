@@ -80,7 +80,8 @@ export const Route = createFileRoute("/api/bookings/send-confirmation")({
             currency: business?.currency || "GBP",
             location: business?.address ?? null,
           });
-          await sendEmail({ businessId: booking.business_id, to: recipientEmail, subject, html, attachments });
+          await sendEmail({ businessId: booking.business_id, to: recipientEmail, subject, html, attachments,
+            messageType: "booking_confirmation", idempotencyKey: `booking:${booking.id}:confirmation:v1` });
         } catch (err) {
           const message = err instanceof EmailSendError ? err.message : String((err as Error)?.message ?? err);
           console.error("[send-confirmation] send failed", bookingId, message);

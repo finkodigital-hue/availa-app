@@ -13,9 +13,14 @@
     "verify:security": "node scripts/verify-security-boundary.mjs",
     "verify:production": "node scripts/verify-production.mjs",
     "audit:launch": "node scripts/audit-launch.mjs",
+    "recovery:restore-local": "node scripts/restore-local.mjs",
     "deploy:cloudflare": "npm run build && npx wrangler deploy --keep-vars",
     "deploy:cloudflare:dry-run": "npm run build && npx wrangler deploy --dry-run --keep-vars",
     "preview": "vite preview",
+    "test": "playwright test",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -92,6 +97,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.16.5",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.2.0",

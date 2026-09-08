@@ -28,6 +28,9 @@ type DashboardOverview = {
     name: string;
     slug: string | null;
     currency: string;
+    address: string | null;
+    phone: string | null;
+    email: string | null;
   };
   nextBooking: DashboardBooking | null;
   today: {
@@ -37,6 +40,15 @@ type DashboardOverview = {
     staffWorking: number;
   };
   attention: DashboardAttentionItem[];
+  setup: {
+    profile: boolean;
+    openingHours: boolean;
+    staff: boolean;
+    services: boolean;
+    appearance: boolean;
+    imported: boolean;
+    ready: boolean;
+  };
 };
 
 function firstRelation(value: unknown) {
@@ -51,7 +63,7 @@ function firstRelationName(value: unknown) {
 async function ownedBusiness(context: any) {
   const { data, error } = await context.supabase
     .from("businesses")
-    .select("id, name, slug, currency")
+    .select("id, name, slug, currency, address, phone, email")
     .eq("owner_id", context.userId)
     .maybeSingle();
   if (error) throw error;
@@ -88,7 +100,7 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
         .maybeSingle();
     }
 
-    const [bookingsResult, staffResult, stockResult, consultationResult, pendingResult, failedPaymentResult] =
+    const [bookingsResult, staffResult, stockResult, consultationResult, pendingResult, failedPaymentResult, hoursResult, servicesResult, layoutResult, importsResult] =
       await Promise.all([
         db
           .from("bookings")
@@ -103,6 +115,7 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
           .select("id", { count: "exact", head: true })
           .eq("business_id", business.id)
           .eq("active", true)
+          .eq("bookable", true)
           .is("archived_at", null),
         db
           .from("inventory_items")
@@ -129,11 +142,46 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
           .order("starts_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
+        db
+          .from("business_hours")
+          .select("weekday, open_time, close_time, closed")
+          .eq("business_id", business.id),
+        db
+          .from("services")
+          .select("id", { count: "exact", head: true })
+          .eq("business_id", business.id)
+          .eq("active", true),
+        db
+          .from("page_layouts")
+          .select("id")
+          .eq("business_id", business.id)
+          .maybeSingle(),
+        db
+          .from("import_batches")
+          .select("id", { count: "exact", head: true })
+          .eq("business_id", business.id)
+          .eq("status", "completed"),
       ]);
 
-    for (const result of [bookingsResult, staffResult, stockResult, consultationResult, pendingResult, failedPaymentResult]) {
+    for (const result of [bookingsResult, staffResult, stockResult, consultationResult, pendingResult, failedPaymentResult, hoursResult, servicesResult, layoutResult, importsResult]) {
       if (result.error) throw result.error;
     }
+
+    const setup = {
+      profile: Boolean(
+        business.name.trim() &&
+          business.slug &&
+          business.address?.trim() &&
+          (business.phone?.trim() || business.email?.trim()),
+      ),
+      openingHours: (hoursResult.data ?? []).some((day: any) => !day.closed && day.open_time && day.close_time),
+      staff: (staffResult.count ?? 0) > 0,
+      services: (servicesResult.count ?? 0) > 0,
+      appearance: Boolean(layoutResult.data),
+      imported: (importsResult.count ?? 0) > 0,
+      ready: false,
+    };
+    setup.ready = setup.profile && setup.openingHours && setup.staff && setup.services && setup.appearance;
 
     const bookings: DashboardBooking[] = (bookingsResult.data ?? []).map((booking: any) => ({
       id: booking.id,
@@ -216,6 +264,7 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
         staffWorking: staffResult.count ?? 0,
       },
       attention: attention.slice(0, 5),
+      setup,
     } satisfies DashboardOverview;
   });
 

@@ -1,15 +1,37 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Query cache updates preserve a server-function inferred payload. */
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CalendarPlus, CalendarX } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  Bell,
+  CalendarPlus,
+  CalendarX,
+  ClipboardCheck,
+  Package,
+  CreditCard,
+} from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
-import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  getNotificationCenter,
+  markNotificationsRead,
+} from "@/lib/notification.functions";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type Notification = {
   id: string;
-  type: "booking_created" | "booking_cancelled";
+  type:
+    | "booking_created"
+    | "booking_cancelled"
+    | "consultation_signed"
+    | "low_stock"
+    | "payment_failed";
   title: string;
   body: string | null;
   link: string | null;
@@ -39,6 +61,8 @@ export function NotificationsBell({
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const bid = business?.id;
+  const loadCenter = useServerFn(getNotificationCenter);
+  const markReadOnServer = useServerFn(markNotificationsRead);
 
   // A drawer and a popover at the same time leaves two competing layers on a
   // phone. Close notification panels whenever the workspace menu opens.
@@ -46,40 +70,47 @@ export function NotificationsBell({
     if (closeOn) setOpen(false);
   }, [closeOn]);
 
-  const { data: notifications } = useQuery({
+  const { data: center } = useQuery({
     queryKey: ["notifications", bid],
     enabled: !!bid,
     refetchInterval: 30000,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("notifications")
-        .select("id, type, title, body, link, read_at, created_at")
-        .eq("business_id", bid!)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return (data ?? []) as Notification[];
+      const headers = await getServerFnAuthHeaders();
+      return loadCenter({ headers });
     },
   });
+  const notifications = (center?.notifications ?? []) as Notification[];
 
   const unread = (notifications ?? []).filter((n) => !n.read_at).length;
 
   const markAllRead = async () => {
     if (!bid || unread === 0) return;
-    const ids = (notifications ?? []).filter((n) => !n.read_at).map((n) => n.id);
+    const ids = (notifications ?? [])
+      .filter((n) => !n.read_at)
+      .map((n) => n.id);
     const now = new Date().toISOString();
-    qc.setQueryData<Notification[]>(["notifications", bid], (old) =>
-      old?.map((n) => (ids.includes(n.id) ? { ...n, read_at: now } : n)) ?? [],
-    );
-    await (supabase as any).from("notifications").update({ read_at: now }).in("id", ids);
+    qc.setQueryData<any>(["notifications", bid], (old: any) => ({
+      ...old,
+      notifications:
+        old?.notifications?.map((n: Notification) =>
+          ids.includes(n.id) ? { ...n, read_at: now } : n,
+        ) ?? [],
+    }));
+    const headers = await getServerFnAuthHeaders();
+    await markReadOnServer({ data: { ids }, headers });
   };
 
   const markRead = async (id: string) => {
     const now = new Date().toISOString();
-    qc.setQueryData<Notification[]>(["notifications", bid], (old) =>
-      old?.map((n) => (n.id === id ? { ...n, read_at: now } : n)) ?? [],
-    );
-    await (supabase as any).from("notifications").update({ read_at: now }).eq("id", id);
+    qc.setQueryData<any>(["notifications", bid], (old: any) => ({
+      ...old,
+      notifications:
+        old?.notifications?.map((n: Notification) =>
+          n.id === id ? { ...n, read_at: now } : n,
+        ) ?? [],
+    }));
+    const headers = await getServerFnAuthHeaders();
+    await markReadOnServer({ data: { ids: [id] }, headers });
   };
 
   return (
@@ -112,21 +143,40 @@ export function NotificationsBell({
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent align={variant === "icon" ? "end" : "start"} side={variant === "icon" ? "bottom" : "right"} className="w-80 p-0">
+      <PopoverContent
+        align={variant === "icon" ? "end" : "start"}
+        side={variant === "icon" ? "bottom" : "right"}
+        className="w-80 p-0"
+      >
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <span className="text-sm font-semibold">Notifications</span>
           {unread > 0 && (
-            <button type="button" onClick={markAllRead} className="text-xs text-primary hover:underline">
+            <button
+              type="button"
+              onClick={markAllRead}
+              className="text-xs text-primary hover:underline"
+            >
               Mark all read
             </button>
           )}
         </div>
         <div className="max-h-96 overflow-y-auto divide-y">
           {(notifications ?? []).length === 0 && (
-            <div className="px-4 py-8 text-center text-sm text-muted-foreground">No notifications yet.</div>
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              No notifications yet.
+            </div>
           )}
           {(notifications ?? []).map((n) => {
-            const Icon = n.type === "booking_cancelled" ? CalendarX : CalendarPlus;
+            const Icon =
+              n.type === "booking_cancelled"
+                ? CalendarX
+                : n.type === "consultation_signed"
+                  ? ClipboardCheck
+                  : n.type === "low_stock"
+                    ? Package
+                    : n.type === "payment_failed"
+                      ? CreditCard
+                      : CalendarPlus;
             return (
               <Link
                 key={n.id}
@@ -142,10 +192,18 @@ export function NotificationsBell({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">{n.title}</div>
-                  {n.body && <div className="text-xs text-muted-foreground truncate">{n.body}</div>}
-                  <div className="text-[10px] text-muted-foreground mt-0.5">{timeAgo(n.created_at)}</div>
+                  {n.body && (
+                    <div className="text-xs text-muted-foreground truncate">
+                      {n.body}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    {timeAgo(n.created_at)}
+                  </div>
                 </div>
-                {!n.read_at && <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />}
+                {!n.read_at && (
+                  <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
+                )}
               </Link>
             );
           })}

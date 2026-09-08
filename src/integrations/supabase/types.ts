@@ -426,6 +426,8 @@ export type Database = {
           currency: string
           custom_domain: string | null
           deposit_percent: number
+          deletion_requested_at: string | null
+          deletion_scheduled_for: string | null
           description: string | null
           email: string | null
           email_footer: string | null
@@ -479,6 +481,8 @@ export type Database = {
           currency?: string
           custom_domain?: string | null
           deposit_percent?: number
+          deletion_requested_at?: string | null
+          deletion_scheduled_for?: string | null
           description?: string | null
           email?: string | null
           email_footer?: string | null
@@ -532,6 +536,8 @@ export type Database = {
           currency?: string
           custom_domain?: string | null
           deposit_percent?: number
+          deletion_requested_at?: string | null
+          deletion_scheduled_for?: string | null
           description?: string | null
           email?: string | null
           email_footer?: string | null

@@ -8,7 +8,9 @@ async function read(relativePath) {
 }
 
 async function walk(directory) {
-  const entries = await readdir(path.join(projectRoot, directory), { withFileTypes: true });
+  const entries = await readdir(path.join(projectRoot, directory), {
+    withFileTypes: true,
+  });
   const files = [];
   for (const entry of entries) {
     const relativePath = path.join(directory, entry.name);
@@ -34,6 +36,11 @@ const consultationsMigration = await read(
 const customerMutationMigration = await read(
   "supabase/migrations/20260908150000_harden_customer_mutations.sql",
 );
+const notificationMigration = await read(
+  "supabase/migrations/20260908120000_add_notification_delivery.sql",
+);
+const emailProvider = await read("src/lib/resend.server.ts");
+const emailWebhook = await read("src/routes/api.resend-webhook.ts");
 
 assert(
   runtimeEnv.includes("${window.location.origin}/api/supabase"),
@@ -75,7 +82,9 @@ assert(
 );
 assert(
   consultationsMigration.includes("protect_signed_consultation_evidence") &&
-    consultationsMigration.includes("Signed consultation evidence is immutable"),
+    consultationsMigration.includes(
+      "Signed consultation evidence is immutable",
+    ),
   "Signed salon consultation evidence must be protected from later edits.",
 );
 assert(
@@ -94,8 +103,30 @@ assert(
     customerMutationMigration.includes("bookzenvo.customer_reschedule"),
   "Customer portal updates must be restricted to the validated cancellation, reschedule, and profile fields.",
 );
+assert(
+  notificationMigration.includes(
+    "revoke all on public.notification_preferences from anon, authenticated",
+  ) &&
+    notificationMigration.includes(
+      "revoke all on public.notification_deliveries from anon, authenticated",
+    ),
+  "Notification preferences and delivery metadata must only be accessible through the server API.",
+);
+assert(
+  emailProvider.includes('"Idempotency-Key": idempotencyKey') &&
+    emailProvider.includes('status: "queued"') &&
+    emailProvider.includes('status: "sent"'),
+  "Outbound email must be recorded and submitted with a stable provider idempotency key.",
+);
+assert(
+  emailWebhook.includes("validStandardWebhook") &&
+    emailWebhook.includes("status: state"),
+  "Provider delivery events must be signature-verified before delivery state is updated.",
+);
 
-const sourceFiles = (await walk("src")).filter((file) => /\.(?:ts|tsx|js|jsx)$/.test(file));
+const sourceFiles = (await walk("src")).filter((file) =>
+  /\.(?:ts|tsx|js|jsx)$/.test(file),
+);
 for (const file of sourceFiles) {
   const contents = await read(file);
   if (file !== path.join("src", "lib", "public-runtime-env.ts")) {
@@ -107,7 +138,9 @@ for (const file of sourceFiles) {
   }
 }
 
-const migrationFiles = (await walk("supabase/migrations")).filter((file) => file.endsWith(".sql"));
+const migrationFiles = (await walk("supabase/migrations")).filter((file) =>
+  file.endsWith(".sql"),
+);
 const migrations = (await Promise.all(migrationFiles.map(read))).join("\n");
 const createdPublicTables = new Set(
   [
@@ -123,7 +156,9 @@ const rlsTables = new Set(
     ),
   ].map((match) => match[1].toLowerCase()),
 );
-const missingRls = [...createdPublicTables].filter((table) => !rlsTables.has(table));
+const missingRls = [...createdPublicTables].filter(
+  (table) => !rlsTables.has(table),
+);
 assert(
   missingRls.length === 0,
   `Public tables missing Row Level Security: ${missingRls.join(", ")}`,
@@ -137,7 +172,9 @@ try {
   const projectRef = config.match(/^project_id\s*=\s*["']([^"']+)["']/m)?.[1];
   if (projectRef) {
     const publicBuildFiles = await walk(".output/public");
-    for (const file of publicBuildFiles.filter((file) => /\.(?:js|html|json)$/.test(file))) {
+    for (const file of publicBuildFiles.filter((file) =>
+      /\.(?:js|html|json)$/.test(file),
+    )) {
       assert(
         !(await read(file)).includes(projectRef),
         `${file} exposes the real Supabase project identifier in a browser asset.`,

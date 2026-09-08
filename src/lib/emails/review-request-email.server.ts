@@ -21,7 +21,7 @@ export function buildReviewRequestEmail({
   timezone: string;
   reviewToken: string;
 }) {
-  const origin = process.env.PUBLIC_SITE_URL || "https://bookzenvo.com";
+  const origin = process.env.APP_URL || "https://bookzenvo.com";
   const url = `${origin}/review/${encodeURIComponent(reviewToken)}`;
   const safeBusiness = escapeHtml(businessName);
   const safeService = escapeHtml(serviceName);

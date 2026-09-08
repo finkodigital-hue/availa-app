@@ -21,6 +21,7 @@ const queued = new Set(queue);
 const checked = new Map();
 const failures = [];
 const warnings = [];
+const REQUEST_TIMEOUT_MS = 10_000;
 
 const skipPath = (pathname) =>
   ["/api/", "/portal", "/booking-action/", "/invite/", "/review/"].some(
@@ -64,6 +65,7 @@ while (queue.length) {
     const response = await fetch(url, {
       redirect: "follow",
       headers: { "user-agent": "Bookzenvo-launch-audit" },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     const contentType = response.headers.get("content-type") || "";
     checked.set(url, response.status);

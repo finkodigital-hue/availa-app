@@ -53,7 +53,8 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           .select(
             "id, name, timezone, currency, address, page_theme, reminder_hours_before",
           )
-          .eq("plan", "studio");
+          .eq("plan", "studio")
+          .is("deletion_requested_at", null);
         if (bizErr) {
           console.error("[send-reminders] failed to load businesses", bizErr);
           return new Response("Server error", { status: 500 });
@@ -153,6 +154,8 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 to: recipientEmail,
                 subject,
                 html,
+                messageType: "booking_reminder",
+                idempotencyKey: `booking:${booking.id}:reminder:${booking.starts_at}`,
               });
               sent++;
             } catch (err) {
@@ -242,6 +245,8 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 subject,
                 html,
                 attachments,
+                messageType: "booking_confirmation",
+                idempotencyKey: `booking:${booking.id}:confirmation:v1`,
               });
               confirmationsSent++;
             } catch (err) {
@@ -276,10 +281,11 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         const { data: reviewBusinesses, error: reviewBizErr } = await (
           supabaseAdmin as any
         )
-          .from("businesses")
-          .select("id, name, timezone, page_theme, reviews_enabled_at")
-          .eq("review_requests_enabled", true)
-          .eq("plan", "studio");
+            .from("businesses")
+            .select("id, name, timezone, page_theme, reviews_enabled_at")
+            .eq("review_requests_enabled", true)
+            .eq("plan", "studio")
+            .is("deletion_requested_at", null);
         if (reviewBizErr) {
           console.error(
             "[send-reminders] failed to load review businesses",
@@ -345,6 +351,8 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                   to: recipientEmail,
                   subject,
                   html,
+                  messageType: "review_request",
+                  idempotencyKey: `booking:${booking.id}:review:v1`,
                 });
                 reviewRequestsSent++;
               } catch (err) {

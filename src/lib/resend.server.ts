@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- New tables are intentionally server-only and not in generated client types until the migration is applied. */
 // Thin wrapper over Resend's REST API. Supabase Auth's SMTP integration
 // (used for password reset / signup verification) only sends Supabase's own
 // auth templates — it has no API for sending arbitrary HTML content, so
@@ -11,6 +12,12 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export class EmailSendError extends Error {}
+
+export type EmailDeliveryResult = {
+  status: "sent" | "suppressed";
+  deliveryId: string;
+  providerMessageId?: string;
+};
 
 // Booking creation must never hang on Resend — the immediate confirmation
 // send (/api/bookings/send-confirmation) runs synchronously within its own
@@ -40,11 +47,20 @@ const SEND_TIMEOUT_MS = 8000;
 // recipient address is ever reachable outside production.
 type EmailGuardMode = "live" | "redirected" | "suppressed";
 
-function resolveOutboundEmail(to: string): { to: string; mode: EmailGuardMode } {
+function resolveOutboundEmail(to: string): {
+  to: string;
+  mode: EmailGuardMode;
+} {
   if (process.env.APP_ENV === "production") return { to, mode: "live" };
   const override = process.env.EMAIL_OVERRIDE_TO;
   if (override) return { to: override, mode: "redirected" };
   return { to: "", mode: "suppressed" };
+}
+
+function maskEmail(value: string) {
+  const [local, domain] = value.trim().toLowerCase().split("@");
+  if (!domain) return "invalid";
+  return `${local.slice(0, 1)}***@${domain}`;
 }
 
 // Per-business "never mails out" marker (businesses.email_suppressed) —
@@ -75,6 +91,8 @@ export async function sendEmail({
   html,
   replyTo,
   attachments,
+  messageType = "transactional",
+  idempotencyKey,
 }: {
   businessId: string;
   to: string;
@@ -86,27 +104,120 @@ export async function sendEmail({
    *  caller). Suppressed/redirected sends below never reach Resend, so an
    *  attachment is never delivered to a non-production recipient by accident. */
   attachments?: { filename: string; content: string }[];
-}): Promise<void> {
+  messageType?: string;
+  /** Stable business-scoped event key. Resend also receives it, making a retry
+   * after an ambiguous timeout safe from duplicate provider submissions. */
+  idempotencyKey: string;
+}): Promise<EmailDeliveryResult> {
+  const now = new Date().toISOString();
+  const { data: delivery, error: createError } = await (supabaseAdmin as any)
+    .from("notification_deliveries")
+    .upsert(
+      {
+        business_id: businessId,
+        channel: "email",
+        message_type: messageType,
+        recipient_masked: maskEmail(to),
+        subject,
+        status: "queued",
+        idempotency_key: idempotencyKey,
+        updated_at: now,
+      },
+      { onConflict: "business_id,idempotency_key", ignoreDuplicates: true },
+    )
+    .select("id,status,provider_message_id,attempt_count")
+    .maybeSingle();
+  if (createError)
+    throw new EmailSendError("Could not record the queued email");
+
+  const existing =
+    delivery ??
+    (
+      await (supabaseAdmin as any)
+        .from("notification_deliveries")
+        .select("id,status,provider_message_id,attempt_count")
+        .eq("business_id", businessId)
+        .eq("idempotency_key", idempotencyKey)
+        .single()
+    ).data;
+  if (!existing) throw new EmailSendError("Could not claim the queued email");
+  if (["sent", "delivered", "suppressed"].includes(existing.status)) {
+    return {
+      status: existing.status === "suppressed" ? "suppressed" : "sent",
+      deliveryId: existing.id,
+      providerMessageId: existing.provider_message_id ?? undefined,
+    };
+  }
+
+  const setDelivery = async (values: Record<string, unknown>) => {
+    await (supabaseAdmin as any)
+      .from("notification_deliveries")
+      .update({ ...values, updated_at: new Date().toISOString() })
+      .eq("id", existing.id);
+  };
+
+  const preferenceColumn =
+    messageType === "booking_confirmation"
+      ? "customer_booking_confirmation"
+      : messageType === "booking_reminder"
+        ? "customer_booking_reminder"
+        : null;
+  if (preferenceColumn) {
+    const { data: preferences } = await (supabaseAdmin as any)
+      .from("notification_preferences")
+      .select(preferenceColumn)
+      .eq("business_id", businessId)
+      .maybeSingle();
+    if (preferences?.[preferenceColumn] === false) {
+      await setDelivery({
+        status: "suppressed",
+        last_error: "Disabled in notification preferences",
+      });
+      return { status: "suppressed", deliveryId: existing.id };
+    }
+  }
+
   if (await isBusinessSuppressed(businessId)) {
-    console.warn(`[email-guard] SUPPRESSED (business ${businessId} is email_suppressed, or its status couldn't be confirmed) — would have sent "${subject}" to ${to}`);
-    return;
+    console.warn(
+      `[email-guard] SUPPRESSED (business ${businessId} is email_suppressed, or its status couldn't be confirmed) — would have sent "${subject}" to ${to}`,
+    );
+    await setDelivery({
+      status: "suppressed",
+      last_error: "Business email suppression is enabled",
+    });
+    return { status: "suppressed", deliveryId: existing.id };
   }
 
   const { to: resolvedTo, mode } = resolveOutboundEmail(to);
 
   if (mode === "suppressed") {
-    console.warn(`[email-guard] SUPPRESSED (APP_ENV != "production", no EMAIL_OVERRIDE_TO set) — would have sent "${subject}" to ${to}`);
-    return;
+    console.warn(
+      `[email-guard] SUPPRESSED (APP_ENV != "production", no EMAIL_OVERRIDE_TO set) — would have sent "${subject}" to ${to}`,
+    );
+    await setDelivery({
+      status: "suppressed",
+      last_error: "Outbound email is disabled in this environment",
+    });
+    return { status: "suppressed", deliveryId: existing.id };
   }
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
+    await setDelivery({
+      status: "failed",
+      failed_at: now,
+      last_error: "Email provider is not configured",
+      attempt_count: (existing.attempt_count ?? 0) + 1,
+    });
     throw new EmailSendError("RESEND_API_KEY is not configured");
   }
 
-  const effectiveSubject = mode === "redirected" ? `[DEV → ${to}] ${subject}` : subject;
+  const effectiveSubject =
+    mode === "redirected" ? `[DEV → ${to}] ${subject}` : subject;
   if (mode === "redirected") {
-    console.warn(`[email-guard] REDIRECTED (APP_ENV != "production") — sending "${subject}" intended for ${to} to EMAIL_OVERRIDE_TO (${resolvedTo}) instead`);
+    console.warn(
+      `[email-guard] REDIRECTED (APP_ENV != "production") — sending "${subject}" intended for ${to} to EMAIL_OVERRIDE_TO (${resolvedTo}) instead`,
+    );
   }
 
   const controller = new AbortController();
@@ -119,6 +230,7 @@ export async function sendEmail({
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
       },
       body: JSON.stringify({
         from: "Bookzenvo <notifications@bookzenvo.com>",
@@ -131,16 +243,56 @@ export async function sendEmail({
       signal: controller.signal,
     });
   } catch (err) {
+    const message =
+      err instanceof Error && err.name === "AbortError"
+        ? `Resend request timed out after ${SEND_TIMEOUT_MS}ms`
+        : `Resend request failed: ${(err as Error)?.message ?? err}`;
+    const attempts = (existing.attempt_count ?? 0) + 1;
+    await setDelivery({
+      status: "failed",
+      failed_at: new Date().toISOString(),
+      last_error: message.slice(0, 1000),
+      attempt_count: attempts,
+      next_attempt_at: new Date(
+        Date.now() + Math.min(60, 2 ** attempts) * 60_000,
+      ).toISOString(),
+    });
     if (err instanceof Error && err.name === "AbortError") {
-      throw new EmailSendError(`Resend request timed out after ${SEND_TIMEOUT_MS}ms`);
+      throw new EmailSendError(message);
     }
-    throw new EmailSendError(`Resend request failed: ${(err as Error)?.message ?? err}`);
+    throw new EmailSendError(message);
   } finally {
     clearTimeout(timeout);
   }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    const attempts = (existing.attempt_count ?? 0) + 1;
+    await setDelivery({
+      status: "failed",
+      failed_at: new Date().toISOString(),
+      last_error: `Resend ${res.status}: ${body.slice(0, 500)}`,
+      attempt_count: attempts,
+      next_attempt_at: new Date(
+        Date.now() + Math.min(60, 2 ** attempts) * 60_000,
+      ).toISOString(),
+    });
     throw new EmailSendError(`Resend ${res.status}: ${body.slice(0, 500)}`);
   }
+  const responseBody = (await res.json().catch(() => ({}))) as { id?: string };
+  await setDelivery({
+    status: "sent",
+    provider: "resend",
+    provider_message_id: responseBody.id ?? null,
+    sent_at: new Date().toISOString(),
+    failed_at: null,
+    last_error: null,
+    next_attempt_at: null,
+    attempt_count: (existing.attempt_count ?? 0) + 1,
+  });
+  return {
+    status: "sent",
+    deliveryId: existing.id,
+    providerMessageId: responseBody.id,
+  };
 }
