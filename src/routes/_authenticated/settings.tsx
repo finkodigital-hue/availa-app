@@ -10,6 +10,7 @@ import {
   Armchair,
   Eye,
   CalendarCheck,
+  CalendarSync,
   Move,
   Globe2,
   UserRound,
@@ -75,6 +76,7 @@ const SETTINGS_TABS = [
   "whitelabel",
   "chairs",
   "notifications",
+  "calendar",
 ] as const;
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -321,6 +323,13 @@ function SettingsPage() {
             summary={paymentSummary}
             onClick={() => openSetting("payments")}
           />
+          <SettingsRow
+            icon={CalendarSync}
+            title="Calendar sync"
+            description="Keep Bookzenvo appointments in your work calendar."
+            summary="Google, Apple-compatible feeds and Outlook"
+            onClick={() => openSetting("calendar")}
+          />
         </SettingsGroup>
 
         <SettingsGroup label="Money & plan">
@@ -462,6 +471,127 @@ function SettingsPage() {
           <NotificationSettings businessId={biz.id} />
         </Section>
       )}
+      {tab === "calendar" && (
+        <Section
+          icon={CalendarSync}
+          title="Calendar sync"
+          description="Send booking changes to your work calendar without exposing account tokens to this browser."
+        >
+          <CalendarSyncSettings businessId={biz.id} />
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function CalendarSyncSettings({ businessId }: { businessId: string }) {
+  const qc = useQueryClient();
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const { data: connections = [], isLoading } = useQuery({
+    queryKey: ["calendar-connections", businessId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("calendar_connections")
+        .select(
+          "id,provider,account_email,calendar_summary,status,last_synced_at,last_sync_error,conflict_behavior",
+        )
+        .eq("business_id", businessId);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const connect = async (provider: "google" | "microsoft") => {
+    setConnecting(provider);
+    try {
+      const headers = await getServerFnAuthHeaders();
+      const response = await fetch(`/api/calendar/${provider}/connect`, {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ businessId }),
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error || "Could not start connection");
+      window.location.assign(result.url);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not connect calendar",
+      );
+      setConnecting(null);
+    }
+  };
+  const disconnect = async (id: string) => {
+    const { error } = await (supabase as any).rpc("disconnect_calendar", {
+      p_connection_id: id,
+    });
+    if (error) return toast.error(error.message);
+    await qc.invalidateQueries({
+      queryKey: ["calendar-connections", businessId],
+    });
+    toast.success("Calendar disconnected and stored tokens deleted");
+  };
+  if (isLoading) return <Skeleton className="h-32 w-full" />;
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">Conflict behaviour</p>
+        <p className="mt-1">
+          Bookzenvo remains the source of truth. Connected events are created,
+          moved and removed when bookings change. Provider-side events are not
+          imported, so they cannot silently block every staff member.
+        </p>
+      </div>
+      {(["google", "microsoft"] as const).map((provider) => {
+        const connection = connections.find(
+          (c: any) => c.provider === provider,
+        );
+        const name =
+          provider === "google" ? "Google Calendar" : "Outlook / Microsoft 365";
+        return (
+          <div
+            key={provider}
+            className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center"
+          >
+            <div className="flex-1">
+              <p className="font-medium">{name}</p>
+              <p className="text-sm text-muted-foreground">
+                {connection
+                  ? `${connection.account_email} · ${connection.status === "needs_reconnect" ? "Reconnect required" : "Connected"}`
+                  : "Not connected"}
+              </p>
+              {connection?.last_sync_error && (
+                <p className="mt-1 text-xs text-destructive">
+                  Last sync: {connection.last_sync_error}
+                </p>
+              )}
+            </div>
+            {connection ? (
+              <Button
+                variant="outline"
+                onClick={() => disconnect(connection.id)}
+              >
+                Disconnect
+              </Button>
+            ) : (
+              <Button onClick={() => connect(provider)} disabled={!!connecting}>
+                {connecting === provider && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Connect
+              </Button>
+            )}
+          </div>
+        );
+      })}
+      <div className="rounded-xl border p-4">
+        <p className="font-medium">Apple Calendar and other calendar apps</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Appointment downloads and confirmation emails already include standard
+          .ics files that open in Apple Calendar, Outlook and Google Calendar. A
+          private, continuously updating subscription feed is staged for a later
+          release so its revocable URL can be managed safely.
+        </p>
+      </div>
     </div>
   );
 }
