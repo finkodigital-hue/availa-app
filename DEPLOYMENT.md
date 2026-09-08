@@ -25,6 +25,30 @@ Keep these values in Cloudflare's encrypted production secrets (never as
 local environments should leave it unset; messages will be recorded as
 suppressed unless a test-only `EMAIL_OVERRIDE_TO` is configured.
 
+## Support ticket setup
+
+Apply `supabase/migrations/20260908220000_add_support_ticket_workflow.sql`
+before deploying the support UI. It copies the existing feedback and support
+requests into a unified ticket queue and creates requester-visible history.
+
+No message-provider setup is required: ticket acknowledgements and operator
+replies are displayed inside Bookzenvo, and this change deliberately sends no
+external email. Until a dedicated operator console is added, authorised
+operators can use Supabase Studio with service-role access:
+
+- Work from `support_tickets`, updating `status` to `in_progress`,
+  `waiting_on_customer`, `resolved`, or `closed`. Each status change is added
+  to ticket history automatically.
+- Add replies to `support_ticket_events` with `actor_type = 'operator'`,
+  `event_type = 'reply'`, and `visible_to_requester = true`.
+- Add private working notes with `event_type = 'internal_note'` and
+  `visible_to_requester = false`. The authenticated owner API always filters
+  these out.
+
+Do not grant `anon` or `authenticated` direct access to either support table.
+Attachments are intentionally disabled until a private bucket, file-type and
+size validation, retention rules, and malware scanning are available.
+
 ## Normal release
 
 Merge the approved pull request into `main`. Cloudflare will build and deploy

@@ -45,6 +45,10 @@ const customerMutationMigration = await read(
 const notificationMigration = await read(
   "supabase/migrations/20260908120000_add_notification_delivery.sql",
 );
+const supportMigration = await read(
+  "supabase/migrations/20260908220000_add_support_ticket_workflow.sql",
+);
+const supportFunctions = await read("src/lib/support.functions.ts");
 const emailProvider = await read("src/lib/resend.server.ts");
 const emailWebhook = await read("src/routes/api.resend-webhook.ts");
 
@@ -129,6 +133,21 @@ assert(
       "revoke all on public.notification_deliveries from anon, authenticated",
     ),
   "Notification preferences and delivery metadata must only be accessible through the server API.",
+);
+assert(
+  supportMigration.includes(
+    "revoke all on public.support_tickets from anon, authenticated",
+  ) &&
+    supportMigration.includes(
+      "revoke all on public.support_ticket_events from anon, authenticated",
+    ),
+  "Support tickets and their history must not be exposed as browser-readable tables.",
+);
+assert(
+  supportFunctions.includes('.eq("requester_id", context.userId)') &&
+    supportFunctions.includes('.eq("visible_to_requester", true)') &&
+    supportFunctions.includes('ticket.status === "closed"'),
+  "The support API must scope tickets to the authenticated requester and hide internal notes.",
 );
 assert(
   emailProvider.includes('"Idempotency-Key": idempotencyKey') &&
