@@ -68,9 +68,12 @@ BEGIN
     -- The portal profile intentionally edits only the display name and phone.
     -- In particular, business_id, email, notes, and auth linkage must remain
     -- controlled by the business/server side.
-    IF (to_jsonb(NEW) - ARRAY['name', 'phone', 'updated_at'])
+    -- phone_normalized is a generated column derived by PostgreSQL from
+    -- phone. It changes automatically during a legitimate phone edit and
+    -- cannot be supplied independently by a client.
+    IF (to_jsonb(NEW) - ARRAY['name', 'phone', 'phone_normalized', 'updated_at'])
          IS DISTINCT FROM
-       (to_jsonb(OLD) - ARRAY['name', 'phone', 'updated_at']) THEN
+       (to_jsonb(OLD) - ARRAY['name', 'phone', 'phone_normalized', 'updated_at']) THEN
       RAISE EXCEPTION 'Customers can only change their name or phone number';
     END IF;
   END IF;
@@ -122,6 +125,9 @@ BEGIN
   UPDATE bookings
   SET starts_at = p_new_starts_at, ends_at = v_new_ends_at
   WHERE id = p_booking_id;
+  -- Do not leave the narrow reschedule allowance active for any later
+  -- statement in the same transaction.
+  PERFORM set_config('bookzenvo.customer_reschedule', '', true);
 END;
 $function$;
 
