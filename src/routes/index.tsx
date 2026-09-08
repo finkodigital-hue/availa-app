@@ -72,7 +72,12 @@ const NAV_ITEMS = [
 ] as const;
 
 const STATS = [
-  { target: 12, prefix: "", label: "Bookings today", delta: "+3 vs last Tuesday" },
+  {
+    target: 12,
+    prefix: "",
+    label: "Bookings today",
+    delta: "+3 vs last Tuesday",
+  },
   { target: 1240, prefix: "£", label: "Revenue this week", delta: "+18%" },
   { target: 9, prefix: "", label: "New clients this month", delta: "+2" },
 ];
@@ -159,7 +164,9 @@ function TodayPreview({ inView }: { inView: boolean }) {
             <div className="text-[.7rem] text-muted-foreground uppercase tracking-[0.12em] mt-2">
               {s.label}
             </div>
-            <div className="text-[.75rem] text-[color:var(--confirmed)] mt-1">{s.delta}</div>
+            <div className="text-[.75rem] text-[color:var(--confirmed)] mt-1">
+              {s.delta}
+            </div>
           </div>
         ))}
       </div>
@@ -182,8 +189,12 @@ function TodayPreview({ inView }: { inView: boolean }) {
           >
             <span className="text-[.85rem] font-semibold">{a.time}</span>
             <span className="min-w-0">
-              <span className="block text-[.92rem] font-semibold truncate">{a.who}</span>
-              <span className="block text-[.8rem] text-muted-foreground truncate">{a.what}</span>
+              <span className="block text-[.92rem] font-semibold truncate">
+                {a.who}
+              </span>
+              <span className="block text-[.8rem] text-muted-foreground truncate">
+                {a.what}
+              </span>
             </span>
             <span className="hidden sm:block text-[.8rem] text-muted-foreground">
               with {a.withWhom}
@@ -248,15 +259,21 @@ function CalendarPreview() {
     <div className="rounded-[12px] border border-border overflow-hidden bg-white shadow-[0_12px_32px_-28px_rgba(26,26,26,.45)]">
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background">
         <div className="inline-flex rounded-[7px] border border-border bg-white p-1 text-[.7rem] font-semibold">
-          <span className="rounded-[4px] bg-primary px-3 py-1.5 text-primary-foreground">Day</span>
+          <span className="rounded-[4px] bg-primary px-3 py-1.5 text-primary-foreground">
+            Day
+          </span>
           <span className="px-3 py-1.5 text-muted-foreground">Week</span>
-          <span className="hidden sm:inline px-3 py-1.5 text-muted-foreground">Month</span>
+          <span className="hidden sm:inline px-3 py-1.5 text-muted-foreground">
+            Month
+          </span>
         </div>
         <div className="flex items-center gap-2 text-[.72rem] font-semibold">
           <span className="hidden sm:inline rounded-[6px] border border-border bg-white px-3 py-2 text-muted-foreground">
             ‹
           </span>
-          <span className="rounded-[6px] bg-primary px-3 py-2 text-primary-foreground">Today</span>
+          <span className="rounded-[6px] bg-primary px-3 py-2 text-primary-foreground">
+            Today
+          </span>
           <span className="hidden sm:inline rounded-[6px] border border-border bg-white px-3 py-2 text-muted-foreground">
             ›
           </span>
@@ -275,7 +292,9 @@ function CalendarPreview() {
               {initial}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[.75rem] font-semibold">{name}</span>
+              <span className="block truncate text-[.75rem] font-semibold">
+                {name}
+              </span>
               <span className="hidden sm:block truncate text-[.62rem] text-muted-foreground">
                 {role}
               </span>
@@ -368,13 +387,21 @@ function CalendarPreview() {
   );
 }
 
-function ProductPreview({ section }: { section: Exclude<(typeof NAV_ITEMS)[number], "Today"> }) {
+function ProductPreview({
+  section,
+}: {
+  section: Exclude<(typeof NAV_ITEMS)[number], "Today">;
+}) {
   if (section === "Calendar") return <CalendarPreview />;
 
   if (section === "Bookings") {
     return (
       <PreviewList
-        rows={APPOINTMENTS.map((a) => [a.who, a.what, a.status === "ok" ? "Confirmed" : "Pending"])}
+        rows={APPOINTMENTS.map((a) => [
+          a.who,
+          a.what,
+          a.status === "ok" ? "Confirmed" : "Pending",
+        ])}
       />
     );
   }
@@ -466,7 +493,9 @@ function PreviewList({ rows }: { rows: string[][] }) {
           <span className="h-8 w-8 rounded-full bg-[color:var(--gold-wash)] shrink-0" />
           <span className="min-w-0 flex-1">
             <span className="block text-[.9rem] font-semibold">{title}</span>
-            <span className="block text-[.75rem] text-muted-foreground truncate">{subtitle}</span>
+            <span className="block text-[.75rem] text-muted-foreground truncate">
+              {subtitle}
+            </span>
           </span>
           {status && (
             <span className="text-[.68rem] font-semibold text-[color:var(--confirmed)] bg-[color:var(--confirmed-bg)] px-2 py-1 rounded-[5px]">
@@ -479,7 +508,15 @@ function PreviewList({ rows }: { rows: string[][] }) {
   );
 }
 
-function CountUp({ target, prefix, active }: { target: number; prefix: string; active: boolean }) {
+function CountUp({
+  target,
+  prefix,
+  active,
+}: {
+  target: number;
+  prefix: string;
+  active: boolean;
+}) {
   const [value, setValue] = useState(0);
 
   useEffect(() => {
@@ -508,7 +545,8 @@ function CountUp({ target, prefix, active }: { target: number; prefix: string; a
 function DashboardPreview() {
   const frameRef = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
-  const [activeItem, setActiveItem] = useState<(typeof NAV_ITEMS)[number]>("Today");
+  const [activeItem, setActiveItem] =
+    useState<(typeof NAV_ITEMS)[number]>("Today");
 
   useEffect(() => {
     const el = frameRef.current;
@@ -539,7 +577,9 @@ function DashboardPreview() {
         <span className="h-2.5 w-2.5 rounded-full bg-border" />
         <span className="h-2.5 w-2.5 rounded-full bg-border" />
         <span className="h-2.5 w-2.5 rounded-full bg-border" />
-        <span className="text-[.75rem] text-muted-foreground ml-2.5">bookzenvo.com/dashboard</span>
+        <span className="text-[.75rem] text-muted-foreground ml-2.5">
+          bookzenvo.com/dashboard
+        </span>
       </div>
       <nav className="md:hidden flex overflow-x-auto border-b border-border bg-background">
         {NAV_ITEMS.map((item) => (
@@ -583,17 +623,23 @@ function DashboardPreview() {
           <div className="flex justify-between items-end flex-wrap gap-4 mb-7">
             <div>
               <div className="text-[.8rem] text-muted-foreground uppercase tracking-[0.1em] mb-1.5">
-                {activeItem === "Today" ? "Tuesday, July 7" : PREVIEW_DATA[activeItem].eyebrow}
+                {activeItem === "Today"
+                  ? "Tuesday, July 7"
+                  : PREVIEW_DATA[activeItem].eyebrow}
               </div>
               <h2 className="font-display font-medium text-[2rem] leading-[1.05]">
-                {activeItem === "Today" ? "Good morning, Nora." : PREVIEW_DATA[activeItem].title}
+                {activeItem === "Today"
+                  ? "Good morning, Nora."
+                  : PREVIEW_DATA[activeItem].title}
               </h2>
             </div>
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-[.85rem] font-semibold px-4 py-2.5"
             >
-              {activeItem === "Today" ? "New booking" : PREVIEW_DATA[activeItem].action}
+              {activeItem === "Today"
+                ? "New booking"
+                : PREVIEW_DATA[activeItem].action}
             </button>
           </div>
           {activeItem === "Today" ? (
@@ -604,7 +650,11 @@ function DashboardPreview() {
                     key={s.label}
                     className="rounded-[10px] border border-border bg-background px-5 py-5"
                   >
-                    <CountUp target={s.target} prefix={s.prefix} active={inView} />
+                    <CountUp
+                      target={s.target}
+                      prefix={s.prefix}
+                      active={inView}
+                    />
                     <div className="text-[.7rem] text-muted-foreground uppercase tracking-[0.12em] mt-2">
                       {s.label}
                     </div>
@@ -627,13 +677,21 @@ function DashboardPreview() {
                   <div
                     key={a.who}
                     className={`grid grid-cols-[54px_1fr_auto_auto] sm:grid-cols-[76px_1fr_auto_auto] gap-3 sm:gap-4 items-center py-4 border-b border-border last:border-b-0 transition-all duration-500 ease-[cubic-bezier(.2,.7,.3,1)] ${
-                      inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2.5"
+                      inView
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-2.5"
                     }`}
-                    style={{ transitionDelay: inView ? `${200 + i * 110}ms` : "0ms" }}
+                    style={{
+                      transitionDelay: inView ? `${200 + i * 110}ms` : "0ms",
+                    }}
                   >
-                    <span className="text-[.85rem] font-semibold">{a.time}</span>
+                    <span className="text-[.85rem] font-semibold">
+                      {a.time}
+                    </span>
                     <span className="min-w-0">
-                      <span className="block text-[.92rem] font-semibold truncate">{a.who}</span>
+                      <span className="block text-[.92rem] font-semibold truncate">
+                        {a.who}
+                      </span>
                       <span className="block text-[.8rem] text-muted-foreground truncate">
                         {a.what}
                       </span>
@@ -767,13 +825,22 @@ function Landing() {
           <div className="max-w-[1120px] mx-auto px-6 h-20 flex items-center justify-between">
             <Wordmark className="text-[1.7rem]" />
             <nav className="hidden md:flex items-center gap-10 text-[.9rem] font-medium text-muted-foreground">
-              <a href="#how" className="hover:text-foreground transition-colors">
+              <a
+                href="#how"
+                className="hover:text-foreground transition-colors"
+              >
                 How it works
               </a>
-              <a href="#features" className="hover:text-foreground transition-colors">
+              <a
+                href="#features"
+                className="hover:text-foreground transition-colors"
+              >
                 Features
               </a>
-              <a href="#pricing" className="hover:text-foreground transition-colors">
+              <a
+                href="#pricing"
+                className="hover:text-foreground transition-colors"
+              >
                 Pricing
               </a>
             </nav>
@@ -807,11 +874,14 @@ function Landing() {
             </div>
             <h1 className="bz-reveal bz-reveal-2 font-display font-medium leading-[1.02] tracking-[-0.02em] text-[clamp(2.6rem,7.6vw,6rem)] max-w-[14ch]">
               Booking software that works as hard{" "}
-              <em className="italic text-[color:var(--gold-deep)]">as you do.</em>
+              <em className="italic text-[color:var(--gold-deep)]">
+                as you do.
+              </em>
             </h1>
             <p className="bz-reveal bz-reveal-3 text-[1.15rem] text-[color:var(--charcoal-soft)] max-w-[44ch] my-8">
-              Built for salons, barbershops, nail studios and tattoo artists. Clients book straight
-              into your day — no DMs, no double-bookings, every regular remembered.
+              Built for salons, barbershops, nail studios and tattoo artists.
+              Clients book straight into your day — no DMs, no double-bookings,
+              every regular remembered.
             </p>
             <div className="bz-reveal bz-reveal-4 flex items-center gap-6 flex-wrap">
               <Link
@@ -839,7 +909,9 @@ function Landing() {
         {/* Made for */}
         <div className="border-y border-border py-6 bg-white">
           <div className="max-w-[1120px] mx-auto px-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-2 text-[.8rem] tracking-[0.1em] uppercase text-muted-foreground">
-            <b className="text-[color:var(--gold-deep)] font-semibold">Made for</b>
+            <b className="text-[color:var(--gold-deep)] font-semibold">
+              Made for
+            </b>
             <span>Hair salons</span>
             <span>Barbershops</span>
             <span>Nail studios</span>
@@ -871,8 +943,12 @@ function Landing() {
                   <div className="font-display italic text-[1.1rem] text-[color:var(--gold-deep)] mb-3.5">
                     {s.n}
                   </div>
-                  <h3 className="font-display font-semibold text-[1.55rem] mb-2">{s.title}</h3>
-                  <p className="text-[color:var(--charcoal-soft)] text-[.95rem]">{s.body}</p>
+                  <h3 className="font-display font-semibold text-[1.55rem] mb-2">
+                    {s.title}
+                  </h3>
+                  <p className="text-[color:var(--charcoal-soft)] text-[.95rem]">
+                    {s.body}
+                  </p>
                 </div>
               ))}
             </div>
@@ -890,7 +966,10 @@ function Landing() {
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-border">
               {features.map((f) => (
-                <div key={f.title} className="border-r border-b border-border p-8">
+                <div
+                  key={f.title}
+                  className="border-r border-b border-border p-8"
+                >
                   <h3 className="font-display font-semibold text-[1.35rem] mb-2 flex items-center gap-2">
                     {f.title}
                     {f.soon && (
@@ -899,7 +978,9 @@ function Landing() {
                       </span>
                     )}
                   </h3>
-                  <p className="text-[color:var(--charcoal-soft)] text-[.92rem]">{f.body}</p>
+                  <p className="text-[color:var(--charcoal-soft)] text-[.92rem]">
+                    {f.body}
+                  </p>
                 </div>
               ))}
             </div>
@@ -932,7 +1013,9 @@ function Landing() {
                         Most popular
                       </span>
                     )}
-                    <div className="font-display font-semibold text-[1.4rem]">{t.name}</div>
+                    <div className="font-display font-semibold text-[1.4rem]">
+                      {t.name}
+                    </div>
                     <div className="font-display font-medium text-[2.8rem] leading-none mt-2">
                       {t.price}
                       {t.per && (
@@ -994,14 +1077,17 @@ function Landing() {
               <span
                 aria-hidden
                 className="absolute top-0 right-20 w-px h-full opacity-50"
-                style={{ background: "linear-gradient(var(--gold), transparent)" }}
+                style={{
+                  background: "linear-gradient(var(--gold), transparent)",
+                }}
               />
               <h2 className="font-display font-medium text-[clamp(2.2rem,4.4vw,3.4rem)] leading-[1.05] max-w-[16ch] mb-4">
                 Your next client could book{" "}
                 <em className="italic text-[color:var(--gold)]">tonight.</em>
               </h2>
               <p className="text-primary-foreground/65 max-w-[40ch] mb-8">
-                Set up your booking page in minutes. Free for one chair, no card needed.
+                Set up your booking page in minutes. Free for one chair, no card
+                needed.
               </p>
               <Link
                 to="/auth"
@@ -1020,7 +1106,8 @@ function Landing() {
           <div className="max-w-[1120px] mx-auto px-6 flex flex-wrap items-center justify-between gap-4 text-[.85rem] text-muted-foreground">
             <Wordmark className="text-[1.2rem]" />
             <div>
-              © {new Date().getFullYear()} Bookzenvo — made for people who work from a chair.
+              © {new Date().getFullYear()} Bookzenvo — made for people who work
+              from a chair.
             </div>
             <div className="flex gap-7">
               <Link to="/privacy" className="hover:text-foreground">
@@ -1031,6 +1118,9 @@ function Landing() {
               </Link>
               <Link to="/cookie-policy" className="hover:text-foreground">
                 Cookies
+              </Link>
+              <Link to="/refund-policy" className="hover:text-foreground">
+                Refunds
               </Link>
               <Link to="/faq" className="hover:text-foreground">
                 FAQ

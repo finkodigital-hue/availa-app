@@ -8,7 +8,7 @@ export function LegalPage({
   title,
   intro,
   sections,
-  lastUpdated = "5 September 2026",
+  lastUpdated = "8 September 2026",
 }: {
   eyebrow: string;
   title: string;
@@ -84,6 +84,9 @@ export function LegalPage({
           </Link>
           <Link to="/cookie-policy" className="hover:text-foreground">
             Cookie policy
+          </Link>
+          <Link to="/refund-policy" className="hover:text-foreground">
+            Refund policy
           </Link>
           <Link to="/review-policy" className="hover:text-foreground">
             Review policy

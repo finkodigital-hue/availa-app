@@ -1,4 +1,6 @@
-const origin = new URL(process.argv[2] || process.env.BOOKZENVO_AUDIT_URL || "https://bookzenvo.com");
+const origin = new URL(
+  process.argv[2] || process.env.BOOKZENVO_AUDIT_URL || "https://bookzenvo.com",
+);
 const requiredPages = [
   "/",
   "/faq",
@@ -6,11 +8,14 @@ const requiredPages = [
   "/privacy",
   "/terms",
   "/cookie-policy",
+  "/refund-policy",
   "/review-policy",
   "/status",
   "/auth",
 ];
-const canonicalPages = new Set(requiredPages.filter((path) => path !== "/auth"));
+const canonicalPages = new Set(
+  requiredPages.filter((path) => path !== "/auth"),
+);
 const queue = requiredPages.map((path) => new URL(path, origin).href);
 const queued = new Set(queue);
 const checked = new Map();
@@ -18,8 +23,8 @@ const failures = [];
 const warnings = [];
 
 const skipPath = (pathname) =>
-  ["/api/", "/portal", "/booking-action/", "/invite/", "/review/"].some((prefix) =>
-    pathname.startsWith(prefix),
+  ["/api/", "/portal", "/booking-action/", "/invite/", "/review/"].some(
+    (prefix) => pathname.startsWith(prefix),
   );
 
 function pageAttributes(html, attribute) {
@@ -31,7 +36,12 @@ function pageAttributes(html, attribute) {
 }
 
 function enqueue(reference, from) {
-  if (!reference || reference.startsWith("#") || /^(?:mailto|tel|javascript|data):/i.test(reference)) return;
+  if (
+    !reference ||
+    reference.startsWith("#") ||
+    /^(?:mailto|tel|javascript|data):/i.test(reference)
+  )
+    return;
   let url;
   try {
     url = new URL(reference, from);
@@ -51,7 +61,10 @@ function enqueue(reference, from) {
 while (queue.length) {
   const url = queue.shift();
   try {
-    const response = await fetch(url, { redirect: "follow", headers: { "user-agent": "Bookzenvo-launch-audit" } });
+    const response = await fetch(url, {
+      redirect: "follow",
+      headers: { "user-agent": "Bookzenvo-launch-audit" },
+    });
     const contentType = response.headers.get("content-type") || "";
     checked.set(url, response.status);
     if (!response.ok) {
@@ -64,21 +77,32 @@ while (queue.length) {
     for (const reference of pageAttributes(html)) enqueue(reference, url);
 
     const path = new URL(url).pathname.replace(/\/$/, "") || "/";
-    if (canonicalPages.has(path) && !/<link[^>]+rel=["']canonical["']/i.test(html)) {
+    if (
+      canonicalPages.has(path) &&
+      !/<link[^>]+rel=["']canonical["']/i.test(html)
+    ) {
       failures.push(`Missing canonical URL: ${url}`);
     }
-    if (path === "/auth" && !/<meta[^>]+name=["']robots["'][^>]+noindex/i.test(html)) {
+    if (
+      path === "/auth" &&
+      !/<meta[^>]+name=["']robots["'][^>]+noindex/i.test(html)
+    ) {
       failures.push(`Sign-in page is missing noindex: ${url}`);
     }
     for (const tag of html.match(/<img\b[^>]*>/gi) || []) {
-      if (!/\balt=["'][^"']*["']/i.test(tag)) warnings.push(`Image without alt attribute: ${url}`);
+      if (!/\balt=["'][^"']*["']/i.test(tag))
+        warnings.push(`Image without alt attribute: ${url}`);
     }
   } catch (error) {
-    failures.push(`Request failed ${url}: ${error instanceof Error ? error.message : String(error)}`);
+    failures.push(
+      `Request failed ${url}: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
-console.log(`Checked ${checked.size} public pages and assets at ${origin.origin}.`);
+console.log(
+  `Checked ${checked.size} public pages and assets at ${origin.origin}.`,
+);
 for (const warning of [...new Set(warnings)]) console.warn(`WARN ${warning}`);
 if (failures.length) {
   for (const failure of failures) console.error(`FAIL ${failure}`);

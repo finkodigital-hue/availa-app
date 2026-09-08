@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as ReviewPolicyRouteImport } from './routes/review-policy'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as HelpRouteImport } from './routes/help'
@@ -78,6 +79,11 @@ const StatusRoute = StatusRouteImport.update({
 const ReviewPolicyRoute = ReviewPolicyRouteImport.update({
   id: '/review-policy',
   path: '/review-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -357,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/help': typeof HelpRouteWithChildren
   '/portal': typeof PortalRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/review-policy': typeof ReviewPolicyRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
@@ -411,6 +418,7 @@ export interface FileRoutesByTo {
   '/cookie-policy': typeof CookiePolicyRoute
   '/faq': typeof FaqRoute
   '/privacy': typeof PrivacyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/review-policy': typeof ReviewPolicyRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
@@ -469,6 +477,7 @@ export interface FileRoutesById {
   '/help': typeof HelpRouteWithChildren
   '/portal': typeof PortalRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/review-policy': typeof ReviewPolicyRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
@@ -527,6 +536,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/portal'
     | '/privacy'
+    | '/refund-policy'
     | '/review-policy'
     | '/status'
     | '/terms'
@@ -581,6 +591,7 @@ export interface FileRouteTypes {
     | '/cookie-policy'
     | '/faq'
     | '/privacy'
+    | '/refund-policy'
     | '/review-policy'
     | '/status'
     | '/terms'
@@ -638,6 +649,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/portal'
     | '/privacy'
+    | '/refund-policy'
     | '/review-policy'
     | '/status'
     | '/terms'
@@ -696,6 +708,7 @@ export interface RootRouteChildren {
   HelpRoute: typeof HelpRouteWithChildren
   PortalRoute: typeof PortalRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
   ReviewPolicyRoute: typeof ReviewPolicyRoute
   StatusRoute: typeof StatusRoute
   TermsRoute: typeof TermsRoute
@@ -743,6 +756,13 @@ declare module '@tanstack/react-router' {
       path: '/review-policy'
       fullPath: '/review-policy'
       preLoaderRoute: typeof ReviewPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -1193,6 +1213,7 @@ const rootRouteChildren: RootRouteChildren = {
   HelpRoute: HelpRouteWithChildren,
   PortalRoute: PortalRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
   ReviewPolicyRoute: ReviewPolicyRoute,
   StatusRoute: StatusRoute,
   TermsRoute: TermsRoute,

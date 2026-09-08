@@ -1280,13 +1280,25 @@ export function PublicBookingPage({
                         </div>
                       </div>
                       {displayAddress && (
-                        <iframe
-                          title={`${biz.name} location`}
-                          src={`https://www.google.com/maps?q=${encodeURIComponent(displayAddress)}&output=embed`}
-                          className="min-h-[360px] h-full w-full border-0 grayscale-[25%]"
-                          loading="lazy"
-                          referrerPolicy="no-referrer-when-downgrade"
-                        />
+                        <div className="min-h-[360px] h-full grid place-items-center border-l bg-muted/30 p-8 text-center">
+                          <div>
+                            <p className="font-display text-xl">Find us</p>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              {displayAddress}
+                            </p>
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-5 inline-flex rounded-lg border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted"
+                            >
+                              Open in Google Maps
+                            </a>
+                            <p className="mt-3 text-xs text-muted-foreground">
+                              Google Maps opens only when you choose this link.
+                            </p>
+                          </div>
+                        </div>
                       )}
                     </section>
                   );
@@ -1621,8 +1633,25 @@ export function PublicBookingPage({
                 <>Continue to secure payment</>
               )}
             </Button>
-            <p className="text-[11px] text-muted-foreground text-center">
-              By confirming, you agree to our booking terms.
+            <p className="text-[11px] leading-5 text-muted-foreground text-center">
+              By continuing, you ask {biz.name} to make this booking and agree
+              to the business&apos;s cancellation terms shown on this page.
+              Bookzenvo handles your details as described in its{" "}
+              <Link to="/privacy" className="underline underline-offset-2">
+                Privacy Policy
+              </Link>
+              . See also the{" "}
+              <Link to="/terms" className="underline underline-offset-2">
+                platform terms
+              </Link>{" "}
+              and{" "}
+              <Link
+                to="/refund-policy"
+                className="underline underline-offset-2"
+              >
+                refund policy
+              </Link>
+              .
             </p>
           </div>
         )}
