@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
-import { Plus, Pencil, Trash2, Users, Upload, Loader2, Image as ImageIcon, Crown, Search, MoreHorizontal, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Upload, Loader2, Image as ImageIcon, Crown, Search, MoreHorizontal, X, Copy, ShieldCheck } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { useMyBusiness } from "@/lib/business";
+import { useMyBusiness, useWorkspaceAccess } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,7 @@ function VisibilityPill({ active, bookable }: { active: boolean; bookable: boole
 
 function StaffPage() {
   const { data: biz } = useMyBusiness();
+  const access = useWorkspaceAccess();
   const bid = biz?.id;
   const qc = useQueryClient();
   const [edit, setEdit] = useState<Partial<Staff> | null>(null);
@@ -328,11 +329,13 @@ function StaffPage() {
                   <TabsTrigger value="hours" className="rounded-none border-b-2 border-transparent px-3 py-3 data-[state=active]:border-[color:var(--gold-deep)] data-[state=active]:bg-transparent data-[state=active]:shadow-none">Hours</TabsTrigger>
                   <TabsTrigger value="services" className="rounded-none border-b-2 border-transparent px-3 py-3 data-[state=active]:border-[color:var(--gold-deep)] data-[state=active]:bg-transparent data-[state=active]:shadow-none">Services</TabsTrigger>
                   <TabsTrigger value="timeoff" className="rounded-none border-b-2 border-transparent px-3 py-3 data-[state=active]:border-[color:var(--gold-deep)] data-[state=active]:bg-transparent data-[state=active]:shadow-none">Time off</TabsTrigger>
+                  {access.isOwner && <TabsTrigger value="access" className="rounded-none border-b-2 border-transparent px-3 py-3 data-[state=active]:border-[color:var(--gold-deep)] data-[state=active]:bg-transparent data-[state=active]:shadow-none">Account</TabsTrigger>}
                 </TabsList>
                 <TabsContent value="profile" className="m-0 p-5"><StaffProfileForm edit={edit} setEdit={setEdit} businessId={bid} onSaved={() => { qc.invalidateQueries({ queryKey: ["staff"] }); qc.invalidateQueries({ queryKey: ["staff-service-counts"] }); }} footerContent={<ReassignBookingsCard staff={edit as Staff} onOpen={(futureCount) => setReassign({ staff: edit as Staff, futureCount })} />} /></TabsContent>
                 <TabsContent value="hours" className="m-0 p-5">{bid && <StaffHoursEditor staffId={edit.id} businessId={bid} />}</TabsContent>
                 <TabsContent value="services" className="m-0 p-5">{bid && <StaffServicesEditor staffId={edit.id} businessId={bid} />}</TabsContent>
                 <TabsContent value="timeoff" className="m-0 p-5">{bid && <TimeOffEditor businessId={bid} staffId={edit.id} />}</TabsContent>
+                {access.isOwner && <TabsContent value="access" className="m-0 p-5">{bid && <StaffAccountAccess staff={edit as Staff} businessId={bid} />}</TabsContent>}
               </Tabs>
             ) : (
               <div className="p-5"><StaffProfileForm edit={edit} setEdit={setEdit} businessId={bid} onSaved={() => { qc.invalidateQueries({ queryKey: ["staff"] }); setEdit(null); }} /></div>
@@ -361,6 +364,71 @@ function StaffPage() {
       />
     </div>
   );
+}
+
+type AccessRole = "manager" | "front_desk" | "practitioner";
+const ACCESS_OPTIONS: { value: AccessRole; label: string; help: string }[] = [
+  { value: "manager", label: "Manager", help: "Calendar, clients, team, services, stock and reports." },
+  { value: "front_desk", label: "Front desk", help: "Calendar, bookings and client details." },
+  { value: "practitioner", label: "Practitioner", help: "View the workspace calendar only." },
+];
+
+function StaffAccountAccess({ staff, businessId }: { staff: Staff; businessId: string }) {
+  const qc = useQueryClient();
+  const [role, setRole] = useState<AccessRole>("practitioner");
+  const [busy, setBusy] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const { data: membership } = useQuery({
+    queryKey: ["staff-membership", staff.id],
+    queryFn: async () => { const { data, error } = await (supabase.from("staff_memberships" as any).select("id,access_role,active").eq("staff_id", staff.id).maybeSingle() as any); if (error) throw error; return data; },
+  });
+  const { data: invitation } = useQuery({
+    queryKey: ["staff-account-invitation", staff.id],
+    queryFn: async () => { const { data, error } = await (supabase.from("staff_account_invitations" as any).select("id,email,access_role,expires_at,created_at").eq("staff_id", staff.id).is("accepted_at", null).is("revoked_at", null).gt("expires_at", new Date().toISOString()).maybeSingle() as any); if (error) throw error; return data; },
+  });
+  useEffect(() => { if (membership?.access_role) setRole(membership.access_role); else if (invitation?.access_role) setRole(invitation.access_role); }, [membership?.access_role, invitation?.access_role]);
+
+  const invite = async () => {
+    if (!staff.email) return toast.error("Add an email address to this staff profile first");
+    setBusy(true);
+    try {
+      const { data, error } = await (supabase.rpc as any)("create_staff_account_invitation", { _staff_id: staff.id, _email: staff.email, _access_role: role });
+      if (error) throw error;
+      const token = data?.[0]?.token;
+      const url = `${window.location.origin}/staff-invite/${token}`;
+      setInviteUrl(url);
+      await navigator.clipboard.writeText(url);
+      toast.success("Secure invitation link copied");
+      qc.invalidateQueries({ queryKey: ["staff-account-invitation", staff.id] });
+    } catch (e: any) { toast.error(e.message ?? "Could not create invitation"); } finally { setBusy(false); }
+  };
+  const saveRole = async () => {
+    const { error } = await (supabase.from("staff_memberships" as any).update({ access_role: role }).eq("staff_id", staff.id) as any);
+    if (error) return toast.error(error.message);
+    toast.success("Account access updated"); qc.invalidateQueries({ queryKey: ["staff-membership", staff.id] });
+  };
+  const toggleAccount = async () => {
+    const { error } = await (supabase.from("staff_memberships" as any).update({ active: !membership.active }).eq("id", membership.id) as any);
+    if (error) return toast.error(error.message);
+    toast.success(membership.active ? "Account access suspended" : "Account access restored");
+    qc.invalidateQueries({ queryKey: ["staff-membership", staff.id] });
+  };
+  const revoke = async () => {
+    const { error } = await (supabase.rpc as any)("revoke_staff_account_invitation", { _invitation_id: invitation.id });
+    if (error) return toast.error(error.message); setInviteUrl(null); qc.invalidateQueries({ queryKey: ["staff-account-invitation", staff.id] }); toast.success("Invitation revoked");
+  };
+
+  return <div className="space-y-5">
+    <div className="flex gap-3 rounded-xl bg-secondary/50 p-4"><ShieldCheck className="h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-medium">Individual sign-in</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Give {staff.name} their own account. Access is checked by the database for every request.</p></div></div>
+    <div><Label>Access level</Label><div className="mt-2 space-y-2">{ACCESS_OPTIONS.map((option) => <label key={option.value} className={`block cursor-pointer rounded-xl border p-3 ${role === option.value ? "border-primary bg-primary/5" : ""}`}><div className="flex gap-2"><input type="radio" name={`access-${staff.id}`} checked={role === option.value} onChange={() => setRole(option.value)} /><div><p className="text-sm font-medium">{option.label}</p><p className="text-xs text-muted-foreground">{option.help}</p></div></div></label>)}</div></div>
+    {membership ? <div className="space-y-3"><Badge variant={membership.active ? "default" : "secondary"}>{membership.active ? "Account active" : "Account suspended"}</Badge><div className="flex flex-wrap gap-2"><Button onClick={saveRole}>Save access level</Button><Button variant="outline" onClick={toggleAccount}>{membership.active ? "Suspend account" : "Restore account"}</Button></div></div> : <div className="space-y-3">
+      {invitation && <div className="rounded-xl border p-3 text-xs"><p className="font-medium">Invitation pending for {invitation.email}</p><p className="mt-1 text-muted-foreground">Expires {new Date(invitation.expires_at).toLocaleDateString()}</p></div>}
+      {inviteUrl && <Button variant="outline" className="w-full" onClick={() => navigator.clipboard.writeText(inviteUrl).then(() => toast.success("Link copied"))}><Copy className="mr-2 h-4 w-4" />Copy invitation link</Button>}
+      <div className="flex gap-2"><Button onClick={invite} disabled={busy || !staff.email}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{invitation ? "Create a new link" : "Invite to Bookzenvo"}</Button>{invitation && <Button variant="ghost" onClick={revoke}>Revoke</Button>}</div>
+      {!staff.email && <p className="text-xs text-destructive">Save an email address on the Profile tab before inviting.</p>}
+      <p className="text-[11px] text-muted-foreground">For security, the link is shown only when created. It expires after seven days and only works for the invited email.</p>
+    </div>}
+  </div>;
 }
 
 function ReassignDialog({ info, allStaff, onClose, onDone }: {

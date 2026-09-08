@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useWorkspaceAccess } from "@/lib/business";
 
 type Props = {
   onAdd?: () => void;
@@ -22,6 +23,7 @@ const TABS = [
 
 export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const access = useWorkspaceAccess();
 
   // The drawer owns the entire phone screen while it is open. Hiding the
   // navigation here prevents the floating action button or the tab bar from
@@ -44,7 +46,7 @@ export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
         >
           <div className="grid grid-cols-5 items-center h-16 px-1">
             <NavItem item={TABS[0]} active={path.startsWith("/calendar")} />
-            <NavItem item={TABS[1]} active={path.startsWith("/payments")} />
+            {access.isOwner ? <NavItem item={TABS[1]} active={path.startsWith("/payments")} /> : <div aria-hidden />}
             <div aria-hidden /> {/* center spacer for floating + */}
             <NavItem item={TABS[2]} active={path.startsWith("/bookings")} />
             <button
@@ -62,7 +64,7 @@ export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
 
       {/* Floating Add — separate fixed element so it can never be clipped or
           covered by the bar. Sits above the bar with its own z-index. */}
-      <button
+      {access.can("calendar.manage") && <button
         type="button"
         onClick={onAdd}
         aria-label="New booking"
@@ -74,7 +76,7 @@ export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
         }}
       >
         <Plus className="h-6 w-6" strokeWidth={2.4} />
-      </button>
+      </button>}
     </>
   );
 }

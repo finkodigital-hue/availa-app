@@ -23,6 +23,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as HelpIndexRouteImport } from './routes/help.index'
+import { Route as StaffInviteTokenRouteImport } from './routes/staff-invite.$token'
 import { Route as ReviewTokenRouteImport } from './routes/review.$token'
 import { Route as PortalProfileRouteImport } from './routes/portal.profile'
 import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
@@ -137,6 +138,11 @@ const HelpIndexRoute = HelpIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => HelpRoute,
+} as any)
+const StaffInviteTokenRoute = StaffInviteTokenRouteImport.update({
+  id: '/staff-invite/$token',
+  path: '/staff-invite/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ReviewTokenRoute = ReviewTokenRouteImport.update({
   id: '/review/$token',
@@ -420,6 +426,7 @@ export interface FileRoutesByFullPath {
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
   '/review/$token': typeof ReviewTokenRoute
+  '/staff-invite/$token': typeof StaffInviteTokenRoute
   '/help/': typeof HelpIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/booking-actions/act': typeof ApiBookingActionsActRoute
@@ -478,6 +485,7 @@ export interface FileRoutesByTo {
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
   '/review/$token': typeof ReviewTokenRoute
+  '/staff-invite/$token': typeof StaffInviteTokenRoute
   '/help': typeof HelpIndexRoute
   '/portal': typeof PortalIndexRoute
   '/api/booking-actions/act': typeof ApiBookingActionsActRoute
@@ -540,6 +548,7 @@ export interface FileRoutesById {
   '/portal/bookings': typeof PortalBookingsRoute
   '/portal/profile': typeof PortalProfileRoute
   '/review/$token': typeof ReviewTokenRoute
+  '/staff-invite/$token': typeof StaffInviteTokenRoute
   '/help/': typeof HelpIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/booking-actions/act': typeof ApiBookingActionsActRoute
@@ -602,6 +611,7 @@ export interface FileRouteTypes {
     | '/portal/bookings'
     | '/portal/profile'
     | '/review/$token'
+    | '/staff-invite/$token'
     | '/help/'
     | '/portal/'
     | '/api/booking-actions/act'
@@ -660,6 +670,7 @@ export interface FileRouteTypes {
     | '/portal/bookings'
     | '/portal/profile'
     | '/review/$token'
+    | '/staff-invite/$token'
     | '/help'
     | '/portal'
     | '/api/booking-actions/act'
@@ -721,6 +732,7 @@ export interface FileRouteTypes {
     | '/portal/bookings'
     | '/portal/profile'
     | '/review/$token'
+    | '/staff-invite/$token'
     | '/help/'
     | '/portal/'
     | '/api/booking-actions/act'
@@ -762,6 +774,7 @@ export interface RootRouteChildren {
   BookSlugRoute: typeof BookSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ReviewTokenRoute: typeof ReviewTokenRoute
+  StaffInviteTokenRoute: typeof StaffInviteTokenRoute
   ApiBookingActionsActRoute: typeof ApiBookingActionsActRoute
   ApiBookingActionsRescheduleCommitRoute: typeof ApiBookingActionsRescheduleCommitRoute
   ApiBookingActionsReschedulePeekRoute: typeof ApiBookingActionsReschedulePeekRoute
@@ -874,6 +887,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/help/'
       preLoaderRoute: typeof HelpIndexRouteImport
       parentRoute: typeof HelpRoute
+    }
+    '/staff-invite/$token': {
+      id: '/staff-invite/$token'
+      path: '/staff-invite/$token'
+      fullPath: '/staff-invite/$token'
+      preLoaderRoute: typeof StaffInviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/review/$token': {
       id: '/review/$token'
@@ -1291,6 +1311,7 @@ const rootRouteChildren: RootRouteChildren = {
   BookSlugRoute: BookSlugRoute,
   InviteTokenRoute: InviteTokenRoute,
   ReviewTokenRoute: ReviewTokenRoute,
+  StaffInviteTokenRoute: StaffInviteTokenRoute,
   ApiBookingActionsActRoute: ApiBookingActionsActRoute,
   ApiBookingActionsRescheduleCommitRoute:
     ApiBookingActionsRescheduleCommitRoute,

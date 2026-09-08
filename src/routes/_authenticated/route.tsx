@@ -1,7 +1,7 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { useMyBusiness } from "@/lib/business";
+import { useMyBusiness, useWorkspaceAccess, type WorkspacePermission } from "@/lib/business";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { EmailVerifyGate } from "@/components/email-verify-gate";
@@ -20,6 +20,8 @@ function Layout() {
     const navigate = useNavigate();
     const { data: biz, isLoading: bizLoading } = useMyBusiness();
     const [needsMfa, setNeedsMfa] = useState<boolean | null>(null);
+    const access = useWorkspaceAccess();
+    const path = useRouterState({ select: (state) => state.location.pathname });
   
     useEffect(() => {
           if (!loading && !user) navigate({ to: "/auth", replace: true });
@@ -30,6 +32,13 @@ function Layout() {
                   navigate({ to: "/onboarding", replace: true });
           }
     }, [loading, user, biz, bizLoading, navigate]);
+
+    useEffect(() => {
+      if (!biz || access.isLoading || !access.role) return;
+      const ownerOnly = ["/settings", "/payments", "/professionals", "/assistant", "/page-builder", "/import"];
+      const gated: [string, WorkspacePermission][] = [["/customers","customers.manage"],["/consultations","customers.manage"],["/staff","staff.manage"],["/services","services.manage"],["/stock","inventory.manage"],["/reports","reports.read"]];
+      if ((!access.isOwner && ownerOnly.some((p) => path.startsWith(p))) || gated.some(([p, permission]) => path.startsWith(p) && !access.can(permission))) navigate({ to: "/dashboard", replace: true });
+    }, [access, biz, navigate, path]);
   
     // A verified TOTP factor requires the session to step up to aal2 before
     // the app unlocks  a fresh password sign-in only reaches aal1. Checked
@@ -42,7 +51,7 @@ function Layout() {
           });
     }, [loading, user, session?.access_token]);
   
-    if (loading || !user || bizLoading || needsMfa === null) {
+    if (loading || !user || bizLoading || (!!biz && access.isLoading) || needsMfa === null) {
           return (
                   <div className="min-h-screen grid place-items-center bg-background">
                       <div className="flex flex-col items-center gap-3 animate-rise">

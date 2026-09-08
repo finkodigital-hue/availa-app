@@ -25,7 +25,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { useMyBusiness } from "@/lib/business";
+import { useMyBusiness, useWorkspaceAccess, type WorkspacePermission } from "@/lib/business";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,29 +43,30 @@ import { FeedbackDialog } from "@/components/feedback-dialog";
 import { ContactSupportDialog } from "@/components/contact-support-dialog";
 import { NotificationsBell } from "@/components/notifications-bell";
 
-const NAV = [
+const NAV: readonly { to: string; icon: typeof Calendar; label: string; permission?: WorkspacePermission; ownerOnly?: boolean }[] = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/calendar", icon: Calendar, label: "Calendar" },
   { to: "/bookings", icon: CalendarCheck, label: "Bookings" },
-  { to: "/customers", icon: UserCircle, label: "Customers" },
-  { to: "/consultations", icon: ClipboardCheck, label: "Consultations" },
-  { to: "/staff", icon: Users, label: "Staff" },
-  { to: "/professionals", icon: UserPlus, label: "Professionals" },
-  { to: "/services", icon: Scissors, label: "Services" },
-  { to: "/stock", icon: Package, label: "Stock" },
+  { to: "/customers", icon: UserCircle, label: "Customers", permission: "customers.manage" },
+  { to: "/consultations", icon: ClipboardCheck, label: "Consultations", permission: "customers.manage" },
+  { to: "/staff", icon: Users, label: "Staff", permission: "staff.manage" },
+  { to: "/professionals", icon: UserPlus, label: "Professionals", ownerOnly: true },
+  { to: "/services", icon: Scissors, label: "Services", permission: "services.manage" },
+  { to: "/stock", icon: Package, label: "Stock", permission: "inventory.manage" },
 
-  { to: "/payments", icon: CreditCard, label: "Payments" },
-  { to: "/reports", icon: BarChart3, label: "Reports" },
-  { to: "/assistant", icon: Sparkles, label: "Assistant" },
-  { to: "/page-builder", icon: LayoutTemplate, label: "Page Builder" },
-  { to: "/settings", icon: Settings, label: "Settings" },
-] as const;
+  { to: "/payments", icon: CreditCard, label: "Payments", ownerOnly: true },
+  { to: "/reports", icon: BarChart3, label: "Reports", permission: "reports.read" },
+  { to: "/assistant", icon: Sparkles, label: "Assistant", ownerOnly: true },
+  { to: "/page-builder", icon: LayoutTemplate, label: "Page Builder", ownerOnly: true },
+  { to: "/settings", icon: Settings, label: "Settings", ownerOnly: true },
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { data: biz } = useMyBusiness();
   const { user } = useAuth();
+  const access = useWorkspaceAccess();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [calendarFocusMode, setCalendarFocusMode] = useState(false);
 
@@ -134,7 +135,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="px-1 pb-3">
           <NotificationsBell closeOn={mobileOpen} />
         </div>
-        {NAV.map((n) => {
+        {NAV.filter((n) => (!n.ownerOnly || access.isOwner) && (!n.permission || access.can(n.permission))).map((n) => {
           const active =
             path === n.to || (n.to !== "/dashboard" && path.startsWith(n.to));
           const Icon = n.icon;
@@ -207,6 +208,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium truncate">{accountName}</div>
+              {!access.isOwner && access.role && <div className="text-[10px] capitalize text-muted-foreground">{access.role.replace("_", " ")}</div>}
               <div className="text-xs text-muted-foreground truncate">
                 {user?.email}
               </div>
@@ -218,11 +220,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="truncate text-sm">{user?.email}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
+            {access.isOwner && <DropdownMenuItem asChild>
               <Link to="/settings">
                 <Settings className="h-4 w-4 mr-2" /> Settings
               </Link>
-            </DropdownMenuItem>
+            </DropdownMenuItem>}
             {biz?.slug && (
               <DropdownMenuItem asChild>
                 <a href={`/book/${biz.slug}`} target="_blank" rel="noreferrer">
