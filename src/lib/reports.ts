@@ -1,4 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
+import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // Shared booking-aggregation logic used by both the Dashboard's "Performance"
 // section and the Reports page's date-range reports — kept in one place so
@@ -15,27 +16,64 @@ export type ReportBooking = {
   service_id: string | null;
   customer_id: string | null;
   customer_name?: string | null;
-  services: { name: string; color: string | null; duration_minutes: number; price_cents: number } | null;
+  services: {
+    name: string;
+    color: string | null;
+    duration_minutes: number;
+    price_cents: number;
+  } | null;
   staff: { name: string } | null;
 };
 
+export const getBookingsInRange = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: { start: string; end: string }) => {
+    const start = new Date(data.start);
+    const end = new Date(data.end);
+    if (
+      !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) ||
+      start > end
+    ) {
+      throw new Error("Choose a valid report date range.");
+    }
+    return { start: start.toISOString(), end: end.toISOString() };
+  })
+  .handler(async ({ data: range, context }): Promise<ReportBooking[]> => {
+    const { data: business, error: businessError } = await context.supabase
+      .from("businesses")
+      .select("id")
+      .eq("owner_id", context.userId)
+      .maybeSingle();
+    if (businessError) throw businessError;
+    if (!business) throw new Error("No business is connected to this account.");
+
+    // Reporting rows are read only after the signed-in owner's business has
+    // been resolved above. Use the server-only client so browser-facing RLS
+    // restrictions cannot silently turn a valid report into an empty one.
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("bookings")
+      .select(
+        "id, starts_at, price_cents, status, staff_id, service_id, customer_id, customer_name, services(name, color, duration_minutes, price_cents), staff(name)",
+      )
+      .eq("business_id", business.id)
+      .gte("starts_at", range.start)
+      .lte("starts_at", range.end)
+      .neq("status", "cancelled")
+      .order("starts_at");
+    if (error) throw error;
+    return (data ?? []) as unknown as ReportBooking[];
+  });
+
 export async function fetchBookingsInRange(
-  businessId: string,
   start: Date,
   end: Date,
 ): Promise<ReportBooking[]> {
-  const { data, error } = await supabase
-    .from("bookings")
-    .select(
-      "id, starts_at, price_cents, status, staff_id, service_id, customer_id, customer_name, services(name, color, duration_minutes, price_cents), staff(name)",
-    )
-    .eq("business_id", businessId)
-    .gte("starts_at", start.toISOString())
-    .lte("starts_at", end.toISOString())
-    .neq("status", "cancelled")
-    .order("starts_at");
-  if (error) throw error;
-  return (data ?? []) as unknown as ReportBooking[];
+  return getBookingsInRange({
+    data: { start: start.toISOString(), end: end.toISOString() },
+  });
 }
 
 export type StaffPerformance = {
@@ -50,10 +88,18 @@ export type StaffPerformance = {
   avgDuration: number;
 };
 
-export function aggregateStaffPerformance(bookings: ReportBooking[]): StaffPerformance[] {
+export function aggregateStaffPerformance(
+  bookings: ReportBooking[],
+): StaffPerformance[] {
   const map = new Map<
     string,
-    { name: string; revenue: number; bookings: number; durationMin: number; customers: Set<string> }
+    {
+      name: string;
+      revenue: number;
+      bookings: number;
+      durationMin: number;
+      customers: Set<string>;
+    }
   >();
   bookings.forEach((b) => {
     if (!b.staff_id) return;
@@ -92,8 +138,19 @@ export type ServicePerformance = {
   duration: number;
 };
 
-export function aggregateServicePerformance(bookings: ReportBooking[]): ServicePerformance[] {
-  const map = new Map<string, { name: string; revenue: number; bookings: number; price: number; duration: number }>();
+export function aggregateServicePerformance(
+  bookings: ReportBooking[],
+): ServicePerformance[] {
+  const map = new Map<
+    string,
+    {
+      name: string;
+      revenue: number;
+      bookings: number;
+      price: number;
+      duration: number;
+    }
+  >();
   bookings.forEach((b) => {
     if (!b.service_id) return;
     const cur = map.get(b.service_id) ?? {
@@ -117,7 +174,11 @@ export type PeriodTotals = { revenue: number; bookings: number; avg: number };
 export function computeTotals(bookings: ReportBooking[]): PeriodTotals {
   const revenue = bookings.reduce((a, b) => a + (b.price_cents ?? 0), 0);
   const count = bookings.length;
-  return { revenue, bookings: count, avg: count ? Math.round(revenue / count) : 0 };
+  return {
+    revenue,
+    bookings: count,
+    avg: count ? Math.round(revenue / count) : 0,
+  };
 }
 
 // Percent change, or null when there's no meaningful baseline (both periods

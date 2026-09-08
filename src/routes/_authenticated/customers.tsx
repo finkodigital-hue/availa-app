@@ -51,9 +51,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { compressImage, signedUrl } from "@/lib/image";
-import { fmtDate, fmtMoney as formatMoney, fmtTime, statusMeta } from "@/lib/format";
+import {
+  fmtDate,
+  fmtMoney as formatMoney,
+  fmtTime,
+  statusMeta,
+} from "@/lib/format";
 import { downloadCsv, downloadJson } from "@/lib/csv";
-import { generateCustomerDataExport, eraseCustomer, type CustomerDataExport, type EraseCustomerResult } from "@/lib/customer-data-requests.functions";
+import {
+  generateCustomerDataExport,
+  eraseCustomer,
+  type CustomerDataExport,
+  type EraseCustomerResult,
+} from "@/lib/customer-data-requests.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { toast } from "sonner";
 import { CustomerConsultationSummary } from "@/components/customer-consultation-summary";
@@ -69,12 +79,17 @@ function isoDateOnly(d: string | null | undefined): string {
 
 function relativeVisit(value: string | null | undefined): string {
   if (!value) return "No visits yet";
-  const days = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000));
+  const days = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000),
+  );
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 7) return `${days} days ago`;
-  if (days < 35) return `${Math.floor(days / 7)} week${days < 14 ? "" : "s"} ago`;
-  if (days < 365) return `${Math.floor(days / 30)} month${days < 60 ? "" : "s"} ago`;
+  if (days < 35)
+    return `${Math.floor(days / 7)} week${days < 14 ? "" : "s"} ago`;
+  if (days < 365)
+    return `${Math.floor(days / 30)} month${days < 60 ? "" : "s"} ago`;
   return fmtDate(value);
 }
 
@@ -96,7 +111,8 @@ type Customer = {
 
 function CustomersPage() {
   const { data: biz } = useMyBusiness();
-  const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
+  const fmtMoney = (cents: number) =>
+    formatMoney(cents, biz?.currency ?? "GBP");
   const bid = biz?.id;
   const qc = useQueryClient();
   const [q, setQ] = useState("");
@@ -105,7 +121,9 @@ function CustomersPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [bookingFor, setBookingFor] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [customerView, setCustomerView] = useState<"all" | "recent" | "regulars">("all");
+  const [customerView, setCustomerView] = useState<
+    "all" | "recent" | "regulars"
+  >("all");
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers", bid, q],
@@ -113,13 +131,17 @@ function CustomersPage() {
     queryFn: async () => {
       let req = supabase
         .from("customers")
-        .select("id, name, email, phone, address, avatar_url, notes, created_at")
+        .select(
+          "id, name, email, phone, address, avatar_url, notes, created_at",
+        )
         .eq("business_id", bid!)
         .order("created_at", { ascending: false })
         .limit(200);
       if (q) {
         const term = q.trim();
-        req = req.or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`);
+        req = req.or(
+          `name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`,
+        );
       }
       // A per-customer embedded booking count runs as a correlated subquery
       // under RLS (is_business_owner() re-evaluated per booking row scanned)
@@ -142,7 +164,10 @@ function CustomersPage() {
       for (const v of visitRows ?? []) {
         visitCounts.set(v.customer_id, Number(v.visits));
       }
-      const statsByCustomer = new Map<string, { lastVisit: string | null; totalSpent: number }>();
+      const statsByCustomer = new Map<
+        string,
+        { lastVisit: string | null; totalSpent: number }
+      >();
       for (const row of customerStats ?? []) {
         statsByCustomer.set(row.customer_id, {
           lastVisit: row.last_visit,
@@ -160,11 +185,14 @@ function CustomersPage() {
 
   const visibleCustomers = useMemo(() => {
     if (!customers) return [];
-    if (customerView === "regulars") return customers.filter((customer) => customer.visits >= 3);
+    if (customerView === "regulars")
+      return customers.filter((customer) => customer.visits >= 3);
     if (customerView === "recent") {
       const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
       return customers.filter(
-        (customer) => customer.lastVisit && new Date(customer.lastVisit).getTime() >= cutoff,
+        (customer) =>
+          customer.lastVisit &&
+          new Date(customer.lastVisit).getTime() >= cutoff,
       );
     }
     return customers;
@@ -175,7 +203,10 @@ function CustomersPage() {
       setOpenId(null);
       return;
     }
-    if (!openId || !visibleCustomers.some((customer) => customer.id === openId)) {
+    if (
+      !openId ||
+      !visibleCustomers.some((customer) => customer.id === openId)
+    ) {
       setOpenId(visibleCustomers[0].id);
     }
   }, [visibleCustomers, openId]);
@@ -218,7 +249,10 @@ function CustomersPage() {
           .eq("business_id", bid)
           .order("created_at", { ascending: false })
           .range(from, from + EXPORT_PAGE_SIZE - 1);
-        if (term) req = req.or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`);
+        if (term)
+          req = req.or(
+            `name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`,
+          );
         const { data, error } = await req;
         if (error) throw error;
         allCustomers.push(...(data ?? []));
@@ -227,7 +261,12 @@ function CustomersPage() {
 
       const statsMap = new Map<
         string,
-        { visits: number; spent: number; first: string | null; last: string | null }
+        {
+          visits: number;
+          spent: number;
+          first: string | null;
+          last: string | null;
+        }
       >();
       for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
         const { data, error } = await (supabase as any)
@@ -303,7 +342,10 @@ function CustomersPage() {
               )}
               {q.trim() ? "Export filtered clients" : "Export clients"}
             </Button>
-            <Button onClick={() => setEditing({})} className="w-full shadow-glow sm:w-auto">
+            <Button
+              onClick={() => setEditing({})}
+              className="w-full shadow-glow sm:w-auto"
+            >
               <Plus className="h-4 w-4 mr-1" /> Add customer
             </Button>
           </div>
@@ -350,7 +392,10 @@ function CustomersPage() {
         <div className="grid gap-5 xl:grid-cols-[minmax(360px,0.82fr)_minmax(500px,1.18fr)]">
           <div className="overflow-hidden rounded-2xl border bg-card">
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 border-t px-5 py-4 first:border-t-0">
+              <div
+                key={i}
+                className="flex items-center gap-4 border-t px-5 py-4 first:border-t-0"
+              >
                 <Skeleton className="h-11 w-11 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-3 w-32" />
@@ -384,7 +429,11 @@ function CustomersPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Choose another filter to see your client list.
           </p>
-          <Button variant="outline" className="mt-5" onClick={() => setCustomerView("all")}>
+          <Button
+            variant="outline"
+            className="mt-5"
+            onClick={() => setCustomerView("all")}
+          >
             Show all customers
           </Button>
         </div>
@@ -396,7 +445,8 @@ function CustomersPage() {
           >
             <div className="flex items-center justify-between border-b bg-secondary/15 px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               <span>
-                {visibleCustomers.length} customer{visibleCustomers.length === 1 ? "" : "s"}
+                {visibleCustomers.length} customer
+                {visibleCustomers.length === 1 ? "" : "s"}
               </span>
               <span>
                 {customerView === "all"
@@ -421,7 +471,9 @@ function CustomersPage() {
                     )}
                     <CustomerAvatar customer={c} size="md" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold">{c.name}</div>
+                      <div className="truncate text-sm font-semibold">
+                        {c.name}
+                      </div>
                       <div className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                         {c.phone ? (
                           <Phone className="h-3 w-3 shrink-0" />
@@ -472,6 +524,7 @@ function CustomersPage() {
         onSaved={() => {
           setEditing(null);
           qc.invalidateQueries({ queryKey: ["customers"] });
+          qc.invalidateQueries({ queryKey: ["customer-detail", bid, openId] });
         }}
       />
 
@@ -501,7 +554,13 @@ function CustomersPage() {
   );
 }
 
-type DataRequest = { id: string; customer_id: string | null; email: string; kind: "export" | "deletion"; created_at: string };
+type DataRequest = {
+  id: string;
+  customer_id: string | null;
+  email: string;
+  kind: "export" | "deletion";
+  created_at: string;
+};
 
 function DataRequestsBanner({
   businessId,
@@ -536,14 +595,23 @@ function DataRequestsBanner({
       </p>
       <ul className="space-y-1.5">
         {requests.map((r) => (
-          <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <li
+            key={r.id}
+            className="flex flex-wrap items-center justify-between gap-2 text-sm"
+          >
             <span>
               <span className="font-medium">{r.email}</span> requested{" "}
               {r.kind === "deletion" ? "account deletion" : "a data export"}
             </span>
             <div className="flex gap-1.5">
               {r.customer_id && (
-                <Button variant="outline" size="sm" onClick={() => onView(r.customer_id!)}>View</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onView(r.customer_id!)}
+                >
+                  View
+                </Button>
               )}
               {r.customer_id && (
                 <Button size="sm" onClick={() => setActing(r)}>
@@ -559,7 +627,9 @@ function DataRequestsBanner({
         request={acting}
         onClose={() => setActing(null)}
         onDone={() => {
-          qc.invalidateQueries({ queryKey: ["customer-data-requests", businessId] });
+          qc.invalidateQueries({
+            queryKey: ["customer-data-requests", businessId],
+          });
           qc.invalidateQueries({ queryKey: ["customers"] });
           qc.invalidateQueries({ queryKey: ["customer-detail"] });
         }}
@@ -579,19 +649,37 @@ function DataRequestActionDialog({
 }) {
   const [confirmName, setConfirmName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [exportResult, setExportResult] = useState<CustomerDataExport | null>(null);
-  const [eraseResult, setEraseResult] = useState<EraseCustomerResult | null>(null);
+  const [exportResult, setExportResult] = useState<CustomerDataExport | null>(
+    null,
+  );
+  const [eraseResult, setEraseResult] = useState<EraseCustomerResult | null>(
+    null,
+  );
 
-  const reset = () => { setConfirmName(""); setBusy(false); setExportResult(null); setEraseResult(null); };
-  const close = () => { reset(); onClose(); };
+  const reset = () => {
+    setConfirmName("");
+    setBusy(false);
+    setExportResult(null);
+    setEraseResult(null);
+  };
+  const close = () => {
+    reset();
+    onClose();
+  };
 
   const runExport = async () => {
     if (!request) return;
     setBusy(true);
     try {
       const headers = await getServerFnAuthHeaders();
-      const result = await generateCustomerDataExport({ data: { requestId: request.id }, headers });
-      downloadJson(`customer-data-${result.customer.name.replace(/\s+/g, "-").toLowerCase()}`, result);
+      const result = await generateCustomerDataExport({
+        data: { requestId: request.id },
+        headers,
+      });
+      downloadJson(
+        `customer-data-${result.customer.name.replace(/\s+/g, "-").toLowerCase()}`,
+        result,
+      );
       setExportResult(result);
       onDone();
     } catch (error: any) {
@@ -606,7 +694,10 @@ function DataRequestActionDialog({
     setBusy(true);
     try {
       const headers = await getServerFnAuthHeaders();
-      const result = await eraseCustomer({ data: { requestId: request.id }, headers });
+      const result = await eraseCustomer({
+        data: { requestId: request.id },
+        headers,
+      });
       setEraseResult(result);
       onDone();
     } catch (error: any) {
@@ -643,21 +734,35 @@ function DataRequestActionDialog({
           exportResult ? (
             <div className="space-y-3 text-sm">
               <p>
-                Downloaded <span className="font-medium">{exportResult.bookings.length}</span> booking
+                Downloaded{" "}
+                <span className="font-medium">
+                  {exportResult.bookings.length}
+                </span>{" "}
+                booking
                 {exportResult.bookings.length === 1 ? "" : "s"} and{" "}
-                <span className="font-medium">{exportResult.payments.length}</span> payment record
+                <span className="font-medium">
+                  {exportResult.payments.length}
+                </span>{" "}
+                payment record
                 {exportResult.payments.length === 1 ? "" : "s"} for{" "}
-                <span className="font-medium">{exportResult.customer.name}</span>. The request has been marked resolved.
+                <span className="font-medium">
+                  {exportResult.customer.name}
+                </span>
+                . The request has been marked resolved.
               </p>
               <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
-                <p className="font-medium text-foreground">Check these manually</p>
-                {exportResult.notCovered.map((n) => <p key={n}>• {n}</p>)}
+                <p className="font-medium text-foreground">
+                  Check these manually
+                </p>
+                {exportResult.notCovered.map((n) => (
+                  <p key={n}>• {n}</p>
+                ))}
               </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Downloads the customer's profile, bookings and payment history as a JSON file, then marks this request
-              as resolved.
+              Downloads the customer's profile, bookings and payment history as
+              a JSON file, then marks this request as resolved.
             </p>
           )
         ) : eraseResult ? (
@@ -667,10 +772,12 @@ function DataRequestActionDialog({
                 <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
               </div>
               <div className="space-y-1">
-                <p className="font-medium text-foreground">Personal information removed</p>
+                <p className="font-medium text-foreground">
+                  Personal information removed
+                </p>
                 <p className="leading-relaxed text-muted-foreground">
-                  The customer can no longer be identified. Booking and payment records needed for your accounts were
-                  kept safely.
+                  The customer can no longer be identified. Booking and payment
+                  records needed for your accounts were kept safely.
                 </p>
               </div>
             </div>
@@ -679,15 +786,18 @@ function DataRequestActionDialog({
               <div className="flex items-start justify-between gap-4 px-4 py-3">
                 <dt className="text-muted-foreground">Records kept</dt>
                 <dd className="text-right font-medium text-foreground">
-                  {eraseResult.bookingsScrubbed} booking{eraseResult.bookingsScrubbed === 1 ? "" : "s"} and{" "}
-                  {eraseResult.paymentsScrubbed} payment{eraseResult.paymentsScrubbed === 1 ? "" : "s"}
+                  {eraseResult.bookingsScrubbed} booking
+                  {eraseResult.bookingsScrubbed === 1 ? "" : "s"} and{" "}
+                  {eraseResult.paymentsScrubbed} payment
+                  {eraseResult.paymentsScrubbed === 1 ? "" : "s"}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4 border-t px-4 py-3">
                 <dt className="text-muted-foreground">Items deleted</dt>
                 <dd className="text-right font-medium text-foreground">
                   {eraseResult.notificationsDeleted} notification
-                  {eraseResult.notificationsDeleted === 1 ? "" : "s"} and {eraseResult.photosDeleted} photo
+                  {eraseResult.notificationsDeleted === 1 ? "" : "s"} and{" "}
+                  {eraseResult.photosDeleted} photo
                   {eraseResult.photosDeleted === 1 ? "" : "s"}
                 </dd>
               </div>
@@ -707,7 +817,10 @@ function DataRequestActionDialog({
 
             <div className="rounded-xl border bg-muted/35 p-4">
               <div className="mb-3 flex items-center gap-2">
-                <Search className="h-4 w-4 text-foreground" aria-hidden="true" />
+                <Search
+                  className="h-4 w-4 text-foreground"
+                  aria-hidden="true"
+                />
                 <p className="font-medium text-foreground">One final check</p>
               </div>
               <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
@@ -716,7 +829,9 @@ function DataRequestActionDialog({
               <ul className="space-y-2 text-xs leading-relaxed text-muted-foreground">
                 {eraseResult.manualCheckNotice.map((notice) => (
                   <li key={notice} className="flex gap-2">
-                    <span className="text-foreground" aria-hidden="true">•</span>
+                    <span className="text-foreground" aria-hidden="true">
+                      •
+                    </span>
                     <span>{notice}</span>
                   </li>
                 ))}
@@ -746,7 +861,8 @@ function DataRequestActionDialog({
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              If this customer has an upcoming booking, cancel or reassign it first. This cannot be undone.
+              If this customer has an upcoming booking, cancel or reassign it
+              first. This cannot be undone.
             </p>
             <div>
               <Label htmlFor="confirm-erase-name" className="text-xs">
@@ -765,19 +881,30 @@ function DataRequestActionDialog({
 
         <DialogFooter>
           {eraseResult || exportResult ? (
-            <Button className="w-full" onClick={close}>Done</Button>
+            <Button className="w-full" onClick={close}>
+              Done
+            </Button>
           ) : isExport ? (
             <>
-              <Button variant="ghost" onClick={close} disabled={busy}>Cancel</Button>
+              <Button variant="ghost" onClick={close} disabled={busy}>
+                Cancel
+              </Button>
               <Button onClick={runExport} disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
+                {busy ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : null}
                 Generate export
               </Button>
             </>
           ) : (
-            <ErasureNameGate request={request} confirmName={confirmName} busy={busy} onCancel={close} onConfirm={runErase} />
-          )
-        }
+            <ErasureNameGate
+              request={request}
+              confirmName={confirmName}
+              busy={busy}
+              onCancel={close}
+              onConfirm={runErase}
+            />
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -801,7 +928,11 @@ function ErasureNameGate({
     queryKey: ["erase-target-name", request.customer_id],
     enabled: !!request.customer_id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("name").eq("id", request.customer_id!).maybeSingle();
+      const { data, error } = await supabase
+        .from("customers")
+        .select("name")
+        .eq("id", request.customer_id!)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -809,8 +940,14 @@ function ErasureNameGate({
   const matches = !!customer && confirmName.trim() === customer.name;
   return (
     <>
-      <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancel</Button>
-      <Button variant="destructive" onClick={onConfirm} disabled={busy || !matches}>
+      <Button variant="ghost" onClick={onCancel} disabled={busy}>
+        Cancel
+      </Button>
+      <Button
+        variant="destructive"
+        onClick={onConfirm}
+        disabled={busy || !matches}
+      >
         {busy ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
         Erase{customer ? ` "${customer.name}"` : ""}
       </Button>
@@ -818,7 +955,13 @@ function ErasureNameGate({
   );
 }
 
-function CustomerAvatar({ customer, size = "sm" }: { customer: any; size?: "sm" | "md" | "lg" }) {
+function CustomerAvatar({
+  customer,
+  size = "sm",
+}: {
+  customer: any;
+  size?: "sm" | "md" | "lg";
+}) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!customer.avatar_url) return setUrl(null);
@@ -916,7 +1059,10 @@ function CustomerEditDialog({
         notes: form.notes ?? null,
       };
       if (form.id) {
-        const { error } = await supabase.from("customers").update(payload).eq("id", form.id);
+        const { error } = await supabase
+          .from("customers")
+          .update(payload)
+          .eq("id", form.id);
         if (error) throw error;
         toast.success("Customer saved");
       } else {
@@ -948,13 +1094,19 @@ function CustomerEditDialog({
           <DialogTitle className="font-display text-2xl">
             {editing?.id ? "Edit customer" : "New customer"}
           </DialogTitle>
-          <DialogDescription>Contact details and private notes.</DialogDescription>
+          <DialogDescription>
+            Contact details and private notes.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="h-16 w-16 rounded-full bg-secondary grid place-items-center overflow-hidden shrink-0">
               {preview ? (
-                <img src={preview} alt="" className="w-full h-full object-cover" />
+                <img
+                  src={preview}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <ImageIcon className="h-5 w-5 text-muted-foreground" />
               )}
@@ -1015,7 +1167,8 @@ function CustomerEditDialog({
           <div>
             <Label>Private notes</Label>
             <p className="text-[11px] text-muted-foreground mt-0.5 mb-1.5">
-              Allergies, preferences, colour formulas, medical notes. Never visible to the customer.
+              Allergies, preferences, colour formulas, medical notes. Never
+              visible to the customer.
             </p>
             <Textarea
               rows={4}
@@ -1067,7 +1220,9 @@ function CustomerDetailPanel({
         .single();
       const { data: bookings } = await supabase
         .from("bookings")
-        .select("id, starts_at, ends_at, status, price_cents, notes, services(name), staff(name)")
+        .select(
+          "id, starts_at, ends_at, status, price_cents, notes, services(name), staff(name)",
+        )
         .eq("customer_id", customerId!)
         .order("starts_at", { ascending: false });
       return { customer, bookings: bookings ?? [] };
@@ -1077,12 +1232,23 @@ function CustomerDetailPanel({
   const stats = useMemo(() => {
     const bks: any[] = data?.bookings ?? [];
     const completed = bks.filter((b) =>
-      ["completed", "checked_in", "in_progress", "confirmed", "pending"].includes(b.status),
+      [
+        "completed",
+        "checked_in",
+        "in_progress",
+        "confirmed",
+        "pending",
+      ].includes(b.status),
     );
     const past = completed.filter((b) => new Date(b.starts_at) < new Date());
     const upcoming = bks
-      .filter((b) => b.status !== "cancelled" && new Date(b.starts_at) >= new Date())
-      .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+      .filter(
+        (b) => b.status !== "cancelled" && new Date(b.starts_at) >= new Date(),
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+      );
     const visits = past.length;
     const spent = past.reduce((s, b) => s + (b.price_cents ?? 0), 0);
     const avg = visits ? Math.round(spent / visits) : 0;
@@ -1095,8 +1261,10 @@ function CustomerDetailPanel({
       const st = b.staff?.name;
       if (st) byStaff.set(st, (byStaff.get(st) ?? 0) + 1);
     });
-    const favService = [...byService.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-    const favStaff = [...byStaff.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const favService =
+      [...byService.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const favStaff =
+      [...byStaff.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
     return { visits, spent, avg, upcoming, past, favService, favStaff };
   }, [data]);
 
@@ -1110,7 +1278,10 @@ function CustomerDetailPanel({
       toast.error(bookingsError.message);
       return;
     }
-    const { error } = await supabase.from("customers").delete().eq("id", customerId);
+    const { error } = await supabase
+      .from("customers")
+      .delete()
+      .eq("id", customerId);
     if (error) {
       toast.error(error.message);
       return;
@@ -1152,7 +1323,9 @@ function CustomerDetailPanel({
             <div className="flex min-w-0 items-center gap-4">
               <CustomerAvatar customer={c} size="lg" />
               <div className="min-w-0">
-                <h2 className="truncate font-display text-3xl sm:text-4xl">{c.name}</h2>
+                <h2 className="truncate font-display text-3xl sm:text-4xl">
+                  {c.name}
+                </h2>
                 <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                   {c.phone && (
                     <div className="flex items-center gap-2">
@@ -1203,8 +1376,16 @@ function CustomerDetailPanel({
               icon={MessageCircle}
               label="Message"
             />
-            <ContactAction href={c.phone ? `tel:${c.phone}` : null} icon={Phone} label="Call" />
-            <ContactAction href={c.email ? `mailto:${c.email}` : null} icon={Mail} label="Email" />
+            <ContactAction
+              href={c.phone ? `tel:${c.phone}` : null}
+              icon={Phone}
+              label="Call"
+            />
+            <ContactAction
+              href={c.email ? `mailto:${c.email}` : null}
+              icon={Mail}
+              label="Email"
+            />
             <button
               type="button"
               onClick={() => onEdit(c)}
@@ -1233,8 +1414,14 @@ function CustomerDetailPanel({
 
           <div className="grid grid-cols-3 divide-x border-b py-5 text-center">
             <ProfileStat label="Total visits" value={String(stats.visits)} />
-            <ProfileStat label="Total spent" value={formatMoney(stats.spent, currency)} />
-            <ProfileStat label="Average visit" value={formatMoney(stats.avg, currency)} />
+            <ProfileStat
+              label="Total spent"
+              value={formatMoney(stats.spent, currency)}
+            />
+            <ProfileStat
+              label="Average visit"
+              value={formatMoney(stats.avg, currency)}
+            />
           </div>
 
           <CustomerConsultationSummary customerId={c.id} />
@@ -1261,13 +1448,15 @@ function CustomerDetailPanel({
               <p className="mt-3 text-xs text-muted-foreground">
                 {stats.favService && (
                   <>
-                    Favourite service: <b className="text-foreground">{stats.favService}</b>
+                    Favourite service:{" "}
+                    <b className="text-foreground">{stats.favService}</b>
                   </>
                 )}
                 {stats.favService && stats.favStaff && <span> · </span>}
                 {stats.favStaff && (
                   <>
-                    Favourite stylist: <b className="text-foreground">{stats.favStaff}</b>
+                    Favourite stylist:{" "}
+                    <b className="text-foreground">{stats.favStaff}</b>
                   </>
                 )}
               </p>
@@ -1292,7 +1481,10 @@ function CustomerDetailPanel({
             </Button>
             <ConfirmDialog
               trigger={
-                <Button variant="ghost" className="text-muted-foreground hover:text-destructive">
+                <Button
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-destructive"
+                >
                   <Trash2 className="mr-2 h-4 w-4" /> Delete customer
                 </Button>
               }
@@ -1377,7 +1569,13 @@ function ProfileStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function BookingList({ items, currency = "GBP" }: { items: any[]; currency?: string }) {
+function BookingList({
+  items,
+  currency = "GBP",
+}: {
+  items: any[];
+  currency?: string;
+}) {
   return (
     <ul className="divide-y rounded-xl border bg-card">
       {items.map((b) => {
@@ -1386,14 +1584,18 @@ function BookingList({ items, currency = "GBP" }: { items: any[]; currency?: str
           <li key={b.id} className="px-4 py-3 flex items-center gap-3">
             <div className="text-center w-14 shrink-0">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                {new Date(b.starts_at).toLocaleDateString([], { month: "short" })}
+                {new Date(b.starts_at).toLocaleDateString([], {
+                  month: "short",
+                })}
               </div>
               <div className="font-display text-xl tabular-nums leading-none">
                 {new Date(b.starts_at).getDate()}
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium truncate">{b.services?.name ?? "Service"}</div>
+              <div className="text-sm font-medium truncate">
+                {b.services?.name ?? "Service"}
+              </div>
               <div className="text-xs text-muted-foreground truncate">
                 {fmtTime(b.starts_at)} · {b.staff?.name ?? "—"}
               </div>
@@ -1402,7 +1604,11 @@ function BookingList({ items, currency = "GBP" }: { items: any[]; currency?: str
               <Badge
                 variant="outline"
                 className="capitalize text-[10px]"
-                style={{ background: m.tint, color: m.color, borderColor: m.color }}
+                style={{
+                  background: m.tint,
+                  color: m.color,
+                  borderColor: m.color,
+                }}
               >
                 {m.label}
               </Badge>
@@ -1473,8 +1679,8 @@ function MergeDialog({
             Merge into {target?.name}
           </DialogTitle>
           <DialogDescription>
-            Pick a duplicate to merge. All their bookings and notes move into {target?.name}. The
-            duplicate record is deleted.
+            Pick a duplicate to merge. All their bookings and notes move into{" "}
+            {target?.name}. The duplicate record is deleted.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -1486,10 +1692,14 @@ function MergeDialog({
           />
           <div className="rounded-xl border bg-card divide-y max-h-72 overflow-y-auto">
             {q.trim().length < 2 && (
-              <div className="p-4 text-sm text-muted-foreground text-center">Type to search.</div>
+              <div className="p-4 text-sm text-muted-foreground text-center">
+                Type to search.
+              </div>
             )}
             {q.trim().length >= 2 && results?.length === 0 && (
-              <div className="p-4 text-sm text-muted-foreground text-center">No matches.</div>
+              <div className="p-4 text-sm text-muted-foreground text-center">
+                No matches.
+              </div>
             )}
             {results?.map((c: any) => (
               <button

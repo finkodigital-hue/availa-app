@@ -35,8 +35,14 @@ export function CalendarToolbar({
   const isOnToday = anchor.toDateString() === now.toDateString();
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 mt-4 shrink-0" data-calendar-toolbar>
-      <div className="inline-flex rounded-[8px] border bg-card p-1 shadow-soft" data-calendar-view-switcher>
+    <div
+      className="flex flex-wrap items-center justify-between gap-2 mb-4 mt-4 shrink-0"
+      data-calendar-toolbar
+    >
+      <div
+        className="inline-flex rounded-[8px] border bg-card p-1 shadow-soft"
+        data-calendar-view-switcher
+      >
         {(["day", "week", "month"] as View[]).map((v) => (
           <button
             key={v}
@@ -44,7 +50,9 @@ export function CalendarToolbar({
             data-state={view === v ? "active" : "inactive"}
             aria-pressed={view === v}
             className={`px-4 py-1.5 text-xs rounded-[6px] capitalize transition-all duration-200 ${
-              view === v ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              view === v
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {v}
@@ -57,7 +65,10 @@ export function CalendarToolbar({
           nowhere to go but to flex-shrink below their own content size,
           which let icon+text overflow one button's box and visually collide
           with the next one instead of cleanly dropping to a second line. */}
-      <div className="flex flex-wrap items-center justify-end gap-x-1.5 gap-y-2" data-calendar-date-controls>
+      <div
+        className="flex flex-wrap items-center justify-end gap-x-1.5 gap-y-2"
+        data-calendar-date-controls
+      >
         {actions}
         {onToggleFullscreen && (
           // Icon-only when not expanded (matches the old look), but a
@@ -70,10 +81,18 @@ export function CalendarToolbar({
             size={isFullscreen ? "sm" : "icon"}
             className={isFullscreen ? "h-9 px-3 shrink-0" : "h-9 w-9 shrink-0"}
             onClick={onToggleFullscreen}
-            aria-label={isFullscreen ? "Exit calendar full screen" : "Open calendar full screen"}
+            aria-label={
+              isFullscreen
+                ? "Exit calendar full screen"
+                : "Open calendar full screen"
+            }
             title={isFullscreen ? "Exit full screen" : "Full screen"}
           >
-            {isFullscreen ? <Minimize2 className="h-4 w-4 mr-1.5" /> : <Maximize2 className="h-4 w-4" />}
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4 mr-1.5" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
             {isFullscreen && "Exit"}
           </Button>
         )}
@@ -85,14 +104,29 @@ export function CalendarToolbar({
         >
           Today
         </Button>
-        <div className="inline-flex items-center rounded-[8px] border bg-card shadow-soft shrink-0" data-calendar-date-picker>
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none shrink-0" onClick={() => onNavigate(-1)}>
+        <div
+          className="inline-flex items-center rounded-[8px] border bg-card shadow-soft shrink-0"
+          data-calendar-date-picker
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-r-none shrink-0"
+            onClick={() => onNavigate(-1)}
+            aria-label={`Previous ${view}`}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-[9.5rem] px-2 h-9 flex items-center justify-center border-x text-sm font-medium tabular-nums whitespace-nowrap">
             {title}
           </div>
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-l-none shrink-0" onClick={() => onNavigate(1)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-l-none shrink-0"
+            onClick={() => onNavigate(1)}
+            aria-label={`Next ${view}`}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
