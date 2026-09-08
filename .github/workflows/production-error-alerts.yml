@@ -1,0 +1,34 @@
+name: Production error alerts
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-error-alerts
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check browser error volume
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      MONITORING_SECRET: ${{ secrets.MONITORING_SECRET }}
+    steps:
+      - name: Check configuration
+        if: ${{ env.MONITORING_SECRET == '' }}
+        run: |
+          echo "MONITORING_SECRET is not configured. See docs/production-operations.md." >&2
+          exit 1
+      - name: Check recent browser errors
+        if: ${{ env.MONITORING_SECRET != '' }}
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-all-errors --max-time 15 \
+            -H "Authorization: Bearer $MONITORING_SECRET" \
+            https://bookzenvo.com/api/monitoring/client-errors

@@ -1,4 +1,5 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 // Nitro generates this file during every production build. Cloudflare's Git
@@ -21,7 +22,9 @@ function parseDotEnv(source) {
   );
 }
 
-const localEnv = parseDotEnv(await readFile(new URL("../.env", import.meta.url), "utf8").catch(() => ""));
+const localEnv = parseDotEnv(
+  await readFile(new URL("../.env", import.meta.url), "utf8").catch(() => ""),
+);
 const requiredPublicVariables = ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"];
 const publicVariables = Object.fromEntries(
   requiredPublicVariables.flatMap((name) => {
@@ -50,7 +53,9 @@ await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
 // that imports the current fingerprinted bundle from the deployed assets.
 const assetDirectoryUrl = new URL("../.output/public/assets/", import.meta.url);
 const assetNames = await readdir(fileURLToPath(assetDirectoryUrl));
-const clientBundle = assetNames.find((name) => /^index-[A-Za-z0-9_-]+\.js$/.test(name));
+const clientBundle = assetNames.find((name) =>
+  /^index-[A-Za-z0-9_-]+\.js$/.test(name),
+);
 
 if (!clientBundle) {
   throw new Error("Cloudflare build is missing the Vite client entry bundle.");
@@ -59,4 +64,27 @@ if (!clientBundle) {
 await writeFile(
   fileURLToPath(new URL("../.output/public/client-entry.js", import.meta.url)),
   `import "/assets/${clientBundle}";\n`,
+);
+
+// Publish a non-secret revision marker so the post-push check can distinguish
+// the new deployment from a healthy older one. Prefer CI-provided revisions,
+// then fall back to the checked-out commit for manual releases.
+let revision =
+  process.env.GITHUB_SHA ||
+  process.env.CF_PAGES_COMMIT_SHA ||
+  process.env.CLOUDFLARE_COMMIT_SHA;
+if (!revision) {
+  try {
+    revision = execFileSync("git", ["rev-parse", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    revision = "unknown";
+  }
+}
+
+await writeFile(
+  fileURLToPath(new URL("../.output/public/deployment.json", import.meta.url)),
+  `${JSON.stringify({ revision })}\n`,
 );

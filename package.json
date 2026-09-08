@@ -12,6 +12,7 @@
     "build:dev": "vite build --mode development",
     "verify:security": "node scripts/verify-security-boundary.mjs",
     "verify:production": "node scripts/verify-production.mjs",
+    "verify:recovery-controls": "node scripts/verify-recovery-controls.mjs",
     "audit:launch": "node scripts/audit-launch.mjs",
     "recovery:restore-local": "node scripts/restore-local.mjs",
     "deploy:cloudflare": "npm run build && npx wrangler deploy --keep-vars",

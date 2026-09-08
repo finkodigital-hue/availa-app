@@ -34,6 +34,31 @@ async function checkSupabase(url: string, key: string): Promise<Check> {
   }
 }
 
+async function checkSupabaseDatabase(url: string, key: string): Promise<Check> {
+  const startedAt = Date.now();
+  try {
+    const headers: Record<string, string> = { apikey: key };
+    if (!key.startsWith("sb_secret_")) {
+      headers.authorization = `Bearer ${key}`;
+    }
+    const response = await fetch(
+      `${url.replace(/\/$/, "")}/rest/v1/client_errors?select=id&limit=1`,
+      {
+        method: "HEAD",
+        headers,
+        signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
+      },
+    );
+    return {
+      status: response.ok ? "ok" : "error",
+      latencyMs: Date.now() - startedAt,
+    };
+  } catch (error) {
+    console.error("[health] Supabase database check failed", error);
+    return { status: "error", latencyMs: Date.now() - startedAt };
+  }
+}
+
 export const Route = createFileRoute("/api/health")({
   server: {
     handlers: {
@@ -61,14 +86,20 @@ export const Route = createFileRoute("/api/health")({
           supabaseUrl && publishableKey
             ? await checkSupabase(supabaseUrl, publishableKey)
             : ({ status: "error" } satisfies Check);
+        const database =
+          supabaseUrl && serviceRoleKey
+            ? await checkSupabaseDatabase(supabaseUrl, serviceRoleKey)
+            : ({ status: "error" } satisfies Check);
         const healthy =
-          configuration.status === "ok" && supabase.status === "ok";
+          configuration.status === "ok" &&
+          supabase.status === "ok" &&
+          database.status === "ok";
 
         return json(
           {
             status: healthy ? "ok" : "degraded",
             checkedAt: new Date().toISOString(),
-            checks: { configuration, supabase },
+            checks: { configuration, supabase, database },
           },
           healthy ? 200 : 503,
         );

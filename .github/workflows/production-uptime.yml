@@ -1,6 +1,8 @@
 name: Production uptime
 
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
@@ -8,15 +10,42 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: production-uptime
+  cancel-in-progress: true
+
 jobs:
   check:
     name: Check bookzenvo.com
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - name: Check the live website and its client bundle
+        env:
+          EXPECTED_REVISION: ${{ github.event_name == 'push' && github.sha || '' }}
         run: |
           node --input-type=module <<'EOF'
-          const response = await fetch("https://bookzenvo.com", { redirect: "follow" });
+          const fetchChecked = (url) => fetch(url, {
+            redirect: "follow",
+            headers: { "user-agent": "Bookzenvo-uptime-check" },
+            signal: AbortSignal.timeout(10000),
+          });
+          async function waitForRevision() {
+            if (!process.env.EXPECTED_REVISION) return;
+            const deadline = Date.now() + 10 * 60_000;
+            while (Date.now() < deadline) {
+              try {
+                const response = await fetchChecked(`https://bookzenvo.com/deployment.json?t=${Date.now()}`);
+                const deployment = await response.json();
+                if (response.ok && deployment.revision === process.env.EXPECTED_REVISION) return;
+              } catch {}
+              await new Promise((resolve) => setTimeout(resolve, 15_000));
+            }
+            throw new Error(`Revision ${process.env.EXPECTED_REVISION.slice(0, 12)} was not live within 10 minutes`);
+          }
+
+          await waitForRevision();
+          const response = await fetchChecked("https://bookzenvo.com");
           const body = await response.text();
           const entry = body.match(/src="(\/assets\/index-[^"]+\.js)"/);
 
@@ -24,9 +53,15 @@ jobs:
             throw new Error(`Website check failed: HTTP ${response.status}`);
           }
 
-          const asset = await fetch(new URL(entry[1], response.url));
+          const asset = await fetchChecked(new URL(entry[1], response.url));
           if (!asset.ok || !asset.headers.get("content-type")?.includes("javascript")) {
             throw new Error(`Client bundle check failed: HTTP ${asset.status}`);
+          }
+
+          const health = await fetchChecked(new URL("/api/health", response.url));
+          const details = await health.json().catch(() => null);
+          if (!health.ok || details?.status !== "ok") {
+            throw new Error(`Dependency health check failed: HTTP ${health.status}`);
           }
 
           console.log(`Bookzenvo is healthy: ${response.url}`);

@@ -62,6 +62,7 @@ import { Route as BookingActionActionTokenRouteImport } from './routes/booking-a
 import { Route as ApiSupabaseSplatRouteImport } from './routes/api/supabase/$'
 import { Route as ApiReviewsSubmitRouteImport } from './routes/api/reviews/submit'
 import { Route as ApiReviewsPeekRouteImport } from './routes/api/reviews/peek'
+import { Route as ApiMonitoringClientErrorsRouteImport } from './routes/api/monitoring/client-errors'
 import { Route as ApiCronSendRemindersRouteImport } from './routes/api/cron/send-reminders'
 import { Route as ApiBookingsSendConfirmationRouteImport } from './routes/api/bookings/send-confirmation'
 import { Route as ApiBookingActionsReschedulePeekRouteImport } from './routes/api/booking-actions/reschedule-peek'
@@ -338,6 +339,12 @@ const ApiReviewsPeekRoute = ApiReviewsPeekRouteImport.update({
   path: '/api/reviews/peek',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMonitoringClientErrorsRoute =
+  ApiMonitoringClientErrorsRouteImport.update({
+    id: '/api/monitoring/client-errors',
+    path: '/api/monitoring/client-errors',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCronSendRemindersRoute = ApiCronSendRemindersRouteImport.update({
   id: '/api/cron/send-reminders',
   path: '/api/cron/send-reminders',
@@ -420,6 +427,7 @@ export interface FileRoutesByFullPath {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/monitoring/client-errors': typeof ApiMonitoringClientErrorsRoute
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
@@ -477,6 +485,7 @@ export interface FileRoutesByTo {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/monitoring/client-errors': typeof ApiMonitoringClientErrorsRoute
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
@@ -538,6 +547,7 @@ export interface FileRoutesById {
   '/api/booking-actions/reschedule-peek': typeof ApiBookingActionsReschedulePeekRoute
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
+  '/api/monitoring/client-errors': typeof ApiMonitoringClientErrorsRoute
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
@@ -599,6 +609,7 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/monitoring/client-errors'
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
@@ -656,6 +667,7 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/monitoring/client-errors'
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
@@ -716,6 +728,7 @@ export interface FileRouteTypes {
     | '/api/booking-actions/reschedule-peek'
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
+    | '/api/monitoring/client-errors'
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
@@ -754,6 +767,7 @@ export interface RootRouteChildren {
   ApiBookingActionsReschedulePeekRoute: typeof ApiBookingActionsReschedulePeekRoute
   ApiBookingsSendConfirmationRoute: typeof ApiBookingsSendConfirmationRoute
   ApiCronSendRemindersRoute: typeof ApiCronSendRemindersRoute
+  ApiMonitoringClientErrorsRoute: typeof ApiMonitoringClientErrorsRoute
   ApiReviewsPeekRoute: typeof ApiReviewsPeekRoute
   ApiReviewsSubmitRoute: typeof ApiReviewsSubmitRoute
   ApiSupabaseSplatRoute: typeof ApiSupabaseSplatRoute
@@ -1134,6 +1148,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReviewsPeekRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/monitoring/client-errors': {
+      id: '/api/monitoring/client-errors'
+      path: '/api/monitoring/client-errors'
+      fullPath: '/api/monitoring/client-errors'
+      preLoaderRoute: typeof ApiMonitoringClientErrorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/send-reminders': {
       id: '/api/cron/send-reminders'
       path: '/api/cron/send-reminders'
@@ -1276,6 +1297,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBookingActionsReschedulePeekRoute: ApiBookingActionsReschedulePeekRoute,
   ApiBookingsSendConfirmationRoute: ApiBookingsSendConfirmationRoute,
   ApiCronSendRemindersRoute: ApiCronSendRemindersRoute,
+  ApiMonitoringClientErrorsRoute: ApiMonitoringClientErrorsRoute,
   ApiReviewsPeekRoute: ApiReviewsPeekRoute,
   ApiReviewsSubmitRoute: ApiReviewsSubmitRoute,
   ApiSupabaseSplatRoute: ApiSupabaseSplatRoute,
