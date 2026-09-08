@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { CalendarClock, CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  Loader2,
+  AlertTriangle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +23,15 @@ import { ColumnMapper } from "./column-mapper";
 import { useEntityUpload } from "./use-entity-upload";
 import { describeImportError } from "./errors";
 import { mapApptRow, type ParsedApptRow } from "@/lib/import/fresha";
-import { computeApptPreview, type ApptPreviewStats } from "@/lib/import/preview";
-import { commitAppointments, fetchAllRows, type ApptCommitResult } from "@/lib/import/commit";
+import {
+  computeApptPreview,
+  type ApptPreviewStats,
+} from "@/lib/import/preview";
+import {
+  commitAppointments,
+  fetchAllRows,
+  type ApptCommitResult,
+} from "@/lib/import/commit";
 import { fmtMoney, statusMeta } from "@/lib/format";
 
 export function AppointmentsStep({
@@ -33,7 +45,11 @@ export function AppointmentsStep({
   userId: string | null;
   currency: string;
 }) {
-  const upload = useEntityUpload<ParsedApptRow>("bookings", businessId, mapApptRow);
+  const upload = useEntityUpload<ParsedApptRow>(
+    "bookings",
+    businessId,
+    mapApptRow,
+  );
   const [stats, setStats] = useState<ApptPreviewStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
@@ -48,9 +64,21 @@ export function AppointmentsStep({
     let cancelled = false;
     setStatsLoading(true);
     Promise.all([
-      fetchAllRows<{ id: string; name: string }>("staff", "id, name", businessId),
-      fetchAllRows<{ id: string; name: string }>("customers", "id, name", businessId),
-      fetchAllRows<{ id: string; name: string }>("services", "id, name", businessId),
+      fetchAllRows<{ id: string; name: string }>(
+        "staff",
+        "id, name",
+        businessId,
+      ),
+      fetchAllRows<{ id: string; name: string }>(
+        "customers",
+        "id, name",
+        businessId,
+      ),
+      fetchAllRows<{ id: string; name: string }>(
+        "services",
+        "id, name",
+        businessId,
+      ),
     ]).then(([s, c, sv]) => {
       if (cancelled) return;
       setStats(computeApptPreview(upload.rows, s, c, sv));
@@ -61,7 +89,9 @@ export function AppointmentsStep({
     };
   }, [upload.rows, businessId]);
 
-  const unparsedDates = upload.rows.filter((r) => !r.startsAt || !r.endsAt).length;
+  const unparsedDates = upload.rows.filter(
+    (r) => !r.startsAt || !r.endsAt,
+  ).length;
 
   const commit = async () => {
     setCommitting(true);
@@ -76,7 +106,8 @@ export function AppointmentsStep({
         skippedInvalid: upload.skipped,
         rows: upload.rows,
         createdBy: userId,
-        onProgress: (done, total) => setProgress(Math.round((done / total) * 100)),
+        onProgress: (done, total) =>
+          setProgress(Math.round((done / total) * 100)),
       });
       setResult(res);
       toast.success(`Imported ${res.imported} appointments`);
@@ -102,12 +133,13 @@ export function AppointmentsStep({
             Imported {result.imported.toLocaleString()} appointments
           </div>
           <p className="text-muted-foreground text-xs">
-            {result.linkedToCustomer.toLocaleString()} linked to a client record ·{" "}
-            {result.placeholderStaffCreated} team member
-            {result.placeholderStaffCreated === 1 ? "" : "s"} auto-added (inactive) ·{" "}
-            {result.placeholderServicesCreated} service
-            {result.placeholderServicesCreated === 1 ? "" : "s"} auto-added (inactive) ·{" "}
-            {result.duplicate.toLocaleString()} already imported, skipped
+            {result.linkedToCustomer.toLocaleString()} linked to a client record
+            · {result.placeholderStaffCreated} team member
+            {result.placeholderStaffCreated === 1 ? "" : "s"} auto-added
+            (inactive) · {result.placeholderServicesCreated} service
+            {result.placeholderServicesCreated === 1 ? "" : "s"} auto-added
+            (inactive) · {result.duplicate.toLocaleString()} already imported,
+            skipped
           </p>
         </div>
       ) : !upload.fileName ? (
@@ -142,6 +174,7 @@ export function AppointmentsStep({
               fields={upload.fields}
               headers={upload.headers}
               mapping={upload.mapping}
+              source={upload.source}
               onChange={upload.setMapping}
               problem={
                 upload.missingRequired.length > 0
@@ -156,7 +189,10 @@ export function AppointmentsStep({
               <AlertDescription className="flex items-center justify-between gap-3">
                 <span>
                   This exact file was already imported on{" "}
-                  {new Date(upload.existingBatch.created_at).toLocaleDateString()}.
+                  {new Date(
+                    upload.existingBatch.created_at,
+                  ).toLocaleDateString()}
+                  .
                 </span>
                 <Button
                   size="sm"
@@ -182,15 +218,16 @@ export function AppointmentsStep({
                 )}
                 {unparsedDates > 0 && (
                   <Badge variant="secondary">
-                    {unparsedDates.toLocaleString()} with an unreadable date — will be skipped
+                    {unparsedDates.toLocaleString()} with an unreadable date —
+                    will be skipped
                   </Badge>
                 )}
               </div>
 
               {statsLoading ? (
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching against your team,
-                  clients and services…
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching
+                  against your team, clients and services…
                 </div>
               ) : stats ? (
                 <div className="rounded-lg border bg-muted/20 p-3 space-y-2 text-sm">
@@ -202,23 +239,30 @@ export function AppointmentsStep({
                     ))}
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    {stats.linkedToCustomer.toLocaleString()} matched to one client ·{" "}
-                    {stats.ambiguousCustomer.toLocaleString()} had more than one client with that
-                    name (kept as name only, not linked) ·{" "}
-                    {stats.unmatchedCustomer.toLocaleString()} matched no client (kept as name only)
+                    {stats.linkedToCustomer.toLocaleString()} matched to one
+                    client · {stats.ambiguousCustomer.toLocaleString()} had more
+                    than one client with that name (kept as name only, not
+                    linked) · {stats.unmatchedCustomer.toLocaleString()} matched
+                    no client (kept as name only)
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {stats.linkedToService.toLocaleString()} matched a current service ·{" "}
-                    {stats.newPlaceholderServiceNames.length} service name
-                    {stats.newPlaceholderServiceNames.length === 1 ? "" : "s"} no longer in your
-                    current list — they'll be added automatically as inactive (price and duration
-                    kept)
+                    {stats.linkedToService.toLocaleString()} matched a current
+                    service · {stats.newPlaceholderServiceNames.length} service
+                    name
+                    {stats.newPlaceholderServiceNames.length === 1
+                      ? ""
+                      : "s"}{" "}
+                    no longer in your current list — they'll be added
+                    automatically as inactive (price and duration kept)
                   </p>
                   {stats.newPlaceholderStaffNames.length > 0 && (
                     <p className="text-muted-foreground text-xs">
                       {stats.newPlaceholderStaffNames.length} team member
-                      {stats.newPlaceholderStaffNames.length === 1 ? "" : "s"} appear only in this
-                      history, not your team list — they'll be added automatically as inactive:{" "}
+                      {stats.newPlaceholderStaffNames.length === 1
+                        ? ""
+                        : "s"}{" "}
+                      appear only in this history, not your team list — they'll
+                      be added automatically as inactive:{" "}
                       {stats.newPlaceholderStaffNames.slice(0, 8).join(", ")}
                       {stats.newPlaceholderStaffNames.length > 8 ? "…" : ""}
                     </p>
@@ -240,8 +284,12 @@ export function AppointmentsStep({
                   <TableBody>
                     {upload.rows.slice(0, 10).map((r, i) => (
                       <TableRow key={i}>
-                        <TableCell className="font-medium">{r.clientName}</TableCell>
-                        <TableCell className="text-muted-foreground">{r.staffName}</TableCell>
+                        <TableCell className="font-medium">
+                          {r.clientName}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {r.staffName}
+                        </TableCell>
                         <TableCell className="text-muted-foreground max-w-[160px] truncate">
                           {r.serviceName}
                         </TableCell>
@@ -278,7 +326,9 @@ export function AppointmentsStep({
                     (!!upload.existingBatch && !upload.overrideDuplicate)
                   }
                 >
-                  {committing && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {committing && (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  )}
                   Import {upload.rows.length.toLocaleString()} appointments
                 </Button>
               </div>

@@ -23,7 +23,14 @@ export type FieldSpec = {
 };
 
 export function normalizeHeaderKey(s: string): string {
-  return s.trim().toLowerCase();
+  return s
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_/\\-]+/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 export const ENTITY_FIELDS: Record<ImportEntity, FieldSpec[]> = {
@@ -32,19 +39,57 @@ export const ENTITY_FIELDS: Record<ImportEntity, FieldSpec[]> = {
       key: "fullName",
       label: "Full name",
       required: false,
-      aliases: ["full name", "name", "staff name", "employee name", "team member"],
+      aliases: [
+        "full name",
+        "name",
+        "staff name",
+        "employee name",
+        "team member",
+      ],
     },
-    { key: "firstName", label: "First name", required: false, aliases: ["first name", "given name", "firstname"] },
-    { key: "lastName", label: "Last name", required: false, aliases: ["last name", "surname", "family name", "lastname"] },
-    { key: "email", label: "Email", required: false, aliases: ["email", "email address", "e-mail"] },
+    {
+      key: "firstName",
+      label: "First name",
+      required: false,
+      aliases: ["first name", "given name", "firstname"],
+    },
+    {
+      key: "lastName",
+      label: "Last name",
+      required: false,
+      aliases: ["last name", "surname", "family name", "lastname"],
+    },
+    {
+      key: "email",
+      label: "Email",
+      required: false,
+      aliases: ["email", "email address", "e-mail"],
+    },
     {
       key: "phone",
       label: "Phone",
       required: false,
-      aliases: ["phone number", "phone", "mobile number", "mobile", "cell", "cell phone"],
+      aliases: [
+        "phone number",
+        "phone",
+        "mobile number",
+        "mobile",
+        "cell",
+        "cell phone",
+      ],
     },
-    { key: "role", label: "Role / job title", required: false, aliases: ["job title", "role", "position", "title"] },
-    { key: "status", label: "Status", required: false, aliases: ["status", "employee status", "active"] },
+    {
+      key: "role",
+      label: "Role / job title",
+      required: false,
+      aliases: ["job title", "role", "position", "title"],
+    },
+    {
+      key: "status",
+      label: "Status",
+      required: false,
+      aliases: ["status", "employee status", "active"],
+    },
   ],
   customers: [
     {
@@ -57,18 +102,51 @@ export const ENTITY_FIELDS: Record<ImportEntity, FieldSpec[]> = {
       key: "fullName",
       label: "Full name",
       required: false,
-      aliases: ["full name", "name", "client name", "customer name", "guest name"],
+      aliases: [
+        "full name",
+        "name",
+        "client name",
+        "customer name",
+        "guest name",
+      ],
     },
-    { key: "firstName", label: "First name", required: false, aliases: ["first name", "given name", "firstname"] },
-    { key: "lastName", label: "Last name", required: false, aliases: ["last name", "surname", "family name", "lastname"] },
-    { key: "email", label: "Email", required: false, aliases: ["email", "email address", "e-mail"] },
+    {
+      key: "firstName",
+      label: "First name",
+      required: false,
+      aliases: ["first name", "given name", "firstname"],
+    },
+    {
+      key: "lastName",
+      label: "Last name",
+      required: false,
+      aliases: ["last name", "surname", "family name", "lastname"],
+    },
+    {
+      key: "email",
+      label: "Email",
+      required: false,
+      aliases: ["email", "email address", "e-mail"],
+    },
     {
       key: "phone",
       label: "Phone",
       required: false,
-      aliases: ["mobile number", "mobile", "telephone", "phone", "phone number", "cell"],
+      aliases: [
+        "mobile number",
+        "mobile",
+        "telephone",
+        "phone",
+        "phone number",
+        "cell",
+      ],
     },
-    { key: "notes", label: "Notes", required: false, aliases: ["note", "notes", "comments"] },
+    {
+      key: "notes",
+      label: "Notes",
+      required: false,
+      aliases: ["note", "notes", "comments"],
+    },
     {
       key: "referralSource",
       label: "Referral source",
@@ -77,24 +155,61 @@ export const ENTITY_FIELDS: Record<ImportEntity, FieldSpec[]> = {
     },
   ],
   services: [
-    { key: "externalId", label: "Service ID", required: false, aliases: ["service id", "item id", "id"] },
+    {
+      key: "externalId",
+      label: "Service ID",
+      required: false,
+      aliases: ["service id", "item id", "id"],
+    },
     {
       key: "name",
       label: "Service name",
       required: true,
-      aliases: ["service name", "name", "item name", "treatment", "treatment name"],
+      aliases: [
+        "service name",
+        "name",
+        "item name",
+        "treatment",
+        "treatment name",
+      ],
     },
-    { key: "duration", label: "Duration", required: false, aliases: ["duration", "length", "time"] },
-    { key: "price", label: "Price", required: false, aliases: ["retail price", "price", "cost", "rate"] },
-    { key: "category", label: "Category", required: false, aliases: ["category name", "category", "type"] },
-    { key: "description", label: "Description", required: false, aliases: ["description", "notes"] },
+    {
+      key: "duration",
+      label: "Duration",
+      required: false,
+      aliases: ["duration", "length", "time"],
+    },
+    {
+      key: "price",
+      label: "Price",
+      required: false,
+      aliases: ["retail price", "price", "cost", "rate"],
+    },
+    {
+      key: "category",
+      label: "Category",
+      required: false,
+      aliases: ["category name", "category", "type"],
+    },
+    {
+      key: "description",
+      label: "Description",
+      required: false,
+      aliases: ["description", "notes"],
+    },
   ],
   bookings: [
     {
       key: "externalId",
       label: "Appointment ID",
       required: false,
-      aliases: ["appt. ref.", "appointment id", "booking id", "ref", "reference"],
+      aliases: [
+        "appt. ref.",
+        "appointment id",
+        "booking id",
+        "ref",
+        "reference",
+      ],
     },
     {
       key: "clientName",
@@ -119,7 +234,14 @@ export const ENTITY_FIELDS: Record<ImportEntity, FieldSpec[]> = {
       key: "scheduledDate",
       label: "Date / start time",
       required: true,
-      aliases: ["scheduled date", "date", "start date", "appointment date", "start time", "booked for"],
+      aliases: [
+        "scheduled date",
+        "date",
+        "start date",
+        "appointment date",
+        "start time",
+        "booked for",
+      ],
     },
     {
       key: "apptSlot",
@@ -133,8 +255,18 @@ export const ENTITY_FIELDS: Record<ImportEntity, FieldSpec[]> = {
       required: false,
       aliases: ["end time", "end date", "end datetime", "finish time"],
     },
-    { key: "duration", label: "Duration (mins)", required: false, aliases: ["duration (mins)", "duration", "length"] },
-    { key: "price", label: "Price", required: false, aliases: ["net sales", "price", "total", "amount"] },
+    {
+      key: "duration",
+      label: "Duration (mins)",
+      required: false,
+      aliases: ["duration (mins)", "duration", "length"],
+    },
+    {
+      key: "price",
+      label: "Price",
+      required: false,
+      aliases: ["net sales", "price", "total", "amount"],
+    },
     {
       key: "createdDate",
       label: "Created date",

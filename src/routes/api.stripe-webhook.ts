@@ -88,6 +88,53 @@ export const Route = createFileRoute("/api/stripe-webhook")({
 
         const session = event.data.object;
         const metadata = session.metadata ?? {};
+        if (metadata.checkout_flow === "gift_card") {
+          if (
+            !metadata.gift_card_order_id ||
+            !metadata.business_id ||
+            !session.payment_intent ||
+            !session.id ||
+            !event.account
+          ) {
+            return new Response("Missing gift card payment details", {
+              status: 400,
+            });
+          }
+          try {
+            const { supabaseAdmin } =
+              await import("@/integrations/supabase/client.server");
+            const { data: business, error: businessError } = await supabaseAdmin
+              .from("businesses")
+              .select("stripe_account_id")
+              .eq("id", metadata.business_id)
+              .maybeSingle();
+            if (businessError) throw businessError;
+            if (
+              !business?.stripe_account_id ||
+              business.stripe_account_id !== event.account
+            ) {
+              return new Response("Connected account mismatch", {
+                status: 400,
+              });
+            }
+            const { error } = await (supabaseAdmin as any).rpc(
+              "fulfill_gift_card_purchase",
+              {
+                p_order_id: metadata.gift_card_order_id,
+                p_business_id: metadata.business_id,
+                p_amount_cents: session.amount_total,
+                p_currency: session.currency,
+                p_stripe_checkout_session_id: session.id,
+                p_stripe_payment_intent_id: session.payment_intent,
+              },
+            );
+            if (error) throw error;
+          } catch (error) {
+            console.error("Stripe gift card fulfilment failed", error);
+            return new Response("Could not fulfil gift card", { status: 500 });
+          }
+          return Response.json({ received: true });
+        }
         if (metadata.checkout_flow === "balance_payment") {
           if (
             !metadata.booking_id ||

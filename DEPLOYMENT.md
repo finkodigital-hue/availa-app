@@ -6,7 +6,7 @@ in the Worker dashboard, not committed to Git. The Worker configuration uses
 
 ## Notification delivery setup
 
-Apply `supabase/migrations/20260908120000_add_notification_delivery.sql` before
+Apply `supabase/migrations/20260908121000_add_notification_delivery.sql` before
 deploying the application change. It creates server-only notification
 preferences and delivery-history tables and adds owner alerts for signed
 consultations, low stock and failed booking payments.

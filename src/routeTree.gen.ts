@@ -29,6 +29,7 @@ import { Route as PortalProfileRouteImport } from './routes/portal.profile'
 import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as HelpSlugRouteImport } from './routes/help.$slug'
+import { Route as GiftSlugRouteImport } from './routes/gift.$slug'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as ApiTwilioSmsWebhookRouteImport } from './routes/api.twilio-sms-webhook'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
@@ -52,6 +53,7 @@ import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPageBuilderRouteImport } from './routes/_authenticated/page-builder'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
+import { Route as AuthenticatedGiftCardsRouteImport } from './routes/_authenticated/gift-cards'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedConsultationsRouteImport } from './routes/_authenticated/consultations'
@@ -173,6 +175,11 @@ const HelpSlugRoute = HelpSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => HelpRoute,
 } as any)
+const GiftSlugRoute = GiftSlugRouteImport.update({
+  id: '/gift/$slug',
+  path: '/gift/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BookSlugRoute = BookSlugRouteImport.update({
   id: '/book/$slug',
   path: '/book/$slug',
@@ -288,6 +295,11 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
 const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
   id: '/import',
   path: '/import',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedGiftCardsRoute = AuthenticatedGiftCardsRouteImport.update({
+  id: '/gift-cards',
+  path: '/gift-cards',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -425,6 +437,7 @@ export interface FileRoutesByFullPath {
   '/consultations': typeof AuthenticatedConsultationsRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/gift-cards': typeof AuthenticatedGiftCardsRoute
   '/import': typeof AuthenticatedImportRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/page-builder': typeof AuthenticatedPageBuilderRoute
@@ -448,6 +461,7 @@ export interface FileRoutesByFullPath {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/book/$slug': typeof BookSlugRoute
+  '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
@@ -488,6 +502,7 @@ export interface FileRoutesByTo {
   '/consultations': typeof AuthenticatedConsultationsRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/gift-cards': typeof AuthenticatedGiftCardsRoute
   '/import': typeof AuthenticatedImportRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/page-builder': typeof AuthenticatedPageBuilderRoute
@@ -511,6 +526,7 @@ export interface FileRoutesByTo {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/book/$slug': typeof BookSlugRoute
+  '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
@@ -555,6 +571,7 @@ export interface FileRoutesById {
   '/_authenticated/consultations': typeof AuthenticatedConsultationsRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/gift-cards': typeof AuthenticatedGiftCardsRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/page-builder': typeof AuthenticatedPageBuilderRoute
@@ -578,6 +595,7 @@ export interface FileRoutesById {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/book/$slug': typeof BookSlugRoute
+  '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
   '/portal/bookings': typeof PortalBookingsRoute
@@ -622,6 +640,7 @@ export interface FileRouteTypes {
     | '/consultations'
     | '/customers'
     | '/dashboard'
+    | '/gift-cards'
     | '/import'
     | '/onboarding'
     | '/page-builder'
@@ -645,6 +664,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/api/twilio-sms-webhook'
     | '/book/$slug'
+    | '/gift/$slug'
     | '/help/$slug'
     | '/invite/$token'
     | '/portal/bookings'
@@ -685,6 +705,7 @@ export interface FileRouteTypes {
     | '/consultations'
     | '/customers'
     | '/dashboard'
+    | '/gift-cards'
     | '/import'
     | '/onboarding'
     | '/page-builder'
@@ -708,6 +729,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/api/twilio-sms-webhook'
     | '/book/$slug'
+    | '/gift/$slug'
     | '/help/$slug'
     | '/invite/$token'
     | '/portal/bookings'
@@ -751,6 +773,7 @@ export interface FileRouteTypes {
     | '/_authenticated/consultations'
     | '/_authenticated/customers'
     | '/_authenticated/dashboard'
+    | '/_authenticated/gift-cards'
     | '/_authenticated/import'
     | '/_authenticated/onboarding'
     | '/_authenticated/page-builder'
@@ -774,6 +797,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/api/twilio-sms-webhook'
     | '/book/$slug'
+    | '/gift/$slug'
     | '/help/$slug'
     | '/invite/$token'
     | '/portal/bookings'
@@ -823,6 +847,7 @@ export interface RootRouteChildren {
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiTwilioSmsWebhookRoute: typeof ApiTwilioSmsWebhookRoute
   BookSlugRoute: typeof BookSlugRoute
+  GiftSlugRoute: typeof GiftSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ReviewTokenRoute: typeof ReviewTokenRoute
   StaffInviteTokenRoute: typeof StaffInviteTokenRoute
@@ -983,6 +1008,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/help/$slug'
       preLoaderRoute: typeof HelpSlugRouteImport
       parentRoute: typeof HelpRoute
+    }
+    '/gift/$slug': {
+      id: '/gift/$slug'
+      path: '/gift/$slug'
+      fullPath: '/gift/$slug'
+      preLoaderRoute: typeof GiftSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/book/$slug': {
       id: '/book/$slug'
@@ -1145,6 +1177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/gift-cards': {
+      id: '/_authenticated/gift-cards'
+      path: '/gift-cards'
+      fullPath: '/gift-cards'
+      preLoaderRoute: typeof AuthenticatedGiftCardsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -1303,6 +1342,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedConsultationsRoute: typeof AuthenticatedConsultationsRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedGiftCardsRoute: typeof AuthenticatedGiftCardsRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedPageBuilderRoute: typeof AuthenticatedPageBuilderRoute
@@ -1324,6 +1364,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConsultationsRoute: AuthenticatedConsultationsRoute,
   AuthenticatedCustomersRoute: AuthenticatedCustomersRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedGiftCardsRoute: AuthenticatedGiftCardsRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedPageBuilderRoute: AuthenticatedPageBuilderRoute,
@@ -1392,6 +1433,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiTwilioSmsWebhookRoute: ApiTwilioSmsWebhookRoute,
   BookSlugRoute: BookSlugRoute,
+  GiftSlugRoute: GiftSlugRoute,
   InviteTokenRoute: InviteTokenRoute,
   ReviewTokenRoute: ReviewTokenRoute,
   StaffInviteTokenRoute: StaffInviteTokenRoute,

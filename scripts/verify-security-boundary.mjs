@@ -43,7 +43,7 @@ const customerMutationMigration = await read(
   "supabase/migrations/20260908150000_harden_customer_mutations.sql",
 );
 const notificationMigration = await read(
-  "supabase/migrations/20260908120000_add_notification_delivery.sql",
+  "supabase/migrations/20260908121000_add_notification_delivery.sql",
 );
 const supportMigration = await read(
   "supabase/migrations/20260908220000_add_support_ticket_workflow.sql",

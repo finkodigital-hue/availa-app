@@ -33,7 +33,11 @@ export function ServicesStep({
   currency: string;
   onCommitted: () => void;
 }) {
-  const upload = useEntityUpload<ParsedServiceRow>("services", businessId, mapServiceRow);
+  const upload = useEntityUpload<ParsedServiceRow>(
+    "services",
+    businessId,
+    mapServiceRow,
+  );
   const [committing, setCommitting] = useState(false);
   const [result, setResult] = useState<CommitResult | null>(null);
 
@@ -75,7 +79,9 @@ export function ServicesStep({
           <CheckCircle2 className="h-4 w-4 text-primary" />
           Imported {result.imported} services
           {result.duplicate > 0 && (
-            <span className="text-muted-foreground">· {result.duplicate} already existed</span>
+            <span className="text-muted-foreground">
+              · {result.duplicate} already existed
+            </span>
           )}
         </div>
       ) : !upload.fileName ? (
@@ -110,6 +116,7 @@ export function ServicesStep({
               fields={upload.fields}
               headers={upload.headers}
               mapping={upload.mapping}
+              source={upload.source}
               onChange={upload.setMapping}
               problem={
                 upload.missingRequired.length > 0
@@ -124,7 +131,10 @@ export function ServicesStep({
               <AlertDescription className="flex items-center justify-between gap-3">
                 <span>
                   This exact file was already imported on{" "}
-                  {new Date(upload.existingBatch.created_at).toLocaleDateString()}.
+                  {new Date(
+                    upload.existingBatch.created_at,
+                  ).toLocaleDateString()}
+                  .
                 </span>
                 <Button
                   size="sm"
@@ -140,13 +150,18 @@ export function ServicesStep({
           {!upload.parsing && upload.rows.length > 0 && (
             <>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">{upload.rows.length} services found</Badge>
+                <Badge variant="secondary">
+                  {upload.rows.length} services found
+                </Badge>
                 {upload.skipped > 0 && (
-                  <Badge variant="secondary">{upload.skipped} skipped (no name)</Badge>
+                  <Badge variant="secondary">
+                    {upload.skipped} skipped (no name)
+                  </Badge>
                 )}
                 {guessedDurations > 0 && (
                   <Badge variant="secondary">
-                    {guessedDurations} with an unreadable duration (defaulted to 60 min)
+                    {guessedDurations} with an unreadable duration (defaulted to
+                    60 min)
                   </Badge>
                 )}
               </div>
@@ -170,7 +185,9 @@ export function ServicesStep({
                         <TableCell className="text-muted-foreground">
                           {fmtMoney(r.priceCents, currency)}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{r.category ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {r.category ?? "—"}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -191,7 +208,9 @@ export function ServicesStep({
                     (!!upload.existingBatch && !upload.overrideDuplicate)
                   }
                 >
-                  {committing && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {committing && (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  )}
                   Import {upload.rows.length} services
                 </Button>
               </div>

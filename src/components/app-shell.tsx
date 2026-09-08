@@ -20,6 +20,7 @@ import {
   LayoutTemplate,
   HelpCircle,
   ClipboardCheck,
+  Gift,
 } from "lucide-react";
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -55,6 +56,7 @@ const NAV: readonly { to: string; icon: typeof Calendar; label: string; permissi
   { to: "/stock", icon: Package, label: "Stock", permission: "inventory.manage" },
 
   { to: "/payments", icon: CreditCard, label: "Payments", ownerOnly: true },
+  { to: "/gift-cards", icon: Gift, label: "Gift Cards", ownerOnly: true },
   { to: "/reports", icon: BarChart3, label: "Reports", permission: "reports.read" },
   { to: "/assistant", icon: Sparkles, label: "Assistant", ownerOnly: true },
   { to: "/page-builder", icon: LayoutTemplate, label: "Page Builder", ownerOnly: true },

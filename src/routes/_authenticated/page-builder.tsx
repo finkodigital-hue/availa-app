@@ -36,6 +36,7 @@ import { DesignSection } from "@/components/page-builder/design-section";
 import { AskClaudeSection } from "@/components/page-builder/ask-claude-section";
 import { StorefrontSettingsEditor } from "@/components/storefront-settings-editor";
 import { GalleryManager } from "@/components/gallery-manager";
+import { BookingChannelsSection } from "@/components/booking-channels-section";
 import {
   PageContentEditor,
   type PageContentSettings,
@@ -85,6 +86,7 @@ type OpenSection =
   | "storefront"
   | "gallery"
   | "content"
+  | "channels"
   | "design"
   | "ask-ai"
   | null;
@@ -446,6 +448,15 @@ function PageBuilderPage() {
           <div className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Page sections
           </div>
+
+          <BookingChannelsSection
+            businessName={biz.name}
+            slug={biz.slug}
+            open={openSection === "channels"}
+            onOpenChange={(isOpen) =>
+              setOpenSection(isOpen ? "channels" : null)
+            }
+          />
 
           <div className="overflow-hidden rounded-xl border bg-card">
             <button

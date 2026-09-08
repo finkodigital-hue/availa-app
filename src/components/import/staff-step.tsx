@@ -31,7 +31,11 @@ export function StaffStep({
   userId: string | null;
   onCommitted: () => void;
 }) {
-  const upload = useEntityUpload<ParsedStaffRow>("staff", businessId, mapStaffRow);
+  const upload = useEntityUpload<ParsedStaffRow>(
+    "staff",
+    businessId,
+    mapStaffRow,
+  );
   const [overrides, setOverrides] = useState<Record<number, boolean>>({});
   const [committing, setCommitting] = useState(false);
   const [result, setResult] = useState<CommitResult | null>(null);
@@ -42,7 +46,10 @@ export function StaffStep({
   const commit = async () => {
     setCommitting(true);
     try {
-      const rows = upload.rows.map((r, i) => ({ ...r, active: activeFor(i, r) }));
+      const rows = upload.rows.map((r, i) => ({
+        ...r,
+        active: activeFor(i, r),
+      }));
       const res = await commitStaff({
         businessId,
         sessionId,
@@ -76,7 +83,9 @@ export function StaffStep({
           <CheckCircle2 className="h-4 w-4 text-primary" />
           Imported {result.imported} team members
           {result.duplicate > 0 && (
-            <span className="text-muted-foreground">· {result.duplicate} already existed</span>
+            <span className="text-muted-foreground">
+              · {result.duplicate} already existed
+            </span>
           )}
         </div>
       ) : !upload.fileName ? (
@@ -111,6 +120,7 @@ export function StaffStep({
               fields={upload.fields}
               headers={upload.headers}
               mapping={upload.mapping}
+              source={upload.source}
               onChange={upload.setMapping}
               problem={
                 upload.missingName
@@ -125,7 +135,10 @@ export function StaffStep({
               <AlertDescription className="flex items-center justify-between gap-3">
                 <span>
                   This exact file was already imported on{" "}
-                  {new Date(upload.existingBatch.created_at).toLocaleDateString()}.
+                  {new Date(
+                    upload.existingBatch.created_at,
+                  ).toLocaleDateString()}
+                  .
                 </span>
                 <Button
                   size="sm"
@@ -141,14 +154,19 @@ export function StaffStep({
           {!upload.parsing && upload.rows.length > 0 && (
             <>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">{upload.rows.length} team members found</Badge>
+                <Badge variant="secondary">
+                  {upload.rows.length} team members found
+                </Badge>
                 {upload.skipped > 0 && (
-                  <Badge variant="secondary">{upload.skipped} skipped (no name)</Badge>
+                  <Badge variant="secondary">
+                    {upload.skipped} skipped (no name)
+                  </Badge>
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Toggle who's currently active — only active team members can be assigned to new
-                bookings. This never hides or removes anyone's existing appointment history.
+                Toggle who's currently active — only active team members can be
+                assigned to new bookings. This never hides or removes anyone's
+                existing appointment history.
               </p>
               <div className="rounded-lg border overflow-hidden max-h-72 overflow-y-auto">
                 <Table>
@@ -163,11 +181,15 @@ export function StaffStep({
                     {upload.rows.map((r, i) => (
                       <TableRow key={i}>
                         <TableCell className="font-medium">{r.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{r.role ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {r.role ?? "—"}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Switch
                             checked={activeFor(i, r)}
-                            onCheckedChange={(v) => setOverrides((o) => ({ ...o, [i]: v }))}
+                            onCheckedChange={(v) =>
+                              setOverrides((o) => ({ ...o, [i]: v }))
+                            }
                           />
                         </TableCell>
                       </TableRow>
@@ -185,7 +207,9 @@ export function StaffStep({
                     (!!upload.existingBatch && !upload.overrideDuplicate)
                   }
                 >
-                  {committing && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {committing && (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  )}
                   Import {upload.rows.length} team members
                 </Button>
               </div>

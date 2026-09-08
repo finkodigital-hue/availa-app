@@ -6,11 +6,15 @@ import { ENTITY_FIELDS } from "@/lib/import/schema";
 import {
   applyMapping,
   autoMapHeaders,
+  detectImportSource,
   hasUsableNameMapping,
   missingRequiredFields,
   type FieldMapping,
 } from "@/lib/import/mapping";
-import { findExistingBatchByHash, type ExistingBatch } from "@/lib/import/commit";
+import {
+  findExistingBatchByHash,
+  type ExistingBatch,
+} from "@/lib/import/commit";
 
 // Shared upload/parse/map pipeline for one CSV, from any booking system.
 // Handles the mechanics every step needs: read the file, hash it, guess a
@@ -31,7 +35,9 @@ export function useEntityUpload<T>(
   const [totalRows, setTotalRows] = useState(0);
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
-  const [existingBatch, setExistingBatch] = useState<ExistingBatch | null>(null);
+  const [existingBatch, setExistingBatch] = useState<ExistingBatch | null>(
+    null,
+  );
   const [overrideDuplicate, setOverrideDuplicate] = useState(false);
 
   const load = useCallback(
@@ -47,14 +53,16 @@ export function useEntityUpload<T>(
       setFileName(file.name);
 
       Promise.all([
-        new Promise<Papa.ParseResult<Record<string, string>>>((resolve, reject) => {
-          Papa.parse<Record<string, string>>(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: resolve,
-            error: reject,
-          });
-        }),
+        new Promise<Papa.ParseResult<Record<string, string>>>(
+          (resolve, reject) => {
+            Papa.parse<Record<string, string>>(file, {
+              header: true,
+              skipEmptyLines: true,
+              complete: resolve,
+              error: reject,
+            });
+          },
+        ),
         sha256Hex(file),
       ])
         .then(async ([result, hash]) => {
@@ -79,7 +87,9 @@ export function useEntityUpload<T>(
         })
         .catch(() => {
           setParsing(false);
-          setParseError("We couldn't read that file. Make sure it's an unmodified CSV export.");
+          setParseError(
+            "We couldn't read that file. Make sure it's an unmodified CSV export.",
+          );
         });
     },
     [entity, businessId],
@@ -109,13 +119,20 @@ export function useEntityUpload<T>(
     return { rows: mapped, skipped: skippedCount };
   }, [rawRows, mapping, mapRow]);
 
-  const missingRequired = useMemo(() => missingRequiredFields(entity, mapping), [entity, mapping]);
+  const missingRequired = useMemo(
+    () => missingRequiredFields(entity, mapping),
+    [entity, mapping],
+  );
   const missingName = useMemo(
     () =>
       (entity === "staff" || entity === "customers") &&
       rawRows.length > 0 &&
       !hasUsableNameMapping(mapping),
     [entity, mapping, rawRows.length],
+  );
+  const source = useMemo(
+    () => detectImportSource(fileName, headers),
+    [fileName, headers],
   );
 
   return {
@@ -124,6 +141,7 @@ export function useEntityUpload<T>(
     headers,
     fields: ENTITY_FIELDS[entity],
     mapping,
+    source,
     setMapping,
     missingRequired,
     missingName,
