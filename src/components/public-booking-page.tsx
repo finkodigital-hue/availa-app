@@ -740,7 +740,7 @@ export function PublicBookingPage({
       customerReviews.length
     : 0;
   const galleryLimit = Math.max(1, gallerySection.itemLimit);
-  const testshopPhotos =
+  const fallbackGalleryPhotos =
     biz.slug === "testshop"
       ? [
           {
@@ -759,9 +759,27 @@ export function PublicBookingPage({
             url: "/storefront/testshop-salon-reception.jpg",
           },
         ]
+      : biz.slug === "pasha-hair"
+        ? [
+            {
+              id: "pasha-main",
+              kind: "interior",
+              url: "/demo/pasha-hair/salon-interior.png",
+            },
+            {
+              id: "pasha-wash",
+              kind: "interior",
+              url: "/demo/pasha-hair/salon-wash-area.png",
+            },
+            {
+              id: "pasha-exterior",
+              kind: "exterior",
+              url: "/demo/pasha-hair/salon-exterior.png",
+            },
+          ]
       : [];
   const heroPhotos = (
-    galleryPhotos.length > 0 ? galleryPhotos : testshopPhotos
+    galleryPhotos.length > 0 ? galleryPhotos : fallbackGalleryPhotos
   ).slice(0, galleryLimit);
   const displayAddress =
     biz.address ||
