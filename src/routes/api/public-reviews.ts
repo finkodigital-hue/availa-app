@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
 
 function publicName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -19,6 +20,14 @@ export const Route = createFileRoute("/api/public-reviews")({
           .eq("id", businessId)
           .maybeSingle();
         if (!business) return Response.json({ reviews: [] }, { status: 404 });
+        try {
+          await assertStudio(businessId);
+        } catch (error) {
+          if (error instanceof Error && error.message === STUDIO_FEATURE_ERROR) {
+            return Response.json({ reviews: [], error: STUDIO_FEATURE_ERROR }, { status: 402 });
+          }
+          throw error;
+        }
         const { data: rows, error } = await (supabaseAdmin as any)
           .from("customer_reviews")
           .select(

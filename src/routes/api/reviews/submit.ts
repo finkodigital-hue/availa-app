@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { sha256Hex } from "@/lib/booking-tokens.server";
+import { peekBookingActionToken, sha256Hex } from "@/lib/booking-tokens.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
 
 export const Route = createFileRoute("/api/reviews/submit")({
   server: {
@@ -26,6 +27,22 @@ export const Route = createFileRoute("/api/reviews/submit")({
             { ok: false, reason: "invalid_content" },
             { status: 400 },
           );
+        }
+        const lookup = await peekBookingActionToken(input.token, "review");
+        if (!lookup.ok) return Response.json(lookup, { status: 400 });
+        const { data: booking } = await (supabaseAdmin as any)
+          .from("bookings")
+          .select("business_id")
+          .eq("id", lookup.bookingId)
+          .maybeSingle();
+        if (!booking) return Response.json({ ok: false, reason: "invalid" }, { status: 400 });
+        try {
+          await assertStudio(booking.business_id);
+        } catch (error) {
+          if (error instanceof Error && error.message === STUDIO_FEATURE_ERROR) {
+            return Response.json({ ok: false, reason: "studio_required", error: STUDIO_FEATURE_ERROR }, { status: 402 });
+          }
+          throw error;
         }
         const { data, error } = await (supabaseAdmin as any).rpc(
           "submit_customer_review",

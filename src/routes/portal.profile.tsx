@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toast } from "sonner";
+import { PortalStudioMessage } from "@/components/portal-studio-message";
 
 export const Route = createFileRoute("/portal/profile")({
   component: Profile,
@@ -22,9 +23,10 @@ function Profile() {
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/portal", replace: true }); }, [loading, user, navigate]);
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, error: portalError } = useQuery({
     queryKey: ["portal-customer-records", user?.email],
     enabled: !!user,
+    retry: false,
     queryFn: async () => {
       // customers SELECT RLS OR-combines the email-match policy with
       // is_business_owner(), which can't use the email index — bypass the
@@ -76,6 +78,10 @@ function Profile() {
   });
 
   if (loading || !user) return null;
+
+  if ((portalError as { message?: string } | null)?.message?.includes("This feature is on the Studio plan.")) {
+    return <PortalStudioMessage />;
+  }
 
   return (
     <div className="animate-rise max-w-2xl">

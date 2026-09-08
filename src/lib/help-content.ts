@@ -168,13 +168,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         type: "list",
         items: [
-          "Free — one staff member, unlimited bookings, a branded booking page and client book.",
-          "Studio (£22/month) — unlimited staff members, plus the AI Assistant and AI page editing.",
+          "Free — one staff member; unlimited bookings; manual branded-page editing; deposits, payments and refunds; confirmation emails and calendar invites; one-tap booking links; the client book; CSV import/export; and support.",
+          "Studio (£22/month) — everything in Free, plus unlimited staff, automated reminders, analytics, AI tools, consultations and patch-test forms, verified reviews, stock management and photo scanning, the customer portal, and chair rent and commission tracking.",
         ],
       },
       {
         type: "p",
-        text: "The staff limit and the AI features are actively enforced: adding a second staff member or opening the AI tools on a Free plan shows an upgrade prompt instead. Everything else in Bookzenvo — including payments, deposits and reports — is usable on both plans today.",
+        text: "Studio features are actively enforced. If a Free workspace opens consultations, reviews, stock, the customer portal, rent tracking, analytics or AI tools, Bookzenvo shows an upgrade prompt without deleting any previously saved data.",
       },
       {
         type: "note",
@@ -567,7 +567,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         type: "p",
-        text: "Manage them from the Professionals page, which has a Team tab (active professionals and pending invites) and a Rent tab (a payment ledger).",
+        text: "Manage independent professionals from the Team tab. Studio also unlocks the Rent tab for agreements, commission terms and payment history.",
       },
       {
         type: "steps",
