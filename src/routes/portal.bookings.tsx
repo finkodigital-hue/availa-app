@@ -16,6 +16,7 @@ import { fmtMoney } from "@/lib/format";
 import { useAvailableSlots, buildDateStrip } from "@/lib/slots";
 import { parseTheme } from "@/lib/theme";
 import { toast } from "sonner";
+import { PortalStudioMessage } from "@/components/portal-studio-message";
 
 export const Route = createFileRoute("/portal/bookings")({
   component: BookingsPage,
@@ -46,9 +47,10 @@ function BookingsPage() {
     if (!loading && !user) navigate({ to: "/portal", replace: true });
   }, [loading, user, navigate]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: portalError } = useQuery({
     queryKey: ["portal-bookings", user?.email],
     enabled: !!user,
+    retry: false,
     queryFn: async () => {
       // bookings SELECT RLS OR-combines the customer-email-match policy
       // with is_business_owner()/salon_pro_permission() checks that can't
@@ -92,6 +94,10 @@ function BookingsPage() {
   }, [data]);
 
   if (loading || !user) return null;
+
+  if ((portalError as { message?: string } | null)?.message?.includes("This feature is on the Studio plan.")) {
+    return <PortalStudioMessage />;
+  }
 
   return (
     <div className="animate-rise">

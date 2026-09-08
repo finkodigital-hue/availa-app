@@ -5,6 +5,7 @@ import { Plus, Copy, Trash2, Mail, Check, Armchair, Wallet, CircleDollarSign } f
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
+import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,13 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
+import {
+  addRentPayment,
+  generateNextRentPayment,
+  getRentPayments,
+  setRentPaymentStatus,
+} from "@/lib/rent.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/professionals")({
@@ -45,6 +53,7 @@ function ProfessionalsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const isStudio = biz?.plan === "studio";
 
   const { data: links, isLoading: linksLoading } = useQuery({
     queryKey: ["salon-professionals", biz?.id],
@@ -75,6 +84,20 @@ function ProfessionalsPage() {
     },
   });
 
+  const { data: staffCount = 0 } = useQuery({
+    queryKey: ["professional-team-seat-count", biz?.id],
+    enabled: !!biz?.id && !isStudio,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("staff")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", biz!.id)
+        .is("archived_at", null);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   const copyLink = async (token: string) => {
     const url = `${window.location.origin}/invite/${token}`;
     await navigator.clipboard.writeText(url);
@@ -100,6 +123,9 @@ function ProfessionalsPage() {
 
   const isLoading = linksLoading || invLoading;
   const hasAny = (links?.length ?? 0) + (invites?.length ?? 0) > 0;
+  const activeProfessionalCount = (links ?? []).filter((link: any) => link.status === "active").length;
+  const pendingInviteCount = (invites ?? []).filter((invite: any) => new Date(invite.expires_at) > new Date()).length;
+  const atFreeTeamLimit = !isStudio && staffCount + activeProfessionalCount + pendingInviteCount >= 1;
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
@@ -108,7 +134,12 @@ function ProfessionalsPage() {
         title="Independent Professionals"
         subtitle="Rent chairs or rooms to self-employed pros. They run their own business, but appear together with your team on one calendar and one booking page."
         action={
-          <Button onClick={() => setInviteOpen(true)} className="shadow-glow">
+          <Button
+            onClick={() => setInviteOpen(true)}
+            className="shadow-glow"
+            disabled={atFreeTeamLimit}
+            title={atFreeTeamLimit ? "The free plan is limited to one team member" : undefined}
+          >
             <Plus className="h-4 w-4 mr-1" /> Invite professional
           </Button>
         }
@@ -133,7 +164,7 @@ function ProfessionalsPage() {
           title="No independent professionals yet"
           description="Invite a self-employed pro by email. They'll create their own Bookzenvo account and business, then show up on your shared calendar and booking page."
           action={
-            <Button onClick={() => setInviteOpen(true)}>
+            <Button onClick={() => setInviteOpen(true)} disabled={atFreeTeamLimit}>
               <Plus className="h-4 w-4 mr-1" /> Invite first professional
             </Button>
           }
@@ -188,10 +219,10 @@ function ProfessionalsPage() {
                           onConfirm={async () => { await removeLink(l.id); }}
                         />
                       </div>
-                      <div className="mt-4 pt-3 border-t flex items-center gap-1.5 text-xs text-muted-foreground">
+                      {isStudio && <div className="mt-4 pt-3 border-t flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Wallet className="h-3.5 w-3.5 shrink-0" />
                         {rentSummary(l)}
-                      </div>
+                      </div>}
                     </div>
                   );
                 })}
@@ -226,11 +257,11 @@ function ProfessionalsPage() {
                       </div>
                       <Badge variant="secondary" className="text-[10px] shrink-0">Pending</Badge>
                     </div>
-                    <div className="mt-4 pt-3 border-t flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {isStudio && <div className="mt-4 pt-3 border-t flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Wallet className="h-3.5 w-3.5 shrink-0" />
                       {rentSummary(inv)}
                       <span className="ml-auto">Expires {new Date(inv.expires_at).toLocaleDateString()}</span>
-                    </div>
+                    </div>}
                     <div className="flex gap-2 mt-3">
                       <Button size="sm" variant="outline" className="flex-1" onClick={() => copyLink(inv.token)}>
                         <Copy className="h-3.5 w-3.5 mr-1" /> Copy invite link
@@ -256,7 +287,14 @@ function ProfessionalsPage() {
         </TabsContent>
 
         <TabsContent value="rent">
-          <RentLedger businessId={biz?.id} links={(links ?? []).filter((l: any) => l.status === "active")} />
+          {isStudio ? (
+            <RentLedger businessId={biz?.id} links={(links ?? []).filter((l: any) => l.status === "active")} />
+          ) : (
+            <StudioUpgradePanel
+              title="Rent and commission tracking are a Studio feature"
+              description="Upgrade to record chair rent, commission agreements and payment history."
+            />
+          )}
         </TabsContent>
       </Tabs>
 
@@ -265,6 +303,7 @@ function ProfessionalsPage() {
         onOpenChange={setInviteOpen}
         salonBusinessId={biz?.id}
         invitedBy={user?.id}
+        isStudio={isStudio}
         onCreated={() => qc.invalidateQueries({ queryKey: ["professional-invitations", biz?.id] })}
       />
     </div>
@@ -333,25 +372,20 @@ function RentLedger({ businessId, links }: { businessId: string | undefined; lin
     queryKey: ["rent-payments", businessId, links.map((l) => l.id).join(",")],
     enabled: !!businessId && links.length > 0,
     queryFn: async () => {
-      const linkIds = links.map((l) => l.id);
-      const { data, error } = await supabase
-        .from("rent_payments")
-        .select("*")
-        .in("salon_professional_id", linkIds)
-        .order("period_start", { ascending: false });
-      if (error) throw error;
-      return data as RentRow[];
+      const headers = await getServerFnAuthHeaders();
+      return await getRentPayments({ headers }) as RentRow[];
     },
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["rent-payments", businessId] });
 
   const markStatus = async (row: RentRow, status: "paid" | "waived" | "due") => {
-    const { error } = await supabase
-      .from("rent_payments")
-      .update({ status, paid_at: status === "paid" ? new Date().toISOString() : null })
-      .eq("id", row.id);
-    if (error) return toast.error(error.message);
+    try {
+      const headers = await getServerFnAuthHeaders();
+      await setRentPaymentStatus({ data: { id: row.id, linkId: row.salon_professional_id, status }, headers });
+    } catch (error) {
+      return toast.error((error as Error).message);
+    }
     toast.success(status === "paid" ? "Marked paid" : status === "waived" ? "Waived" : "Reopened");
     invalidate();
   };
@@ -359,8 +393,8 @@ function RentLedger({ businessId, links }: { businessId: string | undefined; lin
   const generateNext = async (link: any) => {
     setGenerating(link.id);
     try {
-      const { error } = await supabase.rpc("generate_rent_payment" as any, { _link_id: link.id });
-      if (error) throw error;
+      const headers = await getServerFnAuthHeaders();
+      await generateNextRentPayment({ data: { linkId: link.id }, headers });
       toast.success("Generated next period");
       invalidate();
     } catch (e: any) {
@@ -490,16 +524,18 @@ function AddRentPaymentDialog({ link, onOpenChange, onSaved }: { link: any | nul
     if (periodEnd < periodStart) return toast.error("Period end must be on or after period start");
     setBusy(true);
     try {
-      const { error } = await supabase.from("rent_payments").insert({
-        salon_professional_id: link.id,
-        period_start: periodStart,
-        period_end: periodEnd,
-        due_date: dueDate,
-        amount_cents: cents,
-        status: alreadyPaid ? "paid" : "due",
-        paid_at: alreadyPaid ? new Date().toISOString() : null,
+      const headers = await getServerFnAuthHeaders();
+      await addRentPayment({
+        data: {
+          linkId: link.id,
+          periodStart,
+          periodEnd,
+          dueDate,
+          amountCents: cents,
+          alreadyPaid,
+        },
+        headers,
       });
-      if (error) throw error;
       toast.success("Payment added");
       onSaved();
       reset();
@@ -558,12 +594,14 @@ function InviteDialog({
   onOpenChange,
   salonBusinessId,
   invitedBy,
+  isStudio,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   salonBusinessId: string | undefined;
   invitedBy: string | undefined;
+  isStudio: boolean;
   onCreated: () => void;
 }) {
   const [email, setEmail] = useState("");
@@ -583,10 +621,10 @@ function InviteDialog({
   const submit = async () => {
     if (!salonBusinessId || !invitedBy) return;
     if (!email.trim()) return toast.error("Email is required");
-    if ((mode === "weekly" || mode === "monthly" || mode === "fixed_commission") && !(parseFloat(amount || "0") > 0)) {
+    if (isStudio && (mode === "weekly" || mode === "monthly" || mode === "fixed_commission") && !(parseFloat(amount || "0") > 0)) {
       return toast.error("Enter an amount greater than $0");
     }
-    if (mode === "percentage") {
+    if (isStudio && mode === "percentage") {
       const pct = parseFloat(percent || "0");
       if (!(pct > 0) || pct > 100) return toast.error("Enter a percentage between 0 and 100");
     }
@@ -597,12 +635,12 @@ function InviteDialog({
         invited_by: invitedBy,
         email: email.trim().toLowerCase(),
         chair_label: chair.trim() || null,
-        rent_mode: mode,
+        rent_mode: isStudio ? mode : "none",
         rent_amount_cents:
-          mode === "weekly" || mode === "monthly" || mode === "fixed_commission"
+          isStudio && (mode === "weekly" || mode === "monthly" || mode === "fixed_commission")
             ? Math.round(parseFloat(amount || "0") * 100)
             : null,
-        commission_percent: mode === "percentage" ? parseFloat(percent || "0") : null,
+        commission_percent: isStudio && mode === "percentage" ? parseFloat(percent || "0") : null,
         message: message.trim() || null,
       };
       const { data, error } = await supabase
@@ -683,7 +721,7 @@ function InviteDialog({
                 />
               </div>
             </div>
-            <div className="rounded-xl bg-secondary/40 p-3.5 space-y-3">
+            {isStudio && <div className="rounded-xl bg-secondary/40 p-3.5 space-y-3">
               <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
                 <Wallet className="h-3.5 w-3.5" /> Rent agreement
               </div>
@@ -721,7 +759,7 @@ function InviteDialog({
                   className="h-10 bg-background"
                 />
               )}
-            </div>
+            </div>}
             <div>
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Personal note <span className="text-muted-foreground/60 normal-case">(optional)</span></Label>
               <Textarea

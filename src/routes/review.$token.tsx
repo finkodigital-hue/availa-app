@@ -28,6 +28,7 @@ const ERROR_COPY: Record<string, string> = {
   used: "This review link has already been used.",
   already_submitted: "A review has already been submitted for this booking.",
   not_completed: "Reviews become available after the booking is completed.",
+  studio_required: "Reviews aren't enabled for this salon.",
 };
 
 export const Route = createFileRoute("/review/$token")({

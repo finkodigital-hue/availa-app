@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertStudio } from "@/lib/plan.server";
 
 export type ConsultationQuestionType = "yes_no" | "text" | "long_text" | "date" | "select";
 
@@ -86,6 +87,7 @@ async function ownedBusiness(context: any) {
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("Only the business owner can manage consultation forms.");
+  await assertStudio(data.id);
   return data as { id: string; name: string };
 }
 
@@ -175,6 +177,7 @@ export const startConsultationSubmission = createServerFn({ method: "POST" })
       if (error) throw error;
       customer = created;
     }
+    if (!customer) throw new Error("The customer record could not be created.");
 
     const { data: existing, error: existingError } = await db
       .from("consultation_submissions")

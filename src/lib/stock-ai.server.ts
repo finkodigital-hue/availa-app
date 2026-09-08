@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
 
 export class StockScanError extends Error {}
 export class StockScanPlanError extends Error {}
@@ -63,8 +64,13 @@ export async function analyzeStockPhoto({
     .eq("owner_id", userData.user.id)
     .maybeSingle();
   if (!business) throw new Error("Not found");
-  if ((business.plan ?? "free") === "free") {
-    throw new StockScanPlanError("AI stock scanning is a Studio feature.");
+  try {
+    await assertStudio(businessId);
+  } catch (error) {
+    if (error instanceof Error && error.message === STUDIO_FEATURE_ERROR) {
+      throw new StockScanPlanError(STUDIO_FEATURE_ERROR);
+    }
+    throw error;
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {

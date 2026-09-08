@@ -17,9 +17,9 @@ import {
   Trash2,
   Wrench,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { PageHeader } from "@/components/app-shell";
+import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { StockAiScanner, type ReviewedStockItem } from "@/components/stock-ai-scanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { fmtMoney as formatMoney } from "@/lib/format";
 import { toast } from "sonner";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
+import { applyStockScan, deleteStockItem, getStockItems, saveStockItem, setStockQuantity } from "@/lib/stock.functions";
 
 export const Route = createFileRoute("/_authenticated/stock")({
   component: StockPage,
@@ -224,7 +226,7 @@ function StockPill({ state }: { state: StockState }) {
 }
 
 function StockPage() {
-  const { data: biz } = useMyBusiness();
+  const { data: biz, isLoading: businessLoading } = useMyBusiness();
   const bid = biz?.id;
   const qc = useQueryClient();
   const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
@@ -245,15 +247,10 @@ function StockPage() {
 
   const { data: storedItems, isLoading } = useQuery({
     queryKey: ["inventory_items", bid],
-    enabled: !!bid,
+    enabled: !!bid && biz?.plan === "studio",
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inventory_items")
-        .select("*")
-        .eq("business_id", bid!)
-        .order("name");
-      if (error) throw error;
-      return data as unknown as InventoryItem[];
+      const headers = await getServerFnAuthHeaders();
+      return await getStockItems({ headers }) as InventoryItem[];
     },
   });
 
@@ -356,12 +353,13 @@ function StockPage() {
     }
 
     setSaving(true);
-    const { error } = edit.id
-      ? await supabase
-          .from("inventory_items")
-          .update(payload as never)
-          .eq("id", edit.id)
-      : await supabase.from("inventory_items").insert(payload as never);
+    let error: Error | null = null;
+    try {
+      const headers = await getServerFnAuthHeaders();
+      await saveStockItem({ data: { ...payload, id: edit.id }, headers });
+    } catch (caught) {
+      error = caught as Error;
+    }
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(edit.id ? "Stock item updated" : "Stock item added");
@@ -380,10 +378,13 @@ function StockPage() {
     qc.setQueryData<InventoryItem[]>(["inventory_items", bid], (old) =>
       old?.map((entry) => (entry.id === item.id ? { ...entry, current_stock: next } : entry)),
     );
-    const { error } = await supabase
-      .from("inventory_items")
-      .update({ current_stock: next })
-      .eq("id", item.id);
+    let error: Error | null = null;
+    try {
+      const headers = await getServerFnAuthHeaders();
+      await setStockQuantity({ data: { id: item.id, quantity: next }, headers });
+    } catch (caught) {
+      error = caught as Error;
+    }
     if (error) {
       toast.error(error.message);
       invalidate();
@@ -406,10 +407,13 @@ function StockPage() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase
-      .from("inventory_items")
-      .update({ current_stock: next })
-      .eq("id", adjust.id);
+    let error: Error | null = null;
+    try {
+      const headers = await getServerFnAuthHeaders();
+      await setStockQuantity({ data: { id: adjust.id, quantity: next }, headers });
+    } catch (caught) {
+      error = caught as Error;
+    }
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(`Quantity updated to ${next} ${adjust.unit || "units"}`);
@@ -424,8 +428,12 @@ function StockPage() {
       toast.success(`${item.name} deleted`);
       return;
     }
-    const { error } = await supabase.from("inventory_items").delete().eq("id", item.id);
-    if (error) return toast.error(error.message);
+    try {
+      const headers = await getServerFnAuthHeaders();
+      await deleteStockItem({ data: { id: item.id }, headers });
+    } catch (error) {
+      return toast.error((error as Error).message);
+    }
     toast.success(`${item.name} deleted`);
     invalidate();
   };
@@ -481,12 +489,26 @@ function StockPage() {
         cost_cents: previous?.cost_cents ?? null,
       };
     });
-    const { error } = await supabase
-      .from("inventory_items")
-      .upsert(payload as never, { onConflict: "id" });
-    if (error) throw error;
+    const headers = await getServerFnAuthHeaders();
+    await applyStockScan({ data: { items: payload }, headers });
     await invalidate();
   };
+
+  if (businessLoading) {
+    return <div className="p-5 sm:p-8 xl:p-10"><Skeleton className="h-64 rounded-2xl" /></div>;
+  }
+
+  if ((biz?.plan ?? "free") !== "studio") {
+    return (
+      <div className="p-5 sm:p-8 xl:p-10">
+        <PageHeader eyebrow="Inventory" title="Stock" subtitle="Your product shelf at a glance." />
+        <StudioUpgradePanel
+          title="Stock and inventory are a Studio feature"
+          description="Upgrade to track supplies, scan shelves from a photo and deduct products when bookings are completed."
+        />
+      </div>
+    );
+  }
 
   return (
     <div

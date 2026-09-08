@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { peekBookingActionToken } from "@/lib/booking-tokens.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseTheme } from "@/lib/theme";
+import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
 
 export const Route = createFileRoute("/api/reviews/peek")({
   server: {
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/api/reviews/peek")({
         const { data: booking } = await (supabaseAdmin as any)
           .from("bookings")
           .select(
-            "id, status, starts_at, ends_at, services(name), staff(name), businesses(name, page_theme, timezone)",
+            "id, business_id, status, starts_at, ends_at, services(name), staff(name), businesses(name, page_theme, timezone)",
           )
           .eq("id", lookup.bookingId)
           .maybeSingle();
@@ -33,6 +34,14 @@ export const Route = createFileRoute("/api/reviews/peek")({
             { ok: false, reason: "not_completed" },
             { status: 400 },
           );
+        try {
+          await assertStudio(booking.business_id);
+        } catch (error) {
+          if (error instanceof Error && error.message === STUDIO_FEATURE_ERROR) {
+            return Response.json({ ok: false, reason: "studio_required", error: STUDIO_FEATURE_ERROR }, { status: 402 });
+          }
+          throw error;
+        }
         const { data: existing } = await (supabaseAdmin as any)
           .from("customer_reviews")
           .select("id")

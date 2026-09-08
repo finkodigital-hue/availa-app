@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, Send, CalendarCheck, Megaphone, TrendingUp, LineChart, Mail, Loader2, RotateCcw, Crown } from "lucide-react";
+import { Sparkles, Send, CalendarCheck, Megaphone, TrendingUp, LineChart, Mail, Loader2, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
+import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,23 +63,10 @@ function AssistantUpsell() {
         title="Your business co-pilot"
         subtitle="Ask anything about your bookings, customers and growth. Answers use your live workspace data."
       />
-      <div className="rounded-2xl border border-dashed bg-card/40 p-12 text-center">
-        <div className="mx-auto h-12 w-12 rounded-2xl bg-primary/10 grid place-items-center mb-4">
-          <Crown className="h-5 w-5 text-[color:var(--gold-deep)]" />
-        </div>
-        <h2 className="font-display text-xl">The AI assistant is a Studio feature</h2>
-        <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
-          Upgrade to Studio (£22/month) to chat with your business co-pilot — booking summaries,
-          growth ideas, drafted emails, and more.
-        </p>
-        <Link
-          to="/settings"
-          search={{ tab: "plan" } as any}
-          className="inline-flex items-center gap-1.5 mt-5 rounded-[6px] bg-primary text-primary-foreground font-semibold text-sm px-5 py-2.5 hover:-translate-y-px transition-all"
-        >
-          Upgrade to Studio
-        </Link>
-      </div>
+      <StudioUpgradePanel
+        title="The AI assistant is a Studio feature"
+        description="Upgrade to Studio (£22/month) to chat with your business co-pilot — booking summaries, growth ideas, drafted emails, and more."
+      />
     </div>
   );
 }

@@ -3,11 +3,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 const QUESTIONS = [
   [
     "Is Bookzenvo really free?",
-    "Yes. Solo is free for one staff member and includes unlimited bookings, a branded booking page, a client book, deposits and online payments. Studio is £22 per month and adds unlimited staff plus the AI tools.",
+    "Yes. Solo includes one staff member, unlimited bookings, manual page editing, payments, refunds, confirmations, one-tap booking links, the client book, import/export and support. Studio is £22 per month and adds unlimited staff, reminders, analytics, AI, consultation forms, verified reviews, stock, the customer portal and rent tracking.",
   ],
   [
     "Can my clients book online?",
-    "Yes. Every business gets a shareable booking link. Clients can choose a service, team member and available time, then manage their booking from their client account.",
+    "Yes. Every business gets a shareable booking link. Clients can choose a service, team member and available time. Studio adds a customer portal; on every plan, confirmation emails still include one-tap links to confirm, cancel or reschedule.",
   ],
   [
     "Can I take deposits and payments?",
@@ -27,7 +27,7 @@ const QUESTIONS = [
   ],
   [
     "Can clients cancel or reschedule?",
-    "Clients can manage eligible bookings from their client account. You control your cancellation policy and can still manage any booking directly from your dashboard.",
+    "On Studio, clients can manage eligible bookings from their portal. On every plan they can use the one-tap links in their confirmation email. You control your cancellation policy and can still manage any booking directly from your dashboard.",
   ],
   [
     "Will Bookzenvo block dates on my calendar automatically?",

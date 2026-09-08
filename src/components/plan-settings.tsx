@@ -7,12 +7,23 @@ import { toast } from "sonner";
 import { finalizeStudioCheckout, openBillingPortal, startStudioCheckout } from "@/lib/billing.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
-const FREE_FEATURES = ["One staff member", "Unlimited bookings", "Deposits & online payments", "Branded booking page & client book"];
+const FREE_FEATURES = [
+  "One staff member",
+  "Unlimited bookings and manual page editing",
+  "Deposits, online payments and refunds",
+  "Confirmation emails, calendar invites and one-tap booking links",
+  "Client book, CSV import/export and support",
+];
 const STUDIO_FEATURES = [
   "Unlimited staff",
-  "Automated appointment reminders with one-tap confirm, cancel & reschedule",
+  "Automated appointment reminders",
   "Analytics & insights",
   "AI assistant & AI page editor",
+  "Consultations & patch-test forms",
+  "Verified customer reviews",
+  "Stock, photo scanning & automatic deduction",
+  "Customer portal",
+  "Chair rent & commission tracking",
 ];
 
 type PlanBusiness = {

@@ -135,7 +135,7 @@ function ServicesPage() {
 
   const { data: inventory, error: inventoryError } = useQuery({
     queryKey: ["inventory_items", bid],
-    enabled: !!bid,
+    enabled: !!bid && biz?.plan === "studio",
     queryFn: async () => {
       const { data } = await supabase
         .from("inventory_items")
@@ -148,7 +148,7 @@ function ServicesPage() {
 
   const { data: recipeStats } = useQuery({
     queryKey: ["service-recipe-stats", bid],
-    enabled: !!bid,
+    enabled: !!bid && biz?.plan === "studio",
     queryFn: async () => {
       const { data } = await supabase
         .from("service_recipe_items")
@@ -229,7 +229,7 @@ function ServicesPage() {
   useEffect(() => {
     let cancelled = false;
 
-    if (editingServiceId) {
+    if (editingServiceId && biz?.plan === "studio") {
       setLinked(new Set());
       setRecipe([]);
       supabase
@@ -261,7 +261,7 @@ function ServicesPage() {
     return () => {
       cancelled = true;
     };
-  }, [editingServiceId, hasEditor]);
+  }, [biz?.plan, editingServiceId, hasEditor]);
 
   const saveCategoryNames = async (nextCategories: string[]) => {
     if (!bid) return false;
@@ -459,22 +459,24 @@ function ServicesPage() {
           );
         if (staffError) return toast.error(staffError.message);
       }
-      // sync recipe
-      const { error: clearRecipeError } = await supabase
-        .from("service_recipe_items")
-        .delete()
-        .eq("service_id", sid);
-      if (clearRecipeError) return toast.error(clearRecipeError.message);
-      if (recipe.length > 0) {
-        const { error: recipeError } = await supabase.from("service_recipe_items").insert(
-          recipe.map((r) => ({
-            service_id: sid,
-            business_id: bid,
-            inventory_item_id: r.inventory_item_id,
-            quantity: r.quantity,
-          })),
-        );
-        if (recipeError) return toast.error(recipeError.message);
+      // Preserve existing recipe data on downgrade. Studio businesses may edit it.
+      if (biz?.plan === "studio") {
+        const { error: clearRecipeError } = await supabase
+          .from("service_recipe_items")
+          .delete()
+          .eq("service_id", sid);
+        if (clearRecipeError) return toast.error(clearRecipeError.message);
+        if (recipe.length > 0) {
+          const { error: recipeError } = await supabase.from("service_recipe_items").insert(
+            recipe.map((r) => ({
+              service_id: sid,
+              business_id: bid,
+              inventory_item_id: r.inventory_item_id,
+              quantity: r.quantity,
+            })),
+          );
+          if (recipeError) return toast.error(recipeError.message);
+        }
       }
       toast.success(edit.id ? "Service updated" : "Service created");
       setEdit({ ...edit, ...payload, id: sid });
@@ -807,7 +809,7 @@ function ServicesPage() {
                     />
                   </div>
 
-                  <div className="rounded-2xl border bg-[#f7f2ea]/70 p-4 sm:p-5">
+                  {biz?.plan === "studio" && <div className="rounded-2xl border bg-[#f7f2ea]/70 p-4 sm:p-5">
                     <div className="flex items-start gap-3">
                       <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border bg-card">
                         <Package className="h-4 w-4" />
@@ -927,7 +929,7 @@ function ServicesPage() {
                         </span>
                       </div>
                     )}
-                  </div>
+                  </div>}
 
                   <details className="group mt-4 rounded-2xl border bg-card">
                     <summary className="flex cursor-pointer list-none items-center gap-3 p-4 sm:p-5">

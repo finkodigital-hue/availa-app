@@ -269,7 +269,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           }
         }
 
-        // --- Completed-booking review requests (all plans) ---
+        // --- Completed-booking review requests (Studio only) ---
         let reviewRequestsClaimed = 0;
         let reviewRequestsSent = 0;
         let reviewRequestsFailed = 0;
@@ -278,7 +278,8 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         )
           .from("businesses")
           .select("id, name, timezone, page_theme, reviews_enabled_at")
-          .eq("review_requests_enabled", true);
+          .eq("review_requests_enabled", true)
+          .eq("plan", "studio");
         if (reviewBizErr) {
           console.error(
             "[send-reminders] failed to load review businesses",

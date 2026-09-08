@@ -44,7 +44,9 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { SignaturePad } from "@/components/signature-pad";
+import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { toast } from "sonner";
+import { useMyBusiness } from "@/lib/business";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import {
   deleteConsultationTemplate,
@@ -118,6 +120,7 @@ function relationOne(value: any) {
 }
 
 function ConsultationsPage() {
+  const { data: business, isLoading: businessLoading } = useMyBusiness();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [startingForm, setStartingForm] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
@@ -125,6 +128,7 @@ function ConsultationsPage() {
 
   const query = useQuery({
     queryKey: ["consultation-workspace"],
+    enabled: !!business?.id && business.plan === "studio",
     queryFn: async () => {
       const headers = await getServerFnAuthHeaders();
       return getConsultationWorkspace({ headers });
@@ -136,6 +140,22 @@ function ConsultationsPage() {
   const records = query.data?.submissions ?? [];
   const pendingCount = records.filter((record: any) => record.status === "pending").length;
   const currentCount = records.filter((record: any) => record.status === "signed" && (!record.expires_at || new Date(record.expires_at) > new Date())).length;
+
+  if (businessLoading) {
+    return <div className="page-wrap mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12"><Skeleton className="h-64 rounded-2xl" /></div>;
+  }
+
+  if ((business?.plan ?? "free") !== "studio") {
+    return (
+      <div className="page-wrap mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
+        <PageHeader eyebrow="Client safety" title="Consultations" subtitle="Replace paper consultation and patch-test files with secure, signed online records." />
+        <StudioUpgradePanel
+          title="Consultations and patch tests are a Studio feature"
+          description="Upgrade to create digital forms, collect signatures and keep client safety records together."
+        />
+      </div>
+    );
+  }
 
   if (query.isError) {
     return (
