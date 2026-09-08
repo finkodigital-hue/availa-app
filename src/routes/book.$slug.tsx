@@ -4,14 +4,20 @@ import { Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { googleFontsHref, parseTheme } from "@/lib/theme";
 import { PublicBookingPage } from "@/components/public-booking-page";
-import { CookieConsentBanner, CookieConsentProvider, CookieSettingsFooterLink } from "@/components/cookie-consent";
+import {
+  CookieConsentBanner,
+  CookieConsentProvider,
+  CookieSettingsFooterLink,
+} from "@/components/cookie-consent";
 import { sanitizePageBlocks } from "@/lib/page-block-security";
 
 export const Route = createFileRoute("/book/$slug")({
   loader: async ({ params, location }) => {
     const { data, error } = await (supabase as any)
       .from("public_businesses")
-      .select("id, name, slug, description, page_theme, address, phone, website, email, timezone, instagram, facebook, twitter, currency")
+      .select(
+        "id, name, slug, description, page_theme, address, phone, website, email, timezone, instagram, facebook, twitter, currency, payment_mode, deposit_percent, cancellation_window_hours, cancellation_policy, reminder_hours_before",
+      )
       .eq("slug", params.slug)
       .maybeSingle();
     if (error) throw error;
@@ -21,7 +27,10 @@ export const Route = createFileRoute("/book/$slug")({
     // screenshot capture) supplies its own candidate blocks via query params
     // instead of reading the saved layout — nothing is persisted by visiting
     // this URL.
-    const search = location.search as { preview?: unknown; previewBlocks?: unknown };
+    const search = location.search as {
+      preview?: unknown;
+      previewBlocks?: unknown;
+    };
     if (search?.preview && search?.previewBlocks) {
       try {
         const raw = search.previewBlocks;
@@ -51,39 +60,64 @@ export const Route = createFileRoute("/book/$slug")({
         .select("blocks")
         .eq("business_id", data.id)
         .maybeSingle();
-      layout = fallback.data ? { ...fallback.data, storefront_settings: null } : null;
+      layout = fallback.data
+        ? { ...fallback.data, storefront_settings: null }
+        : null;
       layoutError = fallback.error;
     }
     if (layoutError) throw layoutError;
     const pageBlocks = sanitizePageBlocks(layout?.blocks, data.id);
 
-    return { ...data, pageBlocks, storefrontSettings: layout?.storefront_settings ?? null };
+    return {
+      ...data,
+      pageBlocks,
+      storefrontSettings: layout?.storefront_settings ?? null,
+    };
   },
   head: ({ loaderData }) => ({
     meta: [
       { title: loaderData ? `Book with ${loaderData.name}` : "Book" },
-      { name: "description", content: loaderData?.description ?? `Book online with ${loaderData?.name ?? ""}.` },
-      { property: "og:title", content: loaderData ? `Book with ${loaderData.name}` : "Book" },
+      {
+        name: "description",
+        content:
+          loaderData?.description ??
+          `Book online with ${loaderData?.name ?? ""}.`,
+      },
+      {
+        property: "og:title",
+        content: loaderData ? `Book with ${loaderData.name}` : "Book",
+      },
       { property: "og:description", content: loaderData?.description ?? "" },
     ],
     links: loaderData
       ? [
-          { rel: "canonical", href: `https://bookzenvo.com/book/${loaderData.slug}` },
-          { rel: "stylesheet", href: googleFontsHref(parseTheme(loaderData.page_theme)) },
+          {
+            rel: "canonical",
+            href: `https://bookzenvo.com/book/${loaderData.slug}`,
+          },
+          {
+            rel: "stylesheet",
+            href: googleFontsHref(parseTheme(loaderData.page_theme)),
+          },
         ]
       : [],
   }),
   errorComponent: () => (
     <div className="min-h-screen flex items-center justify-center p-6 text-center text-muted-foreground">
-      We couldn&apos;t load this booking page right now. Please try again shortly.
+      We couldn&apos;t load this booking page right now. Please try again
+      shortly.
     </div>
   ),
   notFoundComponent: () => (
     <div className="min-h-screen flex items-center justify-center p-6 text-center">
       <div>
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
-        <h1 className="font-display text-3xl mt-4">We couldn't find that page.</h1>
-        <p className="text-muted-foreground mt-2">The link may be wrong, or the business has moved.</p>
+        <h1 className="font-display text-3xl mt-4">
+          We couldn't find that page.
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          The link may be wrong, or the business has moved.
+        </p>
       </div>
     </div>
   ),
@@ -107,7 +141,9 @@ function PublicBooking() {
       theme={theme}
       pageBlocks={biz.pageBlocks ?? []}
       storefrontSettings={biz.storefrontSettings}
-      footerExtra={isScreenshotPreview ? undefined : <CookieSettingsFooterLink />}
+      footerExtra={
+        isScreenshotPreview ? undefined : <CookieSettingsFooterLink />
+      }
     />
   );
 

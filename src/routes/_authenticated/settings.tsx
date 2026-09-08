@@ -44,7 +44,11 @@ import { WhiteLabelEditor } from "@/components/white-label-editor";
 import { TwoFactorSettings } from "@/components/two-factor-settings";
 import { PlanSettings } from "@/components/plan-settings";
 import { StripeSettings } from "@/components/stripe-settings";
-import { cancelAccountDeletion, deleteMyAccount, exportMyWorkspace } from "@/lib/account.functions";
+import {
+  cancelAccountDeletion,
+  deleteMyAccount,
+  exportMyWorkspace,
+} from "@/lib/account.functions";
 import { downloadJson } from "@/lib/csv";
 import { saveBusinessProfile } from "@/lib/business-settings.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
@@ -74,7 +78,9 @@ const SETTINGS_TABS = [
 ] as const;
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  validateSearch: (search: Record<string, unknown>): { tab?: (typeof SETTINGS_TABS)[number] } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: (typeof SETTINGS_TABS)[number] } => ({
     tab: SETTINGS_TABS.includes(search.tab as any)
       ? (search.tab as (typeof SETTINGS_TABS)[number])
       : undefined,
@@ -102,7 +108,9 @@ function SettingsPage() {
         .eq("pro_business_id", biz!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const salonIds = Array.from(new Set(data.map((d) => d.salon_business_id)));
+      const salonIds = Array.from(
+        new Set(data.map((d) => d.salon_business_id)),
+      );
       let salons: Record<string, { name: string }> = {};
       if (salonIds.length > 0) {
         const { data: bizRows } = await (supabase as any)
@@ -177,7 +185,9 @@ function SettingsPage() {
       timeZone: biz.timezone || "Europe/London",
     }).format(new Date());
     const todayIndex = WEEKDAYS.findIndex((day) => day === todayLabel);
-    const todayPeriods = (hourPeriods ?? []).filter((period) => period.weekday === todayIndex);
+    const todayPeriods = (hourPeriods ?? []).filter(
+      (period) => period.weekday === todayIndex,
+    );
     const hoursSummary = hoursSummaryLoading
       ? "Checking today’s hours…"
       : hoursSummaryError
@@ -190,8 +200,11 @@ function SettingsPage() {
                   `${String(period.open_time).slice(0, 5)}–${String(period.close_time).slice(0, 5)}`,
               )
               .join(", ")}`;
-    const activeRentals = (salonLinks ?? []).filter((link) => link.status === "active").length;
-    const planSummary = (biz.plan ?? "free") === "free" ? "Solo · Free" : "Studio · £22/month";
+    const activeRentals = (salonLinks ?? []).filter(
+      (link) => link.status === "active",
+    ).length;
+    const planSummary =
+      (biz.plan ?? "free") === "free" ? "Solo · Free" : "Studio · £22/month";
     const paymentSummary = biz.stripe_charges_enabled
       ? "Stripe connected"
       : biz.stripe_account_id
@@ -206,7 +219,11 @@ function SettingsPage() {
           subtitle="Manage your account, business details and operational preferences."
           action={
             biz.slug ? (
-              <Button variant="outline" asChild className="h-11 bg-background px-3 xl:px-5">
+              <Button
+                variant="outline"
+                asChild
+                className="h-11 bg-background px-3 xl:px-5"
+              >
                 <a href={`/book/${biz.slug}`} target="_blank" rel="noreferrer">
                   <ExternalLink className="h-4 w-4 xl:mr-2" />
                   <span className="hidden xl:inline">View booking page</span>
@@ -228,7 +245,8 @@ function SettingsPage() {
             </p>
             <div className="mt-1.5 flex flex-col gap-2 lg:flex-row lg:items-center">
               <span className="whitespace-nowrap text-sm text-muted-foreground">
-                {completedProfileFields} of {profileFields.length} details complete
+                {completedProfileFields} of {profileFields.length} details
+                complete
               </span>
               <div
                 className="h-1.5 w-full max-w-[300px] overflow-hidden rounded-full bg-border"
@@ -240,13 +258,20 @@ function SettingsPage() {
               >
                 <div
                   className="h-full rounded-full bg-[color:var(--gold-deep)] transition-[width]"
-                  style={{ width: `${(completedProfileFields / profileFields.length) * 100}%` }}
+                  style={{
+                    width: `${(completedProfileFields / profileFields.length) * 100}%`,
+                  }}
                 />
               </div>
             </div>
           </div>
-          <Button className="shrink-0 px-6" onClick={() => openSetting("profile")}>
-            {completedProfileFields === profileFields.length ? "Review" : "Continue"}
+          <Button
+            className="shrink-0 px-6"
+            onClick={() => openSetting("profile")}
+          >
+            {completedProfileFields === profileFields.length
+              ? "Review"
+              : "Continue"}
           </Button>
         </section>
 
@@ -269,7 +294,11 @@ function SettingsPage() {
             icon={Crown}
             title="White-label"
             description="Manage how Bookzenvo appears to your clients."
-            summary={biz.hide_powered_by ? "Bookzenvo branding hidden" : "Bookzenvo branding shown"}
+            summary={
+              biz.hide_powered_by
+                ? "Bookzenvo branding hidden"
+                : "Bookzenvo branding shown"
+            }
             onClick={() => openSetting("whitelabel")}
           />
           {isIndependentPro && (
@@ -277,7 +306,11 @@ function SettingsPage() {
               icon={Armchair}
               title="Chair rentals"
               description="View and manage your active chair rentals."
-              summary={activeRentals === 0 ? "No active rentals" : `${activeRentals} active`}
+              summary={
+                activeRentals === 0
+                  ? "No active rentals"
+                  : `${activeRentals} active`
+              }
               onClick={() => openSetting("chairs")}
             />
           )}
@@ -301,7 +334,13 @@ function SettingsPage() {
         </SettingsGroup>
 
         <SettingsGroup label="Account">
-          <SettingsRow icon={Bell} title="Notifications" description="Owner alerts, customer messages and delivery history." summary="Manage preferences" onClick={() => openSetting("notifications")} />
+          <SettingsRow
+            icon={Bell}
+            title="Notifications"
+            description="Owner alerts, customer messages and delivery history."
+            summary="Manage preferences"
+            onClick={() => openSetting("notifications")}
+          />
           <SettingsRow
             icon={UserRound}
             title="Your account"
@@ -388,7 +427,7 @@ function SettingsPage() {
         <Section
           icon={CreditCard}
           title="Payments"
-          description="Connect Stripe, then choose whether bookings take a deposit or payment in full."
+          description="Set deposits, notice windows, reminders and the policy clients accept before booking."
         >
           <StripeSettings business={biz} />
         </Section>
@@ -415,7 +454,11 @@ function SettingsPage() {
         <ChairRentalsEditor businessId={biz.id} links={salonLinks ?? []} />
       )}
       {tab === "notifications" && (
-        <Section icon={Bell} title="Notifications" description="Owner alerts, customer messages and delivery history.">
+        <Section
+          icon={Bell}
+          title="Notifications"
+          description="Owner alerts, customer messages and delivery history."
+        >
           <NotificationSettings businessId={biz.id} />
         </Section>
       )}
@@ -496,7 +539,9 @@ function AccountEditor({ user }: { user: { id: string; email?: string } }) {
       <div className="flex items-center gap-4 rounded-xl border bg-background p-4">
         <Avatar className="h-14 w-14 border">
           {avatarUrl && <AvatarImage src={avatarUrl} alt="Your avatar" />}
-          <AvatarFallback className="bg-secondary text-sm font-semibold">{initials}</AvatarFallback>
+          <AvatarFallback className="bg-secondary text-sm font-semibold">
+            {initials}
+          </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
           <p className="font-medium truncate">{fullName || "Your account"}</p>
@@ -532,7 +577,12 @@ function AccountEditor({ user }: { user: { id: string; email?: string } }) {
             We’ll send a secure reset link to your sign-in email.
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={sendPasswordReset} disabled={sendingReset}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={sendPasswordReset}
+          disabled={sendingReset}
+        >
           {sendingReset ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -551,19 +601,29 @@ function AccountEditor({ user }: { user: { id: string; email?: string } }) {
   );
 }
 
-function DeleteAccountSection({ biz }: { biz: { id: string; name: string; deletion_scheduled_for?: string | null } }) {
+function DeleteAccountSection({
+  biz,
+}: {
+  biz: { id: string; name: string; deletion_scheduled_for?: string | null };
+}) {
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const canConfirm = confirmText.trim().length > 0 && confirmText.trim() === biz.name.trim();
+  const canConfirm =
+    confirmText.trim().length > 0 && confirmText.trim() === biz.name.trim();
 
   const handleDelete = async () => {
     setDeleting(true);
     try {
       const headers = await getServerFnAuthHeaders();
-      const result = await deleteMyAccount({ data: { confirmName: confirmText.trim() }, headers });
-      toast.success(`Workspace closed. You can recover it until ${new Date(result.scheduledFor).toLocaleDateString()}.`);
+      const result = await deleteMyAccount({
+        data: { confirmName: confirmText.trim() },
+        headers,
+      });
+      toast.success(
+        `Workspace closed. You can recover it until ${new Date(result.scheduledFor).toLocaleDateString()}.`,
+      );
       setOpen(false);
       setTimeout(() => window.location.reload(), 800);
     } catch (error: any) {
@@ -577,12 +637,22 @@ function DeleteAccountSection({ biz }: { biz: { id: string; name: string; deleti
     try {
       const headers = await getServerFnAuthHeaders();
       const data = await exportMyWorkspace({ headers });
-      const slug = biz.name.trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "bookzenvo";
-      downloadJson(`${slug}-workspace-${new Date().toISOString().slice(0, 10)}.json`, data);
+      const slug =
+        biz.name
+          .trim()
+          .replace(/[^a-z0-9]+/gi, "-")
+          .replace(/^-+|-+$/g, "")
+          .toLowerCase() || "bookzenvo";
+      downloadJson(
+        `${slug}-workspace-${new Date().toISOString().slice(0, 10)}.json`,
+        data,
+      );
       toast.success("Workspace export downloaded");
     } catch (error: any) {
       toast.error(error.message ?? "Could not export the workspace");
-    } finally { setExporting(false); }
+    } finally {
+      setExporting(false);
+    }
   };
 
   const recoverWorkspace = async () => {
@@ -591,18 +661,30 @@ function DeleteAccountSection({ biz }: { biz: { id: string; name: string; deleti
       await cancelAccountDeletion({ headers });
       toast.success("Workspace closure cancelled");
       setTimeout(() => window.location.reload(), 500);
-    } catch (error: any) { toast.error(error.message ?? "Could not recover the workspace"); }
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not recover the workspace");
+    }
   };
 
   return (
     <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
       <p className="text-sm font-medium">Workspace data</p>
       <p className="text-xs text-muted-foreground mt-1 mb-4 text-pretty">
-        Download a portable JSON copy of business data and a manifest of stored files before closing.
+        Download a portable JSON copy of business data and a manifest of stored
+        files before closing.
       </p>
       <div className="mb-4 flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={exportWorkspace} disabled={exporting}>
-          {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={exportWorkspace}
+          disabled={exporting}
+        >
+          {exporting ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-2" />
+          )}
           Export workspace
         </Button>
         {biz.deletion_scheduled_for && (
@@ -611,7 +693,12 @@ function DeleteAccountSection({ biz }: { biz: { id: string; name: string; deleti
           </Button>
         )}
       </div>
-      {biz.deletion_scheduled_for && <p className="mb-4 text-xs text-destructive">Closed and recoverable until {new Date(biz.deletion_scheduled_for).toLocaleDateString()}.</p>}
+      {biz.deletion_scheduled_for && (
+        <p className="mb-4 text-xs text-destructive">
+          Closed and recoverable until{" "}
+          {new Date(biz.deletion_scheduled_for).toLocaleDateString()}.
+        </p>
+      )}
       <AlertDialog
         open={open}
         onOpenChange={(o) => {
@@ -634,9 +721,10 @@ function DeleteAccountSection({ biz }: { biz: { id: string; name: string; deleti
               Delete {biz.name}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This closes the public workspace and cancels any active subscription. Data and stored
-              files are retained for 30 days, during which you can cancel closure here. Type the
-              business name below to confirm.
+              This closes the public workspace and cancels any active
+              subscription. Data and stored files are retained for 30 days,
+              during which you can cancel closure here. Type the business name
+              below to confirm.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Input
@@ -674,13 +762,21 @@ function DeleteAccountSection({ biz }: { biz: { id: string; name: string; deleti
   );
 }
 
-function SettingsGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function SettingsGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="mb-7">
       <h2 className="mb-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </h2>
-      <div className="overflow-hidden rounded-2xl border bg-card shadow-soft">{children}</div>
+      <div className="overflow-hidden rounded-2xl border bg-card shadow-soft">
+        {children}
+      </div>
     </section>
   );
 }
@@ -706,7 +802,9 @@ function SettingsRow({
       aria-label={`Open ${title} settings`}
     >
       <Icon className="h-5 w-5 shrink-0 text-foreground" />
-      <span className="min-w-0 text-sm font-semibold lg:text-[15px]">{title}</span>
+      <span className="min-w-0 text-sm font-semibold lg:text-[15px]">
+        {title}
+      </span>
       <span className="col-span-2 row-start-2 min-w-0 text-xs leading-5 text-muted-foreground lg:col-span-1 lg:row-start-auto lg:text-sm">
         {description}
       </span>
@@ -739,9 +837,13 @@ function Section({
             </span>
           )}
           <div className="min-w-0">
-            {title && <h2 className="font-display text-lg leading-tight">{title}</h2>}
+            {title && (
+              <h2 className="font-display text-lg leading-tight">{title}</h2>
+            )}
             {description && (
-              <p className="text-sm text-muted-foreground mt-0.5 text-pretty">{description}</p>
+              <p className="text-sm text-muted-foreground mt-0.5 text-pretty">
+                {description}
+              </p>
             )}
           </div>
         </div>
@@ -751,10 +853,18 @@ function Section({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</Label>
+      <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </Label>
       <div className="mt-1.5">{children}</div>
     </div>
   );
@@ -782,19 +892,22 @@ const PRO_PERMISSIONS: {
   {
     key: "salon_can_view_calendar",
     label: "Show me on their calendar",
-    description: "The salon sees your bookings and staff column on their internal calendar.",
+    description:
+      "The salon sees your bookings and staff column on their internal calendar.",
     icon: Eye,
   },
   {
     key: "public_bookable",
     label: "List me on their booking page",
-    description: "Customers can book you directly through the salon's public booking page.",
+    description:
+      "Customers can book you directly through the salon's public booking page.",
     icon: Globe2,
   },
   {
     key: "salon_can_book",
     label: "Let them create bookings for me",
-    description: "The salon can add new bookings on your calendar, e.g. for walk-ins.",
+    description:
+      "The salon can add new bookings on your calendar, e.g. for walk-ins.",
     icon: CalendarCheck,
   },
   {
@@ -810,7 +923,8 @@ function rentSummaryFor(l: {
   rent_amount_cents: number | null;
   commission_percent: number | null;
 }) {
-  const money = (c: number | null) => (c == null ? "—" : `$${(c / 100).toFixed(2)}`);
+  const money = (c: number | null) =>
+    c == null ? "—" : `$${(c / 100).toFixed(2)}`;
   switch (l.rent_mode) {
     case "weekly":
       return `${money(l.rent_amount_cents)} / week`;
@@ -825,11 +939,21 @@ function rentSummaryFor(l: {
   }
 }
 
-function ChairRentalsEditor({ businessId, links }: { businessId: string; links: SalonLink[] }) {
+function ChairRentalsEditor({
+  businessId,
+  links,
+}: {
+  businessId: string;
+  links: SalonLink[];
+}) {
   const qc = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
 
-  const togglePermission = async (link: SalonLink, key: string, value: boolean) => {
+  const togglePermission = async (
+    link: SalonLink,
+    key: string,
+    value: boolean,
+  ) => {
     const next = { ...link.permissions, [key]: value };
     setPending(`${link.id}:${key}`);
     // Optimistic update so the switch responds instantly.
@@ -854,23 +978,29 @@ function ChairRentalsEditor({ businessId, links }: { businessId: string; links: 
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground text-pretty px-1">
-        You're renting a chair at {links.length} salon{links.length === 1 ? "" : "s"}. Control
-        exactly what each one can see and do — your revenue, customers and reports are never shared,
-        no matter what's toggled here.
+        You're renting a chair at {links.length} salon
+        {links.length === 1 ? "" : "s"}. Control exactly what each one can see
+        and do — your revenue, customers and reports are never shared, no matter
+        what's toggled here.
       </p>
       {links.map((l) => (
         <Section key={l.id}>
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <h3 className="font-display text-lg truncate">{l.salon?.name ?? "Salon"}</h3>
+                <h3 className="font-display text-lg truncate">
+                  {l.salon?.name ?? "Salon"}
+                </h3>
                 {l.status === "active" ? (
                   <span
                     className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0"
                     title="Active"
                   />
                 ) : (
-                  <Badge variant="secondary" className="text-[10px] capitalize shrink-0">
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] capitalize shrink-0"
+                  >
                     {l.status}
                   </Badge>
                 )}
@@ -883,7 +1013,9 @@ function ChairRentalsEditor({ businessId, links }: { businessId: string; links: 
             </div>
             <div className="text-xs text-muted-foreground text-right shrink-0">
               <div className="uppercase tracking-wide text-[10px]">You pay</div>
-              <div className="font-medium text-foreground">{rentSummaryFor(l)}</div>
+              <div className="font-medium text-foreground">
+                {rentSummaryFor(l)}
+              </div>
             </div>
           </div>
           <div className="space-y-1 -mx-1">
@@ -896,7 +1028,9 @@ function ChairRentalsEditor({ businessId, links }: { businessId: string; links: 
                   <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <div className="min-w-0">
                     <div className="text-sm font-medium">{label}</div>
-                    <p className="text-xs text-muted-foreground text-pretty">{description}</p>
+                    <p className="text-xs text-muted-foreground text-pretty">
+                      {description}
+                    </p>
                   </div>
                 </div>
                 <Switch
@@ -954,7 +1088,11 @@ function ProfileEditor({ biz }: { biz: any }) {
       toast.success("Profile saved");
       qc.invalidateQueries({ queryKey: ["my-business"] });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save business profile");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not save business profile",
+      );
     } finally {
       setSaving(false);
     }
@@ -1040,8 +1178,8 @@ function ProfileEditor({ biz }: { biz: any }) {
           )}
         </div>
         <p className="text-xs text-muted-foreground mb-3">
-          Send clients an email reminder before their appointment, with one-tap confirm, cancel and
-          reschedule.
+          Send clients an email reminder before their appointment, with one-tap
+          confirm, cancel and reschedule.
         </p>
         {premium ? (
           <Field label="Hours before appointment">
@@ -1050,7 +1188,9 @@ function ProfileEditor({ biz }: { biz: any }) {
               min={1}
               max={168}
               value={form.reminder_hours_before ?? 24}
-              onChange={(e) => setForm({ ...form, reminder_hours_before: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, reminder_hours_before: e.target.value })
+              }
               className="h-10 max-w-[140px]"
             />
           </Field>
@@ -1058,7 +1198,9 @@ function ProfileEditor({ biz }: { biz: any }) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate({ to: "/settings", search: { tab: "plan" } as any })}
+            onClick={() =>
+              navigate({ to: "/settings", search: { tab: "plan" } as any })
+            }
           >
             Upgrade to Studio
           </Button>
@@ -1125,7 +1267,9 @@ function HoursEditor({ biz }: { biz: any }) {
   });
 
   // 7 buckets — array of periods per weekday. Empty array = closed.
-  const [days, setDays] = useState<Period[][]>(() => Array.from({ length: 7 }, () => []));
+  const [days, setDays] = useState<Period[][]>(() =>
+    Array.from({ length: 7 }, () => []),
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -1179,10 +1323,14 @@ function HoursEditor({ biz }: { biz: any }) {
     try {
       // Validate: each period open < close; no overlap within a day.
       for (let w = 0; w < 7; w++) {
-        const sorted = [...days[w]].sort((a, b) => a.open_time.localeCompare(b.open_time));
+        const sorted = [...days[w]].sort((a, b) =>
+          a.open_time.localeCompare(b.open_time),
+        );
         for (let i = 0; i < sorted.length; i++) {
           if (sorted[i].open_time >= sorted[i].close_time)
-            throw new Error(`${WEEKDAYS[w]}: opening time must be before closing time.`);
+            throw new Error(
+              `${WEEKDAYS[w]}: opening time must be before closing time.`,
+            );
           if (i > 0 && sorted[i].open_time < sorted[i - 1].close_time)
             throw new Error(`${WEEKDAYS[w]}: periods overlap.`);
         }
@@ -1203,13 +1351,17 @@ function HoursEditor({ biz }: { biz: any }) {
         })),
       );
       if (rows.length) {
-        const { error } = await supabase.from("business_hour_periods").insert(rows);
+        const { error } = await supabase
+          .from("business_hour_periods")
+          .insert(rows);
         if (error) throw error;
       }
 
       // Mirror primary period back into legacy business_hours for compatibility.
       const legacy = Array.from({ length: 7 }, (_, w) => {
-        const first = [...days[w]].sort((a, b) => a.open_time.localeCompare(b.open_time))[0];
+        const first = [...days[w]].sort((a, b) =>
+          a.open_time.localeCompare(b.open_time),
+        )[0];
         return {
           business_id: biz.id,
           weekday: w,
@@ -1218,7 +1370,9 @@ function HoursEditor({ biz }: { biz: any }) {
           closed: !first,
         };
       });
-      await supabase.from("business_hours").upsert(legacy, { onConflict: "business_id,weekday" });
+      await supabase
+        .from("business_hours")
+        .upsert(legacy, { onConflict: "business_id,weekday" });
 
       toast.success("Hours saved");
       qc.invalidateQueries({ queryKey: ["business-hour-periods"] });
@@ -1243,7 +1397,8 @@ function HoursEditor({ biz }: { biz: any }) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Add multiple periods per day for split shifts (e.g. 9:00–13:00 and 14:00–18:00).
+        Add multiple periods per day for split shifts (e.g. 9:00–13:00 and
+        14:00–18:00).
       </p>
       <div className="space-y-2">
         {days.map((periods, w) => {
@@ -1259,24 +1414,34 @@ function HoursEditor({ biz }: { biz: any }) {
                   <span className="text-xs text-muted-foreground">
                     {closed ? "Closed" : "Open"}
                   </span>
-                  <Switch checked={!closed} onCheckedChange={(v) => toggleClosed(w, !v)} />
+                  <Switch
+                    checked={!closed}
+                    onCheckedChange={(v) => toggleClosed(w, !v)}
+                  />
                 </div>
               </div>
               {!closed && (
                 <div className="space-y-1.5">
                   {periods.map((p, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
+                    <div
+                      key={i}
+                      className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2"
+                    >
                       <Input
                         type="time"
                         value={p.open_time}
-                        onChange={(e) => updatePeriod(w, i, { open_time: e.target.value })}
+                        onChange={(e) =>
+                          updatePeriod(w, i, { open_time: e.target.value })
+                        }
                         className="h-9 tabular-nums"
                       />
                       <span className="text-xs text-muted-foreground">to</span>
                       <Input
                         type="time"
                         value={p.close_time}
-                        onChange={(e) => updatePeriod(w, i, { close_time: e.target.value })}
+                        onChange={(e) =>
+                          updatePeriod(w, i, { close_time: e.target.value })
+                        }
                         className="h-9 tabular-nums"
                       />
                       <Button
@@ -1332,7 +1497,8 @@ function HolidayClosures({ businessId }: { businessId: string }) {
   const [draft, setDraft] = useState({ label: "", starts_on: "", ends_on: "" });
 
   const add = async () => {
-    if (!draft.label || !draft.starts_on || !draft.ends_on) return toast.error("Fill all fields");
+    if (!draft.label || !draft.starts_on || !draft.ends_on)
+      return toast.error("Fill all fields");
     if (draft.starts_on > draft.ends_on)
       return toast.error("End date must be on or after the start date");
     const { error } = await supabase
@@ -1354,7 +1520,9 @@ function HolidayClosures({ businessId }: { businessId: string }) {
       </div>
       <div className="space-y-1.5 mb-3">
         {(rows ?? []).length === 0 && (
-          <p className="text-xs text-muted-foreground">No closures scheduled.</p>
+          <p className="text-xs text-muted-foreground">
+            No closures scheduled.
+          </p>
         )}
         {(rows ?? []).map((r: any) => (
           <div

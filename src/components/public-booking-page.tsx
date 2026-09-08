@@ -73,6 +73,11 @@ export interface PublicBookingBusiness {
   twitter?: string | null;
   currency?: string | null;
   timezone?: string | null;
+  payment_mode?: string | null;
+  deposit_percent?: number | null;
+  cancellation_window_hours?: number | null;
+  cancellation_policy?: string | null;
+  reminder_hours_before?: number | null;
 }
 
 // A "service" here is always a specific business's variant (its own price,
@@ -107,6 +112,15 @@ type PublicReview = {
   serviceName: string | null;
   verified: boolean;
 };
+type PublicBookingPolicy = Pick<
+  PublicBookingBusiness,
+  | "id"
+  | "payment_mode"
+  | "deposit_percent"
+  | "cancellation_window_hours"
+  | "cancellation_policy"
+  | "reminder_hours_before"
+>;
 type Step = "service" | "staff" | "time" | "info" | "done";
 
 // Services with the same (trimmed, case-insensitive) name across the salon
@@ -250,6 +264,7 @@ export function PublicBookingPage({
   const [infoTouched, setInfoTouched] = useState(false);
   const [smsReminderConsent, setSmsReminderConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [paymentReturn, setPaymentReturn] = useState<
     "success" | "cancelled" | null
   >(null);
@@ -318,6 +333,38 @@ export function PublicBookingPage({
     () => [biz.id, ...proBusinessIds],
     [biz.id, proBusinessIds],
   );
+
+  // A salon page can include linked independent professionals. Their Stripe
+  // account and booking policy own the selected service, so disclose that
+  // exact policy rather than accidentally showing the host salon's terms.
+  const { data: bookingPolicies = [] } = useQuery({
+    queryKey: ["pub-booking-policies", ...bizIds],
+    enabled: pros !== undefined,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("public_businesses")
+        .select(
+          "id, payment_mode, deposit_percent, cancellation_window_hours, cancellation_policy, reminder_hours_before",
+        )
+        .in("id", bizIds);
+      if (error) throw error;
+      return (data ?? []) as PublicBookingPolicy[];
+    },
+  });
+  const selectedPolicy =
+    bookingPolicies.find((policy) => policy.id === service?.business_id) ?? biz;
+  useEffect(() => {
+    setPolicyAccepted(false);
+  }, [service?.id]);
+  const paymentMode = selectedPolicy.payment_mode ?? "none";
+  const depositPercent = selectedPolicy.deposit_percent ?? 30;
+  const dueNow = service
+    ? paymentMode === "deposit"
+      ? Math.round((service.price_cents * depositPercent) / 100)
+      : paymentMode === "full"
+        ? service.price_cents
+        : 0
+    : 0;
 
   const { data: services, isLoading: loadingServices } = useQuery({
     queryKey: ["pub-services", biz.id, proBusinessIds.join(",")],
@@ -1687,13 +1734,46 @@ export function PublicBookingPage({
                 placeholder="Anything we should know?"
               />
             </div>
+            <div className="rounded-xl border bg-secondary/20 p-4 text-sm space-y-2">
+              <p className="font-medium">Booking and cancellation policy</p>
+              <p className="text-muted-foreground leading-5">
+                Cancel or reschedule online at least{" "}
+                {selectedPolicy.cancellation_window_hours ?? 24} hours before
+                your appointment. After that, contact {biz.name} directly.
+              </p>
+              {selectedPolicy.cancellation_policy && (
+                <p className="text-muted-foreground leading-5 whitespace-pre-wrap">
+                  {selectedPolicy.cancellation_policy}
+                </p>
+              )}
+              <div className="flex items-start gap-2 pt-1">
+                <input
+                  id="accept-booking-policy"
+                  type="checkbox"
+                  checked={policyAccepted}
+                  onChange={(e) => setPolicyAccepted(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input"
+                />
+                <Label
+                  htmlFor="accept-booking-policy"
+                  className="text-sm font-normal leading-5"
+                >
+                  I understand the cancellation and rescheduling policy
+                  {dueNow > 0
+                    ? ` and agree to pay ${fmtMoney(dueNow, currency)} now`
+                    : ""}
+                  .
+                </Label>
+              </div>
+            </div>
             <Button
               onClick={book}
               disabled={
                 submitting ||
                 !info.name.trim() ||
                 !isValidEmail(info.email) ||
-                (info.phone.trim().length > 0 && !isValidPhone(info.phone))
+                (info.phone.trim().length > 0 && !isValidPhone(info.phone)) ||
+                !policyAccepted
               }
               className="w-full h-12 text-base shadow-glow"
               style={themedButtonStyle(theme)}
@@ -1704,7 +1784,11 @@ export function PublicBookingPage({
                   secure checkout…
                 </>
               ) : (
-                <>Continue to secure payment</>
+                <>
+                  {dueNow > 0
+                    ? `Pay ${fmtMoney(dueNow, currency)} securely`
+                    : "Confirm booking"}
+                </>
               )}
             </Button>
             <p className="text-[11px] leading-5 text-muted-foreground text-center">

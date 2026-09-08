@@ -30,6 +30,14 @@ type RefundInput = {
   bookingId: string;
 };
 
+type NoShowPolicyInput = {
+  paymentMode: "none" | "deposit" | "full";
+  depositPercent: number;
+  cancellationWindowHours: number;
+  cancellationPolicy: string;
+  reminderHoursBefore: number;
+};
+
 type StripePaymentMethods = {
   data: Array<{ id: string }>;
 };
@@ -88,6 +96,67 @@ function formBody(values: Record<string, string>) {
 function appOrigin() {
   return trustedAppOrigin();
 }
+
+export const saveNoShowPolicy = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: NoShowPolicyInput) => {
+    if (!["none", "deposit", "full"].includes(data.paymentMode))
+      throw new Error("Choose a valid payment option.");
+    if (
+      !Number.isInteger(data.depositPercent) ||
+      data.depositPercent < 1 ||
+      data.depositPercent > 100
+    )
+      throw new Error("Choose a deposit between 1% and 100%.");
+    if (
+      !Number.isInteger(data.cancellationWindowHours) ||
+      data.cancellationWindowHours < 0 ||
+      data.cancellationWindowHours > 336
+    )
+      throw new Error("Choose a cancellation window between 0 and 336 hours.");
+    if (
+      !Number.isInteger(data.reminderHoursBefore) ||
+      data.reminderHoursBefore < 1 ||
+      data.reminderHoursBefore > 168
+    )
+      throw new Error("Choose a reminder time between 1 and 168 hours.");
+    const cancellationPolicy = data.cancellationPolicy.trim();
+    if (!cancellationPolicy || cancellationPolicy.length > 1000)
+      throw new Error(
+        "Add a clear cancellation policy (up to 1,000 characters).",
+      );
+    return { ...data, cancellationPolicy };
+  })
+  .handler(async ({ data, context }) => {
+    const { data: business, error } = await context.supabase
+      .from("businesses")
+      .select("id, plan, stripe_charges_enabled")
+      .eq("owner_id", context.userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!business)
+      throw new Error("Only the business owner can change this policy.");
+    if (data.paymentMode !== "none" && !business.stripe_charges_enabled)
+      throw new Error("Finish Stripe setup before requiring online payment.");
+
+    const payload = {
+      payment_mode: data.paymentMode,
+      deposit_percent: data.depositPercent,
+      cancellation_window_hours: data.cancellationWindowHours,
+      cancellation_policy: data.cancellationPolicy,
+      ...(business.plan === "studio"
+        ? { reminder_hours_before: data.reminderHoursBefore }
+        : {}),
+    };
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { error: updateError } = await supabaseAdmin
+      .from("businesses")
+      .update(payload)
+      .eq("id", business.id);
+    if (updateError) throw updateError;
+    return { saved: true };
+  });
 
 async function createOnboardingLink(accountId: string) {
   const origin = appOrigin();
