@@ -1567,10 +1567,14 @@ export function PublicBookingPage({
               <BookingSignIn onSignedIn={() => setInfoTouched(false)} />
             )}
             <div>
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor={`${domId}-customer-name`}
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
                 Your name
               </Label>
               <Input
+                id={`${domId}-customer-name`}
                 value={info.name}
                 onChange={(e) => {
                   setInfoTouched(true);
@@ -1583,10 +1587,14 @@ export function PublicBookingPage({
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor={`${domId}-customer-email`}
+                  className="text-xs uppercase tracking-wide text-muted-foreground"
+                >
                   Email
                 </Label>
                 <Input
+                  id={`${domId}-customer-email`}
                   type="email"
                   value={info.email}
                   onChange={(e) => {
@@ -1603,10 +1611,14 @@ export function PublicBookingPage({
                 )}
               </div>
               <div>
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor={`${domId}-customer-phone`}
+                  className="text-xs uppercase tracking-wide text-muted-foreground"
+                >
                   Phone
                 </Label>
                 <Input
+                  id={`${domId}-customer-phone`}
                   type="tel"
                   value={info.phone}
                   onChange={(e) => {
@@ -1626,13 +1638,17 @@ export function PublicBookingPage({
               </div>
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor={`${domId}-customer-notes`}
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
                 Notes{" "}
                 <span className="text-muted-foreground/60 normal-case">
                   (optional)
                 </span>
               </Label>
               <Textarea
+                id={`${domId}-customer-notes`}
                 value={info.notes}
                 onChange={(e) => setInfo({ ...info, notes: e.target.value })}
                 className="mt-1.5"
