@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { createAiProvider } from "@/lib/ai-provider.server";
 import { buildAssistantContext } from "@/lib/assistant-context.server";
+import { readJsonWithLimit } from "@/lib/request-limits";
+
+const MAX_CHAT_BODY_BYTES = 120 * 1024;
+const MAX_CHAT_MESSAGES = 40;
 
 export const Route = createFileRoute("/api/chat")({
   server: {
@@ -12,9 +16,23 @@ export const Route = createFileRoute("/api/chat")({
           const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7) : "";
           if (!token) return new Response("Unauthorized", { status: 401 });
 
-          const body = (await request.json()) as { messages?: UIMessage[] };
+          const parsed = await readJsonWithLimit<{ messages?: unknown }>(
+            request,
+            MAX_CHAT_BODY_BYTES,
+          );
+          if ("error" in parsed) return parsed.error;
+          const body = parsed.value;
           if (!Array.isArray(body.messages))
             return new Response("messages required", { status: 400 });
+          if (
+            body.messages.length === 0 ||
+            body.messages.length > MAX_CHAT_MESSAGES ||
+            body.messages.some(
+              (message) => !message || typeof message !== "object" || Array.isArray(message),
+            )
+          ) {
+            return new Response("messages must contain between 1 and 40 items", { status: 400 });
+          }
 
           const key = process.env.ANTHROPIC_API_KEY;
           if (!key) {
@@ -47,14 +65,18 @@ ${summary}`;
             // Claude model is the right cost/latency tradeoff here.
             model: provider("claude-haiku-4-5-20251001"),
             system,
-            messages: await convertToModelMessages(body.messages),
+            messages: await convertToModelMessages(body.messages as UIMessage[]),
           });
 
           return result.toUIMessageStreamResponse({ originalMessages: body.messages });
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Server error";
+          console.error("[api/chat] request failed", err);
           const status = msg === "Unauthorized" ? 401 : 500;
-          return new Response(msg, { status });
+          return new Response(
+            status === 401 ? "Unauthorized" : "The assistant could not complete that request.",
+            { status },
+          );
         }
       },
     },

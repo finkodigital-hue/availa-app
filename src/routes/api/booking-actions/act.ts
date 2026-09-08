@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { consumeBookingActionToken } from "@/lib/booking-tokens.server";
+import { readJsonWithLimit } from "@/lib/request-limits";
 
 // Backs the Confirm and Cancel one-tap links. The token is the *only*
 // locator — there is no booking id anywhere in the request other than what
@@ -10,12 +11,11 @@ export const Route = createFileRoute("/api/booking-actions/act")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        let body: { action?: string; token?: string };
-        try {
-          body = await request.json();
-        } catch {
+        const parsed = await readJsonWithLimit<{ action?: string; token?: string }>(request, 4 * 1024);
+        if ("error" in parsed) {
           return new Response("Invalid request", { status: 400 });
         }
+        const body = parsed.value;
         const { action, token } = body;
         if ((action !== "confirm" && action !== "cancel") || !token || typeof token !== "string") {
           return new Response("Invalid request", { status: 400 });

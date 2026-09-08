@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { safeImageSrc, safePublicHref } from "@/lib/safe-url";
 import type { HeroConfig } from "./types";
 
 // Color comes from the page-level theme (the --brand custom property set by
@@ -55,7 +56,8 @@ export function Hero({ config }: { config: HeroConfig }) {
 }
 
 function Photo({ url, className }: { url?: string | null; className?: string }) {
-  if (!url) {
+  const safeUrl = safeImageSrc(url);
+  if (!safeUrl) {
     return (
       <div
         className={cn(
@@ -67,7 +69,7 @@ function Photo({ url, className }: { url?: string | null; className?: string }) 
       </div>
     );
   }
-  return <img src={url} alt="" className={cn("h-full w-full object-cover", className)} />;
+  return <img src={safeUrl} alt="" className={cn("h-full w-full object-cover", className)} />;
 }
 
 function HeroCopy({
@@ -96,7 +98,7 @@ function HeroCopy({
       )}
       {config.ctaLabel && (
         <a
-          href={config.ctaHref ?? "#"}
+          href={safePublicHref(config.ctaHref) ?? "#"}
           className="inline-flex items-center justify-center h-11 px-6 text-white text-sm font-medium mt-6 shadow-glow"
           style={{ background: brand, borderRadius: radius }}
         >

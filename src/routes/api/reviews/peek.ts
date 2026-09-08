@@ -3,14 +3,14 @@ import { peekBookingActionToken } from "@/lib/booking-tokens.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseTheme } from "@/lib/theme";
 import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
+import { readJsonWithLimit } from "@/lib/request-limits";
 
 export const Route = createFileRoute("/api/reviews/peek")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { token } = (await request.json().catch(() => ({}))) as {
-          token?: string;
-        };
+        const parsed = await readJsonWithLimit<{ token?: string }>(request, 4 * 1024);
+        const { token } = "error" in parsed ? {} : parsed.value;
         if (!token)
           return Response.json(
             { ok: false, reason: "invalid" },

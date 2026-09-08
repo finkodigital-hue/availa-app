@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { readJsonWithLimit } from "@/lib/request-limits";
 
 // Minimal error intake replacing the visibility lost when the Lovable
 // integration (and its error reporting) was removed. The browser-side
@@ -12,17 +13,20 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 // limit (checked before insert), and it always returns 204 regardless of
 // outcome so the endpoint tells a prober nothing.
 const MAX_PER_MINUTE = 30;
+const MAX_BODY_BYTES = 16 * 1024;
 
 export const Route = createFileRoute("/api/client-errors")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
-          const body = (await request.json()) as {
+          const parsed = await readJsonWithLimit<{
             message?: string;
             stack?: string;
             url?: string;
-          };
+          }>(request, MAX_BODY_BYTES);
+          if ("error" in parsed) return new Response(null, { status: 204 });
+          const body = parsed.value;
           const message = (body.message ?? "").toString().slice(0, 500).trim();
           if (!message) return new Response(null, { status: 204 });
 

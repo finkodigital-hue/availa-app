@@ -1,4 +1,5 @@
 import type { GalleryConfig } from "./types";
+import { safeImageSrc } from "@/lib/safe-url";
 
 export function Gallery({ config }: { config: GalleryConfig }) {
   const photos = config.photos.slice(0, config.layout);
@@ -6,20 +7,24 @@ export function Gallery({ config }: { config: GalleryConfig }) {
 
   return (
     <section className="grid grid-cols-3 gap-2 sm:gap-3">
-      {photos.map((p, i) => (
+      {photos.map((p, i) => {
+        const safeUrl = safeImageSrc(p.url);
+        if (!safeUrl) return null;
+        return (
         <div
           key={i}
           style={{ borderRadius: "var(--brand-radius)" }}
           className="aspect-square overflow-hidden bg-secondary"
         >
           <img
-            src={p.url}
+            src={safeUrl}
             alt={p.alt ?? ""}
             className="h-full w-full object-cover"
             loading="lazy"
           />
         </div>
-      ))}
+        );
+      })}
       {Array.from({ length: placeholders }).map((_, i) => (
         <div
           key={`placeholder-${i}`}

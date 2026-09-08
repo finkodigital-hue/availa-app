@@ -37,7 +37,24 @@ const securityHeadersMiddleware = createMiddleware().server(
 
     response.headers.set(
       "Content-Security-Policy",
-      "base-uri 'self'; frame-ancestors 'none'; object-src 'none'",
+      [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        // The app currently uses React inline styles and a small inline
+        // recovery script. Keep the allowed origins narrow while retaining
+        // those existing features; user content is still escaped by React.
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "img-src 'self' https: data: blob:",
+        "connect-src 'self'",
+        "frame-src 'self'",
+        "worker-src 'self' blob:",
+        "manifest-src 'self'",
+      ].join("; "),
     );
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     response.headers.set("X-Content-Type-Options", "nosniff");

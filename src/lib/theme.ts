@@ -4,6 +4,8 @@
 // brandingVars() helper that used to live here.
 // Apply with: <div style={applyThemeVars(theme)}> ... </div>
 
+import { safeImageSrc } from "@/lib/safe-url";
+
 export type ButtonStyle = "solid" | "outline" | "soft";
 export type PresetId = "clean_minimal" | "bold_modern" | "soft_elegant" | "fresh_playful";
 
@@ -97,10 +99,9 @@ export const FONT_CHOICES: { id: string; label: string; stack: string; googlePar
 ];
 
 function fontStack(name: string): string {
-  return (
-    FONT_CHOICES.find((f) => f.id === name)?.stack ??
-    `"${name}", ui-sans-serif, system-ui, sans-serif`
-  );
+  // Theme data is persisted JSON and can be edited outside the UI. Never
+  // interpolate an arbitrary value into the raw scoped stylesheet.
+  return FONT_CHOICES.find((f) => f.id === name)?.stack ?? FONT_CHOICES[0].stack;
 }
 
 // Tailwind v4's `@theme inline` bakes --font-display/--font-sans into the
@@ -126,8 +127,7 @@ export function googleFontsHref(theme: Pick<Theme, "typography">): string {
     new Set([theme.typography.displayFont, theme.typography.bodyFont]),
   ).map(
     (name) =>
-      FONT_CHOICES.find((f) => f.id === name)?.googleParam ??
-      `${name.replace(/ /g, "+")}:wght@400;500;600;700`,
+      FONT_CHOICES.find((f) => f.id === name)?.googleParam ?? FONT_CHOICES[0].googleParam,
   );
   return `https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join("&")}&display=swap`;
 }
@@ -136,36 +136,37 @@ export const BUTTON_RADIUS_MIN = 0;
 export const BUTTON_RADIUS_MAX = 24;
 
 export function applyThemeVars(theme: Theme): React.CSSProperties {
+  const safeTheme = parseTheme(theme);
   return {
     // Override the app's semantic colour tokens inside the public page so
     // Tailwind utilities such as bg-background, bg-card and text-muted-
     // foreground reflect the owner's theme instead of the Bookzenvo admin
     // palette. Keeping these scoped on the page root prevents the storefront
     // theme from leaking into the surrounding page-builder UI.
-    ["--background" as any]: theme.colors.background,
-    ["--foreground" as any]: theme.colors.text,
-    ["--card" as any]: theme.colors.surface,
-    ["--card-foreground" as any]: theme.colors.text,
-    ["--popover" as any]: theme.colors.surface,
-    ["--popover-foreground" as any]: theme.colors.text,
-    ["--primary" as any]: theme.colors.primary,
-    ["--accent" as any]: theme.colors.accent,
-    ["--secondary" as any]: `color-mix(in srgb, ${theme.colors.accent} 10%, ${theme.colors.background})`,
-    ["--secondary-foreground" as any]: theme.colors.text,
-    ["--muted" as any]: theme.colors.surface,
-    ["--muted-foreground" as any]: theme.colors.textMuted,
-    ["--border" as any]: `color-mix(in srgb, ${theme.colors.text} 14%, transparent)`,
-    ["--input" as any]: `color-mix(in srgb, ${theme.colors.text} 18%, transparent)`,
-    ["--ring" as any]: theme.colors.primary,
-    ["--brand" as any]: theme.colors.primary,
-    ["--brand-accent" as any]: theme.colors.accent,
-    ["--brand-bg" as any]: theme.colors.background,
-    ["--brand-surface" as any]: theme.colors.surface,
-    ["--brand-text" as any]: theme.colors.text,
-    ["--brand-text-muted" as any]: theme.colors.textMuted,
-    ["--font-display" as any]: fontStack(theme.typography.displayFont),
-    ["--font-sans" as any]: fontStack(theme.typography.bodyFont),
-    ["--brand-radius" as any]: `${theme.buttons.cornerRadius}px`,
+    ["--background" as any]: safeTheme.colors.background,
+    ["--foreground" as any]: safeTheme.colors.text,
+    ["--card" as any]: safeTheme.colors.surface,
+    ["--card-foreground" as any]: safeTheme.colors.text,
+    ["--popover" as any]: safeTheme.colors.surface,
+    ["--popover-foreground" as any]: safeTheme.colors.text,
+    ["--primary" as any]: safeTheme.colors.primary,
+    ["--accent" as any]: safeTheme.colors.accent,
+    ["--secondary" as any]: `color-mix(in srgb, ${safeTheme.colors.accent} 10%, ${safeTheme.colors.background})`,
+    ["--secondary-foreground" as any]: safeTheme.colors.text,
+    ["--muted" as any]: safeTheme.colors.surface,
+    ["--muted-foreground" as any]: safeTheme.colors.textMuted,
+    ["--border" as any]: `color-mix(in srgb, ${safeTheme.colors.text} 14%, transparent)`,
+    ["--input" as any]: `color-mix(in srgb, ${safeTheme.colors.text} 18%, transparent)`,
+    ["--ring" as any]: safeTheme.colors.primary,
+    ["--brand" as any]: safeTheme.colors.primary,
+    ["--brand-accent" as any]: safeTheme.colors.accent,
+    ["--brand-bg" as any]: safeTheme.colors.background,
+    ["--brand-surface" as any]: safeTheme.colors.surface,
+    ["--brand-text" as any]: safeTheme.colors.text,
+    ["--brand-text-muted" as any]: safeTheme.colors.textMuted,
+    ["--font-display" as any]: fontStack(safeTheme.typography.displayFont),
+    ["--font-sans" as any]: fontStack(safeTheme.typography.bodyFont),
+    ["--brand-radius" as any]: `${safeTheme.buttons.cornerRadius}px`,
   } as React.CSSProperties;
 }
 
@@ -176,9 +177,10 @@ export function themedButtonStyle(
   theme: Theme,
   variant: "primary" | "accent" = "primary",
 ): React.CSSProperties {
-  const color = variant === "accent" ? theme.colors.accent : theme.colors.primary;
-  const radius = `${theme.buttons.cornerRadius}px`;
-  switch (theme.buttons.style) {
+  const safeTheme = parseTheme(theme);
+  const color = variant === "accent" ? safeTheme.colors.accent : safeTheme.colors.primary;
+  const radius = `${safeTheme.buttons.cornerRadius}px`;
+  switch (safeTheme.buttons.style) {
     case "outline":
       return {
         background: "transparent",
@@ -255,6 +257,65 @@ export function defaultTheme(): Theme {
 }
 
 export function parseTheme(raw: unknown): Theme {
-  if (!raw || typeof raw !== "object" || !("colors" in raw)) return defaultTheme();
-  return { ...defaultTheme(), ...(raw as object) } as Theme;
+  const fallback = defaultTheme();
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return fallback;
+
+  const input = raw as Record<string, unknown>;
+  const inputColors = isRecord(input.colors) ? input.colors : {};
+  const inputTypography = isRecord(input.typography) ? input.typography : {};
+  const inputButtons = isRecord(input.buttons) ? input.buttons : {};
+  const hex = (value: unknown, defaultValue: string) =>
+    typeof value === "string" && HEX_COLOR.test(value) ? value : defaultValue;
+  const font = (value: unknown, defaultValue: string) =>
+    typeof value === "string" && FONT_CHOICES.some((choice) => choice.id === value)
+      ? value
+      : defaultValue;
+  const preset = PRESET_IDS.includes(input.preset as PresetId)
+    ? (input.preset as PresetId)
+    : fallback.preset;
+  const style = BUTTON_STYLES.includes(inputButtons.style as ButtonStyle)
+    ? (inputButtons.style as ButtonStyle)
+    : fallback.buttons.style;
+  const radius =
+    typeof inputButtons.cornerRadius === "number" && Number.isFinite(inputButtons.cornerRadius)
+      ? Math.min(BUTTON_RADIUS_MAX, Math.max(BUTTON_RADIUS_MIN, inputButtons.cornerRadius))
+      : fallback.buttons.cornerRadius;
+  const logoUrl = safeImageSrc(input.logoUrl);
+  const updatedAt =
+    typeof input.updatedAt === "string" && input.updatedAt.length <= 100
+      ? input.updatedAt
+      : fallback.updatedAt;
+
+  return {
+    version: 1,
+    preset,
+    colors: {
+      primary: hex(inputColors.primary, fallback.colors.primary),
+      accent: hex(inputColors.accent, fallback.colors.accent),
+      background: hex(inputColors.background, fallback.colors.background),
+      surface: hex(inputColors.surface, fallback.colors.surface),
+      text: hex(inputColors.text, fallback.colors.text),
+      textMuted: hex(inputColors.textMuted, fallback.colors.textMuted),
+    },
+    typography: {
+      displayFont: font(inputTypography.displayFont, fallback.typography.displayFont),
+      bodyFont: font(inputTypography.bodyFont, fallback.typography.bodyFont),
+    },
+    buttons: { style, cornerRadius: radius },
+    logoUrl,
+    updatedAt,
+  };
+}
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+const BUTTON_STYLES: ButtonStyle[] = ["solid", "outline", "soft"];
+const PRESET_IDS: PresetId[] = [
+  "clean_minimal",
+  "bold_modern",
+  "soft_elegant",
+  "fresh_playful",
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
 }

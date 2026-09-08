@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { StaffSpotlightConfig } from "./types";
+import { safeImageSrc } from "@/lib/safe-url";
 
 type StaffRow = {
   id: string;
@@ -52,9 +53,9 @@ export function StaffSpotlight({ config }: { config: StaffSpotlightConfig }) {
               style={{ boxShadow: "0 0 0 2px var(--brand-accent)" }}
               className="h-16 w-16 mx-auto rounded-full bg-secondary overflow-hidden grid place-items-center font-display text-xl"
             >
-              {s.photo_url ? (
+              {safeImageSrc(s.photo_url) ? (
                 <img
-                  src={s.photo_url}
+                  src={safeImageSrc(s.photo_url) ?? undefined}
                   alt={`${s.name}${s.role ? ` — ${s.role}` : ""}`}
                   className="h-full w-full object-cover"
                   loading="lazy"

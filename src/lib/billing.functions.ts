@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { trustedAppOrigin } from "@/lib/app-origin.server";
 
 // Subscription billing for the Studio plan (£22/month), charged on
 // Bookzenvo's own Stripe account. Completely separate from
@@ -69,7 +69,7 @@ function formBody(values: Record<string, string>) {
 }
 
 function appOrigin() {
-  return process.env.APP_URL ?? new URL(getRequest().url).origin;
+  return trustedAppOrigin();
 }
 
 /** Find (or create on first ever use) the £22/month Studio price. */

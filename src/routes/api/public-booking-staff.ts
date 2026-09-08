@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { isTenantAssetPath, safeImageSrc } from "@/lib/safe-url";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -12,13 +13,19 @@ type PublicStaffRow = {
   photo_url: string | null;
 };
 
-async function resolvePhotoUrl(value: string | null) {
-  if (!value) return null;
-  if (/^https?:\/\//i.test(value)) return value;
+async function resolvePhotoUrl(value: string | null, businessId: string) {
+  const safeValue = safeImageSrc(value);
+  if (!safeValue) return null;
+  if (/^https?:\/\//i.test(safeValue)) return safeValue;
+
+  // Relative storage paths must belong to the same business as the staff
+  // row. Without this check a compromised/incorrect row could make this
+  // service-role endpoint sign another salon's private asset.
+  if (!isTenantAssetPath(safeValue, businessId)) return null;
 
   const { data, error } = await supabaseAdmin.storage
     .from("business-assets")
-    .createSignedUrl(value, 3600);
+    .createSignedUrl(safeValue, 3600);
 
   return error ? null : (data?.signedUrl ?? null);
 }
@@ -113,7 +120,7 @@ export const Route = createFileRoute("/api/public-booking-staff")({
             name: person.name,
             role: person.role,
             business_id: person.business_id,
-            photoUrl: await resolvePhotoUrl(person.photo_url),
+            photoUrl: await resolvePhotoUrl(person.photo_url, person.business_id),
           })),
         );
 

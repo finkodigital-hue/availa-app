@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { readBodyWithLimit } from "@/lib/request-limits";
 
 const PROXY_PREFIX = "/api/supabase/";
 const ALLOWED_SERVICES = new Set(["auth", "rest", "storage", "functions"]);
@@ -28,6 +29,12 @@ const FORWARDED_RESPONSE_HEADERS = [
   "location",
   "x-supabase-api-version",
 ] as const;
+const MAX_REQUEST_BYTES: Record<string, number> = {
+  auth: 256 * 1024,
+  rest: 1 * 1024 * 1024,
+  storage: 12 * 1024 * 1024,
+  functions: 1 * 1024 * 1024,
+};
 
 const PROTECTED_REST_FIELDS: Record<string, ReadonlySet<string>> = {
   businesses: new Set([
@@ -50,8 +57,12 @@ function isOpaqueSupabaseKey(value: string) {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
 }
 
-async function rejectUnsafeRestWrite(request: Request, upstreamPath: string) {
-  if (request.method === "GET" || request.method === "HEAD") return null;
+async function rejectUnsafeRestWrite(
+  body: Uint8Array,
+  upstreamPath: string,
+  method: string,
+) {
+  if (method === "GET" || method === "HEAD") return null;
 
   const [service, version, resource] = upstreamPath.split("/");
   if (service !== "rest" || version !== "v1" || !resource || resource === "rpc") return null;
@@ -59,16 +70,16 @@ async function rejectUnsafeRestWrite(request: Request, upstreamPath: string) {
   if (resource === "payments") {
     return new Response("Verified payment records are server-managed", { status: 403 });
   }
-  if (resource === "businesses" && request.method === "DELETE") {
+  if (resource === "businesses" && method === "DELETE") {
     return new Response("Business deletion must use the verified account API", { status: 403 });
   }
 
   const protectedFields = PROTECTED_REST_FIELDS[resource];
-  if (!protectedFields || request.method === "DELETE") return null;
+  if (!protectedFields || method === "DELETE") return null;
 
   let payload: unknown;
   try {
-    payload = await request.clone().json();
+    payload = JSON.parse(new TextDecoder().decode(body));
   } catch {
     return new Response("Database writes must use a valid JSON body", { status: 400 });
   }
@@ -105,6 +116,12 @@ async function proxySupabaseRequest(request: Request) {
   if (!ALLOWED_SERVICES.has(service) || version !== "v1") {
     return new Response("Unsupported database gateway path", { status: 404 });
   }
+  const maxBytes = MAX_REQUEST_BYTES[service];
+  const body =
+    request.method === "GET" || request.method === "HEAD"
+      ? undefined
+      : await readBodyWithLimit(request, maxBytes);
+  if (body === null) return new Response("Request body is too large", { status: 413 });
   let decodedPath: string;
   try {
     decodedPath = decodeURIComponent(upstreamPath);
@@ -115,7 +132,11 @@ async function proxySupabaseRequest(request: Request) {
     return new Response("Invalid database gateway path", { status: 400 });
   }
 
-  const unsafeWrite = await rejectUnsafeRestWrite(request, upstreamPath);
+  const unsafeWrite = await rejectUnsafeRestWrite(
+    body ?? new Uint8Array(),
+    upstreamPath,
+    request.method,
+  );
   if (unsafeWrite) return unsafeWrite;
 
   const upstreamBase = new URL(supabaseUrl);
@@ -137,7 +158,7 @@ async function proxySupabaseRequest(request: Request) {
     upstream = await fetch(upstreamUrl, {
       method: request.method,
       headers,
-      body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
+      body,
       redirect: "manual",
       // Streaming uploads must opt in when running in Node-compatible dev mode.
       duplex: "half",

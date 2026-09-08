@@ -19,7 +19,7 @@ export function HoursLocation({ config }: { config: HoursLocationConfig }) {
     queryFn: async () => {
       const [bizRes, hoursRes] = await Promise.all([
         supabase
-          .from("businesses")
+          .from("public_businesses")
           .select("address, phone")
           .eq("id", config.businessId)
           .maybeSingle(),

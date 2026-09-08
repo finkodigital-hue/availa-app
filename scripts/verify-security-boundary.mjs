@@ -31,6 +31,9 @@ const securityMigration = await read(
 const consultationsMigration = await read(
   "supabase/migrations/20260904120000_add_consultation_forms.sql",
 );
+const customerMutationMigration = await read(
+  "supabase/migrations/20260908150000_harden_customer_mutations.sql",
+);
 
 assert(
   runtimeEnv.includes("${window.location.origin}/api/supabase"),
@@ -47,7 +50,8 @@ assert(
 assert(
   gateway.includes("PROTECTED_REST_FIELDS") &&
     gateway.includes('resource === "payments"') &&
-    gateway.includes('resource === "businesses" && request.method === "DELETE"'),
+    gateway.includes('resource === "businesses"') &&
+    gateway.includes('method === "DELETE"'),
   "The server gateway must reject direct sensitive writes before they reach Supabase.",
 );
 assert(
@@ -82,6 +86,13 @@ assert(
       "grant select on public.consultation_submissions to authenticated",
     ),
   "Salon health-data records must remain accessible only through the server API.",
+);
+assert(
+  customerMutationMigration.includes("guard_customer_booking_updates") &&
+    customerMutationMigration.includes("Customers can only cancel a booking") &&
+    customerMutationMigration.includes("guard_customer_profile_updates") &&
+    customerMutationMigration.includes("bookzenvo.customer_reschedule"),
+  "Customer portal updates must be restricted to the validated cancellation, reschedule, and profile fields.",
 );
 
 const sourceFiles = (await walk("src")).filter((file) => /\.(?:ts|tsx|js|jsx)$/.test(file));

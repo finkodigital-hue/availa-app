@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseTheme } from "@/lib/theme";
 import { buildConfirmationEmail } from "@/lib/emails/confirmation-email.server";
 import { sendEmail, EmailSendError } from "@/lib/resend.server";
+import { readJsonWithLimit } from "@/lib/request-limits";
 
 // Called immediately after a booking is created (both the public booking
 // page and the owner's walk-in dialog) so the confirmation email goes out
@@ -25,12 +26,11 @@ export const Route = createFileRoute("/api/bookings/send-confirmation")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        let body: { booking_id?: string };
-        try {
-          body = await request.json();
-        } catch {
+        const parsed = await readJsonWithLimit<{ booking_id?: string }>(request, 4 * 1024);
+        if ("error" in parsed) {
           return new Response(null, { status: 204 });
         }
+        const body = parsed.value;
         const bookingId = body.booking_id;
         if (!bookingId) return new Response(null, { status: 204 });
 

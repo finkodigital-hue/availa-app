@@ -13,6 +13,7 @@ import {
   type ButtonStyle,
   type DesignSuggestion,
 } from "@/lib/theme";
+import { sanitizePageBlocks } from "@/lib/page-block-security";
 import { captureScreenshot } from "./screenshot.server";
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
@@ -111,13 +112,13 @@ export async function suggestPageBlocks({
     );
   }
 
-  const currentBlocks = blocks as PageBlock[];
+  const currentBlocks = sanitizePageBlocks(blocks, businessId);
   const beforeUrl = buildPreviewUrl(siteOrigin, business.slug, currentBlocks);
   const beforeShot = await captureScreenshot(beforeUrl);
 
   const client = new Anthropic();
   const originalIds = new Set(
-    blocks
+    currentBlocks
       .map((b) =>
         b && typeof b === "object" && "id" in b
           ? (b as { id: unknown }).id
@@ -158,7 +159,7 @@ export async function suggestPageBlocks({
             : []),
           {
             type: "text" as const,
-            text: `CURRENT BLOCKS:\n${JSON.stringify(blocks, null, 2)}\n\nCURRENT DESIGN:\n${JSON.stringify(currentDesign, null, 2)}\n\nOWNER'S REQUEST:\n${prompt}`,
+            text: `CURRENT BLOCKS:\n${JSON.stringify(currentBlocks, null, 2)}\n\nCURRENT DESIGN:\n${JSON.stringify(currentDesign, null, 2)}\n\nOWNER'S REQUEST:\n${prompt}`,
           },
         ],
       },
@@ -193,7 +194,7 @@ export async function suggestPageBlocks({
     throw new PageAiError("The AI's response wasn't a list of blocks.");
   }
 
-  const sanitized = rawBlocks.map((item): PageBlock => {
+  rawBlocks.forEach((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) {
       throw new PageAiError(
         "The AI's response included a block that wasn't an object.",
@@ -211,10 +212,17 @@ export async function suggestPageBlocks({
         `The "${type}" block the AI returned is missing a valid config.`,
       );
     }
-    const id = (item as { id?: unknown }).id;
+  });
+
+  const safeBlocks = sanitizePageBlocks(rawBlocks, businessId);
+  if (safeBlocks.length !== rawBlocks.length) {
+    throw new PageAiError("The AI returned a block with invalid content.");
+  }
+  const sanitized = safeBlocks.map((block, index): PageBlock => {
+    const id = (rawBlocks[index] as { id?: unknown }).id;
     const finalId =
       typeof id === "string" && originalIds.has(id) ? id : crypto.randomUUID();
-    return { id: finalId, type, config } as PageBlock;
+    return { ...block, id: finalId } as PageBlock;
   });
 
   const design = sanitizeDesign((parsed as { design?: unknown }).design);

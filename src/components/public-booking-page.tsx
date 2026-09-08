@@ -51,6 +51,8 @@ import {
   parseStorefrontSettings,
   type StorefrontSection,
 } from "@/lib/storefront";
+import { safeImageSrc } from "@/lib/safe-url";
+import { sanitizePageBlocks } from "@/lib/page-block-security";
 
 // The real public booking page renderer — used both at /book/$slug and,
 // embedded/scaled/non-interactive, as the live preview in the setup wizard
@@ -458,8 +460,8 @@ export function PublicBookingPage({
             .gte("starts_at", dayStart.toISOString())
             .lte("starts_at", dayEnd.toISOString()),
           supabase
-            .from("blocked_dates")
-            .select("*")
+            .from("blocked_dates_public")
+            .select("starts_at, ends_at, staff_id")
             .eq("business_id", service!.business_id)
             .lt("starts_at", dayEnd.toISOString())
             .gt("ends_at", dayStart.toISOString()),
@@ -720,7 +722,11 @@ export function PublicBookingPage({
     "testimonial",
     "hours-location",
   ]);
-  const customBlocks: PageBlock[] = (pageBlocks ?? []).filter(
+  const safePageBlocks = useMemo(
+    () => sanitizePageBlocks(pageBlocks, biz.id),
+    [pageBlocks, biz.id],
+  );
+  const customBlocks: PageBlock[] = safePageBlocks.filter(
     (block) => !storefrontOwnedBlockTypes.has(block.type),
   );
   const gallerySection = storefront.sections.find(
@@ -796,7 +802,7 @@ export function PublicBookingPage({
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-4 sm:px-6">
           {theme.logoUrl ? (
             <img
-              src={theme.logoUrl}
+              src={safeImageSrc(theme.logoUrl) ?? undefined}
               alt={biz.name}
               className="h-11 w-11 rounded-xl object-cover"
             />
@@ -897,7 +903,7 @@ export function PublicBookingPage({
                     >
                       {heroPhotos.length > 0 && (
                         <img
-                          src={heroPhotos[0].url}
+                          src={safeImageSrc(heroPhotos[0].url) ?? undefined}
                           alt=""
                           className="absolute inset-0 h-full w-full object-cover opacity-65"
                         />
@@ -910,7 +916,7 @@ export function PublicBookingPage({
                           <div className="flex items-center gap-3">
                             {theme.logoUrl && (
                               <img
-                                src={theme.logoUrl}
+                                src={safeImageSrc(theme.logoUrl) ?? undefined}
                                 alt=""
                                 className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/30"
                               />
@@ -954,7 +960,7 @@ export function PublicBookingPage({
                             {heroPhotos.slice(1, 3).map((photo) => (
                               <img
                                 key={photo.id}
-                                src={photo.url}
+                                src={safeImageSrc(photo.url) ?? undefined}
                                 alt=""
                                 className="h-full min-h-0 w-full rounded-2xl object-cover ring-1 ring-white/25"
                               />
@@ -1348,7 +1354,7 @@ export function PublicBookingPage({
                   <span>{p.name.charAt(0).toUpperCase()}</span>
                   {p.photoUrl && (
                     <img
-                      src={p.photoUrl}
+                      src={safeImageSrc(p.photoUrl) ?? undefined}
                       alt={`${p.name}${p.role ? ` — ${p.role}` : ""}`}
                       className="absolute inset-0 h-full w-full object-cover"
                       loading="lazy"

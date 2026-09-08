@@ -2,10 +2,10 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { type PageBlock } from "@/components/page-blocks";
 import { googleFontsHref, parseTheme } from "@/lib/theme";
 import { PublicBookingPage } from "@/components/public-booking-page";
 import { CookieConsentBanner, CookieConsentProvider, CookieSettingsFooterLink } from "@/components/cookie-consent";
+import { sanitizePageBlocks } from "@/lib/page-block-security";
 
 export const Route = createFileRoute("/book/$slug")({
   loader: async ({ params, location }) => {
@@ -26,8 +26,8 @@ export const Route = createFileRoute("/book/$slug")({
       try {
         const raw = search.previewBlocks;
         const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-        if (Array.isArray(parsed)) {
-          return { ...data, pageBlocks: parsed.filter((b) => b && b.type) as PageBlock[] };
+        if (Array.isArray(parsed) && JSON.stringify(parsed).length <= 180_000) {
+          return { ...data, pageBlocks: sanitizePageBlocks(parsed, data.id) };
         }
       } catch {
         // fall through to the saved layout below
@@ -55,7 +55,7 @@ export const Route = createFileRoute("/book/$slug")({
       layoutError = fallback.error;
     }
     if (layoutError) throw layoutError;
-    const pageBlocks = ((layout?.blocks as unknown as PageBlock[]) ?? []).filter((b) => b && b.type);
+    const pageBlocks = sanitizePageBlocks(layout?.blocks, data.id);
 
     return { ...data, pageBlocks, storefrontSettings: layout?.storefront_settings ?? null };
   },
@@ -73,8 +73,10 @@ export const Route = createFileRoute("/book/$slug")({
         ]
       : [],
   }),
-  errorComponent: ({ error }) => (
-    <div className="min-h-screen flex items-center justify-center p-6 text-center text-muted-foreground">{error.message}</div>
+  errorComponent: () => (
+    <div className="min-h-screen flex items-center justify-center p-6 text-center text-muted-foreground">
+      We couldn&apos;t load this booking page right now. Please try again shortly.
+    </div>
   ),
   notFoundComponent: () => (
     <div className="min-h-screen flex items-center justify-center p-6 text-center">

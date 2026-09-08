@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { readBodyWithLimit } from "@/lib/request-limits";
+
+const MAX_STRIPE_EVENT_BYTES = 1 * 1024 * 1024;
 
 export const Route = createFileRoute("/api/stripe-webhook")({
   server: {
@@ -6,7 +9,11 @@ export const Route = createFileRoute("/api/stripe-webhook")({
       POST: async ({ request }) => {
         const signature = request.headers.get("stripe-signature");
         const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-        const rawBody = await request.text();
+        const body = await readBodyWithLimit(request, MAX_STRIPE_EVENT_BYTES);
+        if (body === null) {
+          return new Response("Webhook body too large", { status: 413 });
+        }
+        const rawBody = new TextDecoder().decode(body);
         if (!signature || !webhookSecret || !(await isValidStripeSignature(rawBody, signature, webhookSecret))) {
           return new Response("Invalid Stripe signature", { status: 400 });
         }

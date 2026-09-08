@@ -8,12 +8,16 @@ function publicName(name: string) {
   return `${parts[0]} ${parts.at(-1)![0].toUpperCase()}.`;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export const Route = createFileRoute("/api/public-reviews")({
   server: {
     handlers: {
       GET: async ({ request }) => {
         const businessId = new URL(request.url).searchParams.get("business_id");
-        if (!businessId) return Response.json({ reviews: [] }, { status: 400 });
+        if (!businessId || !UUID_PATTERN.test(businessId)) {
+          return Response.json({ reviews: [] }, { status: 400 });
+        }
         const { data: business } = await (supabaseAdmin as any)
           .from("public_businesses")
           .select("id")

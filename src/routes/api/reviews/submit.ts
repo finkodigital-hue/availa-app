@@ -2,17 +2,21 @@ import { createFileRoute } from "@tanstack/react-router";
 import { peekBookingActionToken, sha256Hex } from "@/lib/booking-tokens.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
+import { readJsonWithLimit } from "@/lib/request-limits";
+
+const MAX_REVIEW_BODY_BYTES = 8 * 1024;
 
 export const Route = createFileRoute("/api/reviews/submit")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const input = (await request.json().catch(() => ({}))) as {
+        const parsed = await readJsonWithLimit<{
           token?: string;
           rating?: number;
           body?: string;
           agreedToPublish?: boolean;
-        };
+        }>(request, MAX_REVIEW_BODY_BYTES);
+        const input = "error" in parsed ? {} : parsed.value;
         const body = input.body?.trim() ?? "";
         if (
           !input.token ||

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
+import { isTenantAssetPath } from "@/lib/safe-url";
 
 const CURRENCIES = new Set(["GBP", "USD", "EUR", "AUD", "CAD", "NZD"]);
 
@@ -109,7 +110,7 @@ export const saveWhiteLabel = createServerFn({ method: "POST" })
     }
     const safeAssetPath = (value: string | null | undefined) => {
       const path = optionalText(value, 1000);
-      if (path && !path.startsWith(`${business.id}/`)) {
+      if (path && !isTenantAssetPath(path, business.id)) {
         throw new Error("That uploaded asset does not belong to this business.");
       }
       return path;

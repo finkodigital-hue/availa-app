@@ -34,11 +34,12 @@ function escapeHtml(s: string): string {
 }
 
 export function emailButton(label: string, href: string, color: string): string {
-  return `<a href="${href}" style="display:block;width:100%;box-sizing:border-box;background:${color};color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:14px 20px;border-radius:10px;text-align:center;font-family:${SYSTEM_FONT_STACK};">${escapeHtml(label)}</a>`;
+  return `<a href="${escapeHtml(href)}" style="display:block;width:100%;box-sizing:border-box;background:${escapeHtml(color)};color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:14px 20px;border-radius:10px;text-align:center;font-family:${SYSTEM_FONT_STACK};">${escapeHtml(label)}</a>`;
 }
 
 export function emailButtonOutline(label: string, href: string, color: string): string {
-  return `<a href="${href}" style="display:block;width:100%;box-sizing:border-box;background:#ffffff;color:${color};text-decoration:none;font-weight:600;font-size:16px;padding:13px 20px;border-radius:10px;text-align:center;border:1.5px solid ${color};font-family:${SYSTEM_FONT_STACK};">${escapeHtml(label)}</a>`;
+  const safeColor = escapeHtml(color);
+  return `<a href="${escapeHtml(href)}" style="display:block;width:100%;box-sizing:border-box;background:#ffffff;color:${safeColor};text-decoration:none;font-weight:600;font-size:16px;padding:13px 20px;border-radius:10px;text-align:center;border:1.5px solid ${safeColor};font-family:${SYSTEM_FONT_STACK};">${escapeHtml(label)}</a>`;
 }
 
 // Single-column, table-based, inline-styled shell — the layout that survives
@@ -56,9 +57,9 @@ export function emailShell({
   previewText: string;
   bodyHtml: string;
 }): string {
-  const brand = theme.colors.primary || "#111111";
+  const brand = escapeHtml(theme.colors.primary || "#111111");
   const logo = theme.logoUrl
-    ? `<img src="${theme.logoUrl}" alt="${escapeHtml(businessName)}" height="36" style="height:36px;max-width:220px;object-fit:contain;" />`
+    ? `<img src="${escapeHtml(theme.logoUrl)}" alt="${escapeHtml(businessName)}" height="36" style="height:36px;max-width:220px;object-fit:contain;" />`
     : `<span style="font-size:20px;font-weight:700;color:#111111;font-family:${SYSTEM_FONT_STACK};">${escapeHtml(businessName)}</span>`;
 
   return `<!doctype html>

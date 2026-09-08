@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { peekBookingActionToken } from "@/lib/booking-tokens.server";
+import { readJsonWithLimit } from "@/lib/request-limits";
 
 // Validates the reschedule token WITHOUT consuming it — the token is spent
 // only when the client actually completes a reschedule (reschedule-commit),
@@ -9,12 +10,11 @@ export const Route = createFileRoute("/api/booking-actions/reschedule-peek")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        let body: { token?: string };
-        try {
-          body = await request.json();
-        } catch {
+        const parsed = await readJsonWithLimit<{ token?: string }>(request, 4 * 1024);
+        if ("error" in parsed) {
           return new Response("Invalid request", { status: 400 });
         }
+        const body = parsed.value;
         const { token } = body;
         if (!token || typeof token !== "string") return new Response("Invalid request", { status: 400 });
 

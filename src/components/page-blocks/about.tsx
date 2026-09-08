@@ -1,4 +1,5 @@
 import type { AboutConfig } from "./types";
+import { safeImageSrc } from "@/lib/safe-url";
 
 export function About({ config }: { config: AboutConfig }) {
   return (
@@ -6,9 +7,9 @@ export function About({ config }: { config: AboutConfig }) {
       <div
         className={config.photoUrl ? "grid sm:grid-cols-[auto_1fr] gap-6 items-start" : undefined}
       >
-        {config.photoUrl && (
+        {safeImageSrc(config.photoUrl) && (
           <img
-            src={config.photoUrl}
+            src={safeImageSrc(config.photoUrl) ?? undefined}
             alt=""
             style={{ borderRadius: "var(--brand-radius)" }}
             className="h-24 w-24 object-cover shrink-0"

@@ -361,6 +361,9 @@ export const signConsultationSubmission = createServerFn({ method: "POST" })
       throw new Error("Please add a valid signature.");
     }
     if (!data.answers || typeof data.answers !== "object" || Array.isArray(data.answers)) throw new Error("The form answers are invalid.");
+    if (Object.keys(data.answers).length > 50 || JSON.stringify(data.answers).length > 100000) {
+      throw new Error("The form answers are too large.");
+    }
     return { ...data, signerName };
   })
   .handler(async ({ data, context }) => {

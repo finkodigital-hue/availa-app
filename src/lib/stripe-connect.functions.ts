@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { trustedAppOrigin } from "@/lib/app-origin.server";
 
 type StripeAccount = {
   id: string;
@@ -80,7 +80,7 @@ function formBody(values: Record<string, string>) {
 }
 
 function appOrigin() {
-  return process.env.APP_URL ?? new URL(getRequest().url).origin;
+  return trustedAppOrigin();
 }
 
 async function createOnboardingLink(accountId: string) {
