@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
   ChevronRight,
@@ -41,6 +42,7 @@ import {
   type Theme,
 } from "@/lib/theme";
 import { startBookingCheckout } from "@/lib/stripe-connect.functions";
+import { createPublicBooking } from "@/lib/public-booking.functions";
 import { useAuth } from "@/lib/auth";
 import { usePortalCustomer } from "@/lib/portal-customer";
 import { BookingSignIn } from "@/components/booking-sign-in";
@@ -648,23 +650,21 @@ export function PublicBookingPage({
         window.location.assign(checkout.checkoutUrl);
         return;
       }
-      const { data: bookingId, error } = await supabase.rpc(
-        "create_public_booking",
-        {
-          p_business_id: service.business_id,
-          p_service_id: service.id,
-          p_staff_id: staff.id,
-          p_customer_name: info.name,
-          p_customer_email: info.email || "",
-          p_customer_phone: info.phone || "",
-          p_starts_at: starts_at,
-          p_ends_at: ends_at,
-          p_notes: info.notes || "",
-          p_gap_min: service.gap_min ?? null,
-          p_active_after_min: service.active_after_min ?? null,
+      const { bookingId } = await createPublicBooking({
+        data: {
+          businessId: service.business_id,
+          serviceId: service.id,
+          staffId: staff.id,
+          customerName: info.name,
+          customerEmail: info.email,
+          customerPhone: info.phone,
+          startsAt: starts_at,
+          endsAt: ends_at,
+          notes: info.notes,
+          gapMin: service.gap_min ?? null,
+          activeAfterMin: service.active_after_min ?? null,
         },
-      );
-      if (error) throw error;
+      });
       setBookedEndsAt(ends_at);
       setBookedBookingId(bookingId ?? null);
       setStep("done");
@@ -777,7 +777,7 @@ export function PublicBookingPage({
               url: "/demo/pasha-hair/salon-exterior.png",
             },
           ]
-      : [];
+        : [];
   const heroPhotos = (
     galleryPhotos.length > 0 ? galleryPhotos : fallbackGalleryPhotos
   ).slice(0, galleryLimit);
@@ -1390,6 +1390,7 @@ export function PublicBookingPage({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
+                    aria-label="Previous day"
                     onClick={() => {
                       const d = new Date(date);
                       d.setDate(d.getDate() - 1);
@@ -1403,6 +1404,7 @@ export function PublicBookingPage({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
+                    aria-label="Next day"
                     onClick={() => {
                       const d = new Date(date);
                       d.setDate(d.getDate() + 1);

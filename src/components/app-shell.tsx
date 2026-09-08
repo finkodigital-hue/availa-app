@@ -75,10 +75,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   // over the booking grid.
   useEffect(() => {
     const onCalendarFocusChange = (event: Event) => {
-      setCalendarFocusMode(Boolean((event as CustomEvent<{ active?: boolean }>).detail?.active));
+      setCalendarFocusMode(
+        Boolean((event as CustomEvent<{ active?: boolean }>).detail?.active),
+      );
     };
     window.addEventListener("bookzenvo:calendar-focus", onCalendarFocusChange);
-    return () => window.removeEventListener("bookzenvo:calendar-focus", onCalendarFocusChange);
+    return () =>
+      window.removeEventListener(
+        "bookzenvo:calendar-focus",
+        onCalendarFocusChange,
+      );
   }, []);
 
   const signOut = async () => {
@@ -86,7 +92,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.navigate({ to: "/auth", replace: true });
   };
 
-  const initials = (user?.user_metadata?.full_name || user?.email || "U")
+  const accountName =
+    user?.user_metadata?.full_name ||
+    (biz?.name ? `${biz.name} Owner` : "Member");
+  const initials = (accountName || user?.email || "U")
     .split(" ")
     .map((s: string) => s[0])
     .slice(0, 2)
@@ -96,7 +105,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const SidebarContent = (
     <>
       <div className="px-5 pt-6 pb-4">
-        <Link to="/dashboard" className="font-display text-xl tracking-tight inline-block">
+        <Link
+          to="/dashboard"
+          className="font-display text-xl tracking-tight inline-block"
+        >
           Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
         </Link>
         {biz?.slug && (
@@ -123,7 +135,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <NotificationsBell closeOn={mobileOpen} />
         </div>
         {NAV.map((n) => {
-          const active = path === n.to || (n.to !== "/dashboard" && path.startsWith(n.to));
+          const active =
+            path === n.to || (n.to !== "/dashboard" && path.startsWith(n.to));
           const Icon = n.icon;
           return (
             <Link
@@ -193,10 +206,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium truncate">
-                {user?.user_metadata?.full_name ?? "Member"}
+              <div className="text-sm font-medium truncate">{accountName}</div>
+              <div className="text-xs text-muted-foreground truncate">
+                {user?.email}
               </div>
-              <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="w-56">
@@ -218,7 +231,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={signOut}
+              className="text-destructive focus:text-destructive"
+            >
               <LogOut className="h-4 w-4 mr-2" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -233,20 +249,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Desktop sidebar — hidden in calendar focus/full-screen mode too.
-          calendarFocusMode used to only ever fire on mobile viewports (this
-          aside is already `hidden` there via md:flex), so nothing gated it
+          calendarFocusMode used to only ever fire on compact viewports (this
+          aside is already `hidden` there via xl:flex), so nothing gated it
           before; now the calendar's full-screen toggle uses this same
           overlay on desktop as well, and without this it stayed on screen,
           overlapping the calendar grid underneath the overlay. */}
       {!calendarFocusMode && (
-        <aside className="hidden md:flex md:w-60 md:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen print:hidden">
+        <aside className="hidden xl:flex xl:w-60 xl:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen print:hidden">
           {SidebarContent}
         </aside>
       )}
 
       {/* Mobile header */}
       {!calendarFocusMode && (
-        <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4 print:hidden">
+        <div className="xl:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4 print:hidden">
           <Link to="/dashboard" className="font-display text-lg">
             Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
           </Link>
@@ -258,7 +274,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 animate-in fade-in duration-200">
+        <div className="xl:hidden fixed inset-0 z-50 animate-in fade-in duration-200">
           <div
             className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
@@ -277,30 +293,31 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main
-        className={`flex-1 min-w-0 overflow-x-clip ${calendarFocusMode ? "pt-0 pb-0" : "pt-14 pb-[calc(9rem+env(safe-area-inset-bottom))]"} md:pt-0 md:pb-0 print:pt-0 print:pb-0`}
+        className={`flex-1 min-w-0 overflow-x-clip ${calendarFocusMode ? "pt-0 pb-0" : "pt-14 pb-[calc(9rem+env(safe-area-inset-bottom))]"} xl:pt-0 xl:pb-0 print:pt-0 print:pb-0`}
       >
         {children}
       </main>
 
-      {!calendarFocusMode && <div className="print:hidden">
+      {!calendarFocusMode && (
+        <div className="print:hidden">
           <MobileBottomNav
             menuOpen={mobileOpen}
             onMore={() => setMobileOpen(true)}
-          onAdd={() => {
-            // Dispatch a global event the Calendar listens for. If we're not
-            // already on /calendar, navigate first so the listener is mounted.
-            if (path.startsWith("/calendar")) {
-              window.dispatchEvent(new CustomEvent("luma:new-booking"));
-            } else {
-              router.navigate({ to: "/calendar", search: { new: 1 } as any });
-            }
-          }}
-        />
-      </div>}
+            onAdd={() => {
+              // Dispatch a global event the Calendar listens for. If we're not
+              // already on /calendar, navigate first so the listener is mounted.
+              if (path.startsWith("/calendar")) {
+                window.dispatchEvent(new CustomEvent("luma:new-booking"));
+              } else {
+                router.navigate({ to: "/calendar", search: { new: 1 } as any });
+              }
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
-
 
 export function PageHeader({
   title,
@@ -331,7 +348,10 @@ export function PageHeader({
           {title}
         </h1>
         {subtitle && (
-          <p className="text-muted-foreground mt-2 text-sm text-pretty" data-page-subtitle>
+          <p
+            className="text-muted-foreground mt-2 text-sm text-pretty"
+            data-page-subtitle
+          >
             {subtitle}
           </p>
         )}

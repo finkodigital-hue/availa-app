@@ -1,5 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Calendar, CreditCard, Inbox, Plus, MoreHorizontal } from "lucide-react";
+import {
+  Calendar,
+  CreditCard,
+  Inbox,
+  Plus,
+  MoreHorizontal,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -26,7 +32,7 @@ export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
     <>
       {/* Glass bar */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 pointer-events-none"
+        className="xl:hidden fixed bottom-0 left-0 right-0 z-40 pointer-events-none"
         aria-label="Primary"
       >
         <div
@@ -60,7 +66,7 @@ export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
         type="button"
         onClick={onAdd}
         aria-label="New booking"
-        className="md:hidden fixed left-1/2 -translate-x-1/2 z-50 h-14 w-14 rounded-full grid place-items-center text-primary-foreground bg-primary active:scale-95 transition-transform duration-150"
+        className="xl:hidden fixed left-1/2 -translate-x-1/2 z-50 h-14 w-14 rounded-full grid place-items-center text-primary-foreground bg-primary active:scale-95 transition-transform duration-150"
         style={{
           bottom: "calc(env(safe-area-inset-bottom, 0px) + 2.75rem)",
           boxShadow:
@@ -97,7 +103,9 @@ function NavItem({
           active && "bg-primary/12",
         )}
       >
-        <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} />
+        <Icon
+          className={cn("h-5 w-5 transition-transform", active && "scale-110")}
+        />
       </span>
       <span className={cn(active && "font-medium")}>{item.label}</span>
     </Link>

@@ -38,6 +38,11 @@ export function Dropzone({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={
+        [label, hint].filter(Boolean).join(". ") || "Choose a CSV file"
+      }
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);
@@ -50,18 +55,33 @@ export function Dropzone({
         if (f) onFile(f);
       }}
       onClick={() => inputRef.current?.click()}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          inputRef.current?.click();
+        }
+      }}
       className={`rounded-xl border-2 border-dashed p-5 text-center cursor-pointer transition-colors ${
-        dragging ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"
+        dragging
+          ? "border-primary bg-primary/5"
+          : "border-border hover:bg-muted/30"
       }`}
     >
       <div className="flex items-center justify-center gap-2 mb-1">
-        {parsing ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : icon}
-        <span className="text-sm font-medium">{parsing ? "Reading file…" : label}</span>
+        {parsing ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : (
+          icon
+        )}
+        <span className="text-sm font-medium">
+          {parsing ? "Reading file…" : label}
+        </span>
       </div>
       <p className="text-xs text-muted-foreground">{hint}</p>
       <input
         ref={inputRef}
         type="file"
+        aria-label={label || "Choose a CSV file"}
         accept=".csv,text/csv"
         className="hidden"
         onChange={(e) => {
@@ -94,7 +114,9 @@ export function StepShell({
       <div className="p-4 sm:p-5 flex items-start gap-3 border-b bg-muted/20">
         <div
           className={`h-7 w-7 shrink-0 rounded-full grid place-items-center text-xs font-semibold ${
-            done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            done
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground"
           }`}
         >
           {index}
