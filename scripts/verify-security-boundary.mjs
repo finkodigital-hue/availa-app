@@ -164,6 +164,8 @@ assert(
 );
 assert(
   smsProvider.includes('process.env.APP_ENV !== "production"') &&
+    smsProvider.includes('select("sms_suppressed")') &&
+    smsProvider.includes("isBusinessSmsSuppressed") &&
     smsProvider.includes('channel: "sms"') &&
     !smsProvider.includes("VITE_TWILIO"),
   "SMS must remain server-only, logged, and suppressed outside production.",

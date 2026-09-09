@@ -13,10 +13,14 @@ const maskPhone = (value: string) => `***${value.slice(-4)}`;
 
 async function sendWithTwilio(to: string, body: string) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const apiKeySid = process.env.TWILIO_API_KEY_SID;
+  const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from =
     process.env.TWILIO_MESSAGING_SERVICE_SID || process.env.TWILIO_FROM_NUMBER;
-  if (!accountSid || !authToken || !from)
+  const username = apiKeySid || accountSid;
+  const password = apiKeySecret || authToken;
+  if (!accountSid || !username || !password || !from)
     throw new SmsSendError("SMS provider is not configured");
   const params = new URLSearchParams({ To: to, Body: body });
   if (from.startsWith("MG")) params.set("MessagingServiceSid", from);
@@ -32,7 +36,7 @@ async function sendWithTwilio(to: string, body: string) {
       {
         method: "POST",
         headers: {
-          Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
+          Authorization: `Basic ${btoa(`${username}:${password}`)}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: params,
@@ -50,6 +54,24 @@ async function sendWithTwilio(to: string, body: string) {
     return result.sid;
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+// Permanent per-business SMS kill switch. This is checked fresh for every
+// delivery and fails closed: a missing row, failed lookup, or anything other
+// than an explicit false prevents a provider request. It protects imported
+// and demo workspaces even when production credentials are configured.
+async function isBusinessSmsSuppressed(businessId: string): Promise<boolean> {
+  try {
+    const { data, error } = await (supabaseAdmin as any)
+      .from("businesses")
+      .select("sms_suppressed")
+      .eq("id", businessId)
+      .maybeSingle();
+    if (error || !data) return true;
+    return data.sms_suppressed !== false;
+  } catch {
+    return true;
   }
 }
 
@@ -101,6 +123,19 @@ export async function sendSms({
         .single()
     ).data;
   if (!existing) throw new SmsSendError("Could not claim the queued SMS");
+  const update = (values: Record<string, unknown>) =>
+    (supabaseAdmin as any)
+      .from("notification_deliveries")
+      .update({ ...values, updated_at: new Date().toISOString() })
+      .eq("id", existing.id);
+  if (await isBusinessSmsSuppressed(businessId)) {
+    await update({
+      status: "suppressed",
+      last_error: "Outbound SMS is disabled for this business",
+      next_attempt_at: null,
+    });
+    return { ...existing, status: "suppressed" };
+  }
   if (["sent", "delivered", "suppressed"].includes(existing.status))
     return existing;
   if (
@@ -111,11 +146,6 @@ export async function sendSms({
     return { ...existing, status: "deferred" };
   if ((existing.attempt_count ?? 0) >= MAX_ATTEMPTS)
     throw new SmsSendError("SMS retry limit reached");
-  const update = (values: Record<string, unknown>) =>
-    (supabaseAdmin as any)
-      .from("notification_deliveries")
-      .update({ ...values, updated_at: new Date().toISOString() })
-      .eq("id", existing.id);
   if (process.env.APP_ENV !== "production") {
     await update({
       status: "suppressed",
