@@ -1626,6 +1626,13 @@ export function PublicBookingPage({
             ) : (
               <BookingSignIn onSignedIn={() => setInfoTouched(false)} />
             )}
+            <form
+              id={`${domId}-booking-details-form`}
+              onSubmit={(event) => {
+                event.preventDefault();
+                void book();
+              }}
+            />
             <div>
               <Label
                 htmlFor={`${domId}-customer-name`}
@@ -1634,6 +1641,7 @@ export function PublicBookingPage({
                 Your name
               </Label>
               <Input
+                form={`${domId}-booking-details-form`}
                 id={`${domId}-customer-name`}
                 value={info.name}
                 onChange={(e) => {
@@ -1643,6 +1651,7 @@ export function PublicBookingPage({
                 className="mt-1.5 h-11"
                 required
                 autoFocus
+                autoComplete="name"
               />
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
@@ -1654,6 +1663,7 @@ export function PublicBookingPage({
                   Email
                 </Label>
                 <Input
+                  form={`${domId}-booking-details-form`}
                   id={`${domId}-customer-email`}
                   type="email"
                   value={info.email}
@@ -1663,9 +1673,23 @@ export function PublicBookingPage({
                   }}
                   className="mt-1.5 h-11"
                   placeholder="you@email.com"
+                  autoComplete="email"
+                  required
+                  aria-invalid={
+                    info.email.length > 0 && !isValidEmail(info.email)
+                  }
+                  aria-describedby={
+                    info.email.length > 0 && !isValidEmail(info.email)
+                      ? `${domId}-customer-email-error`
+                      : undefined
+                  }
                 />
                 {info.email.length > 0 && !isValidEmail(info.email) && (
-                  <p className="mt-1 text-xs text-destructive">
+                  <p
+                    id={`${domId}-customer-email-error`}
+                    role="alert"
+                    className="mt-1 text-xs text-destructive"
+                  >
                     Please enter a valid email address.
                   </p>
                 )}
@@ -1678,20 +1702,36 @@ export function PublicBookingPage({
                   Phone
                 </Label>
                 <Input
+                  form={`${domId}-booking-details-form`}
                   id={`${domId}-customer-phone`}
                   type="tel"
                   value={info.phone}
                   onChange={(e) => {
                     setInfoTouched(true);
-                    setInfo({ ...info, phone: sanitizePhone(e.target.value) });
+                    setInfo({
+                      ...info,
+                      phone: sanitizePhone(e.target.value),
+                    });
                   }}
                   className="mt-1.5 h-11"
                   placeholder="07123 456789"
                   inputMode="tel"
                   autoComplete="tel"
+                  aria-invalid={
+                    info.phone.length > 0 && !isValidPhone(info.phone)
+                  }
+                  aria-describedby={
+                    info.phone.length > 0 && !isValidPhone(info.phone)
+                      ? `${domId}-customer-phone-error`
+                      : undefined
+                  }
                 />
                 {info.phone.length > 0 && !isValidPhone(info.phone) && (
-                  <p className="mt-1 text-xs text-destructive">
+                  <p
+                    id={`${domId}-customer-phone-error`}
+                    role="alert"
+                    className="mt-1 text-xs text-destructive"
+                  >
                     Please enter a valid phone number (7–15 digits).
                   </p>
                 )}
@@ -1699,6 +1739,7 @@ export function PublicBookingPage({
             </div>
             <label className="flex items-start gap-3 rounded-xl border p-3 text-sm">
               <input
+                form={`${domId}-booking-details-form`}
                 type="checkbox"
                 className="mt-0.5 h-4 w-4"
                 checked={smsReminderConsent}
@@ -1727,6 +1768,7 @@ export function PublicBookingPage({
                 </span>
               </Label>
               <Textarea
+                form={`${domId}-booking-details-form`}
                 id={`${domId}-customer-notes`}
                 value={info.notes}
                 onChange={(e) => setInfo({ ...info, notes: e.target.value })}
@@ -1748,11 +1790,13 @@ export function PublicBookingPage({
               )}
               <div className="flex items-start gap-2 pt-1">
                 <input
+                  form={`${domId}-booking-details-form`}
                   id="accept-booking-policy"
                   type="checkbox"
                   checked={policyAccepted}
                   onChange={(e) => setPolicyAccepted(e.target.checked)}
                   className="mt-1 h-4 w-4 rounded border-input"
+                  required
                 />
                 <Label
                   htmlFor="accept-booking-policy"
@@ -1767,7 +1811,8 @@ export function PublicBookingPage({
               </div>
             </div>
             <Button
-              onClick={book}
+              form={`${domId}-booking-details-form`}
+              type="submit"
               disabled={
                 submitting ||
                 !info.name.trim() ||

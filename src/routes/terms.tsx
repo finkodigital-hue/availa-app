@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LegalPage } from "@/components/legal-page";
+import { legalOperator } from "@/lib/legal-operator";
 
 const legalLink =
   "underline underline-offset-4 decoration-border hover:text-foreground transition-colors";
@@ -296,8 +297,8 @@ function TermsPage() {
               </p>
               <p>
                 Questions can be sent to{" "}
-                <a href="mailto:help@finkodigital.com" className={legalLink}>
-                  help@finkodigital.com
+                <a href={`mailto:${legalOperator.contactEmail}`} className={legalLink}>
+                  {legalOperator.contactEmail}
                 </a>{" "}
                 or through the{" "}
                 <Link to="/help" className={legalLink}>

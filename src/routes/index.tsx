@@ -25,6 +25,16 @@ export const Route = createFileRoute("/")({
         content:
           "Bookings, payments, consultations, patch tests, verified reviews, stock, chair rentals and practical AI in one place. Free for one chair.",
       },
+      { property: "og:url", content: "https://bookzenvo.com/" },
+      {
+        name: "twitter:title",
+        content: "Bookzenvo · Booking software that runs the work others leave to the salon.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Bookings, payments, consultations, patch tests, verified reviews, stock, chair rentals and practical AI in one place. Free for one chair.",
+      },
     ],
     links: [{ rel: "canonical", href: "https://bookzenvo.com/" }],
   }),

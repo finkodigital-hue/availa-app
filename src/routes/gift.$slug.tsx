@@ -26,7 +26,17 @@ export const Route = createFileRoute("/gift/$slug")({
     meta: [
       { title: loaderData ? `Gift cards · ${loaderData.name}` : "Gift cards" },
       { name: "description", content: loaderData ? `Buy a gift card for ${loaderData.name}.` : "Buy a salon gift card." },
+      { property: "og:title", content: loaderData ? `Gift cards · ${loaderData.name}` : "Gift cards" },
+      { property: "og:description", content: loaderData ? `Buy a gift card for ${loaderData.name}.` : "Buy a salon gift card." },
+      ...(loaderData
+        ? [{ property: "og:url", content: `https://bookzenvo.com/gift/${loaderData.slug}` }]
+        : []),
+      { name: "twitter:title", content: loaderData ? `Gift cards · ${loaderData.name}` : "Gift cards" },
+      { name: "twitter:description", content: loaderData ? `Buy a gift card for ${loaderData.name}.` : "Buy a salon gift card." },
     ],
+    links: loaderData
+      ? [{ rel: "canonical", href: `https://bookzenvo.com/gift/${loaderData.slug}` }]
+      : [],
   }),
   component: GiftCardPage,
 });
@@ -131,14 +141,14 @@ function GiftCardPage() {
                   <Button key={value} type="button" variant={amount === String(value) ? "default" : "outline"} onClick={() => setAmount(String(value))}>£{value}</Button>
                 ))}
               </div>
-              <Input id="gift-amount" className="mt-2" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Custom amount in pounds" />
+              <Input id="gift-amount" className="mt-2" type="number" inputMode="decimal" min={10} max={500} step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Custom amount in pounds" />
               <p className="text-xs text-muted-foreground mt-1">Between £10 and £500</p>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              <div><Label htmlFor="purchaser-name">Your name</Label><Input id="purchaser-name" className="mt-1.5" value={purchaserName} onChange={(e) => setPurchaserName(e.target.value)} required maxLength={120} /></div>
-              <div><Label htmlFor="purchaser-email">Your email</Label><Input id="purchaser-email" className="mt-1.5" type="email" value={purchaserEmail} onChange={(e) => setPurchaserEmail(e.target.value)} required maxLength={254} /></div>
-              <div><Label htmlFor="recipient-name">Recipient name</Label><Input id="recipient-name" className="mt-1.5" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} required maxLength={120} /></div>
-              <div><Label htmlFor="recipient-email">Recipient email <span className="text-muted-foreground">(optional)</span></Label><Input id="recipient-email" className="mt-1.5" type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} maxLength={254} /></div>
+              <div><Label htmlFor="purchaser-name">Your name</Label><Input id="purchaser-name" name="name" autoComplete="name" className="mt-1.5" value={purchaserName} onChange={(e) => setPurchaserName(e.target.value)} required maxLength={120} /></div>
+              <div><Label htmlFor="purchaser-email">Your email</Label><Input id="purchaser-email" name="email" autoComplete="email" className="mt-1.5" type="email" value={purchaserEmail} onChange={(e) => setPurchaserEmail(e.target.value)} required maxLength={254} /></div>
+              <div><Label htmlFor="recipient-name">Recipient name</Label><Input id="recipient-name" name="recipient-name" autoComplete="off" className="mt-1.5" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} required maxLength={120} /></div>
+              <div><Label htmlFor="recipient-email">Recipient email <span className="text-muted-foreground">(optional)</span></Label><Input id="recipient-email" name="recipient-email" autoComplete="off" className="mt-1.5" type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} maxLength={254} /></div>
             </div>
             <div><Label htmlFor="gift-message">Message <span className="text-muted-foreground">(optional)</span></Label><Textarea id="gift-message" className="mt-1.5" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={300} rows={3} /></div>
             <Button className="w-full h-12" disabled={submitting} type="submit">

@@ -104,6 +104,20 @@ test("customer can reach details without creating a booking", async ({
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "refund policy" })).toBeVisible();
 
+  const email = page.getByLabel("Email");
+  await email.fill("not-an-email");
+  await expect(email).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "valid email address" }),
+  ).toBeVisible();
+
+  const phone = page.getByLabel("Phone");
+  await phone.fill("123");
+  await expect(phone).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "valid phone number" }),
+  ).toBeVisible();
+
   safety.expectNothingBlocked();
   assertNoPageErrors();
 });

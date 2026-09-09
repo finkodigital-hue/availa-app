@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LegalPage } from "@/components/legal-page";
+import { legalOperator } from "@/lib/legal-operator";
 
 const legalLink =
   "underline underline-offset-4 decoration-border hover:text-foreground transition-colors";
@@ -34,8 +35,8 @@ function PrivacyPage() {
                 Bookzenvo is responsible for account administration, product
                 operation, security, support, subscription billing and its own
                 website. Contact us at{" "}
-                <a href="mailto:help@finkodigital.com" className={legalLink}>
-                  help@finkodigital.com
+                <a href={`mailto:${legalOperator.contactEmail}`} className={legalLink}>
+                  {legalOperator.contactEmail}
                 </a>
                 .
               </p>
@@ -233,7 +234,8 @@ function PrivacyPage() {
                 operate Bookzenvo, including Supabase for database, storage and
                 authentication; Cloudflare for hosting and network security;
                 Stripe for subscription and appointment payments; Resend for
-                booking emails; and Anthropic for optional AI features.
+                booking emails; Twilio for optional, consent-based SMS
+                appointment reminders; and Anthropic for optional AI features.
               </p>
               <p>
                 We may also disclose information to professional advisers,
@@ -329,8 +331,8 @@ function PrivacyPage() {
                   Help Centre
                 </Link>{" "}
                 or email{" "}
-                <a href="mailto:help@finkodigital.com" className={legalLink}>
-                  help@finkodigital.com
+                <a href={`mailto:${legalOperator.contactEmail}`} className={legalLink}>
+                  {legalOperator.contactEmail}
                 </a>
                 . We may need to verify your identity. You may also complain to
                 the{" "}

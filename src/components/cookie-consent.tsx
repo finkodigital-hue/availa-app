@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +14,6 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   CONSENT_STORAGE_KEY,
-  acceptAllChoice,
   rejectNonEssentialChoice,
   readConsent,
   type ConsentChoice,
@@ -23,8 +23,7 @@ interface CookieConsentCtx {
   consent: ConsentChoice | null;
   ready: boolean;
   preferencesOpen: boolean;
-  acceptAll: () => void;
-  rejectNonEssential: () => void;
+  acknowledge: () => void;
   openPreferences: () => void;
   closePreferences: () => void;
 }
@@ -58,11 +57,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const acceptAll = () => {
-    setConsent(acceptAllChoice());
-    setPreferencesOpen(false);
-  };
-  const rejectNonEssential = () => {
+  const acknowledge = () => {
     setConsent(rejectNonEssentialChoice());
     setPreferencesOpen(false);
   };
@@ -73,8 +68,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
         consent,
         ready,
         preferencesOpen,
-        acceptAll,
-        rejectNonEssential,
+        acknowledge,
         openPreferences: () => setPreferencesOpen(true),
         closePreferences: () => setPreferencesOpen(false),
       }}
@@ -109,7 +103,7 @@ export function CookieSettingsFooterLink({ className }: { className?: string }) 
 }
 
 export function CookieConsentBanner() {
-  const { consent, ready, acceptAll, rejectNonEssential, openPreferences } = useCookieConsentCtx();
+  const { consent, ready, acknowledge, openPreferences } = useCookieConsentCtx();
   if (!ready || consent) return null;
 
   return (
@@ -129,17 +123,18 @@ export function CookieConsentBanner() {
               Your privacy
             </div>
             <p className="text-sm text-foreground/90 mt-1 text-pretty">
-              We only use strictly necessary cookies and local storage — to keep you signed in and remember this
-              choice. Nothing for analytics or advertising.
+              We use only the browser storage needed to keep Bookzenvo working and remember that you have seen
+              this notice. Nothing for analytics or advertising.{" "}
+              <Link to="/cookie-policy" className="underline underline-offset-4 hover:text-foreground">
+                Read the Cookie Policy
+              </Link>
+              .
             </p>
           </div>
         </div>
         <div className="mt-4 flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" className="flex-1 sm:flex-none sm:min-w-[180px] h-11" onClick={rejectNonEssential}>
-            Reject non-essential
-          </Button>
-          <Button className="flex-1 sm:flex-none sm:min-w-[140px] h-11" onClick={acceptAll}>
-            Accept all
+          <Button className="flex-1 sm:flex-none sm:min-w-[140px] h-11" onClick={acknowledge}>
+            Got it
           </Button>
           <Button variant="ghost" className="sm:ml-auto h-11" onClick={openPreferences}>
             Manage preferences
@@ -151,7 +146,7 @@ export function CookieConsentBanner() {
 }
 
 function CookiePreferencesDialog() {
-  const { preferencesOpen, closePreferences, acceptAll, rejectNonEssential } = useCookieConsentCtx();
+  const { preferencesOpen, closePreferences, acknowledge } = useCookieConsentCtx();
 
   return (
     <Dialog open={preferencesOpen} onOpenChange={(open) => { if (!open) closePreferences(); }}>
@@ -159,30 +154,31 @@ function CookiePreferencesDialog() {
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Cookie preferences</DialogTitle>
           <DialogDescription>
-            Bookzenvo currently uses only strictly necessary cookies and local storage — the minimum needed to run
-            your booking and keep you signed in. We don't use analytics or advertising cookies today.
+            Bookzenvo currently uses only the cookies and local storage needed to run bookings, keep signed-in
+            sessions working and remember this notice. We don&apos;t use analytics or advertising cookies today.
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-xl border p-4 flex items-start justify-between gap-4">
           <div>
             <div className="text-sm font-medium">Strictly necessary</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Keeps you signed in, prevents double-booking a slot, and remembers this choice. The site can't work
-              without these.
+              Keeps signed-in sessions working, supports essential booking and security functions, and remembers
+              that you have seen the cookie notice.
             </p>
           </div>
           <Switch checked disabled aria-label="Strictly necessary cookies (always on)" />
         </div>
         <p className="text-xs text-muted-foreground">
-          We don't use analytics or marketing cookies today. If that ever changes, we'll update this panel and ask
-          again.
+          We don&apos;t use analytics or marketing cookies today. If that changes, we&apos;ll update this panel and ask
+          before using them. See the{" "}
+          <Link to="/cookie-policy" className="underline underline-offset-4 hover:text-foreground">
+            Cookie Policy
+          </Link>{" "}
+          for the storage currently in use.
         </p>
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" className="flex-1 h-11" onClick={rejectNonEssential}>
-            Reject non-essential
-          </Button>
-          <Button className="flex-1 h-11" onClick={acceptAll}>
-            Accept all
+          <Button className="flex-1 h-11" onClick={acknowledge}>
+            Done
           </Button>
         </DialogFooter>
       </DialogContent>

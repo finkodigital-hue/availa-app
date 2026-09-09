@@ -35,21 +35,33 @@ function reportClientError(message: string, stack?: string) {
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="font-display text-7xl">404</h1>
-        <h2 className="mt-4 text-xl text-foreground">Not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">This page doesn't exist or has moved.</p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-          >
-            Go home
-          </Link>
+    <>
+      <title>Page not found — Bookzenvo</title>
+      <meta name="robots" content="noindex, follow" />
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Error 404</p>
+          <h1 className="mt-3 font-display text-4xl text-foreground">Page not found</h1>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            This page doesn&apos;t exist or may have moved. Head back to Bookzenvo or visit the Help Centre.
+          </p>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+            >
+              Go home
+            </Link>
+            <Link
+              to="/help"
+              className="inline-flex items-center justify-center rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary"
+            >
+              Visit Help Centre
+            </Link>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -115,6 +127,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image:alt", content: "Bookzenvo — Bookings made beautiful" },
     ],
     links: [
+      { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
       { rel: "apple-touch-icon", href: "/favicon.png" },
       { rel: "stylesheet", href: appCss },

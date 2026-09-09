@@ -24,9 +24,10 @@ function CookiePolicyPage() {
           content: (
             <>
               <p>
-                Bookzenvo currently uses only strictly necessary cookies and local storage. These
-                help the site work safely, keep a user signed in, remember cookie choices and
-                support essential booking and account functions.
+                Bookzenvo currently uses only strictly necessary cookies and local storage. This
+                storage helps the site work safely, keeps signed-in sessions working, remembers
+                that a visitor has seen the cookie notice, and preserves an account holder&apos;s
+                sidebar preference.
               </p>
               <p>
                 We do not currently use advertising, tracking or third-party analytics cookies on
@@ -36,22 +37,38 @@ function CookiePolicyPage() {
           ),
         },
         {
-          title: "Why they are needed",
+          title: "Storage currently in use",
           content: (
-            <p>
-              Necessary storage helps protect accounts, maintain a logged-in session, prevent misuse
-              of booking forms and remember whether you have made a cookie choice. Without it,
-              important parts of Bookzenvo may not work correctly.
-            </p>
+            <>
+              <p>
+                <strong>bookzenvo-auth</strong> is local storage used by our authentication
+                provider to maintain a signed-in session. It remains until you sign out, the
+                session expires or you clear browser storage.
+              </p>
+              <p>
+                <strong>bz_cookie_consent</strong> is local storage that remembers that you have
+                seen our cookie notice. It remains until the notice changes or you clear browser
+                storage.
+              </p>
+              <p>
+                <strong>sidebar_state</strong> is a cookie that remembers whether an account
+                holder&apos;s dashboard sidebar is open or closed. It expires after seven days.
+              </p>
+              <p>
+                The exact authentication records may change as sessions refresh, but their purpose
+                remains account access and security. Without necessary storage, parts of Bookzenvo
+                may not work correctly.
+              </p>
+            </>
           ),
         },
         {
           title: "Your choices",
           content: (
             <p>
-              You can use the Cookie settings option in the Bookzenvo footer to review your choice
-              at any time. You can also remove browser storage through your browser settings,
-              although this may sign you out or reset saved preferences.
+              You can use Cookie settings in the Bookzenvo footer to review this information at any
+              time. You can also remove browser storage through your browser settings, although
+              this may sign you out, show the notice again or reset saved preferences.
             </p>
           ),
         },

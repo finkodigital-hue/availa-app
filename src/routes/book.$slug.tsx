@@ -87,7 +87,22 @@ export const Route = createFileRoute("/book/$slug")({
         property: "og:title",
         content: loaderData ? `Book with ${loaderData.name}` : "Book",
       },
-      { property: "og:description", content: loaderData?.description ?? "" },
+      {
+        property: "og:description",
+        content:
+          loaderData?.description?.trim() ||
+          `Book online with ${loaderData?.name ?? "this business"}.`,
+      },
+      ...(loaderData
+        ? [{ property: "og:url", content: `https://bookzenvo.com/book/${loaderData.slug}` }]
+        : []),
+      { name: "twitter:title", content: loaderData ? `Book with ${loaderData.name}` : "Book" },
+      {
+        name: "twitter:description",
+        content:
+          loaderData?.description?.trim() ||
+          `Book online with ${loaderData?.name ?? "this business"}.`,
+      },
     ],
     links: loaderData
       ? [
