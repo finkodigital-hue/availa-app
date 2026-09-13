@@ -26,7 +26,11 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { useMyBusiness, useWorkspaceAccess, type WorkspacePermission } from "@/lib/business";
+import {
+  useMyBusiness,
+  useWorkspaceAccess,
+  type WorkspacePermission,
+} from "@/lib/business";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,23 +48,129 @@ import { FeedbackDialog } from "@/components/feedback-dialog";
 import { ContactSupportDialog } from "@/components/contact-support-dialog";
 import { NotificationsBell } from "@/components/notifications-bell";
 
-const NAV: readonly { to: string; icon: typeof Calendar; label: string; permission?: WorkspacePermission; ownerOnly?: boolean }[] = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/calendar", icon: Calendar, label: "Calendar" },
-  { to: "/bookings", icon: CalendarCheck, label: "Bookings" },
-  { to: "/customers", icon: UserCircle, label: "Customers", permission: "customers.manage" },
-  { to: "/consultations", icon: ClipboardCheck, label: "Consultations", permission: "customers.manage" },
-  { to: "/staff", icon: Users, label: "Staff", permission: "staff.manage" },
-  { to: "/professionals", icon: UserPlus, label: "Professionals", ownerOnly: true },
-  { to: "/services", icon: Scissors, label: "Services", permission: "services.manage" },
-  { to: "/stock", icon: Package, label: "Stock", permission: "inventory.manage" },
+type SidebarNavItem = {
+  to: string;
+  icon: typeof Calendar;
+  label: string;
+  permission?: WorkspacePermission;
+  ownerOnly?: boolean;
+};
 
-  { to: "/payments", icon: CreditCard, label: "Payments", ownerOnly: true },
-  { to: "/gift-cards", icon: Gift, label: "Gift Cards", ownerOnly: true },
-  { to: "/reports", icon: BarChart3, label: "Reports", permission: "reports.read" },
-  { to: "/assistant", icon: Sparkles, label: "Assistant", ownerOnly: true },
-  { to: "/page-builder", icon: LayoutTemplate, label: "Page Builder", ownerOnly: true },
-  { to: "/settings", icon: Settings, label: "Settings", ownerOnly: true },
+const NAV_GROUPS: readonly {
+  label: string;
+  items: readonly SidebarNavItem[];
+}[] = [
+  {
+    label: "Today",
+    items: [
+      { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+      { to: "/calendar", icon: Calendar, label: "Calendar" },
+      { to: "/bookings", icon: CalendarCheck, label: "Bookings" },
+    ],
+  },
+  {
+    label: "Clients",
+    items: [
+      {
+        to: "/customers",
+        icon: UserCircle,
+        label: "Customers",
+        permission: "customers.manage",
+      },
+      {
+        to: "/consultations",
+        icon: ClipboardCheck,
+        label: "Consultations",
+        permission: "customers.manage",
+      },
+    ],
+  },
+  {
+    label: "Team & services",
+    items: [
+      {
+        to: "/staff",
+        icon: Users,
+        label: "Staff",
+        permission: "staff.manage",
+      },
+      {
+        to: "/professionals",
+        icon: UserPlus,
+        label: "Professionals",
+        ownerOnly: true,
+      },
+      {
+        to: "/services",
+        icon: Scissors,
+        label: "Services",
+        permission: "services.manage",
+      },
+      {
+        to: "/stock",
+        icon: Package,
+        label: "Stock",
+        permission: "inventory.manage",
+      },
+    ],
+  },
+  {
+    label: "Money",
+    items: [
+      {
+        to: "/payments",
+        icon: CreditCard,
+        label: "Payments",
+        ownerOnly: true,
+      },
+      {
+        to: "/gift-cards",
+        icon: Gift,
+        label: "Gift Cards",
+        ownerOnly: true,
+      },
+      {
+        to: "/reports",
+        icon: BarChart3,
+        label: "Reports",
+        permission: "reports.read",
+      },
+    ],
+  },
+  {
+    label: "Grow",
+    items: [
+      {
+        to: "/assistant",
+        icon: Sparkles,
+        label: "Assistant",
+        ownerOnly: true,
+      },
+      {
+        to: "/page-builder",
+        icon: LayoutTemplate,
+        label: "Page Builder",
+        ownerOnly: true,
+      },
+    ],
+  },
+  {
+    label: "Workspace",
+    items: [
+      {
+        to: "/settings",
+        icon: Settings,
+        label: "Settings",
+        ownerOnly: true,
+      },
+      {
+        to: "/import",
+        icon: Upload,
+        label: "Import Data",
+        ownerOnly: true,
+      },
+    ],
+  },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -107,7 +217,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const SidebarContent = (
     <>
-      <div className="px-5 pt-6 pb-4">
+      <div className="px-5 pb-4 pt-6">
         <Link
           to="/dashboard"
           className="font-display text-xl tracking-tight inline-block"
@@ -119,87 +229,112 @@ export function AppShell({ children }: { children: ReactNode }) {
             href={`/book/${biz.slug}`}
             target="_blank"
             rel="noreferrer"
-            className="mt-3 group flex items-center justify-between gap-2 text-xs rounded-lg border bg-card/60 px-2.5 py-2 text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+            className="group mt-4 flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/45 px-3 py-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-card/70"
           >
-            <span className="truncate">/book/{biz.slug}</span>
-            <ExternalLink className="h-3 w-3 shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            <span className="min-w-0">
+              <span className="block text-xs font-medium text-foreground">
+                View booking page
+              </span>
+              <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                /book/{biz.slug}
+              </span>
+            </span>
+            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground" />
           </a>
         )}
       </div>
 
-      <nav className="flex flex-col gap-0.5 px-3 flex-1 overflow-y-auto">
-        <div className="px-2 pb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Workspace
-        </div>
-        <div className="px-1 pb-3">
+      <nav
+        className="flex flex-1 flex-col overflow-y-auto px-3 pb-4"
+        aria-label="Workspace navigation"
+      >
+        <div className="px-1 pb-2">
           <GlobalSearch />
         </div>
-        <div className="px-1 pb-3">
+        <div className="px-1 pb-5">
           <NotificationsBell closeOn={mobileOpen} />
         </div>
-        {NAV.filter((n) => (!n.ownerOnly || access.isOwner) && (!n.permission || access.can(n.permission))).map((n) => {
-          const active =
-            path === n.to || (n.to !== "/dashboard" && path.startsWith(n.to));
-          const Icon = n.icon;
-          return (
-            <Link
-              key={n.to}
-              to={n.to}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200",
-                active
-                  ? "bg-card text-foreground shadow-soft"
-                  : "text-muted-foreground hover:text-foreground hover:bg-card/60",
-              )}
-            >
-              {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-[color:var(--gold)]" />
-              )}
-              <Icon className="h-4 w-4" />
-              <span>{n.label}</span>
-            </Link>
-          );
-        })}
 
-        <div className="mt-4 pt-4 border-t border-border/60">
-          <Link
-            to="/import"
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              "relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200",
-              path === "/import" || path.startsWith("/import")
-                ? "bg-card text-foreground shadow-soft"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/60",
-            )}
-          >
-            {(path === "/import" || path.startsWith("/import")) && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-[color:var(--gold)]" />
-            )}
-            <Upload className="h-4 w-4" />
-            <span>Import data</span>
-          </Link>
+        <div className="space-y-5">
+          {NAV_GROUPS.map((group) => {
+            const items = group.items.filter(
+              (item) =>
+                (!item.ownerOnly || access.isOwner) &&
+                (!item.permission || access.can(item.permission)),
+            );
+            if (items.length === 0) return null;
+
+            return (
+              <section key={group.label} aria-label={group.label}>
+                <h2 className="mb-1 px-3 text-[11px] font-semibold leading-5 text-muted-foreground/80">
+                  {group.label}
+                </h2>
+                <div className="space-y-0.5">
+                  {items.map((item) => {
+                    const active =
+                      path === item.to ||
+                      (item.to !== "/dashboard" && path.startsWith(item.to));
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMobileOpen(false)}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          "group relative flex min-h-9 items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors duration-150 active:scale-[0.99]",
+                          active
+                            ? "bg-primary/10 font-medium text-foreground"
+                            : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                        )}
+                      >
+                        {active && (
+                          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-[color:var(--gold)]" />
+                        )}
+                        <Icon
+                          className={cn(
+                            "h-4 w-4 shrink-0 transition-colors",
+                            active
+                              ? "text-primary"
+                              : "text-muted-foreground group-hover:text-foreground",
+                          )}
+                        />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+
+        <div className="mt-5 border-t border-border/60 pt-4">
           <Link
             to="/help"
             onClick={() => setMobileOpen(false)}
-            className="relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-card/60"
+            aria-current={path.startsWith("/help") ? "page" : undefined}
+            className={cn(
+              "group relative flex min-h-9 items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors duration-150 active:scale-[0.99]",
+              path.startsWith("/help")
+                ? "bg-primary/10 font-medium text-foreground"
+                : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+            )}
           >
-            <HelpCircle className="h-4 w-4" />
+            {path.startsWith("/help") && (
+              <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-[color:var(--gold)]" />
+            )}
+            <HelpCircle
+              className={cn(
+                "h-4 w-4 shrink-0 transition-colors",
+                path.startsWith("/help")
+                  ? "text-primary"
+                  : "text-muted-foreground group-hover:text-foreground",
+              )}
+            />
             <span>Help Centre</span>
           </Link>
         </div>
-
-        {biz?.slug && (
-          <a
-            href={`/book/${biz.slug}`}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-2 flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-card/60"
-          >
-            <ExternalLink className="h-4 w-4" />
-            <span>Preview page</span>
-          </a>
-        )}
       </nav>
 
       <div className="p-3 border-t border-border/60">
@@ -210,7 +345,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium truncate">{accountName}</div>
-              {!access.isOwner && access.role && <div className="text-[10px] capitalize text-muted-foreground">{access.role.replace("_", " ")}</div>}
+              {!access.isOwner && access.role && (
+                <div className="text-[10px] capitalize text-muted-foreground">
+                  {access.role.replace("_", " ")}
+                </div>
+              )}
               <div className="text-xs text-muted-foreground truncate">
                 {user?.email}
               </div>
@@ -222,11 +361,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="truncate text-sm">{user?.email}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {access.isOwner && <DropdownMenuItem asChild>
-              <Link to="/settings">
-                <Settings className="h-4 w-4 mr-2" /> Settings
-              </Link>
-            </DropdownMenuItem>}
+            {access.isOwner && (
+              <DropdownMenuItem asChild>
+                <Link to="/settings">
+                  <Settings className="h-4 w-4 mr-2" /> Settings
+                </Link>
+              </DropdownMenuItem>
+            )}
             {biz?.slug && (
               <DropdownMenuItem asChild>
                 <a href={`/book/${biz.slug}`} target="_blank" rel="noreferrer">
@@ -259,7 +400,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           overlay on desktop as well, and without this it stayed on screen,
           overlapping the calendar grid underneath the overlay. */}
       {!calendarFocusMode && (
-        <aside className="hidden xl:flex xl:w-60 xl:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen print:hidden">
+        <aside className="hidden shrink-0 xl:flex xl:w-64 xl:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen print:hidden">
           {SidebarContent}
         </aside>
       )}
