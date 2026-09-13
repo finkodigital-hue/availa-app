@@ -266,7 +266,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             return (
               <section key={group.label} aria-label={group.label}>
-                <h2 className="mb-1 px-3 text-[11px] font-semibold leading-5 text-muted-foreground/80">
+                <h2 className="mb-1.5 px-3 text-sm font-semibold leading-5 text-foreground/70">
                   {group.label}
                 </h2>
                 <div className="space-y-0.5">
