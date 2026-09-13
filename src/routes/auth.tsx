@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { Loader2, Sparkles, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Loader2, Sparkles, Eye, EyeOff, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,66 @@ import { toast } from "sonner";
 const search = z
   .object({ mode: z.enum(["signin", "signup", "reset", "update"]).optional() })
   .optional();
+
+type AuthMode = "signin" | "signup" | "reset" | "update";
+
+function friendlyAuthError(error: unknown, mode: AuthMode) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error && "message" in error
+        ? String(error.message)
+        : "";
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("invalid login credentials") ||
+    normalized.includes("invalid credentials")
+  ) {
+    return "We couldn't sign you in. Check your email and password, then try again.";
+  }
+  if (normalized.includes("email not confirmed")) {
+    return "Please verify your email before signing in. Check your inbox for the confirmation link.";
+  }
+  if (
+    normalized.includes("rate limit") ||
+    normalized.includes("too many requests") ||
+    normalized.includes("over_email_send_rate_limit")
+  ) {
+    return "You've tried a few times in a row. Please wait a minute before trying again.";
+  }
+  if (
+    normalized.includes("failed to fetch") ||
+    normalized.includes("fetch failed") ||
+    normalized.includes("network") ||
+    normalized.includes("econnrefused")
+  ) {
+    return "We can't reach Bookzenvo's sign-in service right now. Please wait a moment and try again.";
+  }
+  if (
+    normalized.includes("invalid email") ||
+    normalized.includes("invalid_email")
+  ) {
+    return "Enter a valid email address, such as name@example.com.";
+  }
+  if (
+    normalized.includes("password") &&
+    (normalized.includes("weak") || normalized.includes("least"))
+  ) {
+    return "Choose a password with at least 6 characters.";
+  }
+
+  if (mode === "reset") {
+    return "We couldn't send the reset link. Check your email address and try again.";
+  }
+  if (mode === "update") {
+    return "We couldn't update your password. Please try again.";
+  }
+  if (mode === "signup") {
+    return "We couldn't add you to the waitlist. Please try again.";
+  }
+  return "We couldn't sign you in right now. Please try again.";
+}
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s) => search.parse(s) ?? {},
@@ -33,6 +93,9 @@ function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [formError, setFormError] = useState("");
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   // Public self-signup is paused pre-launch — mode=signup shows a waitlist
   // form instead of creating a real account (see submit() below). Existing
   // accounts are unaffected; signin/reset/update all still work as normal.
@@ -40,6 +103,7 @@ function AuthPage() {
 
   useEffect(() => {
     setWaitlistDone(false);
+    setFormError("");
   }, [mode]);
 
   useEffect(() => {
@@ -58,6 +122,7 @@ function AuthPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError("");
     setBusy(true);
     try {
       if (mode === "signup") {
@@ -108,19 +173,8 @@ function AuthPage() {
         // delivered after the form handler finishes.
         navigate({ to: "/dashboard", replace: true });
       }
-    } catch (err: any) {
-      const msg: string = err.message ?? "";
-      if (msg.includes("INVALID_EMAIL")) {
-        toast.error("Please enter a valid email address");
-      } else if (msg.includes("RATE_LIMITED")) {
-        toast.error(
-          "Too many requests right now — please try again in a minute",
-        );
-      } else if (msg.toLowerCase().includes("invalid login credentials")) {
-        toast.error("That email or password is not correct");
-      } else {
-        toast.error(msg || "Something went wrong");
-      }
+    } catch (err: unknown) {
+      setFormError(friendlyAuthError(err, mode));
     } finally {
       setBusy(false);
     }
@@ -234,16 +288,36 @@ function AuthPage() {
                   >
                     Email
                   </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="you@studio.com"
-                    className="mt-1.5 h-11"
-                  />
+                  <div className="relative mt-1.5">
+                    <Input
+                      ref={emailRef}
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setFormError("");
+                      }}
+                      required
+                      placeholder="you@studio.com"
+                      className="h-11 pr-10"
+                    />
+                    {email && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmail("");
+                          setFormError("");
+                          emailRef.current?.focus();
+                        }}
+                        aria-label="Clear email address"
+                        className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               {(mode === "signin" || mode === "update") && (
@@ -267,17 +341,36 @@ function AuthPage() {
                   </div>
                   <div className="relative mt-1.5">
                     <Input
+                      ref={passwordRef}
                       id="password"
                       type={showPassword ? "text" : "password"}
                       autoComplete={
                         mode === "update" ? "new-password" : "current-password"
                       }
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setFormError("");
+                      }}
                       required
                       minLength={6}
-                      className="h-11 pr-11"
+                      className="h-11 pr-20"
                     />
+                    {password && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPassword("");
+                          setShowPassword(false);
+                          setFormError("");
+                          passwordRef.current?.focus();
+                        }}
+                        aria-label="Clear password"
+                        className="absolute right-10 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
@@ -293,6 +386,19 @@ function AuthPage() {
                       )}
                     </button>
                   </div>
+                </div>
+              )}
+              {formError && (
+                <div
+                  role="alert"
+                  aria-live="polite"
+                  className="flex items-start gap-3 rounded-lg border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm leading-5 text-foreground"
+                >
+                  <AlertCircle
+                    className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+                    aria-hidden="true"
+                  />
+                  <p>{formError}</p>
                 </div>
               )}
               <Button
