@@ -217,10 +217,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const SidebarContent = (
     <>
-      <div className="px-5 pb-4 pt-6">
+      <div className="px-4 pb-4 pt-5">
         <Link
           to="/dashboard"
-          className="font-display text-xl tracking-tight inline-block"
+          className="inline-block px-1 font-display text-xl tracking-tight"
         >
           Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
         </Link>
@@ -229,10 +229,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             href={`/book/${biz.slug}`}
             target="_blank"
             rel="noreferrer"
-            className="group mt-4 flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/45 px-3 py-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-card/70"
+            className="group mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/60 bg-background/65 px-3.5 py-3 text-left shadow-[0_1px_2px_rgb(0_0_0/0.04),inset_0_1px_0_rgb(255_255_255/0.7)] backdrop-blur-xl transition-[background-color,border-color,transform] duration-150 ease-out hover:border-border hover:bg-background/90 active:scale-[0.985]"
           >
             <span className="min-w-0">
-              <span className="block text-xs font-medium text-foreground">
+              <span className="block text-[13px] font-semibold tracking-[-0.01em] text-foreground">
                 View booking page
               </span>
               <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
@@ -245,7 +245,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <nav
-        className="flex flex-1 flex-col overflow-y-auto px-3 pb-4"
+        className="flex flex-1 flex-col overflow-y-auto px-3 pb-4 [scrollbar-width:thin]"
         aria-label="Workspace navigation"
       >
         <div className="px-1 pb-2">
@@ -255,7 +255,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <NotificationsBell closeOn={mobileOpen} />
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {NAV_GROUPS.map((group) => {
             const items = group.items.filter(
               (item) =>
@@ -266,10 +266,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             return (
               <section key={group.label} aria-label={group.label}>
-                <h2 className="mb-1.5 px-3 text-sm font-semibold leading-5 text-foreground/70">
+                <h2 className="mb-1.5 px-3 font-sans text-[13px] font-semibold leading-5 tracking-[-0.01em] text-foreground/60">
                   {group.label}
                 </h2>
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   {items.map((item) => {
                     const active =
                       path === item.to ||
@@ -282,23 +282,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                         onClick={() => setMobileOpen(false)}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "group relative flex min-h-9 items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors duration-150 active:scale-[0.99]",
+                          "group relative flex min-h-10 items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-[15px] tracking-[-0.01em] transition-[background-color,color,box-shadow,transform] duration-150 ease-out active:scale-[0.985]",
                           active
-                            ? "bg-primary/10 font-medium text-foreground"
-                            : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                            ? "bg-foreground/[0.07] font-semibold text-foreground shadow-[inset_0_0_0_1px_rgb(0_0_0/0.025)]"
+                            : "font-medium text-muted-foreground hover:bg-foreground/[0.045] hover:text-foreground",
                         )}
                       >
-                        {active && (
-                          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-[color:var(--gold)]" />
-                        )}
-                        <Icon
+                        <span
                           className={cn(
-                            "h-4 w-4 shrink-0 transition-colors",
+                            "grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-[background-color,color,box-shadow] duration-150",
                             active
-                              ? "text-primary"
-                              : "text-muted-foreground group-hover:text-foreground",
+                              ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_rgb(255_255_255/0.3)]"
+                              : "text-muted-foreground group-hover:bg-background/70 group-hover:text-foreground",
                           )}
-                        />
+                        >
+                          <Icon className="h-[17px] w-[17px]" />
+                        </span>
                         <span>{item.label}</span>
                       </Link>
                     );
@@ -309,38 +308,37 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </div>
 
-        <div className="mt-5 border-t border-border/60 pt-4">
+        <div className="mt-5 border-t border-border/50 pt-3">
           <Link
             to="/help"
             onClick={() => setMobileOpen(false)}
             aria-current={path.startsWith("/help") ? "page" : undefined}
             className={cn(
-              "group relative flex min-h-9 items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors duration-150 active:scale-[0.99]",
+              "group relative flex min-h-10 items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-[15px] font-medium tracking-[-0.01em] transition-[background-color,color,box-shadow,transform] duration-150 ease-out active:scale-[0.985]",
               path.startsWith("/help")
-                ? "bg-primary/10 font-medium text-foreground"
-                : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                ? "bg-foreground/[0.07] font-semibold text-foreground shadow-[inset_0_0_0_1px_rgb(0_0_0/0.025)]"
+                : "text-muted-foreground hover:bg-foreground/[0.045] hover:text-foreground",
             )}
           >
-            {path.startsWith("/help") && (
-              <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-[color:var(--gold)]" />
-            )}
-            <HelpCircle
+            <span
               className={cn(
-                "h-4 w-4 shrink-0 transition-colors",
+                "grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-[background-color,color,box-shadow] duration-150",
                 path.startsWith("/help")
-                  ? "text-primary"
-                  : "text-muted-foreground group-hover:text-foreground",
+                  ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_rgb(255_255_255/0.3)]"
+                  : "text-muted-foreground group-hover:bg-background/70 group-hover:text-foreground",
               )}
-            />
+            >
+              <HelpCircle className="h-[17px] w-[17px]" />
+            </span>
             <span>Help Centre</span>
           </Link>
         </div>
       </nav>
 
-      <div className="p-3 border-t border-border/60">
+      <div className="border-t border-border/50 p-3">
         <DropdownMenu>
-          <DropdownMenuTrigger className="w-full flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-card/60 transition-colors text-left">
-            <div className="h-9 w-9 shrink-0 rounded-full bg-primary text-primary-foreground grid place-items-center text-xs font-semibold">
+          <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-left transition-[background-color,transform] duration-150 ease-out hover:bg-background/65 active:scale-[0.985]">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-foreground text-xs font-semibold text-background shadow-sm">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
@@ -400,7 +398,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           overlay on desktop as well, and without this it stayed on screen,
           overlapping the calendar grid underneath the overlay. */}
       {!calendarFocusMode && (
-        <aside className="hidden shrink-0 xl:flex xl:w-64 xl:min-h-screen border-r bg-sidebar/70 backdrop-blur flex-col sticky top-0 h-screen print:hidden">
+        <aside className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border/50 bg-sidebar/85 shadow-[inset_-1px_0_0_rgb(255_255_255/0.45)] backdrop-blur-2xl xl:flex xl:min-h-screen xl:w-[17rem] print:hidden">
           {SidebarContent}
         </aside>
       )}
@@ -424,7 +422,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-sidebar border-r flex flex-col animate-in slide-in-from-left duration-200">
+          <div className="absolute bottom-0 left-0 top-0 flex w-72 flex-col border-r border-border/50 bg-sidebar/95 shadow-2xl backdrop-blur-2xl animate-in slide-in-from-left duration-200">
             <button
               onClick={() => setMobileOpen(false)}
               className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-lg hover:bg-card"
