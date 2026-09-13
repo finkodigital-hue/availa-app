@@ -11,6 +11,8 @@ const PREFERENCE_KEYS = [
   "customer_booking_confirmation",
   "customer_booking_reminder",
   "customer_booking_reminder_sms",
+  "customer_aftercare_email",
+  "customer_rebooking_email",
 ] as const;
 type PreferenceKey = (typeof PREFERENCE_KEYS)[number];
 
@@ -61,7 +63,13 @@ export const getNotificationCenter = createServerFn({ method: "GET" })
     if (deliveryError) throw deliveryError;
     if (preferenceError) throw preferenceError;
     const defaults = Object.fromEntries(
-      PREFERENCE_KEYS.map((key) => [key, true]),
+      PREFERENCE_KEYS.map((key) => [
+        key,
+        key === "customer_booking_reminder_sms" ||
+        key === "customer_rebooking_email"
+          ? false
+          : true,
+      ]),
     );
     return {
       notifications: notifications ?? [],
@@ -95,7 +103,13 @@ export const saveNotificationPreferences = createServerFn({ method: "POST" })
   .validator(
     (data: Record<string, unknown>) =>
       Object.fromEntries(
-        PREFERENCE_KEYS.map((key) => [key, data[key] !== false]),
+        PREFERENCE_KEYS.map((key) => [
+          key,
+          data[key] === undefined
+            ? key !== "customer_booking_reminder_sms" &&
+              key !== "customer_rebooking_email"
+            : data[key] !== false,
+        ]),
       ) as Record<PreferenceKey, boolean>,
   )
   .handler(async ({ data, context }) => {

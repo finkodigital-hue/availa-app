@@ -8,6 +8,7 @@ import { buildReviewRequestEmail } from "@/lib/emails/review-request-email.serve
 import { sendEmail, EmailSendError } from "@/lib/resend.server";
 import { sendSms, SmsSendError } from "@/lib/sms.server";
 import { buildReminderSms } from "@/lib/sms/reminder-sms.server";
+import { runRetentionSweep } from "@/lib/retention-sweep.server";
 
 // Woken up every 15 minutes by a Supabase pg_cron + pg_net job (see
 // supabase/migrations/20260723150000_add_booking_reminders.sql). This route,
@@ -449,6 +450,19 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           }
         }
 
+        // --- Service aftercare and consent-bound smart rebooking ---
+        let retention = {
+          aftercareSent: 0,
+          aftercareFailed: 0,
+          rebookingSent: 0,
+          rebookingFailed: 0,
+        };
+        try {
+          retention = await runRetentionSweep();
+        } catch (error) {
+          console.error("[send-reminders] retention sweep failed", error);
+        }
+
         // --- Studio subscription status sweep ---
         // Renewal/cancellation truth arrives by re-checking Stripe rather than
         // webhooks (same fulfil-by-verification philosophy as checkout).
@@ -535,6 +549,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           reviewRequestsClaimed,
           reviewRequestsSent,
           reviewRequestsFailed,
+          ...retention,
           subscriptionsChecked,
           subscriptionsDowngraded,
         });

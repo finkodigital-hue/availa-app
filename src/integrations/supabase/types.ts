@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -86,6 +80,7 @@ export type Database = {
       bookings: {
         Row: {
           active_after_min: number | null
+          aftercare_sent_at: string | null
           amount_due_cents: number
           amount_paid_cents: number
           amount_refunded_cents: number
@@ -107,6 +102,7 @@ export type Database = {
           notify_customer: boolean
           payment_status: string
           price_cents: number
+          rebooking_reminder_sent_at: string | null
           service_id: string | null
           source: string
           staff_id: string
@@ -118,6 +114,7 @@ export type Database = {
         }
         Insert: {
           active_after_min?: number | null
+          aftercare_sent_at?: string | null
           amount_due_cents?: number
           amount_paid_cents?: number
           amount_refunded_cents?: number
@@ -139,6 +136,7 @@ export type Database = {
           notify_customer?: boolean
           payment_status?: string
           price_cents?: number
+          rebooking_reminder_sent_at?: string | null
           service_id?: string | null
           source?: string
           staff_id: string
@@ -150,6 +148,7 @@ export type Database = {
         }
         Update: {
           active_after_min?: number | null
+          aftercare_sent_at?: string | null
           amount_due_cents?: number
           amount_paid_cents?: number
           amount_refunded_cents?: number
@@ -171,6 +170,7 @@ export type Database = {
           notify_customer?: boolean
           payment_status?: string
           price_cents?: number
+          rebooking_reminder_sent_at?: string | null
           service_id?: string | null
           source?: string
           staff_id?: string
@@ -1423,6 +1423,7 @@ export type Database = {
         Row: {
           active: boolean
           active_after_min: number | null
+          aftercare_message: string | null
           archived_at: string | null
           buffer_after_min: number
           buffer_before_min: number
@@ -1440,11 +1441,13 @@ export type Database = {
           import_batch_id: string | null
           name: string
           price_cents: number
+          rebooking_interval_days: number | null
           updated_at: string
         }
         Insert: {
           active?: boolean
           active_after_min?: number | null
+          aftercare_message?: string | null
           archived_at?: string | null
           buffer_after_min?: number
           buffer_before_min?: number
@@ -1462,11 +1465,13 @@ export type Database = {
           import_batch_id?: string | null
           name: string
           price_cents?: number
+          rebooking_interval_days?: number | null
           updated_at?: string
         }
         Update: {
           active?: boolean
           active_after_min?: number | null
+          aftercare_message?: string | null
           archived_at?: string | null
           buffer_after_min?: number
           buffer_before_min?: number
@@ -1484,6 +1489,7 @@ export type Database = {
           import_batch_id?: string | null
           name?: string
           price_cents?: number
+          rebooking_interval_days?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2082,7 +2088,11 @@ export type Database = {
         Returns: undefined
       }
       reassign_staff_bookings: {
-        Args: { _from_staff: string; _only_future?: boolean; _to_staff: string }
+        Args: {
+          _from_staff: string
+          _only_future?: boolean
+          _to_staff: string
+        }
         Returns: number
       }
       request_customer_data_action: {
@@ -2108,28 +2118,22 @@ type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"]) | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -2137,9 +2141,7 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -2162,9 +2164,7 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -2187,9 +2187,7 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -2204,9 +2202,7 @@ export type Enums<
     : never
 
 export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }

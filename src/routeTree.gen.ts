@@ -67,6 +67,7 @@ import { Route as ApiSupabaseSplatRouteImport } from './routes/api/supabase/$'
 import { Route as ApiReviewsSubmitRouteImport } from './routes/api/reviews/submit'
 import { Route as ApiReviewsPeekRouteImport } from './routes/api/reviews/peek'
 import { Route as ApiMonitoringClientErrorsRouteImport } from './routes/api/monitoring/client-errors'
+import { Route as ApiMarketingUnsubscribeTokenRouteImport } from './routes/api.marketing-unsubscribe.$token'
 import { Route as ApiInternalCalendarSyncRouteImport } from './routes/api/internal/calendar-sync'
 import { Route as ApiCronSendRemindersRouteImport } from './routes/api/cron/send-reminders'
 import { Route as ApiBookingsSendConfirmationRouteImport } from './routes/api/bookings/send-confirmation'
@@ -372,6 +373,12 @@ const ApiMonitoringClientErrorsRoute =
     path: '/api/monitoring/client-errors',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiMarketingUnsubscribeTokenRoute =
+  ApiMarketingUnsubscribeTokenRouteImport.update({
+    id: '/api/marketing-unsubscribe/$token',
+    path: '/api/marketing-unsubscribe/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiInternalCalendarSyncRoute = ApiInternalCalendarSyncRouteImport.update({
   id: '/api/internal/calendar-sync',
   path: '/api/internal/calendar-sync',
@@ -476,6 +483,7 @@ export interface FileRoutesByFullPath {
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
   '/api/internal/calendar-sync': typeof ApiInternalCalendarSyncRoute
+  '/api/marketing-unsubscribe/$token': typeof ApiMarketingUnsubscribeTokenRoute
   '/api/monitoring/client-errors': typeof ApiMonitoringClientErrorsRoute
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
@@ -541,6 +549,7 @@ export interface FileRoutesByTo {
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
   '/api/internal/calendar-sync': typeof ApiInternalCalendarSyncRoute
+  '/api/marketing-unsubscribe/$token': typeof ApiMarketingUnsubscribeTokenRoute
   '/api/monitoring/client-errors': typeof ApiMonitoringClientErrorsRoute
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
@@ -610,6 +619,7 @@ export interface FileRoutesById {
   '/api/bookings/send-confirmation': typeof ApiBookingsSendConfirmationRoute
   '/api/cron/send-reminders': typeof ApiCronSendRemindersRoute
   '/api/internal/calendar-sync': typeof ApiInternalCalendarSyncRoute
+  '/api/marketing-unsubscribe/$token': typeof ApiMarketingUnsubscribeTokenRoute
   '/api/monitoring/client-errors': typeof ApiMonitoringClientErrorsRoute
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
@@ -679,6 +689,7 @@ export interface FileRouteTypes {
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
     | '/api/internal/calendar-sync'
+    | '/api/marketing-unsubscribe/$token'
     | '/api/monitoring/client-errors'
     | '/api/reviews/peek'
     | '/api/reviews/submit'
@@ -744,6 +755,7 @@ export interface FileRouteTypes {
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
     | '/api/internal/calendar-sync'
+    | '/api/marketing-unsubscribe/$token'
     | '/api/monitoring/client-errors'
     | '/api/reviews/peek'
     | '/api/reviews/submit'
@@ -812,6 +824,7 @@ export interface FileRouteTypes {
     | '/api/bookings/send-confirmation'
     | '/api/cron/send-reminders'
     | '/api/internal/calendar-sync'
+    | '/api/marketing-unsubscribe/$token'
     | '/api/monitoring/client-errors'
     | '/api/reviews/peek'
     | '/api/reviews/submit'
@@ -857,6 +870,7 @@ export interface RootRouteChildren {
   ApiBookingsSendConfirmationRoute: typeof ApiBookingsSendConfirmationRoute
   ApiCronSendRemindersRoute: typeof ApiCronSendRemindersRoute
   ApiInternalCalendarSyncRoute: typeof ApiInternalCalendarSyncRoute
+  ApiMarketingUnsubscribeTokenRoute: typeof ApiMarketingUnsubscribeTokenRoute
   ApiMonitoringClientErrorsRoute: typeof ApiMonitoringClientErrorsRoute
   ApiReviewsPeekRoute: typeof ApiReviewsPeekRoute
   ApiReviewsSubmitRoute: typeof ApiReviewsSubmitRoute
@@ -1275,6 +1289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMonitoringClientErrorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/marketing-unsubscribe/$token': {
+      id: '/api/marketing-unsubscribe/$token'
+      path: '/api/marketing-unsubscribe/$token'
+      fullPath: '/api/marketing-unsubscribe/$token'
+      preLoaderRoute: typeof ApiMarketingUnsubscribeTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/internal/calendar-sync': {
       id: '/api/internal/calendar-sync'
       path: '/api/internal/calendar-sync'
@@ -1444,6 +1465,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBookingsSendConfirmationRoute: ApiBookingsSendConfirmationRoute,
   ApiCronSendRemindersRoute: ApiCronSendRemindersRoute,
   ApiInternalCalendarSyncRoute: ApiInternalCalendarSyncRoute,
+  ApiMarketingUnsubscribeTokenRoute: ApiMarketingUnsubscribeTokenRoute,
   ApiMonitoringClientErrorsRoute: ApiMonitoringClientErrorsRoute,
   ApiReviewsPeekRoute: ApiReviewsPeekRoute,
   ApiReviewsSubmitRoute: ApiReviewsSubmitRoute,

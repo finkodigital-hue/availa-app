@@ -161,7 +161,11 @@ export async function sendEmail({
       ? "customer_booking_confirmation"
       : messageType === "booking_reminder"
         ? "customer_booking_reminder"
-        : null;
+        : messageType === "aftercare"
+          ? "customer_aftercare_email"
+          : messageType === "rebooking_reminder"
+            ? "customer_rebooking_email"
+            : null;
   if (preferenceColumn) {
     const { data: preferences } = await (supabaseAdmin as any)
       .from("notification_preferences")

@@ -69,7 +69,7 @@ test("customer can reach details without creating a booking", async ({
 
   let slot = page
     .locator("main button")
-    .filter({ hasText: /^\d{1,2}:\d{2}$/ })
+    .filter({ hasText: /^\d{1,2}:\d{2}(?:\s?[AP]M)?$/i })
     .first();
   for (
     let day = 0;
@@ -80,7 +80,7 @@ test("customer can reach details without creating a booking", async ({
     await page.waitForTimeout(150);
     slot = page
       .locator("main button")
-      .filter({ hasText: /^\d{1,2}:\d{2}$/ })
+      .filter({ hasText: /^\d{1,2}:\d{2}(?:\s?[AP]M)?$/i })
       .first();
   }
   await expect(
@@ -91,10 +91,19 @@ test("customer can reach details without creating a booking", async ({
 
   await expect(page.getByText(/Step 4 of 4\s*Details/)).toBeVisible();
   await expect(page.getByLabel("Your name")).toBeVisible();
-  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Email", exact: true }),
+  ).toBeVisible();
   await expect(page.getByLabel("Phone")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Continue to secure payment" }),
+    page.getByText(
+      /Email me occasional offers and helpful rebooking reminders/,
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: /Continue to secure payment|Confirm booking/,
+    }),
   ).toBeDisabled();
   await expect(
     page.getByRole("link", { name: "Privacy Policy" }),

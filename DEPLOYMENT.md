@@ -66,6 +66,19 @@ the destination countries. Bookzenvo supplies a signed delivery-status callback
 automatically when `APP_URL` is HTTPS. SMS has no development redirect: outside
 production it is always logged as suppressed and no provider request is made.
 
+## Smart retention setup
+
+Apply `supabase/migrations/20260913120000_add_smart_retention.sql` before
+deploying the retention UI. The existing reminder cron also runs service
+aftercare and rebooking sweeps, so no second schedule or provider is required.
+
+Smart rebooking starts disabled for each salon. An owner must enable it under
+Settings → Notifications and set a repeat interval on an individual service.
+It only contacts customers with a recorded email-marketing opt-in, skips anyone
+who already has a future booking, and includes a one-click unsubscribe. Keep
+promotional SMS disabled until inbound STOP handling and country-specific sender
+registration have been verified.
+
 ## Normal release
 
 Merge the approved pull request into `main`. Cloudflare will build and deploy

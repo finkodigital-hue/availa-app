@@ -51,6 +51,16 @@ const OPTIONS = [
     "SMS appointment reminders",
     "Text customers who explicitly opt in and provide an international-format mobile number.",
   ],
+  [
+    "customer_aftercare_email",
+    "Aftercare emails",
+    "Send service-specific care instructions after completed appointments.",
+  ],
+  [
+    "customer_rebooking_email",
+    "Smart rebooking emails",
+    "Invite opted-in clients back when their service is normally due again.",
+  ],
 ] as const;
 
 export function NotificationSettings({ businessId }: { businessId: string }) {
@@ -97,7 +107,11 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
               </div>
             </div>
             <Switch
-              checked={preferences?.[key] ?? true}
+              checked={
+                preferences?.[key] ??
+                (key !== "customer_booking_reminder_sms" &&
+                  key !== "customer_rebooking_email")
+              }
               disabled={!preferences}
               onCheckedChange={(checked) => change(key, checked)}
               aria-label={title}

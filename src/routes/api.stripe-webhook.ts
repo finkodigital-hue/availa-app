@@ -258,6 +258,18 @@ export const Route = createFileRoute("/api/stripe-webhook")({
               .eq("business_id", metadata.business_id);
             if (consentError) throw consentError;
           }
+          if (
+            bookingId &&
+            metadata.email_marketing_consent === "true" &&
+            metadata.customer_email
+          ) {
+            const { recordBookingEmailMarketingConsent } =
+              await import("@/lib/marketing-consent.server");
+            await recordBookingEmailMarketingConsent({
+              bookingId,
+              businessId: metadata.business_id,
+            });
+          }
         } catch (error) {
           console.error("Stripe checkout fulfillment failed", error);
           return new Response("Could not fulfil checkout", { status: 500 });

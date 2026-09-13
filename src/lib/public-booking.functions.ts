@@ -15,6 +15,7 @@ type PublicBookingInput = {
   gapMin?: number | null;
   activeAfterMin?: number | null;
   smsReminderConsent?: boolean;
+  emailMarketingConsent?: boolean;
 };
 
 const UUID =
@@ -111,6 +112,22 @@ export const createPublicBooking = createServerFn({ method: "POST" })
           bookingId,
           consentError,
         );
+    }
+    if (bookingId && data.emailMarketingConsent && data.customerEmail) {
+      try {
+        const { recordBookingEmailMarketingConsent } =
+          await import("@/lib/marketing-consent.server");
+        await recordBookingEmailMarketingConsent({
+          bookingId,
+          businessId: data.businessId,
+        });
+      } catch (consentError) {
+        console.error(
+          "Could not record email marketing consent",
+          bookingId,
+          consentError,
+        );
+      }
     }
     return { bookingId };
   });

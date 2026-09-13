@@ -263,6 +263,7 @@ export function PublicBookingPage({
   });
   const [infoTouched, setInfoTouched] = useState(false);
   const [smsReminderConsent, setSmsReminderConsent] = useState(false);
+  const [emailMarketingConsent, setEmailMarketingConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [paymentReturn, setPaymentReturn] = useState<
@@ -700,6 +701,7 @@ export function PublicBookingPage({
           customerEmail: info.email,
           customerPhone: info.phone,
           smsReminderConsent,
+          emailMarketingConsent,
           startsAt: starts_at,
           endsAt: ends_at,
           notes: info.notes,
@@ -719,6 +721,7 @@ export function PublicBookingPage({
           customerEmail: info.email,
           customerPhone: info.phone,
           smsReminderConsent,
+          emailMarketingConsent,
           startsAt: starts_at,
           endsAt: ends_at,
           notes: info.notes,
@@ -771,6 +774,7 @@ export function PublicBookingPage({
     setBookedBookingId(null);
     setInfo({ name: "", email: "", phone: "", notes: "" });
     setSmsReminderConsent(false);
+    setEmailMarketingConsent(false);
     setInfoTouched(false);
   };
 
@@ -1057,6 +1061,7 @@ export function PublicBookingPage({
                       <div className="relative mt-6">
                         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
+                          type="search"
                           value={serviceSearch}
                           onChange={(event) => {
                             setServiceSearch(event.target.value);
@@ -1713,6 +1718,25 @@ export function PublicBookingPage({
                 <span className="mt-0.5 block text-xs text-muted-foreground">
                   Enter your number in international format, such as +44 7123
                   456789. This consent applies only to this booking.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-xl border p-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4"
+                checked={emailMarketingConsent}
+                disabled={!info.email.trim()}
+                onChange={(event) =>
+                  setEmailMarketingConsent(event.target.checked)
+                }
+              />
+              <span>
+                Email me occasional offers and helpful rebooking reminders from{" "}
+                {biz.name}.
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Optional and separate from booking emails. Unsubscribe at any
+                  time.
                 </span>
               </span>
             </label>

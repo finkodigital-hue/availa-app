@@ -20,6 +20,7 @@ type CheckoutInput = {
   notes: string;
   returnPath: string;
   smsReminderConsent?: boolean;
+  emailMarketingConsent?: boolean;
 };
 
 type BalanceCheckoutInput = {
@@ -356,6 +357,9 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
           "metadata[customer_email]": data.customerEmail.trim(),
           "metadata[customer_phone]": data.customerPhone.trim(),
           "metadata[sms_reminder_consent]": data.smsReminderConsent
+            ? "true"
+            : "false",
+          "metadata[email_marketing_consent]": data.emailMarketingConsent
             ? "true"
             : "false",
           "metadata[starts_at]": data.startsAt,
