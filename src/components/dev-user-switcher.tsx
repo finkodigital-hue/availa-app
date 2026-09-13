@@ -22,19 +22,34 @@ import {
  * `import.meta.env.DEV` is true — Vite tree-shakes it out of production
  * builds.
  */
-export function DevUserSwitcher() {
+type DevUserSwitcherProps = {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+};
+
+export function DevUserSwitcher(props: DevUserSwitcherProps = {}) {
   if (!import.meta.env.DEV) return null;
-  return <DevUserSwitcherInner />;
+  return <DevUserSwitcherInner {...props} />;
 }
 
-function DevUserSwitcherInner() {
+function DevUserSwitcherInner({
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+}: DevUserSwitcherProps) {
   const { user } = useAuth();
   const router = useRouter();
   const seed = useServerFn(devSeedProfessional);
   const magic = useServerFn(devMagicLink);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [busy, setBusy] = useState<null | "seed" | "pro" | "owner">(null);
-  const [creds, setCreds] = useState<{ email: string; password: string } | null>(null);
+  const [creds, setCreds] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
 
   const doSeed = async () => {
     setBusy("seed");
@@ -94,20 +109,23 @@ function DevUserSwitcherInner() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="mt-2 w-full flex items-center gap-2 rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 px-2.5 py-1.5 text-[11px] text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 transition-colors"
-        title="Dev-only account switcher"
-      >
-        <FlaskConical className="h-3 w-3" />
-        <span>Dev: Switch user</span>
-      </button>
+      {!hideTrigger && (
+        <button
+          onClick={() => setOpen(true)}
+          className="mt-2 w-full flex items-center gap-2 rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 px-2.5 py-1.5 text-[11px] text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 transition-colors"
+          title="Dev-only account switcher"
+        >
+          <FlaskConical className="h-3 w-3" />
+          <span>Dev: Switch user</span>
+        </button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FlaskConical className="h-4 w-4 text-amber-500" /> Dev user switcher
+              <FlaskConical className="h-4 w-4 text-amber-500" /> Dev user
+              switcher
             </DialogTitle>
             <DialogDescription>
               Only visible in development. Switch between your salon owner
@@ -120,7 +138,9 @@ function DevUserSwitcherInner() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 Salon Owner (you)
               </div>
-              <div className="mt-1 text-sm font-medium truncate">{user?.email}</div>
+              <div className="mt-1 text-sm font-medium truncate">
+                {user?.email}
+              </div>
               <Button
                 size="sm"
                 variant="outline"
@@ -142,7 +162,8 @@ function DevUserSwitcherInner() {
               </div>
               <div className="mt-1 text-sm font-medium">Finko (Demo Pro)</div>
               <div className="text-xs text-muted-foreground">
-                Linked as Chair 3 · $500/mo rent · own services, staff & customers
+                Linked as Chair 3 · $500/mo rent · own services, staff &
+                customers
               </div>
 
               {creds && (
@@ -151,7 +172,10 @@ function DevUserSwitcherInner() {
                     <span className="text-muted-foreground">Email</span>
                     <div className="flex items-center gap-1">
                       <code className="text-[11px]">{creds.email}</code>
-                      <button onClick={() => copy(creds.email)} className="p-1 hover:bg-background rounded">
+                      <button
+                        onClick={() => copy(creds.email)}
+                        className="p-1 hover:bg-background rounded"
+                      >
                         <Copy className="h-3 w-3" />
                       </button>
                     </div>
@@ -160,7 +184,10 @@ function DevUserSwitcherInner() {
                     <span className="text-muted-foreground">Password</span>
                     <div className="flex items-center gap-1">
                       <code className="text-[11px]">{creds.password}</code>
-                      <button onClick={() => copy(creds.password)} className="p-1 hover:bg-background rounded">
+                      <button
+                        onClick={() => copy(creds.password)}
+                        className="p-1 hover:bg-background rounded"
+                      >
                         <Copy className="h-3 w-3" />
                       </button>
                     </div>
@@ -175,21 +202,31 @@ function DevUserSwitcherInner() {
                   disabled={busy !== null}
                   onClick={doSeed}
                 >
-                  {busy === "seed" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Show credentials"}
+                  {busy === "seed" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Show credentials"
+                  )}
                 </Button>
                 <Button
                   size="sm"
                   disabled={busy !== null}
                   onClick={() => signInAs("finko@au.com", "pro")}
                 >
-                  {busy === "pro" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in as Pro"}
+                  {busy === "pro" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Sign in as Pro"
+                  )}
                 </Button>
               </div>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Close</Button>
+            <Button variant="ghost" onClick={() => setOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -30,13 +30,25 @@ const URGENCY = [
   { value: "urgent", label: "Urgent — I'm blocked" },
 ] as const;
 
-export function ContactSupportDialog() {
+type ContactSupportDialogProps = {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+};
+
+export function ContactSupportDialog({
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+}: ContactSupportDialogProps = {}) {
   const { user } = useAuth();
   const createTicket = useServerFn(createSupportTicket);
   const loadTickets = useServerFn(getMySupportTickets);
   const replyToTicket = useServerFn(replyToSupportTicket);
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [urgency, setUrgency] =
@@ -113,13 +125,15 @@ export function ContactSupportDialog() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-2 w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-card/60 hover:text-foreground transition-colors"
-      >
-        <LifeBuoy className="h-3.5 w-3.5" /> Contact support
-      </button>
+      {!hideTrigger && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-2 w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-card/60 hover:text-foreground transition-colors"
+        >
+          <LifeBuoy className="h-3.5 w-3.5" /> Contact support
+        </button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>

@@ -21,6 +21,10 @@ import {
   HelpCircle,
   ClipboardCheck,
   Gift,
+  ChevronsUpDown,
+  MessageSquarePlus,
+  LifeBuoy,
+  FlaskConical,
 } from "lucide-react";
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -181,6 +185,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const access = useWorkspaceAccess();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [calendarFocusMode, setCalendarFocusMode] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [devSwitcherOpen, setDevSwitcherOpen] = useState(false);
 
   // The calendar owns its focus/full-screen state. Keeping that state here as
   // well lets the mobile shell get out of the way completely while someone is
@@ -335,23 +342,26 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </nav>
 
-      <div className="border-t border-border/50 p-3">
+      <div className="border-t border-border/50 p-2.5">
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-left transition-[background-color,transform] duration-150 ease-out hover:bg-background/65 active:scale-[0.985]">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-foreground text-xs font-semibold text-background shadow-sm">
+          <DropdownMenuTrigger className="group flex w-full items-center gap-2.5 rounded-2xl px-2 py-1.5 text-left outline-none transition-[background-color,transform] duration-150 ease-out hover:bg-background/65 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.985]">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-foreground text-[11px] font-semibold text-background shadow-sm">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium truncate">{accountName}</div>
+              <div className="truncate text-[13px] font-medium leading-tight">
+                {accountName}
+              </div>
               {!access.isOwner && access.role && (
                 <div className="text-[10px] capitalize text-muted-foreground">
                   {access.role.replace("_", " ")}
                 </div>
               )}
-              <div className="text-xs text-muted-foreground truncate">
+              <div className="truncate text-[11px] leading-tight text-muted-foreground">
                 {user?.email}
               </div>
             </div>
+            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="w-56">
             <DropdownMenuLabel className="font-normal">
@@ -374,6 +384,21 @@ export function AppShell({ children }: { children: ReactNode }) {
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setFeedbackOpen(true)}>
+              <MessageSquarePlus className="h-4 w-4" /> Share feedback
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setSupportOpen(true)}>
+              <LifeBuoy className="h-4 w-4" /> Contact support
+            </DropdownMenuItem>
+            {import.meta.env.DEV && (
+              <DropdownMenuItem
+                onSelect={() => setDevSwitcherOpen(true)}
+                className="text-amber-700 focus:text-amber-800 dark:text-amber-300 dark:focus:text-amber-200"
+              >
+                <FlaskConical className="h-4 w-4" /> Dev: Switch user
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={signOut}
               className="text-destructive focus:text-destructive"
@@ -382,9 +407,21 @@ export function AppShell({ children }: { children: ReactNode }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <FeedbackDialog />
-        <ContactSupportDialog />
-        <DevUserSwitcher />
+        <FeedbackDialog
+          open={feedbackOpen}
+          onOpenChange={setFeedbackOpen}
+          hideTrigger
+        />
+        <ContactSupportDialog
+          open={supportOpen}
+          onOpenChange={setSupportOpen}
+          hideTrigger
+        />
+        <DevUserSwitcher
+          open={devSwitcherOpen}
+          onOpenChange={setDevSwitcherOpen}
+          hideTrigger
+        />
       </div>
     </>
   );

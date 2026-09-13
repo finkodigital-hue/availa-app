@@ -22,10 +22,22 @@ const CATEGORIES = [
   { value: "other", label: "Other" },
 ] as const;
 
-export function FeedbackDialog() {
+type FeedbackDialogProps = {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+};
+
+export function FeedbackDialog({
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+}: FeedbackDialogProps = {}) {
   const { user } = useAuth();
   const createTicket = useServerFn(createSupportTicket);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [category, setCategory] =
     useState<(typeof CATEGORIES)[number]["value"]>("idea");
   const [message, setMessage] = useState("");
@@ -71,13 +83,15 @@ export function FeedbackDialog() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-2 w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-card/60 hover:text-foreground transition-colors"
-      >
-        <MessageSquarePlus className="h-3.5 w-3.5" /> Share feedback
-      </button>
+      {!hideTrigger && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-2 w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-card/60 hover:text-foreground transition-colors"
+        >
+          <MessageSquarePlus className="h-3.5 w-3.5" /> Share feedback
+        </button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
