@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   CalendarCheck,
+  Camera,
   Check,
   ChevronRight,
   CreditCard,
@@ -156,6 +157,17 @@ function StartLink({
 function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeStory, setActiveStory] = useState(0);
+  const [activeLook, setActiveLook] = useState(0);
+  const looks = [
+    {
+      name: "Champagne",
+      background: "#f4eee3",
+      ink: "#393025",
+      accent: "#86683e",
+    },
+    { name: "Ink", background: "#242424", ink: "#f6f2ec", accent: "#d0b280" },
+    { name: "Rose", background: "#f5e9e9", ink: "#532f3a", accent: "#955469" },
+  ];
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -230,16 +242,16 @@ function Landing() {
           )}
         </header>
 
-        <main id="top">
+        <main id="top" tabIndex={-1}>
           <section className="lp-hero">
             <div className="lp-hero-copy">
-              <p className="lp-kicker">
-                <span aria-hidden="true" /> For the people behind the chair
+              <p className="lp-kicker lp-hero-label">
+                Salon software, made simple
               </p>
               <h1>
-                A great salon.
+                Your salon.
                 <br />
-                <span>A calmer day.</span>
+                <span>All in one place.</span>
               </h1>
               <p className="lp-hero-lede">
                 Bookings, payments and client care, beautifully together. Make
@@ -385,6 +397,18 @@ function Landing() {
                   body: "Follow-ups and verified review requests help you stay connected after the appointment.",
                   detail: "Client relationships",
                 },
+                {
+                  icon: Camera,
+                  title: "Turn a shelf photo into a stock list",
+                  body: "Photograph your products and let AI identify them. Review the results before adding them to your stock.",
+                  detail: "Photo stock scanning · Studio",
+                },
+                {
+                  icon: Sparkles,
+                  title: "A helping hand with the admin",
+                  body: "Ask AI to edit your booking page and explore useful insights from your salon data.",
+                  detail: "AI tools · Studio",
+                },
               ].map(({ icon: Icon, title, body, detail }) => (
                 <article key={title} className="lp-feature-row">
                   <Icon aria-hidden="true" />
@@ -398,95 +422,136 @@ function Landing() {
             </div>
             <div className="lp-design-feature">
               <div className="lp-design-copy">
-                <Sparkles aria-hidden="true" />
+                <p className="lp-feature-category">Your booking page</p>
                 <h3>
-                  Looks like you.
+                  Your salon.
                   <br />
-                  Works for you.
+                  Your signature.
                 </h3>
                 <p>
-                  Your colours. Your services. Your own booking page. Build it
-                  visually and preview every change before it goes live.
+                  Make the first impression yours. Choose your colours, add your
+                  services and bring your page to life.
                 </p>
-                <p className="lp-design-detail">
-                  The page builder, shown with a demo salon.
-                </p>
-              </div>
-              <details className="lp-product-detail">
-                <summary>
-                  Take a look inside the page builder{" "}
-                  <ChevronRight aria-hidden="true" />
-                </summary>
-                <div>
-                  <img
-                    src="/landing/page-builder.png"
-                    width="1440"
-                    height="1000"
-                    loading="lazy"
-                    alt="The real Bookzenvo page builder in a demo workspace, with design controls and a live page preview"
-                  />
-                  <a
-                    href="/landing/page-builder.png"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Open original screenshot <ArrowRight aria-hidden="true" />
-                  </a>
+                <div
+                  className="lp-look-options"
+                  aria-label="Try a colour palette"
+                >
+                  {looks.map((look, index) => (
+                    <button
+                      type="button"
+                      key={look.name}
+                      aria-pressed={activeLook === index}
+                      onClick={() => setActiveLook(index)}
+                    >
+                      <span
+                        style={{ background: look.accent }}
+                        aria-hidden="true"
+                      />
+                      {look.name}
+                    </button>
+                  ))}
                 </div>
-              </details>
-            </div>
-            <div className="lp-ai-line">
-              <Sparkles aria-hidden="true" />
-              <div>
-                <h3>A helping hand with the everyday.</h3>
-                <p>
-                  Scan stock from a photo. Ask AI to edit your page. Find useful
-                  insights in your salon data.
+                <p className="lp-look-hint">
+                  Try a colour. See the difference.
                 </p>
               </div>
-              <a href="#pricing">
-                Included in Studio <ArrowRight aria-hidden="true" />
-              </a>
+              <div
+                className="lp-colour-specimen"
+                style={{
+                  background: looks[activeLook].background,
+                  color: looks[activeLook].ink,
+                }}
+                aria-label={looks[activeLook].name + " colour preview"}
+              >
+                <div className="lp-specimen-top">
+                  <span>Your salon</span>
+                  <span>Colour preview</span>
+                </div>
+                <div className="lp-specimen-title">
+                  A little time.
+                  <br />
+                  <span style={{ color: looks[activeLook].accent }}>
+                    Just for you.
+                  </span>
+                </div>
+                <div className="lp-specimen-bottom">
+                  <span>Made personal.</span>
+                  <span
+                    style={{ background: looks[activeLook].accent }}
+                    aria-hidden="true"
+                  />
+                </div>
+              </div>
             </div>
           </section>
 
-          <section id="switch" className="lp-switch" data-reveal>
-            <div className="lp-switch-image">
-              <p className="lp-switch-label">Your salon comes with you.</p>
-              <h3>
-                Your clients.
-                <br />
-                Your team.
-                <br />
-                Your history.
-              </h3>
-              <p>Bring the details that matter. Make the day-to-day simpler.</p>
-            </div>
+          <section id="switch" className="lp-switch">
             <div className="lp-switch-copy">
+              <p className="lp-switch-label">Make your next move</p>
               <h2>
                 A fresh start.
                 <br />
-                Without starting over.
+                <span>Same salon. More possibility.</span>
               </h2>
               <p>
-                Moving from Fresha, Square, Vagaro or Booksy should not mean
-                starting again.
+                Bring your clients, team, services and booking history into
+                Bookzenvo. Keep what matters, and make the everyday easier.
               </p>
-              <ul>
+              <StartLink light>Join the waitlist</StartLink>
+              <p className="lp-switch-note">
+                Moving from another system? Start with your data export.
+              </p>
+            </div>
+            <div className="lp-move-guide">
+              <div className="lp-move-heading">
+                <span>Your move to Bookzenvo</span>
+                <ArrowRight aria-hidden="true" />
+              </div>
+              <ol>
                 <li>
-                  <Check /> Import staff, clients, services and history
+                  <span className="lp-move-number">01</span>
+                  <div>
+                    <h3>Bring your data</h3>
+                    <p>Export your records from your current booking system.</p>
+                  </div>
                 </li>
                 <li>
-                  <Check /> One flat price, however many chairs
+                  <span className="lp-move-number">02</span>
+                  <div>
+                    <h3>Review your import</h3>
+                    <p>
+                      Upload your file and check the details before importing.
+                    </p>
+                  </div>
                 </li>
                 <li>
-                  <Check /> No commission on your own clients
+                  <span className="lp-move-number">03</span>
+                  <div>
+                    <h3>Make yourself at home</h3>
+                    <p>
+                      Set up your page, check your services and get ready to
+                      take bookings.
+                    </p>
+                  </div>
                 </li>
-                <li>
-                  <Check /> Export your client list whenever you want
-                </li>
-              </ul>
-              <StartLink light>Start your move</StartLink>
+              </ol>
+              <div className="lp-move-data">
+                <span>Clients</span>
+                <span>Team</span>
+                <span>Services</span>
+                <span>History</span>
+              </div>
+            </div>
+            <div className="lp-switch-footer">
+              <span>
+                <Check aria-hidden="true" /> Your client list stays yours
+              </span>
+              <span>
+                <Check aria-hidden="true" /> Export whenever you need
+              </span>
+              <a href="#pricing">
+                See the plans <ArrowRight aria-hidden="true" />
+              </a>
             </div>
           </section>
 
