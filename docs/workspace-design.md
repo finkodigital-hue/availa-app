@@ -2,12 +2,15 @@
 
 The owner app uses the scoped styles in `src/workspace.css`. It follows a
 macOS-inspired visual direction: native system sans-serif typography, clear
-headings, cool neutral surfaces, blue primary actions and restrained shadows.
+headings, neutral surfaces, Bookzenvo gold accents and restrained shadows.
+Deep gold actions keep white labels readable in light mode; dark mode uses
+champagne gold with dark labels. Selection highlights use a soft gold wash.
 The existing Radix components and all business operations remain in place.
 
 - Main pages opt in through `AppShell` with `.workspace-theme`.
-- Calendar content deliberately does not opt in. Its styles and interactions
-  must remain unchanged when updating the workspace design.
+- Calendar content deliberately does not opt in. The summary strip has its own
+  approved readable typography and gold accents; the calendar grid and its
+  interactions remain unchanged.
 - Auth, onboarding and help pages opt in independently.
 - `[data-workspace-brand]` stops the styling scope at the salon preview.
 - Dialogs and menus rendered outside the shell receive tokens only while a
