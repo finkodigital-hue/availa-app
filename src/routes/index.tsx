@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
-  BadgeCheck,
   CalendarCheck,
   Check,
   ChevronRight,
@@ -111,7 +110,6 @@ function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    document.querySelector(".landing-page")?.classList.add("lp-motion-ready");
     const elements = Array.from(
       document.querySelectorAll<HTMLElement>("[data-reveal]"),
     );
@@ -134,11 +132,26 @@ function Landing() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        document.querySelector<HTMLButtonElement>(".lp-menu-button")?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [menuOpen]);
+
   const closeMenu = () => setMenuOpen(false);
 
   return (
     <CookieConsentProvider>
       <div className="landing-page">
+        <a className="lp-skip-link" href="#top">
+          Skip to content
+        </a>
         <header className="lp-header">
           <div className="lp-nav-shell">
             <a href="#top" aria-label="Bookzenvo home" onClick={closeMenu}>
@@ -160,6 +173,7 @@ function Landing() {
                 type="button"
                 aria-label={menuOpen ? "Close menu" : "Open menu"}
                 aria-expanded={menuOpen}
+                aria-controls="landing-mobile-menu"
                 onClick={() => setMenuOpen((open) => !open)}
               >
                 {menuOpen ? <X /> : <Menu />}
@@ -167,7 +181,11 @@ function Landing() {
             </div>
           </div>
           {menuOpen && (
-            <nav className="lp-mobile-nav" aria-label="Mobile navigation">
+            <nav
+              id="landing-mobile-menu"
+              className="lp-mobile-nav"
+              aria-label="Mobile navigation"
+            >
               <a href="#how" onClick={closeMenu}>
                 How it works
               </a>
@@ -208,21 +226,19 @@ function Landing() {
             </div>
             <div
               className="lp-hero-media"
-              aria-label="A salon owner using Bookzenvo with a client"
+              aria-label="Bookzenvo calendar preview"
             >
+              <div className="lp-product-caption">
+                <span>Your day, in one place.</span>
+                <span>Demo workspace</span>
+              </div>
               <img
-                src="/landing/bookzenvo-salon-consultation.jpg"
-                alt="Salon owner reviewing a digital consultation with her client"
-                width="1536"
-                height="1024"
+                src="/landing/calendar.png"
+                alt="Bookzenvo calendar with day, week and month views and daily booking totals in a demo salon"
+                width="1440"
+                height="1039"
                 fetchPriority="high"
               />
-              <div className="lp-hero-caption">
-                <BadgeCheck aria-hidden="true" />
-                <span>
-                  <strong>Less paperwork.</strong> More time with clients.
-                </span>
-              </div>
             </div>
           </section>
 
@@ -244,7 +260,7 @@ function Landing() {
           <section id="how" className="lp-section lp-how" data-reveal>
             <div className="lp-section-heading">
               <p className="lp-kicker">Simple from day one</p>
-              <h2>From setup to fully booked, without the usual friction.</h2>
+              <h2>Ready for your next chapter.</h2>
               <p>
                 Bookzenvo feels familiar quickly, whether you are starting fresh
                 or moving an established salon.
@@ -290,10 +306,10 @@ function Landing() {
               </article>
               <article className="lp-feature-card lp-feature-photo">
                 <img
-                  src="/demo/pasha-hair/salon-wash-area.png"
-                  alt="A bright salon wash area"
-                  width="1536"
-                  height="1024"
+                  src="/landing/page-builder.png"
+                  alt="Bookzenvo page builder showing colour presets alongside the live booking-page preview in a demo salon"
+                  width="1440"
+                  height="1000"
                   loading="lazy"
                 />
                 <div>
@@ -361,13 +377,17 @@ function Landing() {
 
           <section id="switch" className="lp-switch" data-reveal>
             <div className="lp-switch-image">
-              <img
-                src="/demo/pasha-hair/salon-interior.png"
-                alt="A calm modern salon interior"
-                width="1536"
-                height="1024"
-                loading="lazy"
-              />
+              <p className="lp-switch-label">
+                A fresh start. A familiar salon.
+              </p>
+              <h3>
+                Your clients.
+                <br />
+                Your team.
+                <br />
+                Your history.
+              </h3>
+              <p>Bring the details that matter. Make the day-to-day simpler.</p>
             </div>
             <div className="lp-switch-copy">
               <h2>Bring your salon with you.</h2>
@@ -389,7 +409,7 @@ function Landing() {
                   <Check /> Export your client list whenever you want
                 </li>
               </ul>
-              <StartLink>Start your move</StartLink>
+              <StartLink light>Start your move</StartLink>
             </div>
           </section>
 
@@ -431,7 +451,7 @@ function Landing() {
                 <StartLink />
               </article>
               <article className="lp-price-card lp-price-card-featured">
-                <div className="lp-popular">Most popular</div>
+                <div className="lp-popular">For the whole team</div>
                 <div className="lp-price-top">
                   <div>
                     <h3>Studio</h3>

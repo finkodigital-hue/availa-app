@@ -89,6 +89,23 @@
 .lp-wordmark-light {
   color: #fff;
 }
+
+/* Product photography uses real QA workspace captures, with no customer data. */
+.landing-page section[id] {
+  scroll-margin-top: 96px;
+}
+.lp-skip-link {
+  position: fixed;
+  top: -80px;
+  left: 24px;
+  z-index: 100;
+  padding: 12px 20px;
+  background: var(--lp-surface);
+  border-radius: 12px;
+}
+.lp-skip-link:focus {
+  top: 12px;
+}
 .lp-desktop-nav {
   display: flex;
   gap: 34px;
@@ -751,9 +768,9 @@
   opacity: 1;
   transform: none;
 }
-.lp-motion-ready [data-reveal] {
-  opacity: 0;
-  transform: translateY(28px);
+.landing-page [data-reveal] {
+  opacity: 1;
+  transform: none;
   transition:
     opacity 700ms cubic-bezier(0.2, 0.7, 0.2, 1),
     transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -972,6 +989,173 @@
     right: 10px;
     bottom: 10px;
     left: 10px;
+  }
+}
+/* Final layout refinements shared by light and dark appearances. */
+.lp-hero {
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  gap: 36px;
+  min-height: 650px;
+}
+.lp-hero h1 {
+  font-size: clamp(3rem, 4.6vw, 4.5rem);
+  letter-spacing: -0.055em;
+  max-width: 11ch;
+  line-height: 1.02;
+}
+.lp-hero-media {
+  height: auto;
+  border: 1px solid var(--lp-line);
+  border-radius: 22px;
+  background: var(--lp-surface);
+  box-shadow: 0 20px 55px rgb(20 20 22 / 10%);
+}
+.lp-hero-media > img {
+  height: auto;
+  object-fit: contain;
+  width: 100%;
+}
+.lp-product-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px 20px;
+  color: var(--lp-text);
+  border-bottom: 1px solid var(--lp-line);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+.lp-product-caption span:last-child {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--lp-muted);
+}
+.lp-feature-photo {
+  background: var(--lp-surface);
+  color: var(--lp-text);
+  display: flex;
+  flex-direction: column;
+}
+.lp-feature-photo::after {
+  display: none;
+}
+.lp-feature-photo > img {
+  height: auto;
+  object-fit: contain;
+  border-bottom: 1px solid var(--lp-line);
+}
+.lp-feature-photo > div {
+  position: static;
+  padding: 26px 28px;
+}
+.lp-feature-photo p {
+  color: var(--lp-muted);
+}
+.lp-feature-photo > div > svg {
+  color: var(--lp-gold-strong);
+}
+.lp-feature-calendar {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--lp-surface);
+}
+.lp-feature-card h3 {
+  max-width: 22ch;
+}
+.lp-switch-image {
+  min-height: 0;
+  padding: 54px 38px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 30px;
+  background: #27231e;
+  color: #ead5b4;
+}
+.lp-switch-image h3 {
+  font-size: clamp(2.8rem, 4.8vw, 4.7rem);
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+  font-weight: 600;
+}
+.lp-switch-image > p {
+  max-width: 30ch;
+  color: #d5c8b5;
+  line-height: 1.6;
+}
+.lp-switch-label {
+  font-size: 0.85rem;
+}
+.lp-price-card-featured {
+  padding-top: 62px;
+}
+.lp-price-top {
+  flex-wrap: wrap;
+}
+.lp-price-card-featured .lp-price-top p,
+.lp-price-card-featured .lp-price-top strong span {
+  color: #bdbdc3;
+}
+.lp-menu-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.lp-section-heading h2,
+.lp-switch-copy h2,
+.lp-final-cta h2 {
+  letter-spacing: -0.045em;
+}
+@media (max-width: 1000px) {
+  .lp-desktop-nav {
+    gap: 18px;
+  }
+  .lp-nav-actions {
+    gap: 12px;
+  }
+  .lp-hero {
+    gap: 24px;
+  }
+}
+@media (max-width: 760px) {
+  .lp-hero {
+    min-height: 0;
+    gap: 30px;
+  }
+  .lp-hero-copy {
+    padding-top: 40px;
+  }
+  .lp-hero h1 {
+    font-size: clamp(2.8rem, 12vw, 4rem);
+    max-width: 12ch;
+  }
+  .lp-hero-media {
+    height: auto;
+  }
+  .lp-product-caption {
+    padding: 14px 12px;
+    font-size: 0.78rem;
+  }
+  .lp-product-caption span:last-child {
+    font-size: 0.67rem;
+  }
+  .lp-feature-photo {
+    min-height: 0;
+  }
+  .lp-switch-image {
+    padding: 34px 26px;
+    min-height: 0;
+  }
+  .lp-price-card-featured {
+    padding-top: 62px;
+  }
+  .lp-mobile-nav {
+    max-height: calc(100dvh - 90px);
+    overflow-y: auto;
+  }
+  .lp-section {
+    padding-block: 72px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
