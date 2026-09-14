@@ -987,7 +987,7 @@ function CustomerAvatar({
   }, [customer.avatar_url]);
   const sizing =
     size === "lg"
-      ? "h-24 w-24 text-3xl"
+      ? "h-14 w-14 text-xl sm:h-20 sm:w-20 sm:text-2xl"
       : size === "md"
         ? "h-12 w-12 text-lg"
         : "h-10 w-10 text-sm";
@@ -1339,7 +1339,7 @@ function CustomerDetailPanel({
             <div className="flex min-w-0 items-center gap-4">
               <CustomerAvatar customer={c} size="lg" />
               <div className="min-w-0">
-                <h2 className="truncate font-display text-3xl sm:text-4xl">
+                <h2 className="break-words font-display text-xl sm:text-3xl">
                   {c.name}
                 </h2>
                 <div className="mt-2 space-y-1 text-xs text-muted-foreground">
@@ -1350,7 +1350,7 @@ function CustomerDetailPanel({
                     </div>
                   )}
                   {c.email && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 break-all">
                       <Mail className="h-3.5 w-3.5" />
                       {c.email}
                     </div>

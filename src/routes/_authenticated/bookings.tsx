@@ -144,7 +144,7 @@ function BookingsPage() {
         subtitle="Search, filter and review every appointment."
       />
 
-      <div className="flex flex-wrap items-center gap-2 mb-4">
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border bg-card p-4 shadow-soft">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input

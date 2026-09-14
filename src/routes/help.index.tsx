@@ -120,7 +120,7 @@ function HelpCentre() {
   }, [query]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans">
+    <div className="workspace-theme min-h-screen bg-background text-foreground font-sans">
       <header className="border-b border-border">
         <div className="max-w-[1120px] mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/">

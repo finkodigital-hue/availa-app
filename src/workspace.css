@@ -1,0 +1,362 @@
+/* Owner workspace: macOS-inspired typography and surfaces. These tokens never
+   reach the calendar, and the scope boundary preserves salon preview styling.
+   Portalled controls opt in only while a themed workspace page is mounted. */
+.workspace-theme,
+body:has([data-workspace-content])
+  :is(
+    [role="dialog"],
+    [role="alertdialog"],
+    [role="menu"],
+    [role="listbox"],
+    [data-sonner-toaster]
+  ) {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "DM Sans", sans-serif;
+  --font-display: var(--font-sans);
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --card: #fff;
+  --card-foreground: #1d1d1f;
+  --popover: #fff;
+  --popover-foreground: #1d1d1f;
+  --primary: #0066cc;
+  --primary-foreground: #fff;
+  --secondary: #eef0f4;
+  --secondary-foreground: #343438;
+  --muted: #eceef2;
+  --muted-foreground: #62626a;
+  --accent: #e8f1fc;
+  --accent-foreground: #0058b0;
+  --border: #dedee3;
+  --input: #c9cbd2;
+  --ring: #0071e3;
+  --gold: #bed8f5;
+  --gold-deep: #0066cc;
+  --gold-wash: #e8f1fc;
+  --cream: #f5f5f7;
+  --sidebar: #f0f1f4;
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-accent: #e1eaf6;
+  --success: #267444;
+  --shadow-soft: 0 2px 8px -4px rgb(24 32 48 / 9%);
+  --shadow-elegant: 0 4px 20px -8px rgb(24 32 48 / 12%);
+  --shadow-glow: 0 2px 6px rgb(0 80 180 / 12%);
+  font-family: var(--font-sans);
+  color: var(--foreground);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark .workspace-theme,
+.dark
+  body:has([data-workspace-content])
+  :is(
+    [role="dialog"],
+    [role="alertdialog"],
+    [role="menu"],
+    [role="listbox"],
+    [data-sonner-toaster]
+  ) {
+  --background: #18181b;
+  --foreground: #f5f5f7;
+  --card: #242427;
+  --card-foreground: #f5f5f7;
+  --popover: #2b2b2f;
+  --popover-foreground: #f5f5f7;
+  --primary: #78b7ff;
+  --primary-foreground: #101e30;
+  --secondary: #303035;
+  --secondary-foreground: #e3e3e8;
+  --muted: #303035;
+  --muted-foreground: #b1b1bb;
+  --accent: #243a53;
+  --accent-foreground: #a4d0ff;
+  --border: #3c3c42;
+  --input: #565660;
+  --ring: #78b7ff;
+  --gold: #47749f;
+  --gold-deep: #9bcaff;
+  --gold-wash: #243a53;
+  --cream: #242427;
+  --sidebar: #202023;
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-accent: #243a53;
+  --success: #72ce91;
+}
+
+.workspace-content {
+  background: var(--background);
+}
+.workspace-content > div {
+  margin-inline: auto;
+}
+
+/* Scope prevents even typography and button rules from entering the live
+   storefront canvas. All sizes are relative so browser text zoom still works. */
+@scope (.workspace-theme, body:has([data-workspace-content]) :is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"])) to ([data-workspace-brand]) {
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display,
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+  }
+  .font-display {
+    font-weight: 600;
+  }
+  .text-xs {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .text-sm {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  :is(.text-\[10px\], .text-\[11px\]) {
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
+  :is(label, th, h2, h3).uppercase {
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  label {
+    font-weight: 500;
+  }
+
+  [data-page-header] {
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+    animation: none;
+  }
+  [data-page-title] {
+    font-size: clamp(1.9rem, 3vw, 2.4rem);
+    line-height: 1.15;
+    letter-spacing: -0.04em;
+  }
+  [data-page-subtitle] {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    max-width: 44rem;
+    margin-top: 0.6rem;
+  }
+  [data-page-header] .uppercase {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    margin-bottom: 0.5rem;
+    color: var(--muted-foreground);
+  }
+  [data-page-header-action] {
+    align-self: center;
+  }
+
+  [data-ui-button] {
+    border-radius: 0.7rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+  [data-ui-button][data-variant="default"] {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+  }
+  [data-ui-button][data-variant="outline"] {
+    background: var(--card);
+    border-color: var(--input);
+  }
+  [data-ui-button][data-size="sm"] {
+    min-height: 2.125rem;
+    font-size: 0.8125rem;
+  }
+  [data-ui-button]:hover {
+    transform: none;
+  }
+  [data-ui-button][data-variant="default"]:hover {
+    background: color-mix(in srgb, var(--primary) 90%, var(--foreground));
+    box-shadow: none;
+  }
+  [data-ui-button][data-variant="outline"]:hover {
+    background: var(--secondary);
+    border-color: var(--muted-foreground);
+  }
+  [data-ui-button]:focus-visible,
+  a:focus-visible,
+  button:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--ring) 55%, transparent);
+    outline-offset: 3px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not(
+      [type="range"]
+    ):not([type="hidden"]):not([type="file"]),
+  textarea,
+  select,
+  button[role="combobox"] {
+    border-radius: 0.7rem;
+    border-color: var(--input);
+    background-color: var(--card);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  textarea {
+    padding: 0.75rem;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted-foreground);
+    opacity: 1;
+  }
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--ring) 25%, transparent);
+    outline-offset: 1px;
+    border-color: var(--ring);
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--primary);
+  }
+
+  [data-workspace-card],
+  [data-workspace-stat] {
+    border-radius: 1.125rem;
+    border-color: var(--border);
+    box-shadow: var(--shadow-soft);
+  }
+  [data-workspace-stat] {
+    padding: 1.35rem;
+  }
+  [data-workspace-stat] .uppercase {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.875rem;
+  }
+  [data-workspace-stat] .font-display {
+    font-size: 1.875rem;
+    letter-spacing: -0.045em;
+  }
+  [data-workspace-stat] > .absolute {
+    display: none;
+  }
+  [data-workspace-empty] {
+    border-style: solid;
+    background: var(--card);
+    border-radius: 1.125rem;
+    animation: none;
+  }
+  .uppercase {
+    letter-spacing: 0.035em;
+  }
+  .card-hover:hover {
+    transform: none;
+    box-shadow: var(--shadow-soft);
+  }
+
+  [role="tablist"] {
+    border-radius: 0.8rem;
+    background: var(--muted);
+    gap: 0.25rem;
+    height: auto;
+    min-height: 2.75rem;
+    padding: 0.25rem;
+    max-width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+  [role="tab"] {
+    border-radius: 0.6rem;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.875rem;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+  [role="tab"][data-state="active"] {
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 10%);
+  }
+  th {
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+    font-weight: 600;
+  }
+  td {
+    font-size: 0.9375rem;
+  }
+  :is(th, td) {
+    padding-block: 0.9rem;
+  }
+  [role="menuitem"],
+  [role="option"] {
+    border-radius: 0.5rem;
+    min-height: 2.25rem;
+    font-size: 0.875rem;
+  }
+
+  @media (max-width: 767px) {
+    [data-page-header-action] {
+      align-self: stretch;
+    }
+    input:not([type="checkbox"]):not([type="radio"]),
+    textarea,
+    select {
+      font-size: 1rem;
+    }
+    [data-workspace-stat] {
+      padding: 1rem;
+    }
+    [data-workspace-stat] .font-display {
+      font-size: 1.5rem;
+    }
+  }
+}
+
+body:has([data-workspace-content])
+  :is([role="dialog"], [role="alertdialog"]):not(
+    [data-radix-popper-content-wrapper] *
+  ) {
+  border-radius: 1.25rem;
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 24px 80px -20px rgb(0 0 0 / 30%);
+  width: calc(100% - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+body:has([data-workspace-content]) :is([role="menu"], [role="listbox"]) {
+  border-radius: 0.85rem;
+  background: var(--popover);
+  box-shadow: 0 12px 36px -12px rgb(0 0 0 / 22%);
+}
+
+@media (min-width: 768px) {
+  .workspace-content > div {
+    padding-top: 2.5rem;
+    padding-bottom: 3rem;
+  }
+}
+@media print {
+  .workspace-content {
+    background: white;
+  }
+}

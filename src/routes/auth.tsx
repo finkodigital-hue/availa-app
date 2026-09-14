@@ -206,7 +206,7 @@ function AuthPage() {
           : "Sign in";
 
   return (
-    <div className="min-h-screen grid md:grid-cols-2 bg-background">
+    <div className="workspace-theme min-h-screen grid md:grid-cols-2 bg-background">
       <div className="hidden md:flex relative overflow-hidden bg-foreground text-background">
         <div className="absolute inset-0 mesh-bg opacity-70 pointer-events-none" />
         <div className="absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-primary/30 blur-3xl animate-float" />

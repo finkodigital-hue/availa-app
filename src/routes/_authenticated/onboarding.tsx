@@ -62,7 +62,7 @@ function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 bg-background relative overflow-hidden">
+    <div className="workspace-theme min-h-screen flex items-center justify-center px-6 bg-background relative overflow-hidden">
       <div className="absolute inset-0 mesh-bg pointer-events-none" />
       <div className="relative w-full max-w-md animate-rise">
         <div className="inline-flex items-center gap-2 text-xs text-muted-foreground rounded-full border bg-card/60 backdrop-blur px-3 py-1 mb-6">

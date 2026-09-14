@@ -860,6 +860,7 @@ export function PublicBookingPage({
       id={domId}
       className="min-h-screen bg-background text-foreground"
       style={brandStyle}
+      data-workspace-brand
     >
       <style>{themeFontOverrideCss(theme, `#${domId}`)}</style>
       <header className="border-b bg-background/95">

@@ -21,6 +21,7 @@ export function StatCard({
 }) {
   return (
     <div
+      data-workspace-stat
       className={`group relative rounded-2xl border bg-card p-5 card-hover overflow-hidden ${
         accent ? "shadow-elegant" : "shadow-soft"
       }`}

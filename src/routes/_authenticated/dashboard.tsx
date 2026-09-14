@@ -62,9 +62,9 @@ function Dashboard() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1160px] px-5 py-10 sm:px-8 sm:py-14 lg:px-12 lg:py-20 xl:py-24">
+    <div className="workspace-dashboard mx-auto w-full max-w-[1280px] p-5 sm:p-8 md:p-10">
       <header>
-        <h1 className="max-w-4xl font-display text-4xl tracking-tight sm:text-5xl lg:text-6xl">
+        <h1 className="max-w-4xl font-sans text-[clamp(1.9rem,3vw,2.4rem)] font-semibold leading-tight tracking-tight">
           Good morning{data?.business.name ? `, ${data.business.name}` : ""}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground sm:text-base">
@@ -72,7 +72,7 @@ function Dashboard() {
         </p>
       </header>
 
-      <main className="mt-12 sm:mt-16">
+      <div className="mt-8 rounded-2xl border bg-card p-5 shadow-soft sm:p-8">
         {isError ? (
           <LoadError
             onRetry={() =>
@@ -91,7 +91,7 @@ function Dashboard() {
             onNewBooking={() => setNewBookingOpen(true)}
           />
         )}
-      </main>
+      </div>
 
       {data?.business.id && (
         <NewBookingDialog

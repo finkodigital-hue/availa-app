@@ -180,7 +180,7 @@ function AssistantInner({ endpoint, token }: { endpoint: string; token: string }
             className="resize-none min-h-[56px]"
             disabled={isLoading}
           />
-          <Button type="submit" size="lg" disabled={isLoading || !input.trim()} className="h-[56px]">
+          <Button type="submit" size="lg" aria-label="Send message" disabled={isLoading || !input.trim()} className="h-[56px]">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>

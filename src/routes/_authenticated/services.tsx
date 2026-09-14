@@ -648,8 +648,8 @@ function ServicesPage() {
         <div className="grid min-h-[650px] overflow-hidden rounded-[22px] border bg-card lg:max-h-[calc(100vh-190px)] lg:grid-cols-[minmax(360px,0.9fr)_minmax(500px,1.25fr)]">
           <section className="flex min-h-[560px] flex-col border-b lg:min-h-0 lg:border-b-0 lg:border-r">
             <div className="space-y-3 border-b p-4">
-              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px_auto]">
-                <div className="relative">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative col-span-2">
                   <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={search}
@@ -737,7 +737,7 @@ function ServicesPage() {
                           key={service.id}
                           type="button"
                           onClick={() => setEdit(service)}
-                          className={`grid w-full grid-cols-[minmax(0,1fr)_82px_84px_18px] items-center gap-3 border-b px-5 py-3 text-left text-sm transition-colors ${selected ? "bg-[#f4ede2]" : "hover:bg-secondary/40"}`}
+                          className={`grid w-full grid-cols-[minmax(0,1fr)_82px_84px_18px] items-center gap-3 border-b px-5 py-3 text-left text-sm transition-colors ${selected ? "bg-accent text-accent-foreground" : "hover:bg-secondary/40"}`}
                         >
                           <span className="min-w-0 truncate font-medium">
                             {service.name}
@@ -972,7 +972,7 @@ function ServicesPage() {
                   )}
 
                   {biz?.plan === "studio" && (
-                    <div className="rounded-2xl border bg-[#f7f2ea]/70 p-4 sm:p-5">
+                    <div className="rounded-2xl border bg-secondary/50 p-4 sm:p-5">
                       <div className="flex items-start gap-3">
                         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border bg-card">
                           <Package className="h-4 w-4" />

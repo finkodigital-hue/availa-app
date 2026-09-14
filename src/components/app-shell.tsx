@@ -427,7 +427,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background" data-workspace-shell>
       {/* Desktop sidebar — hidden in calendar focus/full-screen mode too.
           calendarFocusMode used to only ever fire on compact viewports (this
           aside is already `hidden` there via xl:flex), so nothing gated it
@@ -435,14 +435,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           overlay on desktop as well, and without this it stayed on screen,
           overlapping the calendar grid underneath the overlay. */}
       {!calendarFocusMode && (
-        <aside className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border/50 bg-sidebar/85 shadow-[inset_-1px_0_0_rgb(255_255_255/0.45)] backdrop-blur-2xl xl:flex xl:min-h-screen xl:w-[17rem] print:hidden">
+        <aside className="workspace-theme sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border/50 bg-sidebar/85 shadow-[inset_-1px_0_0_rgb(255_255_255/0.45)] backdrop-blur-2xl xl:flex xl:min-h-screen xl:w-[17rem] print:hidden">
           {SidebarContent}
         </aside>
       )}
 
       {/* Mobile header */}
       {!calendarFocusMode && (
-        <div className="xl:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4 print:hidden">
+        <div className="workspace-theme xl:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4 print:hidden">
           <Link to="/dashboard" className="font-display text-lg">
             Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
           </Link>
@@ -459,7 +459,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute bottom-0 left-0 top-0 flex w-72 flex-col border-r border-border/50 bg-sidebar/95 shadow-2xl backdrop-blur-2xl animate-in slide-in-from-left duration-200">
+          <div className="workspace-theme absolute bottom-0 left-0 top-0 flex w-72 flex-col border-r border-border/50 bg-sidebar/95 shadow-2xl backdrop-blur-2xl animate-in slide-in-from-left duration-200">
             <button
               onClick={() => setMobileOpen(false)}
               className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-lg hover:bg-card"
@@ -473,13 +473,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main
-        className={`flex-1 min-w-0 overflow-x-clip ${calendarFocusMode ? "pt-0 pb-0" : "pt-14 pb-[calc(9rem+env(safe-area-inset-bottom))]"} xl:pt-0 xl:pb-0 print:pt-0 print:pb-0`}
+        data-workspace-content={!path.startsWith("/calendar") ? "" : undefined}
+        className={`${!path.startsWith("/calendar") ? "workspace-theme workspace-content" : ""} flex-1 min-w-0 overflow-x-clip ${calendarFocusMode ? "pt-0 pb-0" : "pt-14 pb-[calc(9rem+env(safe-area-inset-bottom))]"} xl:pt-0 xl:pb-0 print:pt-0 print:pb-0`}
       >
         {children}
       </main>
 
       {!calendarFocusMode && (
-        <div className="print:hidden">
+        <div className="workspace-theme print:hidden">
           <MobileBottomNav
             menuOpen={mobileOpen}
             onMore={() => setMobileOpen(true)}

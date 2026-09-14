@@ -16,6 +16,7 @@ export function EmptyState({
 }) {
   return (
     <div
+      data-workspace-empty
       className={`rounded-3xl border border-dashed bg-card/40 px-6 py-16 text-center animate-rise ${className}`}
     >
       <div className="mx-auto h-14 w-14 rounded-2xl bg-secondary grid place-items-center text-primary shadow-soft">
