@@ -13,6 +13,10 @@ import {
   FileText,
   ChevronDown,
   ImageIcon,
+  Palette,
+  Sparkles,
+  Check,
+  ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
@@ -54,6 +58,7 @@ import {
   defaultStorefrontSettings,
   parseStorefrontSettings,
   type StorefrontSettings,
+  type StorefrontSectionId,
 } from "@/lib/storefront";
 
 type BuilderState = {
@@ -104,8 +109,10 @@ export const Route = createFileRoute("/_authenticated/page-builder")({
 function PageBuilderPage() {
   const qc = useQueryClient();
   const { data: biz } = useMyBusiness();
-  const { tab } = Route.useSearch();
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
+  const [tool, setTool] = useState("design");
+  const [savedState, setSavedState] = useState("");
+  const [selectedSection, setSelectedSection] = useState<StorefrontSectionId>();
 
   const { data: layout, isLoading } = useQuery({
     queryKey: ["page-layout", biz?.id],
@@ -136,23 +143,25 @@ function PageBuilderPage() {
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [openSection, setOpenSection] = useState<OpenSection>(
-    tab === "design" ? "design" : null,
+    "design",
   );
 
   useEffect(() => {
-    if (!biz) return;
+    if (!biz || isLoading) return;
     const loaded = ((layout?.blocks as unknown as PageBlock[]) ?? []).filter(
       (block) => block.type !== "testimonial",
     );
     savedBlocksRef.current = loaded;
-    history.resetTo({
+    const initial = {
       blocks: loaded,
       theme: parseTheme(biz.page_theme),
       storefront: parseStorefrontSettings(layout?.storefront_settings),
       content: pageContentFromBusiness(biz),
-    });
+    };
+    history.resetTo(initial);
+    setSavedState(JSON.stringify(initial));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layout?.id, biz?.id]);
+  }, [layout?.id, biz?.id, isLoading]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -168,6 +177,13 @@ function PageBuilderPage() {
   }, []);
 
   const { blocks, theme, storefront, content } = history.value;
+  const hasChanges = savedState !== "" && JSON.stringify(history.value) !== savedState;
+  useEffect(() => {
+    if (!hasChanges) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasChanges]);
 
   const setBlocks = (
     updater: PageBlock[] | ((prev: PageBlock[]) => PageBlock[]),
@@ -278,6 +294,7 @@ function PageBuilderPage() {
         blocks_after: next.blocks as unknown as Json,
       });
       savedBlocksRef.current = next.blocks;
+      setSavedState(JSON.stringify(next));
     }
     setSaving(false);
     if (error) {
@@ -379,13 +396,13 @@ function PageBuilderPage() {
   const editableBlocks = blocks.filter((block) => block.type === "about");
 
   return (
-    <div className="flex min-h-[100dvh] flex-col p-5 sm:p-8 lg:h-screen lg:min-h-0 lg:p-10">
+    <div data-builder-studio className="flex min-h-[100dvh] flex-col p-4 sm:p-6 lg:h-screen lg:min-h-0">
       <PageHeader
-        eyebrow="Public page"
-        title="Page builder"
-        subtitle="Click a block on the page to edit it. Everything updates live."
+        eyebrow="Your creative space"
+        title="Make it yours."
+        subtitle="A beautiful first impression, built by you."
         action={
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <Button
               variant="outline"
               size="icon"
@@ -409,11 +426,20 @@ function PageBuilderPage() {
             </Button>
             <Button onClick={save} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save
+              {saving ? "Saving…" : "Save changes"}
             </Button>
           </div>
         }
       />
+      <div className="builder-status-bar">
+        <span role="status" className="inline-flex items-center gap-2 text-sm">
+          {hasChanges ? <span className="h-2 w-2 rounded-full bg-gold-deep" /> : <Check className="h-4 w-4 text-gold-deep" />}
+          {saving ? "Saving your page…" : hasChanges ? "Unsaved changes · preview updated" : "You're up to date"}
+        </span>
+        <a href={`/book/${biz.slug}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium">
+          View live page <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      </div>
 
       <div className="mt-6 grid grid-cols-2 rounded-xl border bg-secondary/35 p-1 lg:hidden">
         <button
@@ -440,15 +466,30 @@ function PageBuilderPage() {
         </button>
       </div>
 
-      <div className="mt-5 grid flex-1 gap-8 pb-24 lg:mt-6 lg:min-h-0 lg:grid-cols-[420px_minmax(0,1fr)] lg:pb-0 xl:grid-cols-[460px_minmax(0,1fr)]">
+      <div className="builder-workspace mt-5 grid flex-1 gap-5 pb-24 lg:min-h-0 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:pb-0">
         {/* Left panel */}
         <div
-          className={`${mobileView === "edit" ? "block" : "hidden"} space-y-5 lg:block lg:overflow-y-auto lg:pr-2`}
+          className={`${mobileView === "edit" ? "block" : "hidden"} builder-inspector lg:flex lg:min-h-0 lg:flex-col`}
         >
-          <div className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Page sections
+          <nav aria-label="Page editing tools" className="builder-tools">
+            {[
+              { id: "design", label: "Design", icon: Palette, section: "design" },
+              { id: "content", label: "Content", icon: FileText, section: "content" },
+              { id: "storefront", label: "Sections", icon: LayoutTemplate, section: "storefront" },
+              { id: "channels", label: "Share", icon: ExternalLink, section: "channels" },
+              { id: "ask-ai", label: "Ask AI", icon: Sparkles, section: "ask-ai" },
+            ].map(({id, label, icon: Icon, section}) => (
+              <button key={id} type="button" aria-pressed={tool === id} onClick={() => { setTool(id); setOpenSection(section as OpenSection); }}>
+                <Icon className="h-5 w-5" /><span>{label}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="builder-controls space-y-4 overflow-y-auto p-4">
+          <div className="builder-tip">
+            <span className="text-xs font-semibold text-gold-deep">{tool === "design" ? "Start with a feeling" : tool === "content" ? "Let your personality shine" : tool === "storefront" ? "Give everything its place" : tool === "ask-ai" ? "A little creative help" : "Ready to be discovered"}</span>
+            <p className="mt-1 text-sm text-muted-foreground">{tool === "design" ? "Try a look, choose your colours and watch your page come to life." : tool === "content" ? "Your words and photos tell clients what makes your salon special." : tool === "storefront" ? "Choose what appears and put your favourite sections first." : tool === "ask-ai" ? "Describe what you have in mind. Review suggestions before applying them." : "Find your booking link and ways to share it with clients."}</p>
           </div>
-
+          <div hidden={tool !== "channels"}>
           <BookingChannelsSection
             businessName={biz.name}
             slug={biz.slug}
@@ -457,8 +498,9 @@ function PageBuilderPage() {
               setOpenSection(isOpen ? "channels" : null)
             }
           />
+          </div>
 
-          <div className="overflow-hidden rounded-xl border bg-card">
+          <div hidden={tool !== "storefront"} className="overflow-hidden rounded-xl border bg-card">
             <button
               type="button"
               className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary/25"
@@ -485,12 +527,13 @@ function PageBuilderPage() {
                   value={storefront}
                   onChange={setStorefront}
                   showSave={false}
+                  selectedSection={selectedSection}
                 />
               </div>
             )}
           </div>
 
-          <div className="overflow-hidden rounded-xl border bg-card">
+          <div hidden={tool !== "content"} className="overflow-hidden rounded-xl border bg-card">
             <button
               type="button"
               className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary/25"
@@ -517,7 +560,7 @@ function PageBuilderPage() {
             )}
           </div>
 
-          <div className="overflow-hidden rounded-xl border bg-card">
+          <div hidden={tool !== "content"} className="overflow-hidden rounded-xl border bg-card">
             <button
               type="button"
               className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary/25"
@@ -539,16 +582,17 @@ function PageBuilderPage() {
             </button>
             {openSection === "gallery" && (
               <div className="px-4 pb-4">
+                <p className="mb-3 text-xs text-muted-foreground">Photo changes are saved as you go.</p>
                 <GalleryManager businessId={biz.id} />
               </div>
             )}
           </div>
 
-          <div className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <div hidden={tool !== "content"} className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Optional content
           </div>
 
-          <div className="rounded-xl border bg-card p-4">
+          <div hidden={tool !== "content"} className="rounded-xl border bg-card p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-medium">About your salon</div>
@@ -573,7 +617,7 @@ function PageBuilderPage() {
                 <button
                   key={block.id}
                   type="button"
-                  onClick={() => setSelectedBlockId(block.id)}
+                  onClick={() => { setSelectedBlockId(block.id); setTool("content"); }}
                   className={`mt-3 w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                     selectedBlockId === block.id
                       ? "bg-primary text-primary-foreground"
@@ -586,7 +630,7 @@ function PageBuilderPage() {
             )}
           </div>
 
-          {selectedBlock && biz.id && (
+          {selectedBlock && biz.id && tool === "content" && (
             <div className="rounded-xl border bg-card p-4">
               <BlockEditorPanel
                 block={selectedBlock}
@@ -600,17 +644,15 @@ function PageBuilderPage() {
             </div>
           )}
 
-          <div className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Appearance and assistance
-          </div>
-
+          <div hidden={tool !== "design"}>
           <DesignSection
             theme={theme}
             onChange={setTheme}
             open={openSection === "design"}
             onOpenChange={(o) => setOpenSection(o ? "design" : null)}
           />
-
+          </div>
+          <div hidden={tool !== "ask-ai"}>
           <AskClaudeSection
             business={biz}
             theme={theme}
@@ -620,12 +662,25 @@ function PageBuilderPage() {
             onOpenChange={(o) => setOpenSection(o ? "ask-ai" : null)}
             onAccept={acceptAiSuggestion}
           />
+          </div>
+          </div>
         </div>
 
         {/* Right pane: the real public page, live */}
         <div
-          className={`${mobileView === "preview" ? "block" : "hidden"} min-h-[720px] overflow-y-auto rounded-2xl border bg-secondary/10 lg:block lg:min-h-0`}
+          className={`${mobileView === "preview" ? "flex" : "hidden"} builder-preview min-h-[720px] flex-col overflow-hidden rounded-2xl border lg:flex lg:min-h-0`}
         >
+          <div className="builder-preview-toolbar"><span className="inline-flex items-center gap-2"><Eye className="h-4 w-4" /> Live preview</span><span className="truncate text-muted-foreground">/book/{biz.slug}</span></div>
+          <div className="builder-canvas min-h-0 flex-1 overflow-y-auto bg-card" onClickCapture={(event) => {
+            const section = (event.target as HTMLElement).closest<HTMLElement>("[data-storefront-section]");
+            if (!section) return;
+            event.preventDefault();
+            event.stopPropagation();
+            setSelectedSection(section.dataset.storefrontSection as StorefrontSectionId);
+            setTool("storefront");
+            setOpenSection("storefront");
+            setMobileView("edit");
+          }}>
           {isLoading ? (
             <div className="p-8 space-y-4">
               <Skeleton className="h-64 w-full rounded-2xl" />
@@ -638,10 +693,12 @@ function PageBuilderPage() {
               blocks={blocks}
               storefrontSettings={storefront}
               selectedBlockId={selectedBlockId}
-              onSelectBlock={setSelectedBlockId}
+              onSelectBlock={(id) => { setSelectedBlockId(id); if (id) { setTool("content"); setMobileView("edit"); } }}
               onReorder={reorderBlocks}
             />
           )}
+          </div>
+          <div className="builder-preview-footer">Click a section to edit it. Save when you're happy.</div>
         </div>
       </div>
 

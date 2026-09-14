@@ -8,7 +8,7 @@ import type { PresetId, Theme } from "@/lib/theme";
 export function PresetSwitcher({ theme, onChange }: { theme: Theme; onChange: (t: Theme) => void }) {
   const presetIds = Object.keys(THEME_PRESETS) as PresetId[];
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+    <div data-theme-presets className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       {presetIds.map((id) => {
         const preset = THEME_PRESETS[id];
         const isActive = theme.preset === id;

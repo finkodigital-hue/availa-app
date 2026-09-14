@@ -964,6 +964,7 @@ export function PublicBookingPage({
                     <section
                       key={section.id}
                       aria-labelledby={`${domId}-gallery-heading`}
+                      data-storefront-section="gallery"
                       className="relative overflow-hidden rounded-[28px] bg-foreground text-background"
                     >
                       {heroPhotos.length > 0 && (
@@ -1045,6 +1046,7 @@ export function PublicBookingPage({
                     <section
                       key={section.id}
                       id={`${domId}-booking`}
+                      data-storefront-section="booking"
                       className="scroll-mt-5"
                     >
                       <Stepper step={step} brand={brand} />
@@ -1216,6 +1218,7 @@ export function PublicBookingPage({
                     <section
                       key={section.id}
                       aria-labelledby={`${domId}-reviews-heading`}
+                      data-storefront-section="reviews"
                     >
                       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
                         <div>
@@ -1319,6 +1322,7 @@ export function PublicBookingPage({
                     <section
                       key={section.id}
                       className="grid overflow-hidden rounded-[28px] border bg-card md:grid-cols-[0.85fr_1.4fr]"
+                      data-storefront-section="location"
                     >
                       <div className="p-7 sm:p-10">
                         {section.heading && (

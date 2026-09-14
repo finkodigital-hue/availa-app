@@ -24,11 +24,13 @@ export function StorefrontSettingsEditor({
   value,
   onChange,
   showSave = true,
+  selectedSection,
 }: {
   businessId: string;
   value?: StorefrontSettings;
   onChange?: (value: StorefrontSettings) => void;
   showSave?: boolean;
+  selectedSection?: StorefrontSectionId;
 }) {
   const { data: business } = useMyBusiness();
   const qc = useQueryClient();
@@ -38,6 +40,9 @@ export function StorefrontSettingsEditor({
   const [saving, setSaving] = useState(false);
   const [expandedSectionId, setExpandedSectionId] =
     useState<StorefrontSectionId | null>("booking");
+  useEffect(() => {
+    if (selectedSection) setExpandedSectionId(selectedSection);
+  }, [selectedSection]);
   const { data, isLoading } = useQuery({
     queryKey: ["storefront-settings", businessId],
     enabled: value === undefined,
