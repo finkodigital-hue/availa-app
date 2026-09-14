@@ -15,12 +15,28 @@ export function DesignSection({
   onChange,
   open,
   onOpenChange,
+  studio = false,
 }: {
   theme: Theme;
   onChange: (theme: Theme) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  studio?: boolean;
 }) {
+  if (studio) return (
+    <div className="space-y-6">
+      <section>
+        <h2 className="text-base font-semibold">Choose your starting look</h2>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">Try one instantly. Your words and photos stay yours.</p>
+        <PresetSwitcher theme={theme} onChange={onChange} instant />
+        <p className="mt-3 text-xs text-muted-foreground">Looks replace colours, fonts and button styling. Undo brings your previous design back.</p>
+      </section>
+      <section className="builder-fine-tune">
+        <h2 className="mb-4 text-base font-semibold">Add your signature</h2>
+        <ThemeControls theme={theme} onChange={onChange} />
+      </section>
+    </div>
+  );
   return (
     <Collapsible open={open} onOpenChange={onOpenChange} className="rounded-xl border bg-card">
       <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">

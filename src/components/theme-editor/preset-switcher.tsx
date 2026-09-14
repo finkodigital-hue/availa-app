@@ -5,13 +5,24 @@ import type { PresetId, Theme } from "@/lib/theme";
 // "Change vibe" — used in the Design panel. Switching presets overwrites the
 // business's custom colors/fonts/button style, so it's gated by a confirm
 // dialog (per spec); logoUrl is preserved across the switch.
-export function PresetSwitcher({ theme, onChange }: { theme: Theme; onChange: (t: Theme) => void }) {
+export function PresetSwitcher({ theme, onChange, instant = false }: { theme: Theme; onChange: (t: Theme) => void; instant?: boolean }) {
   const presetIds = Object.keys(THEME_PRESETS) as PresetId[];
   return (
     <div data-theme-presets className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       {presetIds.map((id) => {
         const preset = THEME_PRESETS[id];
         const isActive = theme.preset === id;
+        if (instant) return (
+          <button key={id} type="button" aria-pressed={isActive} className="builder-look" onClick={() => onChange(themeFromPreset(id, theme))}>
+            <span className="builder-look-scene" style={{ background: preset.colors.background, color: preset.colors.text }} aria-hidden="true">
+              <span className="builder-look-wordmark">YOUR SALON <span style={{ background: preset.colors.primary }} /></span>
+              <span className="builder-look-heading" style={{ fontFamily: `${preset.typography.displayFont}, ${id === "soft_elegant" ? "Georgia, serif" : "sans-serif"}` }}>A little<br />time for you.</span>
+              <span className="builder-look-detail" style={{ background: preset.colors.surface }}><span style={{ background: preset.colors.accent }} /><span style={{ background: preset.colors.primary }} /></span>
+              <span className="builder-look-cta" style={{ background: preset.colors.primary, borderRadius: preset.buttons.cornerRadius }} />
+            </span>
+            <span className="builder-look-caption">{PRESET_LABELS[id]}<span className="builder-look-selected" aria-hidden="true">{isActive ? "✓" : "+"}</span></span>
+          </button>
+        );
         return (
           <ConfirmDialog
             key={id}

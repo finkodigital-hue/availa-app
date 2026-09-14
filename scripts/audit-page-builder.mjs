@@ -24,6 +24,15 @@ try {
   await page.getByRole("heading", { name: "Make it yours." }).waitFor();
   const tools = page.getByRole("navigation", { name: "Page editing tools" });
   await page.getByText("You're up to date", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Bold & modern", exact: true }).click();
+  await page.getByText("Unsaved changes · preview updated", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("dialog").count(), 0);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await page.getByText("You're up to date", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Expand preview", exact: true }).click();
+  assert.equal(await tools.isVisible(), false);
+  await page.getByRole("button", { name: "Show editing tools", exact: true }).click();
+  await tools.waitFor({ state: "visible" });
   await page.locator(".builder-controls").getByText("Outline", { exact: true }).click();
   await page.getByText("Unsaved changes · preview updated", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Undo", exact: true }).click();

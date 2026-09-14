@@ -17,6 +17,8 @@ import {
   Sparkles,
   Check,
   ExternalLink,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
@@ -111,6 +113,7 @@ function PageBuilderPage() {
   const { data: biz } = useMyBusiness();
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
   const [tool, setTool] = useState("design");
+  const [previewExpanded, setPreviewExpanded] = useState(false);
   const [savedState, setSavedState] = useState("");
   const [selectedSection, setSelectedSection] = useState<StorefrontSectionId>();
 
@@ -466,7 +469,7 @@ function PageBuilderPage() {
         </button>
       </div>
 
-      <div className="builder-workspace mt-5 grid flex-1 gap-5 pb-24 lg:min-h-0 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:pb-0">
+      <div data-preview-expanded={previewExpanded} className="builder-workspace mt-5 grid flex-1 gap-5 pb-24 lg:min-h-0 lg:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] lg:pb-0">
         {/* Left panel */}
         <div
           className={`${mobileView === "edit" ? "block" : "hidden"} builder-inspector lg:flex lg:min-h-0 lg:flex-col`}
@@ -646,6 +649,7 @@ function PageBuilderPage() {
 
           <div hidden={tool !== "design"}>
           <DesignSection
+            studio
             theme={theme}
             onChange={setTheme}
             open={openSection === "design"}
@@ -670,13 +674,20 @@ function PageBuilderPage() {
         <div
           className={`${mobileView === "preview" ? "flex" : "hidden"} builder-preview min-h-[720px] flex-col overflow-hidden rounded-2xl border lg:flex lg:min-h-0`}
         >
-          <div className="builder-preview-toolbar"><span className="inline-flex items-center gap-2"><Eye className="h-4 w-4" /> Live preview</span><span className="truncate text-muted-foreground">/book/{biz.slug}</span></div>
+          <div className="builder-preview-toolbar">
+            <span className="inline-flex items-center gap-2"><span className="builder-live-dot" /> Live preview</span>
+            <span className="truncate text-muted-foreground">/book/{biz.slug}</span>
+            <button type="button" className="hidden rounded-lg p-2 hover:bg-secondary lg:block" aria-label={previewExpanded ? "Show editing tools" : "Expand preview"} onClick={() => setPreviewExpanded(v => !v)}>
+              {previewExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
+          </div>
           <div className="builder-canvas min-h-0 flex-1 overflow-y-auto bg-card" onClickCapture={(event) => {
             const section = (event.target as HTMLElement).closest<HTMLElement>("[data-storefront-section]");
             if (!section) return;
             event.preventDefault();
             event.stopPropagation();
             setSelectedSection(section.dataset.storefrontSection as StorefrontSectionId);
+            setPreviewExpanded(false);
             setTool("storefront");
             setOpenSection("storefront");
             setMobileView("edit");
@@ -693,7 +704,7 @@ function PageBuilderPage() {
               blocks={blocks}
               storefrontSettings={storefront}
               selectedBlockId={selectedBlockId}
-              onSelectBlock={(id) => { setSelectedBlockId(id); if (id) { setTool("content"); setMobileView("edit"); } }}
+              onSelectBlock={(id) => { setSelectedBlockId(id); if (id) { setPreviewExpanded(false); setTool("content"); setMobileView("edit"); } }}
               onReorder={reorderBlocks}
             />
           )}
