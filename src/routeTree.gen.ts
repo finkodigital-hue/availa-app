@@ -31,6 +31,7 @@ import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as GiftSlugRouteImport } from './routes/gift.$slug'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
+import { Route as ApiWaitlistRouteImport } from './routes/api/waitlist'
 import { Route as ApiTwilioSmsWebhookRouteImport } from './routes/api.twilio-sms-webhook'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
 import { Route as ApiStockScanRouteImport } from './routes/api/stock-scan'
@@ -184,6 +185,11 @@ const GiftSlugRoute = GiftSlugRouteImport.update({
 const BookSlugRoute = BookSlugRouteImport.update({
   id: '/book/$slug',
   path: '/book/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWaitlistRoute = ApiWaitlistRouteImport.update({
+  id: '/api/waitlist',
+  path: '/api/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTwilioSmsWebhookRoute = ApiTwilioSmsWebhookRouteImport.update({
@@ -467,6 +473,7 @@ export interface FileRoutesByFullPath {
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
+  '/api/waitlist': typeof ApiWaitlistRoute
   '/book/$slug': typeof BookSlugRoute
   '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
@@ -533,6 +540,7 @@ export interface FileRoutesByTo {
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
+  '/api/waitlist': typeof ApiWaitlistRoute
   '/book/$slug': typeof BookSlugRoute
   '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
@@ -603,6 +611,7 @@ export interface FileRoutesById {
   '/api/stock-scan': typeof ApiStockScanRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
+  '/api/waitlist': typeof ApiWaitlistRoute
   '/book/$slug': typeof BookSlugRoute
   '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
@@ -673,6 +682,7 @@ export interface FileRouteTypes {
     | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/api/twilio-sms-webhook'
+    | '/api/waitlist'
     | '/book/$slug'
     | '/gift/$slug'
     | '/help/$slug'
@@ -739,6 +749,7 @@ export interface FileRouteTypes {
     | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/api/twilio-sms-webhook'
+    | '/api/waitlist'
     | '/book/$slug'
     | '/gift/$slug'
     | '/help/$slug'
@@ -808,6 +819,7 @@ export interface FileRouteTypes {
     | '/api/stock-scan'
     | '/api/stripe-webhook'
     | '/api/twilio-sms-webhook'
+    | '/api/waitlist'
     | '/book/$slug'
     | '/gift/$slug'
     | '/help/$slug'
@@ -859,6 +871,7 @@ export interface RootRouteChildren {
   ApiStockScanRoute: typeof ApiStockScanRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiTwilioSmsWebhookRoute: typeof ApiTwilioSmsWebhookRoute
+  ApiWaitlistRoute: typeof ApiWaitlistRoute
   BookSlugRoute: typeof BookSlugRoute
   GiftSlugRoute: typeof GiftSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
@@ -1035,6 +1048,13 @@ declare module '@tanstack/react-router' {
       path: '/book/$slug'
       fullPath: '/book/$slug'
       preLoaderRoute: typeof BookSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/waitlist': {
+      id: '/api/waitlist'
+      path: '/api/waitlist'
+      fullPath: '/api/waitlist'
+      preLoaderRoute: typeof ApiWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/twilio-sms-webhook': {
@@ -1453,6 +1473,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStockScanRoute: ApiStockScanRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiTwilioSmsWebhookRoute: ApiTwilioSmsWebhookRoute,
+  ApiWaitlistRoute: ApiWaitlistRoute,
   BookSlugRoute: BookSlugRoute,
   GiftSlugRoute: GiftSlugRoute,
   InviteTokenRoute: InviteTokenRoute,

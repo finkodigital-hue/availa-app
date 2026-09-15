@@ -13,6 +13,38 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export class EmailSendError extends Error {}
 
+/** Platform-owned alert, not a salon/customer email. Fixed recipient; uses
+ * the same fail-closed environment guard as salon notifications. */
+export async function notifyWaitlistSignup(email: string): Promise<void> {
+  const { to, mode } = resolveOutboundEmail("help@bookzenvo.com");
+  if (mode === "suppressed") return;
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new EmailSendError("Email provider is not configured");
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(email),
+  );
+  const key = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": `waitlist-${key}`,
+    },
+    body: JSON.stringify({
+      from: "Bookzenvo <notifications@bookzenvo.com>",
+      to: [to],
+      subject: `${mode === "redirected" ? "[DEV] " : ""}New Bookzenvo waitlist signup`,
+      text: `Someone has joined the Bookzenvo launch waitlist.\n\nEmail: ${email}\n\nTheir address has been saved to the waitlist. No account has been created.`,
+    }),
+    signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new EmailSendError("Waitlist notification failed");
+}
+
 export type EmailDeliveryResult = {
   status: "sent" | "suppressed";
   deliveryId: string;

@@ -125,10 +125,12 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.rpc("join_waitlist", {
-          p_email: email,
-          p_note: null,
+        const response = await fetch("/api/waitlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
         });
+        const error = response.ok ? null : await response.json();
         if (error) {
           if (error.message?.includes("ALREADY_ON_LIST")) {
             toast.success(
