@@ -91,7 +91,6 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
   const emailRef = useRef<HTMLInputElement>(null);
@@ -128,7 +127,7 @@ function AuthPage() {
       if (mode === "signup") {
         const { error } = await supabase.rpc("join_waitlist", {
           p_email: email,
-          p_note: name || null,
+          p_note: null,
         });
         if (error) {
           if (error.message?.includes("ALREADY_ON_LIST")) {
@@ -190,7 +189,7 @@ function AuthPage() {
           : "Welcome back";
   const sub =
     mode === "signup"
-      ? "We're onboarding studios one at a time — pop your email in and we'll be in touch."
+      ? "Be first to hear when Bookzenvo launches. Leave your email below. No account is created."
       : mode === "reset"
         ? "We'll email you a secure link."
         : mode === "update"
@@ -251,7 +250,7 @@ function AuthPage() {
           {mode === "signup" && waitlistDone ? (
             <div className="mt-8 rounded-xl border bg-card p-5 animate-rise">
               <p className="text-sm">
-                You're on the list — we'll email you as soon as it's your turn.
+                You're on the list! We'll email you when Bookzenvo launches.
               </p>
               <Link
                 to="/auth"
@@ -263,23 +262,6 @@ function AuthPage() {
             </div>
           ) : (
             <form onSubmit={submit} className="mt-8 space-y-4">
-              {mode === "signup" && (
-                <div>
-                  <Label
-                    htmlFor="name"
-                    className="text-xs uppercase tracking-wide text-muted-foreground"
-                  >
-                    Your business (optional)
-                  </Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Maison Coiffure"
-                    className="mt-1.5 h-11"
-                  />
-                </div>
-              )}
               {mode !== "update" && (
                 <div>
                   <Label

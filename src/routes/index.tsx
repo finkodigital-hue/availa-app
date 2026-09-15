@@ -265,7 +265,7 @@ function Landing() {
               </div>
               <div className="lp-hero-assurance">
                 <span>
-                  <Check aria-hidden="true" /> Free for one chair
+                  <Check aria-hidden="true" /> Launching soon
                 </span>
                 <span>
                   <Check aria-hidden="true" /> No commission
@@ -557,8 +557,8 @@ function Landing() {
 
           <section id="pricing" className="lp-section lp-pricing" data-reveal>
             <div className="lp-section-heading">
-              <p className="lp-kicker">Straightforward pricing</p>
-              <h2>Start free. Grow when your salon does.</h2>
+              <p className="lp-kicker">Planned launch pricing</p>
+              <h2>A free start. Room to grow.</h2>
               <p>No commission, no per-staff surprises and no lock-in.</p>
             </div>
             <div className="lp-price-layout">
@@ -627,7 +627,10 @@ function Landing() {
                 Your salon deserves
                 <br />a better working day.
               </h2>
-              <p>Free for one chair, no card needed and nothing to install.</p>
+              <p>
+                Be first to hear when Bookzenvo launches. Join the email
+                waitlist.
+              </p>
             </div>
             <StartLink light />
           </section>

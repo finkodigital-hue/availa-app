@@ -716,6 +716,12 @@
   border-color: #d1c4a7;
 }
 .lp-popular {
+  display: inline-flex;
+  padding: 5px 10px;
+  border: 1px solid #d7c9af;
+  border-radius: 6px;
+  background: #e9e1d2;
+  font-weight: 550;
   align-self: start;
   font-size: 11px;
   color: #76603a;
@@ -1191,6 +1197,12 @@
   color: #d5bd91;
 }
 .lp-switch-copy .lp-switch-label {
+  display: inline-flex;
+  padding: 5px 10px;
+  border: 1px solid rgb(213 189 145 / 22%);
+  border-radius: 6px;
+  background: rgb(213 189 145 / 7%);
+  font-weight: 550;
   margin: 0 0 19px !important;
   color: #d5bd91;
   font-size: 12px;
@@ -1431,6 +1443,30 @@
   }
   .lp-feature-row {
     padding-block: 26px;
+  }
+}
+/* A shared, understated treatment for section and feature captions. */
+.lp-kicker:not(.lp-hero-label),
+.lp-feature-category,
+.lp-includes {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 10px;
+  border: 1px solid rgb(139 107 63 / 22%);
+  border-radius: 6px;
+  background: rgb(139 107 63 / 7%);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+@media (prefers-color-scheme: dark) {
+  .lp-kicker:not(.lp-hero-label), .lp-feature-category {
+    border-color: rgb(213 189 145 / 22%);
+    background: rgb(213 189 145 / 7%);
   }
 }
 @media (prefers-reduced-motion: reduce) {
