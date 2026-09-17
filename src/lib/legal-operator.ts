@@ -11,7 +11,7 @@ export const legalOperator = {
   vatNumber: publicValue(import.meta.env.VITE_LEGAL_VAT_NUMBER),
   contactEmail:
     publicValue(import.meta.env.VITE_LEGAL_CONTACT_EMAIL) ??
-    "help@finkodigital.com",
+    "help@bookzenvo.com",
   icoRegistration: publicValue(import.meta.env.VITE_LEGAL_ICO_REGISTRATION),
 };
 

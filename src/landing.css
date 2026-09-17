@@ -386,22 +386,38 @@
   border-block: 1px solid var(--lp-line);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 35px;
   padding: 24px 0;
 }
 .lp-for-strip > p {
   font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--lp-gold);
   white-space: nowrap;
 }
 .lp-for-strip ul {
   display: flex;
-  flex: 1;
-  justify-content: space-between;
+  flex: 0 1 auto;
+  justify-content: center;
   flex-wrap: wrap;
-  gap: 14px 24px;
+  row-gap: 10px;
   color: var(--lp-muted);
-  font-size: 13px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lp-for-strip li {
+  padding-inline: 18px;
+  border-left: 1px solid var(--lp-line);
+  line-height: 1;
+  white-space: nowrap;
+}
+.lp-for-strip li:first-child {
+  padding-left: 0;
+  border-left: 0;
 }
 .lp-section {
   max-width: 1240px;
@@ -434,7 +450,7 @@
 }
 .lp-steps li {
   display: grid;
-  grid-template-columns: 32px 1fr 16px;
+  grid-template-columns: 32px 1fr;
   gap: 18px;
   border-bottom: 1px solid var(--lp-line);
   padding: 19px 0;
@@ -870,26 +886,6 @@
     transform: none;
   }
 }
-@media (prefers-color-scheme: dark) {
-  .landing-page {
-    --lp-bg: #191919;
-    --lp-surface: #252423;
-    --lp-text: #f3f0eb;
-    --lp-muted: #bcb6af;
-    --lp-line: #3d3935;
-    --lp-gold: #d0b789;
-    --lp-tint: #35312d;
-  }
-  .lp-story {
-    background: #eeeade;
-  }
-  .lp-story-heading .lp-wordmark {
-    color: #2d2925;
-  }
-  .lp-price-card-featured .lp-price-top p {
-    color: #6b6257;
-  }
-}
 @media (max-width: 1250px) {
   .lp-for-strip,
   .lp-switch,
@@ -979,13 +975,20 @@
   .lp-for-strip {
     margin-inline: 22px;
     display: block;
+    text-align: center;
     padding-block: 20px;
   }
   .lp-for-strip ul {
-    justify-content: start;
-    gap: 10px 22px;
+    justify-content: center;
+    row-gap: 10px;
     margin-top: 12px;
-    font-size: 12px;
+    font-size: 11px;
+  }
+  .lp-for-strip li {
+    padding-inline: 12px;
+  }
+  .lp-for-strip li:first-child {
+    padding-left: 0;
   }
   .lp-section {
     padding: 55px 22px;
@@ -1445,29 +1448,20 @@
     padding-block: 26px;
   }
 }
-/* A shared, understated treatment for section and feature captions. */
+/* Caption hierarchy: the hero label and the Studio badge keep their boxes;
+   every other caption is plain tracked small caps so the page isn't a field of pills. */
 .lp-kicker:not(.lp-hero-label),
 .lp-feature-category,
-.lp-includes {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  width: fit-content;
-  max-width: 100%;
-  padding: 5px 10px;
-  border: 1px solid rgb(139 107 63 / 22%);
-  border-radius: 6px;
-  background: rgb(139 107 63 / 7%);
-  font-size: 12px;
-  font-weight: 550;
-  line-height: 1.5;
-  letter-spacing: 0;
+.lp-includes,
+.lp-switch-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.4;
 }
-@media (prefers-color-scheme: dark) {
-  .lp-kicker:not(.lp-hero-label), .lp-feature-category {
-    border-color: rgb(213 189 145 / 22%);
-    background: rgb(213 189 145 / 7%);
-  }
+.lp-includes {
+  color: var(--lp-gold);
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-page *,
@@ -1477,4 +1471,14 @@
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* The landing page is deliberately light-only: every other page on the site
+   (FAQ, Status, legal, help centre, booking pages) is light, so an adaptive
+   landing page meant the site had two identities depending on the visitor's
+   system setting. Do not re-add a prefers-color-scheme block here without
+   also darkening those pages. */
+/* Match the document background to the landing theme so overscroll and first paint never flash the app's ivory. */
+html:has(.landing-page) {
+  background: #faf9f7;
 }

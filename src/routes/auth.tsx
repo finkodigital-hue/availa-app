@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { AlertCircle, Loader2, Sparkles, Eye, EyeOff, X } from "lucide-react";
+import { AlertCircle, Loader2, Eye, EyeOff, X } from "lucide-react";
+import { Wordmark } from "@/components/wordmark";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -77,7 +78,7 @@ export const Route = createFileRoute("/auth")({
   validateSearch: (s) => search.parse(s) ?? {},
   head: () => ({
     meta: [
-      { title: "Sign in — Bookzenvo" },
+      { title: "Sign in · Bookzenvo" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -134,7 +135,7 @@ function AuthPage() {
         if (error) {
           if (error.message?.includes("ALREADY_ON_LIST")) {
             toast.success(
-              "You're already on the waitlist — we'll be in touch.",
+              "You're already on the waitlist. We'll be in touch.",
             );
             setWaitlistDone(true);
             return;
@@ -212,25 +213,24 @@ function AuthPage() {
         <div className="absolute inset-0 mesh-bg opacity-70 pointer-events-none" />
         <div className="absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-primary/30 blur-3xl animate-float" />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          <Link to="/" className="font-display text-2xl">
-            Bookzenvo<span className="text-primary">.</span>
+          <Link to="/">
+            <Wordmark className="text-[25px]" dotClassName="text-primary" />
           </Link>
 
           <div className="max-w-md">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <h2 className="font-display text-5xl mt-6 leading-tight text-balance">
+            <h2 className="font-display text-5xl leading-tight text-balance">
               Your studio,
               <br />
               <span className="italic text-primary">at your fingertips.</span>
             </h2>
             <p className="text-sm mt-6 opacity-70 text-pretty">
               A booking platform crafted for service businesses that care about
-              how things look — and how they feel.
+              how things look, and how they feel.
             </p>
           </div>
 
           <div className="flex items-center gap-2 text-xs opacity-60">
-            <Sparkles className="h-4 w-4" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
             Now onboarding the first studios
           </div>
         </div>
@@ -240,9 +240,9 @@ function AuthPage() {
         <div className="w-full max-w-sm animate-rise">
           <Link
             to="/"
-            className="md:hidden font-display text-2xl mb-8 inline-block"
+            className="md:hidden mb-8 inline-block"
           >
-            Bookzenvo<span className="text-primary">.</span>
+            <Wordmark className="text-[25px]" dotClassName="text-primary" />
           </Link>
           <h1 className="font-display text-3xl md:text-4xl tracking-tight">
             {heading}

@@ -7,7 +7,7 @@ const legalLink =
 export const Route = createFileRoute("/refund-policy")({
   head: () => ({
     meta: [
-      { title: "Cancellation and Refund Policy — Bookzenvo" },
+      { title: "Cancellation and Refund Policy · Bookzenvo" },
       {
         name: "description",
         content:

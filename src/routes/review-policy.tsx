@@ -7,7 +7,7 @@ const legalLink =
 export const Route = createFileRoute("/review-policy")({
   head: () => ({
     meta: [
-      { title: "Review Policy — Bookzenvo" },
+      { title: "Review Policy · Bookzenvo" },
       {
         name: "description",
         content:
