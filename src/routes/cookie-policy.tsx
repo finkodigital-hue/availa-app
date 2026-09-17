@@ -4,7 +4,7 @@ import { LegalPage } from "@/components/legal-page";
 export const Route = createFileRoute("/cookie-policy")({
   head: () => ({
     meta: [
-      { title: "Cookie Policy — Bookzenvo" },
+      { title: "Cookie Policy · Bookzenvo" },
       { name: "description", content: "Cookie Policy for Bookzenvo." },
     ],
     links: [{ rel: "canonical", href: "https://bookzenvo.com/cookie-policy" }],

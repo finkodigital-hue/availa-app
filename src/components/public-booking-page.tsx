@@ -14,7 +14,7 @@ import {
   Sunset,
   Moon,
   Loader2,
-  Sparkles,
+  LayoutGrid,
   Search,
   Navigation,
   Star,
@@ -451,8 +451,13 @@ export function PublicBookingPage({
         ?.groups ?? serviceGroups
     );
   }, [activeCategory, serviceCategories, serviceGroups, serviceSearch]);
+  // Monday first. `weekday` follows the JS convention where 0 is Sunday, which
+  // would otherwise open the week on Sunday — unusual for a UK salon.
   const sortedOpeningHours = useMemo(
-    () => [...openingHours].sort((a, b) => a.weekday - b.weekday),
+    () =>
+      [...openingHours].sort(
+        (a, b) => ((a.weekday + 6) % 7) - ((b.weekday + 6) % 7),
+      ),
     [openingHours],
   );
 
@@ -686,7 +691,7 @@ export function PublicBookingPage({
         segmentsOverlap(candidateSegments, expandBookingSegments(b)),
       );
       if (clash) {
-        toast.error("That slot was just taken — pick another.");
+        toast.error("That slot was just taken. Pick another.");
         setStep("time");
         setTime(null);
         setSubmitting(false);
@@ -745,16 +750,16 @@ export function PublicBookingPage({
     } catch (e: any) {
       const msg = e?.message ?? "";
       if (msg.includes("SLOT_TAKEN")) {
-        toast.error("That slot was just taken — pick another.");
+        toast.error("That slot was just taken. Pick another.");
         setStep("time");
         setTime(null);
       } else if (msg.includes("SLOT_IN_PAST")) {
-        toast.error("That time has already passed — pick another.");
+        toast.error("That time has already passed. Pick another.");
         setStep("time");
         setTime(null);
       } else if (msg.includes("RATE_LIMITED")) {
         toast.error(
-          "Too many booking attempts — please wait a few minutes and try again.",
+          "Too many booking attempts. Please wait a few minutes and try again.",
         );
       } else {
         toast.error(msg || "Could not book");
@@ -926,7 +931,7 @@ export function PublicBookingPage({
             {serviceGroup && (
               <Chip
                 onClick={() => setStep("service")}
-                icon={Sparkles}
+                icon={LayoutGrid}
                 label={serviceGroup.name}
               />
             )}
@@ -1376,15 +1381,16 @@ export function PublicBookingPage({
                       {displayAddress && (
                         <div className="min-h-[360px] h-full grid place-items-center border-l bg-muted/30 p-8 text-center">
                           <div>
-                            <p className="font-display text-xl">Find us</p>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                              {displayAddress}
-                            </p>
+                            <MapPin
+                              className="mx-auto h-7 w-7 text-muted-foreground"
+                              strokeWidth={1.4}
+                              aria-hidden
+                            />
                             <a
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="mt-5 inline-flex rounded-lg border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted"
+                              className="mt-6 inline-flex rounded-lg border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted"
                             >
                               Open in Google Maps
                             </a>
@@ -1425,7 +1431,7 @@ export function PublicBookingPage({
                   {p.photoUrl && (
                     <img
                       src={safeImageSrc(p.photoUrl) ?? undefined}
-                      alt={`${p.name}${p.role ? ` — ${p.role}` : ""}`}
+                      alt={`${p.name}${p.role ? `, ${p.role}` : ""}`}
                       className="absolute inset-0 h-full w-full object-cover"
                       loading="lazy"
                       onError={(event) => event.currentTarget.remove()}

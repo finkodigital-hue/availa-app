@@ -1,4 +1,5 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { Wordmark } from "@/components/wordmark";
 import {
   Calendar,
   LayoutDashboard,
@@ -225,11 +226,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const SidebarContent = (
     <>
       <div className="px-4 pb-4 pt-5">
-        <Link
-          to="/dashboard"
-          className="inline-block px-1 font-display text-xl tracking-tight"
-        >
-          Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
+        <Link to="/dashboard" className="inline-block px-1">
+          <Wordmark className="text-xl" dotClassName="text-[color:var(--gold-deep)]" />
         </Link>
         {biz?.slug && (
           <a
@@ -443,8 +441,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile header */}
       {!calendarFocusMode && (
         <div className="workspace-theme xl:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4 print:hidden">
-          <Link to="/dashboard" className="font-display text-lg">
-            Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
+          <Link to="/dashboard">
+            <Wordmark className="text-lg" dotClassName="text-[color:var(--gold-deep)]" />
           </Link>
           <div className="flex items-center gap-1">
             <NotificationsBell variant="icon" closeOn={mobileOpen} />

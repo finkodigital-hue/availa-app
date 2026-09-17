@@ -1,6 +1,8 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { Sparkles } from "lucide-react";
+import { SearchX } from "lucide-react";
+import { Wordmark } from "@/components/wordmark";
+import "../marketing.css";
 import { supabase } from "@/integrations/supabase/client";
 import { googleFontsHref, parseTheme } from "@/lib/theme";
 import { PublicBookingPage } from "@/components/public-booking-page";
@@ -103,22 +105,37 @@ export const Route = createFileRoute("/book/$slug")({
       : [],
   }),
   errorComponent: () => (
-    <div className="min-h-screen flex items-center justify-center p-6 text-center text-muted-foreground">
-      We couldn&apos;t load this booking page right now. Please try again
-      shortly.
+    <div className="mkt-page min-h-screen flex flex-col items-center justify-center p-6 text-center">
+      <h1 className="text-[1.6rem]">This page isn&apos;t loading.</h1>
+      <p className="text-muted-foreground mt-2 max-w-[42ch]">
+        Something went wrong at our end. Please try again in a moment.
+      </p>
+      <a
+        href="/"
+        className="mt-8 inline-flex items-center rounded-[6px] border border-border px-5 py-2.5 text-[.9rem] font-semibold hover:bg-foreground hover:text-background transition-colors"
+      >
+        Try again
+      </a>
     </div>
   ),
   notFoundComponent: () => (
-    <div className="min-h-screen flex items-center justify-center p-6 text-center">
-      <div>
-        <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
-        <h1 className="font-display text-3xl mt-4">
-          We couldn't find that page.
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          The link may be wrong, or the business has moved.
-        </p>
-      </div>
+    <div className="mkt-page min-h-screen flex flex-col items-center justify-center p-6 text-center">
+      <SearchX
+        className="h-7 w-7 text-muted-foreground mb-5"
+        strokeWidth={1.5}
+        aria-hidden
+      />
+      <h1 className="text-[1.6rem]">We couldn&apos;t find that page.</h1>
+      <p className="text-muted-foreground mt-2 max-w-[42ch]">
+        The link may be wrong, or the salon may have moved. Check the link with
+        the salon directly.
+      </p>
+      <a
+        href="https://bookzenvo.com/"
+        className="mt-10 text-[.85rem] text-muted-foreground hover:text-foreground transition-colors"
+      >
+        Booking powered by <Wordmark className="text-[.95rem]" />
+      </a>
     </div>
   ),
   component: PublicBooking,

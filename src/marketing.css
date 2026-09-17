@@ -1,0 +1,35 @@
+/*
+ * Typography for the public pages that sit outside the landing page:
+ * FAQ, Status, Help Centre and the legal pages.
+ *
+ * These pages previously used the serif display face, which no longer matches
+ * the landing page. This file gives them the landing page's typeface, weights
+ * and tracking so the whole public site reads as one brand. Colours and layout
+ * stay on the app theme, so nothing else is affected.
+ *
+ * styles.css sets `font-family` on h1/h2/h3 directly, so the headings below
+ * must name the family explicitly: inheriting from .mkt-page is not enough.
+ */
+.mkt-page {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.mkt-page h1,
+.mkt-page h2,
+.mkt-page h3,
+.mkt-page h4,
+.mkt-page summary {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: normal;
+}
+.mkt-page h1 {
+  font-weight: 560;
+  letter-spacing: -0.065em;
+  line-height: 1.08;
+}
+.mkt-page h2,
+.mkt-page h3,
+.mkt-page h4,
+.mkt-page summary {
+  font-weight: 600;
+  letter-spacing: -0.045em;
+}

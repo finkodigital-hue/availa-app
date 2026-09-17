@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import "../marketing.css";
 import { useMemo, useState } from "react";
+import { Wordmark } from "@/components/wordmark";
 import {
   Search,
   Rocket,
@@ -24,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 export const Route = createFileRoute("/help/")({
   head: () => ({
     meta: [
-      { title: "Help Centre — Bookzenvo" },
+      { title: "Help Centre · Bookzenvo" },
       {
         name: "description",
         content:
@@ -35,14 +37,6 @@ export const Route = createFileRoute("/help/")({
   }),
   component: HelpCentre,
 });
-
-function Wordmark({ className = "" }: { className?: string }) {
-  return (
-    <span className={`font-display font-semibold tracking-tight ${className}`}>
-      Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
-    </span>
-  );
-}
 
 function Mark() {
   return (
@@ -120,11 +114,11 @@ function HelpCentre() {
   }, [query]);
 
   return (
-    <div className="workspace-theme min-h-screen bg-background text-foreground font-sans">
+    <div className="mkt-page workspace-theme min-h-screen bg-background text-foreground font-sans">
       <header className="border-b border-border">
         <div className="max-w-[1120px] mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/">
-            <Wordmark className="text-[1.5rem]" />
+            <Wordmark className="text-[1.5rem]" dotClassName="text-[color:var(--gold-deep)]" />
           </Link>
           <Link
             to={!loading && user ? "/dashboard" : "/"}
@@ -142,7 +136,7 @@ function HelpCentre() {
             Help Centre
           </span>
         </div>
-        <h1 className="font-display font-medium text-[clamp(2.2rem,5vw,3.4rem)] tracking-[-0.02em] leading-[1.05] max-w-[18ch] mb-4">
+        <h1 className="text-[clamp(2.2rem,5vw,3.4rem)] tracking-[-0.02em] leading-[1.05] max-w-[18ch] mb-4">
           How can we help?
         </h1>
         <p className="text-[1.05rem] text-[color:var(--charcoal-soft)] max-w-[52ch] mb-8">
@@ -181,7 +175,7 @@ function HelpCentre() {
                   <div className="h-10 w-10 rounded-lg bg-[color:var(--gold-wash)] grid place-items-center mb-4">
                     <Icon className="h-5 w-5 text-[color:var(--gold-deep)]" />
                   </div>
-                  <h3 className="font-display font-semibold text-[1.2rem] mb-1">{category.title}</h3>
+                  <h3 className="text-[1.2rem] mb-1">{category.title}</h3>
                   <p className="text-[.85rem] text-muted-foreground mb-3">{category.description}</p>
                   <span className="mt-auto text-[.75rem] font-semibold text-[color:var(--gold-deep)]">
                     {count} article{count === 1 ? "" : "s"}
@@ -216,7 +210,7 @@ function HelpCentre() {
               if (!articles.length) return null;
               return (
                 <section key={category.slug} id={category.slug} className="scroll-mt-24">
-                  <h2 className="font-display font-medium text-[1.6rem] mb-1">{category.title}</h2>
+                  <h2 className="text-[1.6rem] mb-1">{category.title}</h2>
                   <p className="text-muted-foreground text-[.9rem] mb-5">{category.description}</p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     {articles.map((article) => (

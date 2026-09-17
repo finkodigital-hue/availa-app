@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import "../marketing.css";
 import { CircleDot } from "lucide-react";
+import { Wordmark } from "@/components/wordmark";
 
 export const Route = createFileRoute("/status")({
   head: () => ({
     meta: [
-      { title: "Service notices — Bookzenvo" },
+      { title: "Service notices · Bookzenvo" },
       {
         name: "description",
         content: "Service notices and incident updates for Bookzenvo.",
@@ -14,14 +16,6 @@ export const Route = createFileRoute("/status")({
   }),
   component: StatusPage,
 });
-
-function Wordmark({ className = "" }: { className?: string }) {
-  return (
-    <span className={`font-display font-semibold tracking-tight ${className}`}>
-      Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
-    </span>
-  );
-}
 
 function Mark() {
   return (
@@ -35,11 +29,11 @@ function Mark() {
 
 function StatusPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans">
+    <div className="mkt-page min-h-screen bg-background text-foreground font-sans">
       <header className="border-b border-border">
         <div className="max-w-[860px] mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/">
-            <Wordmark className="text-[1.5rem]" />
+            <Wordmark className="text-[1.5rem]" dotClassName="text-[color:var(--gold-deep)]" />
           </Link>
           <Link to="/" className="text-[.9rem] font-medium text-muted-foreground hover:text-foreground transition-colors">
             Back to home
@@ -58,7 +52,7 @@ function StatusPage() {
         <div className="rounded-xl border border-border bg-white px-6 py-6 md:px-8 md:py-7 flex items-center gap-4 mb-8">
           <CircleDot className="h-8 w-8 shrink-0 text-[color:var(--gold-deep)]" />
           <div>
-            <h1 className="font-display font-medium text-[1.5rem] md:text-[1.7rem] leading-tight">
+            <h1 className="text-[1.5rem] md:text-[1.7rem] leading-tight">
               No active incident notices
             </h1>
             <p className="text-[.9rem] text-muted-foreground mt-1">
@@ -68,7 +62,7 @@ function StatusPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-white px-6 py-6 md:px-8 md:py-7">
-          <h2 className="font-display text-[1.2rem]">How this page works</h2>
+          <h2 className="text-[1.2rem]">How this page works</h2>
           <p className="text-[.9rem] text-muted-foreground mt-3 leading-relaxed max-w-[64ch]">
             This is a manually maintained notice board, not an automated health monitor. If something in your
             Bookzenvo account does not look right, please visit the help centre and let us know.

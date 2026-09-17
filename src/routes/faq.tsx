@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import "../marketing.css";
+import { Wordmark } from "@/components/wordmark";
 
 const QUESTIONS = [
   [
@@ -46,7 +48,7 @@ const QUESTIONS = [
 export const Route = createFileRoute("/faq")({
   head: () => ({
     meta: [
-      { title: "Frequently Asked Questions — Bookzenvo" },
+      { title: "Frequently asked questions · Bookzenvo" },
       { name: "description", content: "Answers to common Bookzenvo questions." },
     ],
     links: [{ rel: "canonical", href: "https://bookzenvo.com/faq" }],
@@ -56,11 +58,11 @@ export const Route = createFileRoute("/faq")({
 
 function FaqPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans">
+    <div className="mkt-page min-h-screen bg-background text-foreground font-sans">
       <header className="border-b border-border">
         <div className="max-w-[860px] mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" className="font-display font-semibold tracking-tight text-[1.5rem]">
-            Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
+          <Link to="/">
+            <Wordmark className="text-[1.5rem]" dotClassName="text-[color:var(--gold-deep)]" />
           </Link>
           <Link
             to="/"
@@ -74,7 +76,7 @@ function FaqPage() {
         <p className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-[color:var(--gold-deep)] mb-4">
           Help with Bookzenvo
         </p>
-        <h1 className="font-display font-medium text-[clamp(2.5rem,5vw,4rem)] leading-[0.98] tracking-tight">
+        <h1 className="text-[clamp(2.5rem,5vw,4rem)] leading-[0.98] tracking-tight">
           Frequently asked questions
         </h1>
         <p className="mt-5 text-[1rem] leading-7 text-muted-foreground max-w-[60ch]">
@@ -83,7 +85,7 @@ function FaqPage() {
         <div className="mt-12 divide-y divide-border rounded-xl border border-border bg-white">
           {QUESTIONS.map(([question, answer]) => (
             <details key={question} className="group px-6 py-5">
-              <summary className="cursor-pointer list-none pr-8 font-display text-[1.25rem] leading-tight marker:content-none relative">
+              <summary className="cursor-pointer list-none pr-8 text-[1.25rem] leading-tight marker:content-none relative">
                 {question}
                 <span className="absolute right-0 top-0 font-sans text-xl text-[color:var(--gold-deep)] transition-transform group-open:rotate-45">
                   +
@@ -94,7 +96,7 @@ function FaqPage() {
           ))}
         </div>
         <div className="mt-10 rounded-xl border border-border px-6 py-6">
-          <h2 className="font-display text-[1.4rem]">Still need a hand?</h2>
+          <h2 className="text-[1.4rem]">Still need a hand?</h2>
           <p className="mt-2 text-[.92rem] leading-6 text-muted-foreground">
             Visit the Help Centre for guides or to contact support.
           </p>

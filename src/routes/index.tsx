@@ -4,12 +4,12 @@ import {
   CalendarCheck,
   Camera,
   Check,
-  ChevronRight,
   CreditCard,
   Menu,
   MessageCircleMore,
   ShieldCheck,
   Sparkles,
+  TrendingUp,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -18,14 +18,14 @@ import {
   CookieConsentProvider,
   CookieSettingsFooterLink,
 } from "@/components/cookie-consent";
+import { Wordmark } from "@/components/wordmark";
 import "../landing.css";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       {
-        title:
-          "Bookzenvo · Booking software that runs the work others leave to the salon.",
+        title: "Bookzenvo · Your salon. All in one place.",
       },
       {
         name: "description",
@@ -34,8 +34,7 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:title",
-        content:
-          "Bookzenvo · Booking software that runs the work others leave to the salon.",
+        content: "Bookzenvo · Your salon. All in one place.",
       },
       {
         property: "og:description",
@@ -111,7 +110,7 @@ const stories = [
     title: "A little less admin.\nA little more possibility.",
     description:
       "Use practical AI to edit your page, scan stock from a photo and explore what your salon data is telling you.",
-    icon: Sparkles,
+    icon: TrendingUp,
     items: ["AI page editing", "Stock photo scanning", "Business insights"],
     foot: "Useful help with the jobs that take you away from clients.",
   },
@@ -126,14 +125,6 @@ const studioFeatures = [
   "AI business co-pilot and page editor",
   "Analytics and insights",
 ];
-
-function Wordmark({ light = false }: { light?: boolean }) {
-  return (
-    <span className={`lp-wordmark ${light ? "lp-wordmark-light" : ""}`}>
-      Bookzenvo<span>.</span>
-    </span>
-  );
-}
 
 function StartLink({
   children = "Join the waitlist",
@@ -353,7 +344,6 @@ function Landing() {
                     <h3>{title}</h3>
                     <p>{body}</p>
                   </div>
-                  <ChevronRight aria-hidden="true" />
                 </li>
               ))}
             </ol>
@@ -491,16 +481,13 @@ function Landing() {
               <h2>
                 A fresh start.
                 <br />
-                <span>Same salon. More possibility.</span>
+                <span>Same salon. Less admin.</span>
               </h2>
               <p>
                 Bring your clients, team, services and booking history into
                 Bookzenvo. Keep what matters, and make the everyday easier.
               </p>
               <StartLink light>Join the waitlist</StartLink>
-              <p className="lp-switch-note">
-                Moving from another system? Start with your data export.
-              </p>
             </div>
             <div className="lp-move-guide">
               <div className="lp-move-heading">
@@ -597,7 +584,7 @@ function Landing() {
                 <div className="lp-price-top">
                   <div>
                     <h3>Studio</h3>
-                    <p>For a growing salon team</p>
+                    <p>Unlimited staff, one flat price</p>
                   </div>
                   <strong>
                     £22<span>/month</span>
@@ -622,14 +609,13 @@ function Landing() {
 
           <section className="lp-final-cta" data-reveal>
             <div>
-              <p className="lp-kicker">Make room for what you love</p>
+              <p className="lp-kicker">Ready when you are</p>
               <h2>
                 Your salon deserves
                 <br />a better working day.
               </h2>
               <p>
-                Be first to hear when Bookzenvo launches. Join the email
-                waitlist.
+                Be first to hear when Bookzenvo launches.
               </p>
             </div>
             <StartLink light />

@@ -7,7 +7,7 @@ const legalLink =
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy Policy — Bookzenvo" },
+      { title: "Privacy Policy · Bookzenvo" },
       {
         name: "description",
         content:
@@ -34,8 +34,8 @@ function PrivacyPage() {
                 Bookzenvo is responsible for account administration, product
                 operation, security, support, subscription billing and its own
                 website. Contact us at{" "}
-                <a href="mailto:help@finkodigital.com" className={legalLink}>
-                  help@finkodigital.com
+                <a href="mailto:help@bookzenvo.com" className={legalLink}>
+                  help@bookzenvo.com
                 </a>
                 .
               </p>
@@ -329,8 +329,8 @@ function PrivacyPage() {
                   Help Centre
                 </Link>{" "}
                 or email{" "}
-                <a href="mailto:help@finkodigital.com" className={legalLink}>
-                  help@finkodigital.com
+                <a href="mailto:help@bookzenvo.com" className={legalLink}>
+                  help@bookzenvo.com
                 </a>
                 . We may need to verify your identity. You may also complain to
                 the{" "}

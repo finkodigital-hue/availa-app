@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
+import "../marketing.css";
 import type { ReactNode } from "react";
+import { Wordmark } from "@/components/wordmark";
 import {
   hasPublishableOperatorIdentity,
   legalOperator,
@@ -21,14 +23,11 @@ export function LegalPage({
   lastUpdated?: string;
 }) {
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans">
+    <div className="mkt-page min-h-screen bg-background text-foreground font-sans">
       <header className="border-b border-border">
         <div className="max-w-[860px] mx-auto px-6 h-20 flex items-center justify-between">
-          <Link
-            to="/"
-            className="font-display font-semibold tracking-tight text-[1.5rem]"
-          >
-            Bookzenvo<span className="text-[color:var(--gold-deep)]">.</span>
+          <Link to="/">
+            <Wordmark className="text-[1.5rem]" dotClassName="text-[color:var(--gold-deep)]" />
           </Link>
           <Link
             to="/"
@@ -42,7 +41,7 @@ export function LegalPage({
         <p className="text-[.7rem] font-semibold tracking-[0.16em] uppercase text-[color:var(--gold-deep)] mb-4">
           {eyebrow}
         </p>
-        <h1 className="font-display font-medium text-[clamp(2.5rem,5vw,4rem)] leading-[0.98] tracking-tight">
+        <h1 className="text-[clamp(2.5rem,5vw,4rem)] leading-[0.98] tracking-tight">
           {title}
         </h1>
         <p className="mt-5 text-[1rem] leading-7 text-muted-foreground max-w-[62ch]">
@@ -58,7 +57,7 @@ export function LegalPage({
             }
             className="rounded-xl border border-border bg-white px-5 py-5"
           >
-            <h2 className="font-display text-[1.45rem] leading-tight mb-3">
+            <h2 className="text-[1.45rem] leading-tight mb-3">
               Platform operator
             </h2>
             {hasPublishableOperatorIdentity ? (
@@ -104,7 +103,7 @@ export function LegalPage({
           </section>
           {sections.map((section) => (
             <section key={section.title}>
-              <h2 className="font-display text-[1.7rem] leading-tight mb-3">
+              <h2 className="text-[1.7rem] leading-tight mb-3">
                 {section.title}
               </h2>
               <div className="space-y-3 text-[.95rem] leading-7 text-muted-foreground">
@@ -114,7 +113,7 @@ export function LegalPage({
           ))}
         </div>
         <div className="mt-14 rounded-xl border border-border bg-white px-6 py-6">
-          <h2 className="font-display text-[1.45rem]">Need help?</h2>
+          <h2 className="text-[1.45rem]">Need help?</h2>
           <p className="mt-2 text-[.92rem] leading-6 text-muted-foreground">
             Visit the Help Centre and choose Contact support. We will get back
             to you as soon as we can.

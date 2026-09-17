@@ -7,7 +7,7 @@ const legalLink =
 export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
-      { title: "Terms of Service — Bookzenvo" },
+      { title: "Terms of Service · Bookzenvo" },
       {
         name: "description",
         content: "Terms for businesses and clients using Bookzenvo booking services.",
@@ -296,8 +296,8 @@ function TermsPage() {
               </p>
               <p>
                 Questions can be sent to{" "}
-                <a href="mailto:help@finkodigital.com" className={legalLink}>
-                  help@finkodigital.com
+                <a href="mailto:help@bookzenvo.com" className={legalLink}>
+                  help@bookzenvo.com
                 </a>{" "}
                 or through the{" "}
                 <Link to="/help" className={legalLink}>
