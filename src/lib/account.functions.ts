@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 
 // Recoverable workspace closure for a business owner. Separate from
 // customer-portal.functions.ts (customers requesting a business delete
@@ -91,8 +92,8 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
     }
 
     // Cancel any live Bookzenvo subscription first so billing stops.
-    // Best-effort: closure must remain available if it is already cancelled
-    // or Stripe is temporarily unavailable.
+    // Never silently close a workspace while an unconfirmed cancellation
+    // could leave recurring billing running. The owner can retry safely.
     if (business.stripe_subscription_id) {
       try {
         await stripeRequest(
@@ -102,7 +103,7 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
           },
         );
       } catch {
-        // See comment above.
+        throw new Error("We couldn't stop your subscription. Your workspace remains open so you can retry safely. Please contact help@bookzenvo.com if this continues.");
       }
     }
 
@@ -138,7 +139,7 @@ export const cancelAccountDeletion = createServerFn({ method: "POST" })
 
 export const exportMyWorkspace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<Record<string, unknown>> => {
+  .handler(async ({ context }): Promise<Record<string, Json>> => {
     const { data: business, error } = await context.supabase
       .from("businesses")
       .select("id")

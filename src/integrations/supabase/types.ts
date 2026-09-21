@@ -8,6 +8,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      notifications: {
+        Row: { id: string; business_id: string; type: string; title: string; body: string | null; link: string | null; read_at: string | null; created_at: string }
+        Insert: { id?: string; business_id: string; type: string; title: string; body?: string | null; link?: string | null; read_at?: string | null; created_at?: string }
+        Update: { id?: string; business_id?: string; type?: string; title?: string; body?: string | null; link?: string | null; read_at?: string | null; created_at?: string }
+        Relationships: [{ foreignKeyName: "notifications_business_id_fkey"; columns: ["business_id"]; isOneToOne: false; referencedRelation: "businesses"; referencedColumns: ["id"] }]
+      }
       blocked_dates: {
         Row: {
           business_id: string

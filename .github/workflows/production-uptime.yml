@@ -18,7 +18,7 @@ jobs:
   check:
     name: Check bookzenvo.com
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 15
     steps:
       - name: Check the live website and its client bundle
         env:

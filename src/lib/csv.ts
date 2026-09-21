@@ -5,7 +5,7 @@ import Papa from "papaparse";
 // stringification so quoting/escaping stays consistent with the rest of
 // the app's CSV handling.
 export function downloadCsv(filename: string, rows: Record<string, string | number>[]) {
-  const csv = Papa.unparse(rows);
+  const csv = Papa.unparse(rows, { escapeFormulae: true });
   // Excel on Windows guesses the system codepage for a BOM-less UTF-8 CSV
   // and mangles anything non-ASCII (accented names, curly quotes) — the
   // BOM forces it to read the file as UTF-8. Google Sheets and other tools

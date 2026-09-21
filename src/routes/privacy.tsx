@@ -233,7 +233,10 @@ function PrivacyPage() {
                 operate Bookzenvo, including Supabase for database, storage and
                 authentication; Cloudflare for hosting and network security;
                 Stripe for subscription and appointment payments; Resend for
-                booking emails; and Anthropic for optional AI features.
+                booking emails; Twilio for enabled appointment SMS; Anthropic for optional
+                AI features; and ScreenshotOne for public-page screenshots used by the
+                optional AI page editor. Connected Google or Microsoft calendars receive
+                appointment details when a business enables calendar synchronisation.
               </p>
               <p>
                 We may also disclose information to professional advisers,
@@ -273,9 +276,9 @@ function PrivacyPage() {
             <>
               <p>
                 We keep active account and workspace information while the
-                account is open and as needed to provide the service. If an
-                owner permanently deletes a workspace, active Bookzenvo database
-                records and uploaded business files are deleted, subject to
+                account is open and as needed to provide the service. Workspace closure
+                begins a 30-day recovery period. After that period, an operator reviews
+                permanent removal of active records and uploaded business files, subject to
                 secure provider backup cycles, fraud and security records,
                 unresolved disputes, and information we must keep for legal, tax
                 or accounting reasons.

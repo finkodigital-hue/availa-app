@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useMyBusiness, useWorkspaceAccess, type WorkspacePermission } from "@/lib/business";
 import { AppShell } from "@/components/app-shell";
@@ -20,6 +21,9 @@ function Layout() {
     const navigate = useNavigate();
     const { data: biz, isLoading: bizLoading } = useMyBusiness();
     const [needsMfa, setNeedsMfa] = useState<boolean | null>(null);
+    const [verificationError, setVerificationError] = useState(false);
+    const [verificationAttempt, setVerificationAttempt] = useState(0);
+    const queryClient = useQueryClient();
     const access = useWorkspaceAccess();
     const path = useRouterState({ select: (state) => state.location.pathname });
   
@@ -45,11 +49,19 @@ function Layout() {
     // per session (not per navigation) since it doesn't change mid-session.
     useEffect(() => {
           if (loading || !user) return;
+          let cancelled = false;
+          setNeedsMfa(null);
+          setVerificationError(false);
           supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data, error }) => {
-                  if (error) return setNeedsMfa(false);
+                  if (cancelled) return;
+                  if (error || !data) return setVerificationError(true);
                   setNeedsMfa(data.nextLevel === "aal2" && data.currentLevel !== "aal2");
-          });
-    }, [loading, user, session?.access_token]);
+          }).catch(() => { if (!cancelled) setVerificationError(true); });
+          return () => { cancelled = true; };
+    }, [loading, user, session?.access_token, verificationAttempt]);
+
+    if (verificationError) return <main className="min-h-screen grid place-items-center p-6"><div role="alert" className="max-w-sm space-y-4 text-center"><p>We couldn’t verify your account security. Please try again.</p><button className="rounded-lg border px-4 py-2" onClick={() => setVerificationAttempt((value) => value + 1)}>Try again</button></div></main>;
+    if (needsMfa) return <MfaChallengeGate onVerified={() => { setNeedsMfa(false); void queryClient.invalidateQueries(); }} />;
   
     if (loading || !user || bizLoading || (!!biz && access.isLoading) || needsMfa === null) {
           return (
@@ -65,9 +77,6 @@ function Layout() {
     }
     if (!user.email_confirmed_at && user.app_metadata?.provider === "email") {
           return <EmailVerifyGate email={user.email} />;
-    }
-    if (needsMfa) {
-          return <MfaChallengeGate onVerified={() => setNeedsMfa(false)} />;
     }
     if (!biz) {
           return <Outlet />;

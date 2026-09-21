@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireVerifiedIdentity } from "@/lib/verified-identity.server";
 
 export async function buildAssistantContext(accessToken: string) {
   const supabase = createClient(
@@ -10,8 +11,7 @@ export async function buildAssistantContext(accessToken: string) {
     },
   );
 
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) throw new Error("Unauthorized");
+  const userData = await requireVerifiedIdentity(supabase, accessToken);
 
   const { data: business } = await supabase
     .from("businesses")

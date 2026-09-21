@@ -262,10 +262,12 @@ function TermsPage() {
           content: (
             <>
               <p>
-                A business can stop using Bookzenvo or permanently delete its workspace from account
-                settings. Deleting a workspace removes its active Bookzenvo records and uploaded
-                files and requests cancellation of any active Bookzenvo subscription, subject to
-                provider backup cycles and information that must be retained by law.
+                A business can request workspace closure from account settings. We first
+                confirm cancellation of any active Bookzenvo subscription. Closure stops
+                new public bookings and starts a 30-day recovery period. Permanent removal
+                is reviewed after that period, subject to provider backup expiry, unresolved
+                disputes and information that must be retained by law. Contact support to
+                discuss return or deletion of your data.
               </p>
               <p>
                 We may suspend or end access for a serious or repeated breach, non-payment, unlawful

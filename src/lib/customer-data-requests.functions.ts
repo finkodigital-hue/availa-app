@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 
 type RequestInput = {
   requestId: string;
@@ -40,8 +41,8 @@ type ExportConsultation = {
   id: string;
   booking_id: string;
   status: string;
-  template_snapshot: unknown;
-  answers: unknown;
+  template_snapshot: Json;
+  answers: Json;
   explicit_health_consent: boolean;
   signer_name: string | null;
   signature_data: string | null;

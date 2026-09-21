@@ -3,11 +3,11 @@ function publicValue(value: unknown): string | null {
 }
 
 export const legalOperator = {
-  name: publicValue(import.meta.env.VITE_LEGAL_OPERATOR_NAME),
-  legalForm: publicValue(import.meta.env.VITE_LEGAL_OPERATOR_FORM),
-  serviceAddress: publicValue(import.meta.env.VITE_LEGAL_OPERATOR_ADDRESS),
-  companyNumber: publicValue(import.meta.env.VITE_LEGAL_COMPANY_NUMBER),
-  registeredIn: publicValue(import.meta.env.VITE_LEGAL_REGISTERED_IN),
+  name: publicValue(import.meta.env.VITE_LEGAL_OPERATOR_NAME) ?? "BOOKZENVO LTD",
+  legalForm: publicValue(import.meta.env.VITE_LEGAL_OPERATOR_FORM) ?? "Private limited company",
+  serviceAddress: publicValue(import.meta.env.VITE_LEGAL_OPERATOR_ADDRESS) ?? "Pinefield, Tomich, Cannich, IV4 7LY",
+  companyNumber: publicValue(import.meta.env.VITE_LEGAL_COMPANY_NUMBER) ?? "SC902170",
+  registeredIn: publicValue(import.meta.env.VITE_LEGAL_REGISTERED_IN) ?? "Scotland",
   vatNumber: publicValue(import.meta.env.VITE_LEGAL_VAT_NUMBER),
   contactEmail:
     publicValue(import.meta.env.VITE_LEGAL_CONTACT_EMAIL) ??

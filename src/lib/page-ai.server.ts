@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { requireVerifiedIdentity } from "@/lib/verified-identity.server";
 import {
   BLOCK_TYPES,
   type BlockType,
@@ -96,8 +97,7 @@ export async function suggestPageBlocks({
     },
   );
 
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) throw new Error("Unauthorized");
+  const userData = await requireVerifiedIdentity(supabase, accessToken);
 
   const { data: business } = await supabase
     .from("businesses")

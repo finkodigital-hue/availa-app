@@ -284,6 +284,13 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ checkoutUrl: string | null }> => {
     const { supabaseAdmin } =
       await import("@/integrations/supabase/client.server");
+    const { data: validatedEnd, error: slotError } = await (supabaseAdmin as any).rpc(
+      "validate_public_booking_slot",
+      { p_business_id: data.businessId, p_service_id: data.serviceId,
+        p_staff_id: data.staffId, p_starts_at: data.startsAt },
+    );
+    if (slotError) throw slotError;
+    if (typeof validatedEnd !== "string") throw new Error("Choose another appointment time.");
     const { data: business, error: businessError } = await supabaseAdmin
       .from("businesses")
       .select(
@@ -363,7 +370,7 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
             ? "true"
             : "false",
           "metadata[starts_at]": data.startsAt,
-          "metadata[ends_at]": data.endsAt,
+          "metadata[ends_at]": validatedEnd,
           "metadata[notes]": data.notes.trim(),
           "metadata[payment_mode]": business.payment_mode,
           "metadata[gap_min]":
