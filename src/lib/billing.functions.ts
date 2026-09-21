@@ -8,8 +8,8 @@ import { trustedAppOrigin } from "@/lib/app-origin.server";
 // account (their customers' payments and payouts) — no Stripe-Account
 // header is ever sent here.
 //
-// Flow, mirroring the existing fulfil-on-return pattern used for booking
-// payments (no webhook endpoint required):
+// Signed platform webhooks reconcile subscription changes independently of
+// the browser. The return page also verifies Stripe truth as a fast fallback.
 //   1. startStudioCheckout  -> Stripe Checkout (mode=subscription)
 //   2. Stripe redirects back to /settings?tab=plan&billing=success&session_id=…
 //   3. finalizeStudioCheckout(session_id) verifies the subscription is real
@@ -22,7 +22,7 @@ import { trustedAppOrigin } from "@/lib/app-origin.server";
 const STUDIO_PRICE_LOOKUP_KEY = "bookzenvo_studio_monthly";
 const STUDIO_PRICE_PENCE = 2200;
 
-type StripePrice = { id: string; unit_amount: number };
+type StripePrice = { id: string; unit_amount: number; currency: string; recurring?: { interval: string; interval_count: number } };
 type StripePriceList = { data: StripePrice[] };
 type StripeCustomer = { id: string };
 type StripeCheckoutSession = {
@@ -77,7 +77,14 @@ export async function ensureStudioPrice(): Promise<string> {
   const existing = await stripeRequest<StripePriceList>(
     `/v1/prices?lookup_keys[]=${encodeURIComponent(STUDIO_PRICE_LOOKUP_KEY)}&active=true&limit=1`,
   );
-  if (existing.data[0]) return existing.data[0].id;
+  if (existing.data[0]) {
+    const price = existing.data[0];
+    if (price.unit_amount !== STUDIO_PRICE_PENCE || price.currency !== "gbp"
+      || price.recurring?.interval !== "month" || price.recurring.interval_count !== 1) {
+      throw new Error("The configured Studio price needs correcting before checkout.");
+    }
+    return price.id;
+  }
 
   const price = await stripeRequest<StripePrice>("/v1/prices", {
     method: "POST",
@@ -113,7 +120,7 @@ export const startStudioCheckout = createServerFn({ method: "POST" })
       const { data: userData } = await context.supabase.auth.getUser();
       const customer = await stripeRequest<StripeCustomer>("/v1/customers", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "Idempotency-Key": `studio-customer-${business.id}` },
         body: formBody({
           name: business.name,
           ...(userData?.user?.email ? { email: userData.user.email } : {}),
@@ -131,11 +138,29 @@ export const startStudioCheckout = createServerFn({ method: "POST" })
 
     const priceId = await ensureStudioPrice();
     const origin = appOrigin();
+    // Recover a completed checkout before considering another paid attempt.
+    const subscriptions = await stripeRequest<{ data: StripeSubscription[] }>(
+      `/v1/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=100`,
+    );
+    const existingSubscription = subscriptions.data.find(s => ["active", "trialing", "past_due", "unpaid", "incomplete", "paused"].includes(s.status));
+    if (existingSubscription) {
+      const { reconcileStudioSubscription } = await import("@/lib/studio-billing.server");
+      await reconcileStudioSubscription(existingSubscription.id);
+      throw new Error("A subscription already exists. Refresh your plan or manage it in the billing portal.");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: attempt, error: attemptError } = await (supabaseAdmin as any).rpc("claim_studio_checkout", {
+      p_business_id: business.id, p_customer_id: customerId,
+    });
+    if (attemptError) throw attemptError;
+    if (!attempt?.attempt_id || !attempt?.expires_at) throw new Error("Could not reserve a checkout attempt.");
+    const expiresAt = Math.floor(Date.parse(attempt.expires_at)/1000)-300;
     const session = await stripeRequest<{ url: string }>("/v1/checkout/sessions", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "Idempotency-Key": `studio-checkout-${attempt.attempt_id}` },
       body: formBody({
         mode: "subscription",
+        expires_at: String(expiresAt),
         customer: customerId,
         "line_items[0][price]": priceId,
         "line_items[0][quantity]": "1",
@@ -175,26 +200,10 @@ export const finalizeStudioCheckout = createServerFn({ method: "POST" })
       return { activated: false };
     }
 
-    const subscription = await stripeRequest<StripeSubscription>(
-      `/v1/subscriptions/${encodeURIComponent(session.subscription)}`,
-    );
-    const active = subscription.status === "active" || subscription.status === "trialing";
-    if (!active) return { activated: false };
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error: updateError } = await supabaseAdmin
-      .from("businesses")
-      .update({
-        plan: "studio",
-        stripe_subscription_id: subscription.id,
-        stripe_subscription_status: subscription.status,
-        stripe_billing_customer_id: subscription.customer,
-        billing_synced_at: new Date().toISOString(),
-      })
-      .eq("id", business.id);
-    if (updateError) throw updateError;
-
-    return { activated: true };
+    const { reconcileStudioSubscription } = await import("@/lib/studio-billing.server");
+    const result = await reconcileStudioSubscription(session.subscription);
+    if (result.businessId !== business.id) throw new Error("Subscription workspace mismatch");
+    return { activated: result.activated };
   });
 
 export const openBillingPortal = createServerFn({ method: "POST" })

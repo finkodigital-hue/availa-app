@@ -12,13 +12,20 @@ export async function recordBookingEmailMarketingConsent({
 }) {
   const { data: booking, error } = await (supabaseAdmin as any)
     .from("bookings")
-    .select("customer_id")
+    .select("customer_id, customer_email")
     .eq("id", bookingId)
     .eq("business_id", businessId)
     .maybeSingle();
   if (error || !booking?.customer_id) {
     throw error ?? new Error("The booking customer could not be identified.");
   }
+  const { data: customer, error: customerError } = await supabaseAdmin
+    .from("customers").select("email").eq("id", booking.customer_id)
+    .eq("business_id", businessId).maybeSingle();
+  if (customerError) throw customerError;
+  // Phone matching is not proof that the booking owns an existing email.
+  if (!customer?.email || !booking.customer_email ||
+    customer.email.trim().toLowerCase() !== booking.customer_email.trim().toLowerCase()) return;
 
   const now = new Date().toISOString();
   const { error: consentError } = await (supabaseAdmin as any)
@@ -35,7 +42,8 @@ export async function recordBookingEmailMarketingConsent({
         revoked_at: null,
         updated_at: now,
       },
-      { onConflict: "business_id,customer_id,channel" },
+      // An anonymous booking must never overwrite a previous withdrawal.
+      { onConflict: "business_id,customer_id,channel", ignoreDuplicates: true },
     );
   if (consentError) throw consentError;
 }

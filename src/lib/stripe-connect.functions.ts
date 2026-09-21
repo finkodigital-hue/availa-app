@@ -284,13 +284,6 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ checkoutUrl: string | null }> => {
     const { supabaseAdmin } =
       await import("@/integrations/supabase/client.server");
-    const { data: validatedEnd, error: slotError } = await (supabaseAdmin as any).rpc(
-      "validate_public_booking_slot",
-      { p_business_id: data.businessId, p_service_id: data.serviceId,
-        p_staff_id: data.staffId, p_starts_at: data.startsAt },
-    );
-    if (slotError) throw slotError;
-    if (typeof validatedEnd !== "string") throw new Error("Choose another appointment time.");
     const { data: business, error: businessError } = await supabaseAdmin
       .from("businesses")
       .select(
@@ -333,6 +326,16 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
     if (amount < 50)
       throw new Error("This booking amount is too small for online payment.");
 
+    const { sha256Hex } = await import("@/lib/booking-tokens.server");
+    const { data: hold, error: holdError } = await (supabaseAdmin as any).rpc("reserve_booking_checkout", {
+      p_business_id: business.id, p_service_id: service.id, p_staff_id: data.staffId,
+      p_starts_at: new Date(data.startsAt).toISOString(),
+      p_request_key: await sha256Hex(JSON.stringify({ ...data, amount })),
+      p_contact_key: await sha256Hex(data.customerEmail.trim().toLowerCase()),
+    });
+    if (holdError) throw holdError;
+    if (!hold?.id || !hold?.ends_at) throw new Error("Could not reserve this appointment.");
+
     const origin = appOrigin();
     const paymentLabel =
       business.payment_mode === "deposit"
@@ -345,19 +348,23 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
           "Stripe-Account": business.stripe_account_id,
+          "Idempotency-Key": `booking-hold-${hold.id}`,
         },
         body: formBody({
           mode: "payment",
+          "payment_method_types[0]": "card",
+          expires_at: String(Math.floor(Date.parse(hold.expires_at)/1000)-600),
           customer_creation: "always",
           customer_email: data.customerEmail.trim(),
           success_url: `${origin}${data.returnPath}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${origin}${data.returnPath}?payment=cancelled`,
           "line_items[0][price_data][currency]":
-            business.currency.toLowerCase(),
+            hold.currency,
           "line_items[0][price_data][product_data][name]": paymentLabel,
-          "line_items[0][price_data][unit_amount]": String(amount),
+          "line_items[0][price_data][unit_amount]": String(hold.amount_cents),
           "line_items[0][quantity]": "1",
           "metadata[business_id]": business.id,
+          "metadata[hold_id]": hold.id,
           "metadata[service_id]": data.serviceId,
           "metadata[staff_id]": data.staffId,
           "metadata[customer_name]": data.customerName.trim(),
@@ -370,14 +377,14 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
             ? "true"
             : "false",
           "metadata[starts_at]": data.startsAt,
-          "metadata[ends_at]": validatedEnd,
+          "metadata[ends_at]": hold.ends_at,
           "metadata[notes]": data.notes.trim(),
-          "metadata[payment_mode]": business.payment_mode,
+          "metadata[payment_mode]": hold.payment_mode,
           "metadata[gap_min]":
-            service.gap_min != null ? String(service.gap_min) : "",
+            hold.gap_min != null ? String(hold.gap_min) : "",
           "metadata[active_after_min]":
-            service.active_after_min != null
-              ? String(service.active_after_min)
+            hold.active_after_min != null
+              ? String(hold.active_after_min)
               : "",
           "payment_intent_data[metadata][business_id]": business.id,
           "payment_intent_data[metadata][service_id]": data.serviceId,

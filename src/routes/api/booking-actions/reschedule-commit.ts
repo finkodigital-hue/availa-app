@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { consumeBookingActionToken } from "@/lib/booking-tokens.server";
+import { sha256Hex } from "@/lib/booking-tokens.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
 
 export const Route = createFileRoute("/api/booking-actions/reschedule-commit")({
@@ -13,32 +13,12 @@ export const Route = createFileRoute("/api/booking-actions/reschedule-commit")({
         }
         const body = parsed.value;
         const { token, starts_at } = body;
-        if (!token || typeof token !== "string" || !starts_at || typeof starts_at !== "string") {
+        if (!token || typeof token !== "string" || !/^[0-9a-f]{64}$/i.test(token) || !starts_at || typeof starts_at !== "string" || !Number.isFinite(Date.parse(starts_at))) {
           return new Response("Invalid request", { status: 400 });
         }
 
-        const result = await consumeBookingActionToken(token, "reschedule");
-        if (!result.ok) return Response.json({ ok: false, reason: result.reason });
-
-        const { data: booking } = await (supabaseAdmin as any)
-          .from("bookings")
-          .select("id, status")
-          .eq("id", result.bookingId)
-          .maybeSingle();
-
-        if (!booking || booking.status === "cancelled") {
-          return Response.json({ ok: false, reason: "invalid" });
-        }
-
-        // reschedule_booking preserves the booking's existing total duration
-        // (ends_at - starts_at) rather than recomputing it from the service —
-        // for a gap service, services.duration_minutes is only the first
-        // segment, so recomputing here would silently truncate the
-        // appointment. It also does the conflict check + advisory lock + the
-        // actual update atomically, closing the race between this handler's
-        // separate check-then-update calls.
-        const { error } = await (supabaseAdmin as any).rpc("reschedule_booking", {
-          p_booking_id: booking.id,
+        const { data: result, error } = await (supabaseAdmin as any).rpc("reschedule_booking_with_token", {
+          p_token_hash: await sha256Hex(token),
           p_new_starts_at: starts_at,
         });
         if (error) {
@@ -48,7 +28,7 @@ export const Route = createFileRoute("/api/booking-actions/reschedule-commit")({
           return Response.json({ ok: false, reason: "invalid" });
         }
 
-        return Response.json({ ok: true });
+        return Response.json(result ?? { ok: false, reason: "invalid" });
       },
     },
   },

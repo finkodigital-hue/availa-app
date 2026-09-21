@@ -51,6 +51,9 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           return new Response("Unauthorized", { status: 401 });
         }
 
+        const { reconcileFailedBookingPayments } = await import("@/lib/payment-reconciliation.server");
+        const bookingPaymentRecovery = await reconcileFailedBookingPayments();
+
         const { data: businesses, error: bizErr } = await (supabaseAdmin as any)
           .from("businesses")
           .select(
@@ -538,6 +541,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         }
 
         return Response.json({
+          bookingPaymentRecovery,
           claimed,
           sent,
           failed,

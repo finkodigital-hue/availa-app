@@ -29,11 +29,30 @@ export const Route = createFileRoute("/api/stripe-webhook")({
           return new Response("Invalid JSON", { status: 400 });
         }
 
+        // Studio belongs to the platform account. Connected-account events
+        // must never grant platform subscription access.
+        if (!event.account && (event.type?.startsWith("customer.subscription.") ||
+          (event.type === "checkout.session.completed" && event.data?.object?.mode === "subscription"))) {
+          const subscriptionId = event.type.startsWith("customer.subscription.")
+            ? event.data?.object?.id : event.data?.object?.subscription;
+          try {
+            const { reconcileStudioSubscription } = await import("@/lib/studio-billing.server");
+            await reconcileStudioSubscription(subscriptionId);
+            return Response.json({ received: true });
+          } catch (error) {
+            console.error("Studio subscription reconciliation failed", error);
+            return new Response("Subscription reconciliation failed", { status: 500 });
+          }
+        }
+
         if (event.type === "refund.updated") {
           const refund = event.data?.object;
           if (refund?.status !== "succeeded")
             return Response.json({ received: true });
           const metadata = refund.metadata ?? {};
+          // These refunds have no booking ledger row; the durable recovery
+          // sweep verifies their status using the payment-issue record.
+          if (metadata.resolution === "unfulfilled_booking") return Response.json({ received: true });
           if (
             !metadata.business_id ||
             !metadata.booking_id ||
@@ -217,7 +236,19 @@ export const Route = createFileRoute("/api/stripe-webhook")({
             return new Response("Connected account mismatch", { status: 400 });
           }
 
-          const { data: bookingId, error } = await (supabaseAdmin as any).rpc(
+          const { data: issue, error: issueError } = await (supabaseAdmin as any).from("booking_payment_issues")
+            .select("status").eq("payment_intent_id", session.payment_intent).maybeSingle();
+          if (issueError) throw issueError;
+          if (issue?.status === "refunded") return Response.json({ received: true });
+          const { data: bookingId, error } = metadata.hold_id
+            ? await (supabaseAdmin as any).rpc("fulfill_held_booking", {
+              p_hold_id: metadata.hold_id, p_amount_cents: session.amount_total,
+              p_currency: session.currency, p_payment_intent_id: session.payment_intent,
+              p_customer_name: metadata.customer_name, p_customer_email: metadata.customer_email,
+              p_customer_phone: metadata.customer_phone ?? "", p_notes: metadata.notes ?? "",
+              p_stripe_customer_id: typeof session.customer === "string" ? session.customer : "",
+            })
+            : await (supabaseAdmin as any).rpc(
             "fulfill_stripe_checkout",
             {
               p_business_id: metadata.business_id,
@@ -242,7 +273,19 @@ export const Route = createFileRoute("/api/stripe-webhook")({
                 : null,
             },
           );
-          if (error) throw error;
+          if (error) {
+            const { error: recordError } = await (supabaseAdmin as any).from("booking_payment_issues").upsert({
+              payment_intent_id: session.payment_intent, business_id: metadata.business_id,
+              stripe_account_id: event.account, hold_id: metadata.hold_id ?? null,
+              reason: "Booking fulfilment failed; payment requires reconciliation",
+            }, { onConflict: "payment_intent_id", ignoreDuplicates: true });
+            if (recordError) console.error("Could not record payment issue", recordError);
+            throw error;
+          }
+          const { error: resolutionError } = await (supabaseAdmin as any).from("booking_payment_issues")
+            .update({ status: "resolved", resolved_at: new Date().toISOString() })
+            .eq("payment_intent_id", session.payment_intent).eq("status", "open");
+          if (resolutionError) throw resolutionError;
           if (
             bookingId &&
             metadata.sms_reminder_consent === "true" &&
