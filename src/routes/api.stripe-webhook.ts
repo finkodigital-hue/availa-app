@@ -236,6 +236,12 @@ export const Route = createFileRoute("/api/stripe-webhook")({
             return new Response("Connected account mismatch", { status: 400 });
           }
 
+          if (metadata.hold_id) {
+            const { data: hold, error: holdError } = await (supabaseAdmin as any).from("booking_checkout_holds")
+              .select("business_id").eq("id", metadata.hold_id).eq("business_id", metadata.business_id).maybeSingle();
+            if (holdError) throw holdError;
+            if (!hold) return new Response("Checkout reservation workspace mismatch", { status: 400 });
+          }
           const { data: issue, error: issueError } = await (supabaseAdmin as any).from("booking_payment_issues")
             .select("status").eq("payment_intent_id", session.payment_intent).maybeSingle();
           if (issueError) throw issueError;
