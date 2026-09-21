@@ -8,7 +8,8 @@ export const Route = createFileRoute("/api/stripe-webhook")({
     handlers: {
       POST: async ({ request }) => {
         const signature = request.headers.get("stripe-signature");
-        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+        const webhookSecrets = [process.env.STRIPE_WEBHOOK_SECRET, process.env.STRIPE_PLATFORM_WEBHOOK_SECRET]
+          .filter((value): value is string => Boolean(value));
         const body = await readBodyWithLimit(request, MAX_STRIPE_EVENT_BYTES);
         if (body === null) {
           return new Response("Webhook body too large", { status: 413 });
@@ -16,8 +17,8 @@ export const Route = createFileRoute("/api/stripe-webhook")({
         const rawBody = new TextDecoder().decode(body);
         if (
           !signature ||
-          !webhookSecret ||
-          !(await isValidStripeSignature(rawBody, signature, webhookSecret))
+          webhookSecrets.length === 0 ||
+          !(await Promise.all(webhookSecrets.map(secret => isValidStripeSignature(rawBody, signature, secret)))).some(Boolean)
         ) {
           return new Response("Invalid Stripe signature", { status: 400 });
         }

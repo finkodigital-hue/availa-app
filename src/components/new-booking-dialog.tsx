@@ -576,17 +576,17 @@ function CustomerStep({
           <ChevronLeft className="h-3 w-3" /> Back to search
         </button>
         <div>
-          <Label>Name</Label>
-          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1.5 h-10" autoFocus />
+          <Label htmlFor="booking-customer-name">Name</Label>
+          <Input id="booking-customer-name" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1.5 h-10" autoFocus />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <Label>Email</Label>
-            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1.5 h-10" />
+            <Label htmlFor="booking-customer-email">Email</Label>
+            <Input id="booking-customer-email" autoComplete="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1.5 h-10" />
           </div>
           <div>
-            <Label>Phone</Label>
-            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1.5 h-10" />
+            <Label htmlFor="booking-customer-phone">Phone</Label>
+            <Input id="booking-customer-phone" type="tel" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1.5 h-10" />
           </div>
         </div>
         <Button className="w-full" disabled={!form.name} onClick={() => onCreate(form)}>Continue</Button>
@@ -599,7 +599,7 @@ function CustomerStep({
     <div className="space-y-3">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input autoFocus placeholder="Search by name, email or phone…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9 h-11" />
+        <Input autoFocus aria-label="Search customers by name, email or phone" placeholder="Search by name, email or phone…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9 h-11" />
       </div>
       <Button variant="outline" className="w-full justify-start" onClick={() => setCreating(true)}>
         <UserPlus className="h-4 w-4 mr-2" /> New customer
@@ -659,6 +659,7 @@ function ServiceStep({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             autoFocus
+            aria-label="Search services"
             placeholder="Search services…"
             value={q}
             onChange={(e) => setQ(e.target.value)}

@@ -499,10 +499,12 @@
 
 @media (max-width: 767px) {
   [data-calendar-page] { --calendar-gutter: 42px; padding: 1.2rem .9rem 1.5rem !important; }
-  [data-calendar-page] [data-page-header] { grid-template-columns: minmax(0, 1fr) auto !important; align-items: start !important; gap: .75rem !important; padding-bottom: 1.35rem !important; }
+  [data-calendar-page] [data-page-header] { grid-template-columns: minmax(0, 1fr) !important; align-items: start !important; gap: .75rem !important; padding-bottom: 1.35rem !important; }
   [data-calendar-page] [data-page-title] { font-size: 2.2rem !important; }
-  [data-calendar-page] [data-page-subtitle] { max-width: 14.5rem !important; }
-  [data-calendar-page] [data-page-header-action] { align-self: center !important; }
+  [data-calendar-page] [data-page-subtitle] { max-width: none !important; margin-top: .5rem !important; }
+  [data-calendar-page] [data-page-header-action] { align-self: stretch !important; width: 100%; }
+  [data-calendar-page] [data-page-header-action] > div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  [data-calendar-page] [data-page-header-action] button { width: 100% !important; min-width: 0; }
   [data-calendar-new-booking] { width: auto !important; min-width: 8.1rem; height: 2.78rem !important; padding-inline: .9rem !important; font-size: .76rem !important; }
   [data-calendar-stats] { grid-template-columns: repeat(5, minmax(140px, 1fr)) !important; overflow-x: auto; border-radius: .82rem !important; }
   [data-calendar-stat] { padding: .85rem !important; }

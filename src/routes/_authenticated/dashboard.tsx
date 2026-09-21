@@ -32,11 +32,16 @@ function Dashboard() {
   });
 
   const todayLabel = new Date().toLocaleDateString("en-GB", {
+    timeZone: data?.business.timezone || "Europe/London",
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+  const businessHour = Number(new Intl.DateTimeFormat("en-GB", {
+    timeZone: data?.business.timezone || "Europe/London", hour: "numeric", hourCycle: "h23",
+  }).format(new Date()));
+  const greeting = businessHour < 12 ? "Good morning" : businessHour < 18 ? "Good afternoon" : "Good evening";
 
   const checkIn = async () => {
     if (!data?.nextBooking) return;
@@ -65,7 +70,7 @@ function Dashboard() {
     <div className="workspace-dashboard mx-auto w-full max-w-[1280px] p-5 sm:p-8 md:p-10">
       <header>
         <h1 className="max-w-4xl font-sans text-[clamp(1.9rem,3vw,2.4rem)] font-semibold leading-tight tracking-tight">
-          Good morning{data?.business.name ? `, ${data.business.name}` : ""}
+          {greeting}{data?.business.name ? `, ${data.business.name}` : ""}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground sm:text-base">
           {todayLabel}

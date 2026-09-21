@@ -317,10 +317,11 @@ body:has([data-workspace-content])
     [data-page-header-action] {
       align-self: stretch;
     }
-    input:not([type="checkbox"]):not([type="radio"]),
+    input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="hidden"]):not([type="file"]),
     textarea,
-    select {
-      font-size: 1rem;
+    select,
+    button[role="combobox"] {
+      font-size: max(1rem, 16px);
     }
     [data-workspace-stat] {
       padding: 1rem;

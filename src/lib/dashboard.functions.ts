@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { businessDayRange } from "@/lib/business-day";
 
 export type DashboardBooking = {
   id: string;
@@ -31,6 +32,7 @@ type DashboardOverview = {
     address: string | null;
     phone: string | null;
     email: string | null;
+    timezone: string | null;
   };
   nextBooking: DashboardBooking | null;
   today: {
@@ -63,7 +65,7 @@ function firstRelationName(value: unknown) {
 async function ownedBusiness(context: any) {
   const { data, error } = await context.supabase
     .from("businesses")
-    .select("id, name, slug, currency, address, phone, email")
+    .select("id, name, slug, currency, address, phone, email, timezone")
     .eq("owner_id", context.userId)
     .maybeSingle();
   if (error) throw error;
@@ -78,10 +80,7 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
     // Keep dashboard reads scoped to the signed-in owner and enforced by RLS.
     // The authenticated client is created on the server by requireSupabaseAuth.
     const db = context.supabase as any;
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
+    const { start, end } = businessDayRange(new Date(), business.timezone || "Europe/London");
     const nowIso = new Date().toISOString();
 
     // Consultation records are deliberately restricted to the service role.
@@ -194,7 +193,8 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
       serviceName: firstRelationName(booking.services) || "Appointment",
       staffName: firstRelationName(booking.staff) || "Unassigned",
     }));
-    const upcoming = bookings.filter((booking) => new Date(booking.startsAt).getTime() >= Date.now());
+    const upcoming = bookings.filter((booking) =>
+      !["completed", "no_show"].includes(booking.status) && new Date(booking.endsAt).getTime() > Date.now());
     const attention: DashboardAttentionItem[] = [];
 
     if (consultationResult.data) {
