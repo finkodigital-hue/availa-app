@@ -44,3 +44,12 @@ First batch deployed and verified at revision af7de6756499eec73777cdb12406be03f7
 - Migration 07000 applied successfully to production: the authenticated customer reschedule path now enforces public availability and unchanged service duration/gaps. Direct customer edits still cannot bypass the dedicated reschedule path.
 - Failed refund attempts remain durably unresolved and are reported in the scheduled-job result/logs; they no longer abort other refunds or reminders. Pending/failed refunds are never marked successful. Manual provider handling/alert delivery and fairness for a backlog larger than three unresolved refunds remain launch gates.
 - Mobile improvements and UK-midnight dashboard date fix deployed at revision 5e67091102ba1e4321165341055c81f3b7be588a and verified in the signed-in production website at 390px.
+
+
+## Final evidence from this implementation pass
+
+- Portal/refund batch deployed: c4c2ff8, Cloudflare fe2d69cd-54ce-4e92-8750-282c7c26d79c. Production public-page/link/metadata audit passed all 116 targets after fixes.
+- Companies House directly verified in the browser on 22 September: BOOKZENVO LTD, SC902170, active, incorporated 9 September 2026; registered office Pinefield, Cannich, Beauly, Scotland, IV4 7LY. The legal-page address now follows that official wording. Source: https://find-and-update.company-information.service.gov.uk/company/SC902170 . First confirmation statement due 22 September 2027; first accounts due 9 June 2028.
+- Gitleaks v8.30.1, official Windows binary SHA256 d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e verified against release checksum, scanned all available Git refs: 500 commits, ~5.47 MB. Three matches: two historical public Supabase anon JWTs; one prose false positive in the recovery guide. No confirmed private credential found in this scan; this is not proof that all secrets are safe. Redacted report retained outside the repository. Source: https://github.com/gitleaks/gitleaks .
+- DNS read-only evidence: Cloudflare mail-routing MX and SPF present; Resend DKIM selector present; _dmarc.bookzenvo.com returns NXDOMAIN. This does not prove help@ routing or sender delivery. DMARC policy/monitoring and controlled inbox tests remain open; no DNS or mailbox changes made.
+- Public customer form checked at 320/430/768px. See the mobile review for evidence and limitations.
