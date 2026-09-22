@@ -52,7 +52,10 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         }
 
         const { reconcileFailedBookingPayments } = await import("@/lib/payment-reconciliation.server");
-        const bookingPaymentRecovery = await reconcileFailedBookingPayments();
+        const bookingPaymentRecovery = await reconcileFailedBookingPayments().catch(() => {
+          console.error("[booking-payment-recovery] Reconciliation unavailable; notification processing continues");
+          return { checked: 0, refunded: 0, failed: 1 };
+        });
 
         const { data: businesses, error: bizErr } = await (supabaseAdmin as any)
           .from("businesses")

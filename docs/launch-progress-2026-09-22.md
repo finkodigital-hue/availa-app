@@ -34,6 +34,13 @@ First batch deployed and verified at revision af7de6756499eec73777cdb12406be03f7
 
 ## Provider evidence and remaining gates
 
-- Sandbox Stripe currently has one enabled webhook endpoint at the Worker URL listening only for checkout.session.completed. Event configuration is being corrected; no live money has been charged.
+- Sandbox Stripe Connect endpoint now receives checkout completion and refund updates. A separate platform endpoint receives Studio checkout and subscription lifecycle events. Its signing secret is configured on Cloudflare. Signed ignored-event probe returned 200; invalid signature returned 400. This is wiring evidence, not a completed Stripe payment journey. No live money has been charged.
 - Official Stripe references checked: https://docs.stripe.com/api/checkout/sessions/create (checkout expiry limits), https://docs.stripe.com/billing/subscriptions/webhooks and https://docs.stripe.com/webhooks (subscription lifecycle/retry handling).
 - Mobile browser review, live delivery/provider setup, production backup/restore, historical identity review, legal/operator evidence and integrated sandbox flows remain open. No claim of an unhackable or fully launch-ready service.
+
+## Further verified fixes
+
+- 101 regression assertions now pass: access/export 21, booking/holds/customer portal 43, verified identity 7, Studio billing 13, business day boundaries 10, refund recovery 7. TypeScript and production build pass.
+- Migration 07000 applied successfully to production: the authenticated customer reschedule path now enforces public availability and unchanged service duration/gaps. Direct customer edits still cannot bypass the dedicated reschedule path.
+- Failed refund attempts remain durably unresolved and are reported in the scheduled-job result/logs; they no longer abort other refunds or reminders. Pending/failed refunds are never marked successful. Manual provider handling/alert delivery and fairness for a backlog larger than three unresolved refunds remain launch gates.
+- Mobile improvements and UK-midnight dashboard date fix deployed at revision 5e67091102ba1e4321165341055c81f3b7be588a and verified in the signed-in production website at 390px.

@@ -11,4 +11,4 @@ Scope: current production website in the signed-in in-app browser, 390 × 844 CS
 
 Exact screenshots are saved locally at `C:/bookzenvo/launch-audit-2026-09-21/mobile-review/`. The signed-in screenshots contain workspace information and should stay private.
 
-The fixes still require their post-deployment visual pass. Customer booking, settings, exports, alternate viewport sizes, keyboard/screen reader use and physical devices remain to be checked. Screenshot review alone does not establish accessibility compliance.
+Post-deployment visual verification passed at 390px: calendar header and actions fit, dashboard shows the correct next appointment after UK midnight, and customer fields expose labels with 16px text and a telephone input. Evidence: 07-calendar-after-390.jpg, 08-dashboard-after-390.jpg, 09-customer-fields-after-390.jpg. Customer booking, settings, exports, alternate viewport sizes, keyboard/screen reader use and physical devices remain to be checked. Screenshot review alone does not establish accessibility compliance.

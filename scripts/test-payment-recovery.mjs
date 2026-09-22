@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { reconcileFailedBookingPayments } from '../src/lib/payment-reconciliation.server.ts';
+let saved=[], calls=[];
+const issues=[{payment_intent_id:'pi_failed'},{payment_intent_id:'pi_good'}];
+const database={from(){return {select(){return this},in(){return this},not(){return this},lt(){return this},order(){return this},limit:async()=>({data:issues}),update(v){saved.push(v);return this},eq(){return this},then(resolve){resolve({error:null})}}},rpc:async(_,{p_payment_intent_id})=>({data:{payment_intent_id:p_payment_intent_id,business_id:'fictional',stripe_account_id:'acct_fictional'}})};
+const stripeFetch=async(url,options)=>{calls.push({url,options});if(options.body?.get('payment_intent')==='pi_failed')throw new Error('Fictional timeout');return Response.json(url.endsWith('/refunds')?{id:'re_fixture'}:{status:'succeeded'});};
+assert.deepEqual(await reconcileFailedBookingPayments({key:'fictional',database,stripeFetch}),{checked:2,refunded:1,failed:1});
+assert.equal(saved.at(-1).status,'refunded');
+assert.equal(calls.filter(x=>x.options.method==='POST').at(-1).options.headers['Idempotency-Key'],'unfulfilled-booking-pi_good');
+issues.splice(0,1);saved=[];
+assert.deepEqual(await reconcileFailedBookingPayments({key:'fictional',database,stripeFetch:async(url)=>Response.json(url.endsWith('/refunds')?{id:'re_pending'}:{status:'pending'})}),{checked:1,refunded:0,failed:0});
+assert.equal(saved.at(-1).status,undefined);
+saved=[];
+assert.deepEqual(await reconcileFailedBookingPayments({key:'fictional',database,stripeFetch:async(url)=>Response.json(url.endsWith('/refunds')?{id:'re_failed'}:{status:'failed'})}),{checked:1,refunded:0,failed:1});
+assert.equal(saved.at(-1).status,undefined);
+console.log('7 payment recovery regression checks passed (fictional provider/database).');

@@ -1,17 +1,20 @@
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-
 /** Resolve captured payments that could not create their reserved appointment. */
-export async function reconcileFailedBookingPayments() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return { checked: 0, refunded: 0 };
-  const db = supabaseAdmin as any;
+export async function reconcileFailedBookingPayments(dependencies?: {
+  key: string; database: any; stripeFetch: typeof fetch;
+}) {
+  const key = dependencies?.key ?? process.env.STRIPE_SECRET_KEY;
+  if (!key) return { checked: 0, refunded: 0, failed: 0 };
+  const db = dependencies?.database ?? (await import("@/integrations/supabase/client.server")).supabaseAdmin;
+  const stripeFetch = dependencies?.stripeFetch ?? fetch;
   const { data: issues, error } = await db.from("booking_payment_issues")
     .select("payment_intent_id").in("status", ["open", "refund_pending"])
     .not("hold_id", "is", null).lt("created_at", new Date(Date.now()-15*60000).toISOString())
     .order("created_at").limit(3);
   if (error) throw error;
   let refunded = 0;
+  let failed = 0;
   for (const issue of issues ?? []) {
+    try {
     const { data: claim, error: claimError } = await db.rpc("claim_booking_payment_refund", {
       p_payment_intent_id: issue.payment_intent_id,
     });
@@ -19,7 +22,7 @@ export async function reconcileFailedBookingPayments() {
     if (!claim) continue;
     const body = new URLSearchParams({ payment_intent: claim.payment_intent_id,
       "metadata[business_id]": claim.business_id, "metadata[resolution]": "unfulfilled_booking" });
-    const response = await fetch("https://api.stripe.com/v1/refunds", {
+    const response = await stripeFetch("https://api.stripe.com/v1/refunds", {
       method: "POST", body, signal: AbortSignal.timeout(15000),
       headers: { Authorization: `Bearer ${key}`, "Stripe-Account": claim.stripe_account_id,
         "Idempotency-Key": `unfulfilled-booking-${claim.payment_intent_id}`, "Content-Type": "application/x-www-form-urlencoded" },
@@ -27,7 +30,7 @@ export async function reconcileFailedBookingPayments() {
     const result = await response.json() as { id?: string; status?: string };
     if (!response.ok || !result.id) throw new Error("A booking payment refund needs another reconciliation attempt");
     // Re-fetch on each sweep: Stripe's idempotent POST response may still say pending.
-    const verified = await fetch(`https://api.stripe.com/v1/refunds/${encodeURIComponent(result.id)}`, {
+    const verified = await stripeFetch(`https://api.stripe.com/v1/refunds/${encodeURIComponent(result.id)}`, {
       headers: { Authorization: `Bearer ${key}`, "Stripe-Account": claim.stripe_account_id },
       signal: AbortSignal.timeout(15000),
     });
@@ -39,6 +42,15 @@ export async function reconcileFailedBookingPayments() {
     }).eq("payment_intent_id", claim.payment_intent_id).eq("status", "refund_pending");
     if (saveError) throw saveError;
     if (refund.status === "succeeded") refunded++;
+    if (["failed", "canceled"].includes(refund.status ?? "")) {
+      throw new Error("Booking refund requires manual provider review");
+    }
+    } catch {
+      // Keep the durable issue unresolved and allow other payments and the
+      // notification backstop to continue. Do not log payment/customer data.
+      failed++;
+      console.error("[booking-payment-recovery] An unresolved refund needs review; inspect booking_payment_issues");
+    }
   }
-  return { checked: issues?.length ?? 0, refunded };
+  return { checked: issues?.length ?? 0, refunded, failed };
 }
