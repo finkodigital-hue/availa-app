@@ -16,6 +16,7 @@ import {
 } from "@/lib/theme";
 import { sanitizePageBlocks } from "@/lib/page-block-security";
 import { captureScreenshot } from "./screenshot.server";
+import { consumeBusinessUsage } from "./usage-limits.server";
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const BUTTON_STYLES: ButtonStyle[] = ["solid", "outline", "soft"];
@@ -112,6 +113,7 @@ export async function suggestPageBlocks({
     );
   }
 
+  await consumeBusinessUsage(businessId, "ai");
   const currentBlocks = sanitizePageBlocks(blocks, businessId);
   const beforeUrl = buildPreviewUrl(siteOrigin, business.slug, currentBlocks);
   const beforeShot = await captureScreenshot(beforeUrl);

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Provider webhook payloads are untrusted and validated field-by-field. */
 import { createFileRoute } from "@tanstack/react-router";
+import { readBodyWithLimit } from "@/lib/request-limits";
 
 export const Route = createFileRoute("/api/resend-webhook")({
   server: {
@@ -7,7 +8,9 @@ export const Route = createFileRoute("/api/resend-webhook")({
       POST: async ({ request }) => {
         const secret = process.env.RESEND_WEBHOOK_SECRET;
         if (!secret) return new Response("Not configured", { status: 503 });
-        const body = await request.text();
+        const bytes = await readBodyWithLimit(request, 128 * 1024);
+        if (!bytes) return new Response("Too large", { status: 413 });
+        const body = new TextDecoder().decode(bytes);
         if (!(await validStandardWebhook(body, request.headers, secret)))
           return new Response("Invalid signature", { status: 400 });
         let event: any;
@@ -28,31 +31,18 @@ export const Route = createFileRoute("/api/resend-webhook")({
         if (!state) return Response.json({ received: true });
         const { supabaseAdmin } =
           await import("@/integrations/supabase/client.server");
-        const now = new Date().toISOString();
-        const values =
-          state === "delivered"
-            ? {
-                status: state,
-                delivered_at: now,
-                updated_at: now,
-                last_error: null,
-              }
-            : {
-                status: state,
-                failed_at: now,
-                updated_at: now,
-                last_error: String(event.data?.reason ?? event.type).slice(
-                  0,
-                  1000,
-                ),
-              };
-        const { error } = await (supabaseAdmin as any)
-          .from("notification_deliveries")
-          .update(values)
-          .eq("provider", "resend")
-          .eq("provider_message_id", providerId);
+        const { data: matched, error } = await (supabaseAdmin as any).rpc("record_notification_provider_status", {
+          p_provider: "resend", p_provider_id: providerId, p_status: state,
+        });
         if (error)
           return new Response("Could not update delivery", { status: 500 });
+        // A fast callback can arrive before the send response is persisted.
+        if (!matched) {
+          const { data: inFlight, error: lookupError } = await (supabaseAdmin as any).from("notification_deliveries")
+            .select("id").eq("channel", "email").eq("status", "sending")
+            .gte("updated_at", new Date(Date.now()-2*60_000).toISOString()).limit(1).maybeSingle();
+          if (lookupError || inFlight) return new Response("Delivery not recorded yet", { status: 503 });
+        }
         return Response.json({ received: true });
       },
     },
@@ -72,6 +62,7 @@ async function validStandardWebhook(
   if (
     !id ||
     !timestamp ||
+    !Number.isFinite(Number(timestamp)) ||
     Math.abs(Date.now() / 1000 - Number(timestamp)) > 300
   )
     return false;

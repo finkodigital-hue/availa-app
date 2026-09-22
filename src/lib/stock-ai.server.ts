@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { consumeBusinessUsage } from "./usage-limits.server";
 import { createClient } from "@supabase/supabase-js";
 import { requireVerifiedIdentity } from "@/lib/verified-identity.server";
 import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
@@ -78,6 +79,7 @@ export async function analyzeStockPhoto({
     throw new Error("AI stock scanning isn't configured yet. Please contact support.");
   }
 
+  await consumeBusinessUsage(businessId, "ai");
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const response = await client.messages.create({
     model: "claude-opus-4-8",

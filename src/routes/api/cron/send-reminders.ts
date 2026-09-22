@@ -9,6 +9,7 @@ import { sendEmail, EmailSendError } from "@/lib/resend.server";
 import { sendSms, SmsSendError } from "@/lib/sms.server";
 import { buildReminderSms } from "@/lib/sms/reminder-sms.server";
 import { runRetentionSweep } from "@/lib/retention-sweep.server";
+import { markBookingNotification } from "@/lib/notification-delivery.server";
 
 // Woken up every 15 minutes by a Supabase pg_cron + pg_net job (see
 // supabase/migrations/20260723150000_add_booking_reminders.sql). This route,
@@ -52,6 +53,10 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         }
 
         const { reconcileFailedBookingPayments } = await import("@/lib/payment-reconciliation.server");
+        const { error: leaseSweepError } = await (supabaseAdmin as any).rpc("sweep_notification_delivery_leases");
+        if (leaseSweepError) console.error("[notification-recovery] Delivery lease sweep failed");
+        const { error: usageCleanupError } = await (supabaseAdmin as any).rpc("prune_business_usage_counters");
+        if (usageCleanupError) console.error("[usage-protection] Usage counter cleanup failed");
         const bookingPaymentRecovery = await reconcileFailedBookingPayments().catch(() => {
           console.error("[booking-payment-recovery] Reconciliation unavailable; notification processing continues");
           return { checked: 0, refunded: 0, failed: 1 };
@@ -114,14 +119,6 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
               booking.customer_email || booking.customers?.email;
             if (!recipientEmail) continue;
 
-            const { data: claimedRow } = await (supabaseAdmin as any)
-              .from("bookings")
-              .update({ reminder_sent_at: new Date().toISOString() })
-              .eq("id", booking.id)
-              .is("reminder_sent_at", null)
-              .select("id")
-              .maybeSingle();
-            if (!claimedRow) continue; // already claimed by a concurrent/overlapping run
             claimed++;
 
             try {
@@ -168,6 +165,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 messageType: "booking_reminder",
                 idempotencyKey: `booking:${booking.id}:reminder:${booking.starts_at}`,
               });
+              await markBookingNotification(supabaseAdmin, booking.id, "reminder_sent_at", booking.starts_at);
               sent++;
             } catch (err) {
               failed++;
@@ -180,10 +178,6 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 booking.id,
                 message,
               );
-              await (supabaseAdmin as any)
-                .from("bookings")
-                .update({ reminder_sent_at: null })
-                .eq("id", booking.id);
               await (supabaseAdmin as any)
                 .from("reminder_send_failures")
                 .insert({ booking_id: booking.id, error: message });
@@ -236,6 +230,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                     .from("bookings")
                     .update({ sms_reminder_sent_at: new Date().toISOString() })
                     .eq("id", booking.id)
+                    .eq("starts_at", booking.starts_at)
                     .is("sms_reminder_sent_at", null);
                   smsSent++;
                 }
@@ -289,14 +284,6 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
               booking.customer_email || booking.customers?.email;
             if (!recipientEmail) continue;
 
-            const { data: claimedRow } = await (supabaseAdmin as any)
-              .from("bookings")
-              .update({ confirmation_sent_at: new Date().toISOString() })
-              .eq("id", booking.id)
-              .is("confirmation_sent_at", null)
-              .select("id")
-              .maybeSingle();
-            if (!claimedRow) continue; // already sent by the immediate path (or a concurrent sweep)
             confirmationsClaimed++;
 
             try {
@@ -323,6 +310,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 messageType: "booking_confirmation",
                 idempotencyKey: `booking:${booking.id}:confirmation:v1`,
               });
+              await markBookingNotification(supabaseAdmin, booking.id, "confirmation_sent_at");
               confirmationsSent++;
             } catch (err) {
               confirmationsFailed++;
@@ -335,10 +323,6 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 booking.id,
                 message,
               );
-              await (supabaseAdmin as any)
-                .from("bookings")
-                .update({ confirmation_sent_at: null })
-                .eq("id", booking.id);
               await (supabaseAdmin as any)
                 .from("reminder_send_failures")
                 .insert({
@@ -398,14 +382,6 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
               const recipientEmail =
                 booking.customer_email || booking.customers?.email;
               if (!recipientEmail) continue;
-              const { data: claim } = await (supabaseAdmin as any)
-                .from("bookings")
-                .update({ review_request_sent_at: new Date().toISOString() })
-                .eq("id", booking.id)
-                .is("review_request_sent_at", null)
-                .select("id")
-                .maybeSingle();
-              if (!claim) continue;
               reviewRequestsClaimed++;
               try {
                 const reviewToken = await mintBookingActionToken(
@@ -429,6 +405,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                   messageType: "review_request",
                   idempotencyKey: `booking:${booking.id}:review:v1`,
                 });
+                await markBookingNotification(supabaseAdmin, booking.id, "review_request_sent_at");
                 reviewRequestsSent++;
               } catch (err) {
                 reviewRequestsFailed++;
@@ -441,10 +418,6 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                   booking.id,
                   message,
                 );
-                await (supabaseAdmin as any)
-                  .from("bookings")
-                  .update({ review_request_sent_at: null })
-                  .eq("id", booking.id);
                 await (supabaseAdmin as any)
                   .from("reminder_send_failures")
                   .insert({

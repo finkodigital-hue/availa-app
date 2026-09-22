@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseTheme } from "@/lib/theme";
 import { sendEmail } from "@/lib/resend.server";
+import { markBookingNotification } from "@/lib/notification-delivery.server";
 import { buildAftercareEmail } from "@/lib/emails/aftercare-email.server";
 import { buildRebookingEmail } from "@/lib/emails/rebooking-email.server";
 
@@ -57,15 +58,6 @@ export async function runRetentionSweep(): Promise<RetentionStats> {
         const email = booking.customer_email || booking.customers?.email;
         const message = booking.services?.aftercare_message?.trim();
         if (!email || !message) continue;
-        const claimedAt = new Date().toISOString();
-        const { data: claim } = await (supabaseAdmin as any)
-          .from("bookings")
-          .update({ aftercare_sent_at: claimedAt })
-          .eq("id", booking.id)
-          .is("aftercare_sent_at", null)
-          .select("id")
-          .maybeSingle();
-        if (!claim) continue;
         try {
           const { subject, html } = buildAftercareEmail({
             theme: parseTheme(business.page_theme),
@@ -82,15 +74,11 @@ export async function runRetentionSweep(): Promise<RetentionStats> {
             messageType: "aftercare",
             idempotencyKey: `booking:${booking.id}:aftercare:v1`,
           });
+          await markBookingNotification(supabaseAdmin, booking.id, "aftercare_sent_at");
           stats.aftercareSent++;
         } catch (sendError) {
           stats.aftercareFailed++;
           console.error("[retention] aftercare failed", booking.id, sendError);
-          await (supabaseAdmin as any)
-            .from("bookings")
-            .update({ aftercare_sent_at: null })
-            .eq("id", booking.id)
-            .eq("aftercare_sent_at", claimedAt);
         }
       }
     }
@@ -155,15 +143,6 @@ export async function runRetentionSweep(): Promise<RetentionStats> {
         const token = consentByCustomer.get(booking.customer_id);
         if (!email || !token) continue;
 
-        const claimedAt = new Date().toISOString();
-        const { data: claim } = await (supabaseAdmin as any)
-          .from("bookings")
-          .update({ rebooking_reminder_sent_at: claimedAt })
-          .eq("id", booking.id)
-          .is("rebooking_reminder_sent_at", null)
-          .select("id")
-          .maybeSingle();
-        if (!claim) continue;
         processed++;
         try {
           const { subject, html } = buildRebookingEmail({
@@ -183,15 +162,11 @@ export async function runRetentionSweep(): Promise<RetentionStats> {
             messageType: "rebooking_reminder",
             idempotencyKey: `booking:${booking.id}:rebooking:v1`,
           });
+          await markBookingNotification(supabaseAdmin, booking.id, "rebooking_reminder_sent_at");
           stats.rebookingSent++;
         } catch (sendError) {
           stats.rebookingFailed++;
           console.error("[retention] rebooking failed", booking.id, sendError);
-          await (supabaseAdmin as any)
-            .from("bookings")
-            .update({ rebooking_reminder_sent_at: null })
-            .eq("id", booking.id)
-            .eq("rebooking_reminder_sent_at", claimedAt);
         }
       }
     }

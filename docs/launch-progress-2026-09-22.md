@@ -53,3 +53,11 @@ First batch deployed and verified at revision af7de6756499eec73777cdb12406be03f7
 - Gitleaks v8.30.1, official Windows binary SHA256 d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e verified against release checksum, scanned all available Git refs: 500 commits, ~5.47 MB. Three matches: two historical public Supabase anon JWTs; one prose false positive in the recovery guide. No confirmed private credential found in this scan; this is not proof that all secrets are safe. Redacted report retained outside the repository. Source: https://github.com/gitleaks/gitleaks .
 - DNS read-only evidence: Cloudflare mail-routing MX and SPF present; Resend DKIM selector present; _dmarc.bookzenvo.com returns NXDOMAIN. This does not prove help@ routing or sender delivery. DMARC policy/monitoring and controlled inbox tests remain open; no DNS or mailbox changes made.
 - Public customer form checked at 320/430/768px. See the mobile review for evidence and limitations.
+
+## Reliability and usage follow-up — 23 September
+
+- Replaced notification pre-send booking markers with database leases, immutable email retry requests, bounded backoff and manual review for ambiguous SMS. Signed callbacks tolerate delayed events and preserve confirmed delivery. Private retry payloads have restricted access and scheduled expiry.
+- Added atomic per-business AI/SMS safety ceilings and fail-closed server checks. Refund recovery now rotates through a backlog and reuses recorded refund IDs; failed refunds require review.
+- Added delivery/refund issue counts to the existing authenticated monitoring endpoint and review status to notification settings. A historical delivery needs provider review; no blind resend performed.
+- All 150 isolated regression assertions, type checks, production compilation and the 58-table security boundary check pass. Three new migrations applied successfully; production grants/RLS verified read-only. Full provider journeys, alert receipt, independent security review and backup restoration remain open.
+- Detailed procedures and limitations: [notification and usage operations](notification-and-usage-operations.md).

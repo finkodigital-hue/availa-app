@@ -48,7 +48,7 @@ export const getNotificationCenter = createServerFn({ method: "GET" })
       (supabaseAdmin as any)
         .from("notification_deliveries")
         .select(
-          "id,channel,message_type,recipient_masked,subject,status,attempt_count,last_error,created_at,sent_at,delivered_at",
+          "id,channel,message_type,recipient_masked,subject,status,attempt_count,last_error,created_at,sent_at,delivered_at,manual_review,next_attempt_at",
         )
         .eq("business_id", businessId)
         .order("created_at", { ascending: false })

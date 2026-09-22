@@ -4,15 +4,16 @@ import { parseTheme } from "@/lib/theme";
 import { buildConfirmationEmail } from "@/lib/emails/confirmation-email.server";
 import { sendEmail, EmailSendError } from "@/lib/resend.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
+import { markBookingNotification } from "@/lib/notification-delivery.server";
 
 // Called immediately after a booking is created (both the public booking
 // page and the owner's walk-in dialog) so the confirmation email goes out
 // on the happy path without waiting for the 15-min sweep — see
 // /api/cron/send-reminders for the backstop that catches whatever this
 // call misses (tab closed before the request finished, transient Resend
-// outage, etc). Both paths share the same claim (confirmation_sent_at IS
-// NULL), so whichever runs first wins and the other is a no-op — no
-// double-send whether this fires once, twice, or not at all.
+// outage, etc). Both paths use the same durable delivery claim and immutable
+// provider request. confirmation_sent_at is written only after acceptance or
+// explicit suppression; an interrupted request remains eligible for recovery.
 //
 // Deliberately unauthenticated (the public booking flow has no session at
 // this point) but safe to call with any booking id: it's idempotent, and
@@ -56,15 +57,6 @@ export const Route = createFileRoute("/api/bookings/send-confirmation")({
           return new Response(null, { status: 204 });
         }
 
-        const { data: claimed } = await (supabaseAdmin as any)
-          .from("bookings")
-          .update({ confirmation_sent_at: new Date().toISOString() })
-          .eq("id", bookingId)
-          .is("confirmation_sent_at", null)
-          .select("id")
-          .maybeSingle();
-        if (!claimed) return new Response(null, { status: 204 }); // already sent (or in flight)
-
         try {
           const business = booking.businesses;
           const { subject, html, attachments } = buildConfirmationEmail({
@@ -82,10 +74,10 @@ export const Route = createFileRoute("/api/bookings/send-confirmation")({
           });
           await sendEmail({ businessId: booking.business_id, to: recipientEmail, subject, html, attachments,
             messageType: "booking_confirmation", idempotencyKey: `booking:${booking.id}:confirmation:v1` });
+          await markBookingNotification(supabaseAdmin, bookingId, "confirmation_sent_at");
         } catch (err) {
           const message = err instanceof EmailSendError ? err.message : String((err as Error)?.message ?? err);
           console.error("[send-confirmation] send failed", bookingId, message);
-          await (supabaseAdmin as any).from("bookings").update({ confirmation_sent_at: null }).eq("id", bookingId);
           await (supabaseAdmin as any).from("reminder_send_failures").insert({ booking_id: bookingId, error: `confirmation: ${message}` });
         }
 

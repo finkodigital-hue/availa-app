@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Server-only delivery tables are absent from browser-generated types. */
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { trustedAppOrigin } from "@/lib/app-origin.server";
+import { readBodyWithLimit } from "@/lib/request-limits";
 
 function constantTimeEqual(a: string, b: string) {
   if (a.length !== b.length) return false;
@@ -45,32 +47,29 @@ export const Route = createFileRoute("/api/twilio-sms-webhook")({
         const signature = request.headers.get("x-twilio-signature") ?? "";
         if (!token || !signature)
           return new Response("Unauthorized", { status: 401 });
-        const raw = await request.text();
-        if (raw.length > 32_768)
-          return new Response("Too large", { status: 413 });
+        const bytes = await readBodyWithLimit(request, 32_768);
+        if (!bytes) return new Response("Too large", { status: 413 });
+        const raw = new TextDecoder().decode(bytes);
         const form = new URLSearchParams(raw);
-        const publicUrl = `${process.env.APP_URL?.replace(/\/$/, "") ?? ""}/api/twilio-sms-webhook`;
+        const requestUrl = new URL(request.url);
+        const publicUrl = `${trustedAppOrigin()}/api/twilio-sms-webhook${requestUrl.search}`;
         if (!(await validTwilioSignature(publicUrl, form, signature, token)))
           return new Response("Unauthorized", { status: 401 });
         const messageId = form.get("MessageSid");
+        if (form.get("AccountSid") !== process.env.TWILIO_ACCOUNT_SID) return new Response("Unauthorized", { status: 401 });
         const providerStatus = form.get("MessageStatus") ?? "";
         if (!messageId) return new Response("Bad request", { status: 400 });
         const delivered = providerStatus === "delivered";
         const failed = ["failed", "undelivered"].includes(providerStatus);
-        if (delivered || failed) {
-          await (supabaseAdmin as any)
-            .from("notification_deliveries")
-            .update({
-              status: delivered ? "delivered" : "failed",
-              delivered_at: delivered ? new Date().toISOString() : null,
-              failed_at: failed ? new Date().toISOString() : null,
-              last_error: failed
-                ? `Twilio delivery status: ${providerStatus}${form.get("ErrorCode") ? ` (${form.get("ErrorCode")})` : ""}`
-                : null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("provider", "twilio")
-            .eq("provider_message_id", messageId);
+        if (delivered || failed || ["queued", "sending", "sent", "accepted"].includes(providerStatus)) {
+          const deliveryId = requestUrl.searchParams.get("delivery_id");
+          if (deliveryId && !/^[0-9a-f-]{36}$/i.test(deliveryId)) return new Response("Bad request", { status: 400 });
+          const { error } = await (supabaseAdmin as any).rpc("record_notification_provider_status", {
+            p_provider: "twilio", p_provider_id: messageId,
+            p_status: delivered ? "delivered" : failed ? "failed" : "sent",
+            p_delivery_id: deliveryId,
+          });
+          if (error) return new Response("Could not record delivery", { status: 500 });
         }
         return new Response(null, { status: 204 });
       },

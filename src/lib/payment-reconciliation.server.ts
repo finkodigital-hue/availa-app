@@ -8,8 +8,9 @@ export async function reconcileFailedBookingPayments(dependencies?: {
   const stripeFetch = dependencies?.stripeFetch ?? fetch;
   const { data: issues, error } = await db.from("booking_payment_issues")
     .select("payment_intent_id").in("status", ["open", "refund_pending"])
+    .eq("manual_review", false).lte("next_attempt_at", new Date().toISOString())
     .not("hold_id", "is", null).lt("created_at", new Date(Date.now()-15*60000).toISOString())
-    .order("created_at").limit(3);
+    .order("last_checked_at", { nullsFirst: true }).order("created_at").limit(3);
   if (error) throw error;
   let refunded = 0;
   let failed = 0;
@@ -22,6 +23,8 @@ export async function reconcileFailedBookingPayments(dependencies?: {
     if (!claim) continue;
     const body = new URLSearchParams({ payment_intent: claim.payment_intent_id,
       "metadata[business_id]": claim.business_id, "metadata[resolution]": "unfulfilled_booking" });
+    let refundId = claim.refund_id as string | undefined;
+    if (!refundId) {
     const response = await stripeFetch("https://api.stripe.com/v1/refunds", {
       method: "POST", body, signal: AbortSignal.timeout(15000),
       headers: { Authorization: `Bearer ${key}`, "Stripe-Account": claim.stripe_account_id,
@@ -29,15 +32,18 @@ export async function reconcileFailedBookingPayments(dependencies?: {
     });
     const result = await response.json() as { id?: string; status?: string };
     if (!response.ok || !result.id) throw new Error("A booking payment refund needs another reconciliation attempt");
+    refundId = result.id;
+    }
     // Re-fetch on each sweep: Stripe's idempotent POST response may still say pending.
-    const verified = await stripeFetch(`https://api.stripe.com/v1/refunds/${encodeURIComponent(result.id)}`, {
+    const verified = await stripeFetch(`https://api.stripe.com/v1/refunds/${encodeURIComponent(refundId)}`, {
       headers: { Authorization: `Bearer ${key}`, "Stripe-Account": claim.stripe_account_id },
       signal: AbortSignal.timeout(15000),
     });
     if (!verified.ok) throw new Error("Could not verify booking refund status");
     const refund = await verified.json() as { status?: string };
     const { error: saveError } = await db.from("booking_payment_issues").update({
-      refund_id: result.id,
+      refund_id: refundId,
+      manual_review: ["failed", "canceled"].includes(refund.status ?? ""),
       ...(refund.status === "succeeded" ? { status: "refunded", resolved_at: new Date().toISOString() } : {}),
     }).eq("payment_intent_id", claim.payment_intent_id).eq("status", "refund_pending");
     if (saveError) throw saveError;

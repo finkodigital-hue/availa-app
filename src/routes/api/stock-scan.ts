@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { UsageLimitError, usageLimitResponse } from "@/lib/usage-limits.server";
 import { analyzeStockPhoto, StockScanError, StockScanPlanError } from "@/lib/stock-ai.server";
 import { readBodyWithLimit } from "@/lib/request-limits";
 
@@ -67,6 +68,7 @@ export const Route = createFileRoute("/api/stock-scan")({
           });
           return Response.json(result);
         } catch (error) {
+          if (error instanceof UsageLimitError) return usageLimitResponse(error);
           if (error instanceof StockScanPlanError) {
             return new Response(error.message, { status: 402 });
           }

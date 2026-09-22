@@ -37,7 +37,16 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
         }
 
         const observed = count ?? 0;
-        const healthy = observed < DEFAULT_THRESHOLD;
+        const db = supabaseAdmin as any;
+        const [deliveryIssues, paymentIssues] = await Promise.all([
+          db.from("notification_deliveries").select("id", { count: "exact", head: true }).eq("manual_review", true),
+          db.from("booking_payment_issues").select("payment_intent_id", { count: "exact", head: true })
+            .in("status", ["open", "refund_pending"]).lt("created_at", new Date(Date.now()-30*60_000).toISOString()),
+        ]);
+        if (deliveryIssues.error || paymentIssues.error) return Response.json({ status: "error" }, { status: 503, headers: { "cache-control": "no-store" } });
+        const unresolvedDeliveries = deliveryIssues.count ?? 0;
+        const unresolvedPayments = paymentIssues.count ?? 0;
+        const healthy = observed < DEFAULT_THRESHOLD && !unresolvedDeliveries && !unresolvedPayments;
         return Response.json(
           {
             status: healthy ? "ok" : "alert",
@@ -45,6 +54,8 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
             windowMinutes: DEFAULT_WINDOW_MINUTES,
             threshold: DEFAULT_THRESHOLD,
             count: observed,
+            unresolvedDeliveries,
+            unresolvedPayments,
           },
           {
             status: healthy ? 200 : 503,

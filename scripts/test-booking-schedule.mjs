@@ -75,6 +75,7 @@ create table customers(id uuid primary key default gen_random_uuid(),business_id
 create table payments(business_id uuid,booking_id uuid,stripe_payment_intent_id text,type text,status text,amount_cents int,currency text,customer_name text,customer_email text,description text);
 `);
 await db.exec(read('20260922006000_checkout_slot_holds.sql'));
+await db.exec(read('20260923003000_payment_recovery_backoff.sql'));
 const reserve=async(time,key)=> (await db.query(`select reserve_booking_checkout('${id(1)}','${id(2)}','${id(3)}',${at(time)},'${key.repeat(64)}','${'a'.repeat(64)}') as hold`)).rows[0].hold;
 const hold=await reserve('10:00','b');checks++;
 assert.equal((await reserve('10:00','b')).id,hold.id);checks++;
@@ -89,6 +90,9 @@ await assert.rejects(fulfill(hold,'pi_another'),/mismatch/);checks++;
 const abandoned=await reserve('15:00','d');
 await db.exec(`insert into booking_payment_issues(payment_intent_id,business_id,stripe_account_id,hold_id,reason,created_at) values('pi_failed','${id(1)}','acct_fictional','${abandoned.id}','fixture',now()-interval '20 minutes')`);
 assert.ok((await db.query(`select claim_booking_payment_refund('pi_failed') as claim`)).rows[0].claim);checks++;
+assert.equal((await db.query(`select claim_booking_payment_refund('pi_failed') as claim`)).rows[0].claim,null);checks++;
+await db.exec(`update booking_payment_issues set next_attempt_at=now()-interval '1 second',manual_review=true where payment_intent_id='pi_failed'`);
+assert.equal((await db.query(`select claim_booking_payment_refund('pi_failed') as claim`)).rows[0].claim,null);checks++;
 await assert.rejects(fulfill(abandoned,'pi_failed'),/refunded/);checks++;
 await db.exec(`insert into services(id,business_id,active,duration_minutes) values('${id(22)}','${id(100)}',true,30)`);
 await fail(`insert into bookings(business_id,service_id,staff_id,starts_at,ends_at) values('${id(1)}','${id(22)}','${id(3)}',${at('16:00')},${at('16:30')})`,/same workspace/);

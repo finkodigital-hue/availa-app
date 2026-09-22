@@ -1,6 +1,7 @@
 // Signed, single-use, expiring tokens for the Confirm/Cancel/Reschedule
 // links in reminder/confirmation emails. The raw token only ever exists in
-// the emailed URL — we store its SHA-256 hash in booking_action_tokens and
+// the emailed URL and the private retry snapshot (deleted after sending or
+// within 24 hours) — we store its SHA-256 hash in booking_action_tokens and
 // look tokens up by hash, so a leaked/tampered URL can't be reverse-engineered
 // into a valid one, and the booking_id is never a client-supplied URL param
 // (it's resolved server-side from the token row), so there's no way to point

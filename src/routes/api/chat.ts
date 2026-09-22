@@ -3,6 +3,7 @@ import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { createAiProvider } from "@/lib/ai-provider.server";
 import { buildAssistantContext } from "@/lib/assistant-context.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
+import { consumeBusinessUsage, UsageLimitError, usageLimitResponse } from "@/lib/usage-limits.server";
 
 const MAX_CHAT_BODY_BYTES = 120 * 1024;
 const MAX_CHAT_MESSAGES = 40;
@@ -51,6 +52,7 @@ export const Route = createFileRoute("/api/chat")({
             );
           }
 
+          await consumeBusinessUsage(business.id, "ai");
           const provider = createAiProvider(key);
           const system = `You are the in-app AI business assistant for "${business.name}", a service booking business using this platform.
 Be concise, warm, and actionable. Use markdown (short headings, bullets, bold). Always ground answers in the LIVE DATA below — do not invent bookings, customers, or numbers. When asked to draft an email, return a complete email with a subject line and body that the owner can copy.
@@ -64,12 +66,14 @@ ${summary}`;
             // image input, no strict output schema), so the cheapest current
             // Claude model is the right cost/latency tradeoff here.
             model: provider("claude-haiku-4-5-20251001"),
+            maxOutputTokens: 2048,
             system,
             messages: await convertToModelMessages(body.messages as UIMessage[]),
           });
 
           return result.toUIMessageStreamResponse({ originalMessages: body.messages });
         } catch (err) {
+          if (err instanceof UsageLimitError) return usageLimitResponse(err);
           const msg = err instanceof Error ? err.message : "Server error";
           console.error("[api/chat] request failed", err);
           const status = msg === "Unauthorized" ? 401 : 500;

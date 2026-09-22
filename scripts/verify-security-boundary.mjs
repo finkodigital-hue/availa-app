@@ -172,7 +172,9 @@ assert(
 );
 assert(
   smsWebhook.includes("validTwilioSignature") &&
-    smsWebhook.includes('provider_message_id", messageId'),
+    smsWebhook.includes('rpc("record_notification_provider_status"') &&
+    smsWebhook.includes('p_provider_id: messageId') &&
+    smsWebhook.includes('form.get("AccountSid") !== process.env.TWILIO_ACCOUNT_SID'),
   "Twilio delivery callbacks must be authenticated before updating delivery state.",
 );
 

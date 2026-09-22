@@ -134,9 +134,11 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
                   {item.recipient_masked} ·{" "}
                   {new Date(item.created_at).toLocaleString()}
                 </div>
+                {item.manual_review && <p className="mt-1 text-xs text-destructive">Delivery needs review. Contact support before sending again.</p>}
+                {!item.manual_review && item.next_attempt_at && <p className="mt-1 text-xs text-muted-foreground">A retry is scheduled.</p>}
               </div>
               <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs capitalize">
-                {item.status}
+                {item.manual_review ? "Needs review" : item.status}
               </span>
             </div>
           ))}

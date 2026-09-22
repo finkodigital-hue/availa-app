@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { UsageLimitError, usageLimitResponse } from "@/lib/usage-limits.server";
 import { suggestPageBlocks, PageAiError, PlanRequiredError } from "@/lib/page-ai.server";
 import { parseTheme } from "@/lib/theme";
 import { readJsonWithLimit } from "@/lib/request-limits";
@@ -62,6 +63,7 @@ export const Route = createFileRoute("/api/page-ai-suggest")({
 
           return Response.json(result);
         } catch (err) {
+          if (err instanceof UsageLimitError) return usageLimitResponse(err);
           if (err instanceof PlanRequiredError) {
             return new Response(err.message, { status: 402 });
           }
