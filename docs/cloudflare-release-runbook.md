@@ -22,6 +22,8 @@ This is the fallback when a GitHub-triggered Cloudflare build is delayed or fail
 
 ## Preferred release path
 
+Use npm and the committed `package-lock.json` for website dependencies. Cloudflare's build command is `npm ci && npm run build`, matching the locked installation used by GitHub checks. Do not add a second root package-manager lockfile: a stale `bun.lock` previously caused Cloudflare's automatic dependency installation to fail before tests ran.
+
 Push/merge to `main` and let Cloudflare's Git integration deploy it. In the Cloudflare Workers dashboard, confirm the newest deployment is based on the same short commit shown by `git log -1 --oneline`.
 
 ## Manual fallback
