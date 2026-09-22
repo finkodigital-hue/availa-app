@@ -51,6 +51,7 @@ export const getNotificationCenter = createServerFn({ method: "GET" })
           "id,channel,message_type,recipient_masked,subject,status,attempt_count,last_error,created_at,sent_at,delivered_at,manual_review,next_attempt_at",
         )
         .eq("business_id", businessId)
+        .order("manual_review", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(30),
       (supabaseAdmin as any)

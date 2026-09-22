@@ -120,7 +120,8 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
         ))}
       </div>
       <div>
-        <h3 className="text-sm font-semibold">Recent message delivery</h3>
+        <h3 className="text-sm font-semibold">Message delivery</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Messages needing review appear first, followed by recent activity.</p>
         <div className="mt-2 divide-y rounded-2xl border bg-card">
           {(query.data?.deliveries ?? []).slice(0, 20).map((item: any) => (
             <div

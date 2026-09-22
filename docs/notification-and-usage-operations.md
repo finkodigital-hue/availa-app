@@ -19,6 +19,8 @@ When a delivery says **Needs review**:
 
 Legacy unfinished submissions have no immutable snapshot and are deliberately placed in review. Earlier booking sent markers with no delivery evidence are not retroactively certified by this change. Booking eligibility windows still apply; an expired reminder is not sent late simply to drain a retry record.
 
+Owner delivery history prioritises review records before recent activity, so an old unresolved item cannot be buried by newer messages. During the live review, the public Pasha Hair page explicitly described a fictional demonstration salon but both outbound suppression flags were false. Both flags were enabled using a narrowly scoped update requiring that slug and the fictional-demo description. Keep them enabled for demonstrations; enabling real recipient delivery requires a deliberate approved pilot setup. Historical provider submissions are not erased or assumed successfully delivered.
+
 ## Protective usage ceilings
 
 The shared server-side counters are per business and category, with UTC calendar periods:
