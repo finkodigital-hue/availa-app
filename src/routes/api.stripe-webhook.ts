@@ -183,20 +183,41 @@ export const Route = createFileRoute("/api/stripe-webhook")({
                 status: 400,
               });
             }
-            const { error } = await (supabaseAdmin as any).rpc(
-              "fulfill_stripe_balance_payment",
-              {
+            if (metadata.balance_attempt_id) {
+              const { data: attempt, error: attemptError } = await (supabaseAdmin as any)
+                .from("balance_checkout_attempts").select("id").eq("id", metadata.balance_attempt_id)
+                .eq("business_id", metadata.business_id).eq("booking_id", metadata.booking_id)
+                .eq("stripe_account_id", event.account).maybeSingle();
+              if (attemptError) throw attemptError;
+              if (!attempt) return new Response("Balance checkout workspace mismatch", { status: 400 });
+            }
+            const { error } = metadata.balance_attempt_id
+              ? await (supabaseAdmin as any).rpc("fulfill_balance_checkout", {
+                p_attempt_id: metadata.balance_attempt_id, p_session_id: session.id,
+                p_payment_intent_id: session.payment_intent, p_amount_cents: session.amount_total, p_currency: session.currency,
+              })
+              : await (supabaseAdmin as any).rpc("fulfill_stripe_balance_payment", {
                 p_booking_id: metadata.booking_id,
                 p_business_id: metadata.business_id,
                 p_amount_cents: session.amount_total,
                 p_currency: session.currency,
                 p_stripe_payment_intent_id: session.payment_intent,
                 p_stripe_charge_id: null,
-              },
-            );
+              });
             if (error) throw error;
+            const { error: resolveError } = await (supabaseAdmin as any).from("booking_payment_issues")
+              .update({ status: "resolved", resolved_at: new Date().toISOString() })
+              .eq("payment_intent_id", session.payment_intent).eq("status", "open");
+            if (resolveError) throw resolveError;
           } catch (error) {
-            console.error("Stripe balance payment fulfilment failed", error);
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { error: issueError } = await (supabaseAdmin as any).from("booking_payment_issues").upsert({
+              payment_intent_id: session.payment_intent, business_id: metadata.business_id,
+              stripe_account_id: event.account, hold_id: null, manual_review: true,
+              reason: "Balance payment was received but not reconciled; verify the booking and Stripe before another charge",
+            }, { onConflict: "payment_intent_id", ignoreDuplicates: true });
+            if (issueError) console.error("Could not record the balance payment review");
+            console.error("Stripe balance payment fulfilment requires review");
             return new Response("Could not fulfil balance payment", {
               status: 500,
             });
@@ -343,6 +364,7 @@ async function isValidStripeSignature(
     .filter(Boolean) as string[];
   if (
     !timestamp ||
+    !Number.isFinite(Number(timestamp)) ||
     signatures.length === 0 ||
     Math.abs(Date.now() / 1000 - Number(timestamp)) > 300
   )

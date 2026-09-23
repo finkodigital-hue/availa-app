@@ -44,7 +44,6 @@ import {
 } from "@/lib/format";
 import {
   startBalanceCheckout,
-  takeSavedBalancePayment,
 } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { BookingConsultationStatus } from "@/components/booking-consultation-status";
@@ -102,23 +101,19 @@ function BookingsPage() {
     if (!selected) return;
     try {
       const headers = await getServerFnAuthHeaders();
-      const savedCardPayment = await takeSavedBalancePayment({
+      const result = await startBalanceCheckout({
         data: { bookingId: selected.id },
         headers,
       });
-      if (savedCardPayment.charged) {
-        toast.success("The saved card was charged successfully.");
+      if ("paid" in result) {
+        toast.success("The balance payment is confirmed.");
         setSelected(null);
         qc.invalidateQueries({ queryKey: ["bookings-list", bid] });
         return;
       }
-      const { checkoutUrl } = await startBalanceCheckout({
-        data: { bookingId: selected.id },
-        headers,
-      });
-      window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+      window.location.assign(result.checkoutUrl);
       toast.message(
-        "The card needs approval or isn't saved yet, so Stripe Checkout opened in a new tab.",
+        "Opening Stripe Checkout for the customer to approve the payment.",
       );
     } catch (error: any) {
       toast.error(error.message ?? "Could not start the balance payment.");

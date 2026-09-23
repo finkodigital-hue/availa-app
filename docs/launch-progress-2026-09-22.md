@@ -61,3 +61,10 @@ First batch deployed and verified at revision af7de6756499eec73777cdb12406be03f7
 - Added delivery/refund issue counts to the existing authenticated monitoring endpoint and review status to notification settings. A historical delivery needs provider review; no blind resend performed.
 - All 150 isolated regression assertions, type checks, production compilation and the 58-table security boundary check pass. Three new migrations applied successfully; production grants/RLS verified read-only. Full provider journeys, alert receipt, independent security review and backup restoration remain open.
 - Detailed procedures and limitations: [notification and usage operations](notification-and-usage-operations.md).
+
+## Balance payment safety — 23 September
+
+- Removed automatic saved-card balance charging. Customers approve the remaining balance through Stripe Checkout; stale clients cannot initiate the old off-session charge.
+- Added private, immutable checkout attempts, stable provider idempotency, fresh session retrieval, payment identity/currency validation and manual review for uncertain attempts. Repeated completed payments reconcile without adding another ledger charge.
+- All 200 isolated regression assertions, TypeScript, production build and the 59-table security boundary check pass. Migration 20260923004000 applied successfully to production. No customer charge or message was initiated.
+- Integrated sandbox payment/SCA journeys, legacy payment reconciliation and production restore evidence remain open. See [balance payment safety](balance-payment-safety.md) for scope and limitations.

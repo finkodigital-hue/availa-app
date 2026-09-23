@@ -31,7 +31,7 @@ import {
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { AddTimeOffDialog } from "@/components/time-off-editor";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { startBalanceCheckout, takeSavedBalancePayment } from "@/lib/stripe-connect.functions";
+import { startBalanceCheckout } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { BookingConsultationStatus } from "@/components/booking-consultation-status";
 import { fmtMoney as formatMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
@@ -89,16 +89,15 @@ function CalendarPage() {
     if (!selected) return;
     try {
       const headers = await getServerFnAuthHeaders();
-      const savedCardPayment = await takeSavedBalancePayment({ data: { bookingId: selected.id }, headers });
-      if (savedCardPayment.charged) {
-        toast.success("The saved card was charged successfully.");
+      const result = await startBalanceCheckout({ data: { bookingId: selected.id }, headers });
+      if ("paid" in result) {
+        toast.success("The balance payment is confirmed.");
         setSelected(null);
         qc.invalidateQueries({ queryKey: ["calendar"] });
         return;
       }
-      const { checkoutUrl } = await startBalanceCheckout({ data: { bookingId: selected.id }, headers });
-      window.open(checkoutUrl, "_blank", "noopener,noreferrer");
-      toast.message("The card needs approval or isn't saved yet, so Stripe Checkout opened in a new tab.");
+      window.location.assign(result.checkoutUrl);
+      toast.message("Opening Stripe Checkout for the customer to approve the payment.");
     } catch (error: any) {
       toast.error(error.message ?? "Could not start the balance payment.");
     }
