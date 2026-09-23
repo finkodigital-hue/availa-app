@@ -92,7 +92,10 @@ export function NewBookingDialog({
       setDepositCents(0); setPaymentStatus("unpaid");
       return;
     }
-    const baseDate = prefill?.isoTime ? new Date(prefill.isoTime) : prefill?.date ? new Date(prefill.date) : null;
+    let cancelled = false;
+    setCustomer(null); setNewCust(null); setService(null); setStaff(null);
+    setTime(null); setNotes(""); setDepositCents(0); setPaymentStatus("unpaid");
+    const baseDate = prefill?.isoTime ? new Date(prefill.isoTime) : prefill?.date ? new Date(prefill.date) : new Date();
     if (baseDate) { const d = new Date(baseDate); d.setHours(0, 0, 0, 0); setDate(d); }
     if (prefill?.isoTime) setTime(prefill.isoTime);
 
@@ -103,21 +106,31 @@ export function NewBookingDialog({
     }
     setLoadingPrefill(true);
     (async () => {
-      const [staffRes, svcRes, custRes] = await Promise.all([
-        prefill?.staffId ? supabase.from("staff").select("id, name, business_id").eq("id", prefill.staffId).maybeSingle() : Promise.resolve({ data: null } as any),
-        prefill?.serviceId ? supabase.from("services").select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color, gap_min, active_after_min").eq("id", prefill.serviceId).maybeSingle() : Promise.resolve({ data: null } as any),
-        prefill?.customerId ? supabase.from("customers").select("id, name, email, phone").eq("id", prefill.customerId).maybeSingle() : Promise.resolve({ data: null } as any),
+      const staffRes = prefill?.staffId ? await supabase.from("staff").select("id, name, business_id").eq("id", prefill.staffId).eq("active", true).maybeSingle() : { data: null };
+      const targetBusinessId = staffRes.data?.business_id ?? businessId;
+      const [svcRes, custRes] = await Promise.all([
+        prefill?.serviceId ? supabase.from("services").select("id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, color, gap_min, active_after_min").eq("id", prefill.serviceId).eq("business_id", targetBusinessId).eq("active", true).maybeSingle() : Promise.resolve({ data: null }),
+        prefill?.customerId && targetBusinessId === businessId ? supabase.from("customers").select("id, name, email, phone").eq("id", prefill.customerId).eq("business_id", businessId).maybeSingle() : Promise.resolve({ data: null }),
       ]);
-      const st = staffRes?.data ? { id: staffRes.data.id, name: staffRes.data.name, business_id: staffRes.data.business_id } : null;
-      const sv = svcRes?.data as Service | null;
+      if (cancelled) return;
+      let st = staffRes?.data ? { id: staffRes.data.id, name: staffRes.data.name, business_id: staffRes.data.business_id } : null;
+      let sv = svcRes?.data as Service | null;
       const cu = custRes?.data as Customer | null;
+      if (st && sv) {
+        const links = await supabase.from("service_staff").select("staff_id").eq("service_id", sv.id);
+        if (links.error || (links.data?.length && !links.data.some((link) => link.staff_id === st!.id))) st = null;
+      }
+      if (cancelled) return;
       if (st) setStaff(st);
+      // Keep a professional's service out of a salon-scoped fallback flow.
+      if (!st && targetBusinessId !== businessId) sv = null;
       if (sv) setService(sv);
       if (cu) setCustomer(cu);
       setLoadingPrefill(false);
       setStep(firstMissing({ hasCustomer: !!cu, hasService: !!sv, hasStaff: !!st, hasTime: !!prefill?.isoTime }));
     })();
-  }, [open, prefill]);
+    return () => { cancelled = true; };
+  }, [open, prefill, businessId]);
 
   // Switch to/from custom mode
   useEffect(() => {
@@ -316,9 +329,15 @@ export function NewBookingDialog({
         {!loadingPrefill && !isCustom && step === "service" && (
           <ServiceStep
             businessId={staff?.business_id ?? businessId}
+            customerId={staff?.business_id && staff.business_id !== businessId ? undefined : customer?.id}
             current={service}
+            onReuse={(svc, previousStaff) => {
+              setService(svc); setStaff(previousStaff); setTime(null);
+              setDepositCents(0); setPaymentStatus("unpaid");
+              setStep(previousStaff ? "slot" : "staff");
+            }}
             onBack={() => setStep("customer")}
-            onPick={(svc) => { setService(svc); setStep(firstMissing({ hasCustomer: !!(customer || newCust), hasService: true, hasStaff: !!staff, hasTime: !!time })); }}
+            onPick={(svc) => { setService(svc); setTime(null); setDepositCents(0); setPaymentStatus("unpaid"); setStep("staff"); }}
           />
         )}
 
@@ -340,7 +359,8 @@ export function NewBookingDialog({
             onBack={() => setStep(isCustom ? "custom" : "service")}
             onPick={(st) => {
               setStaff(st);
-              const next = firstMissing({ hasCustomer: isCustom || !!(customer || newCust), hasService: true, hasStaff: true, hasTime: !!time });
+              setTime(null);
+              const next = firstMissing({ hasCustomer: isCustom || !!(customer || newCust), hasService: true, hasStaff: true, hasTime: false });
               setStep(isCustom && next === "payment" ? "confirm" : next);
             }}
           />
@@ -626,9 +646,11 @@ function CustomerStep({
 }
 
 function ServiceStep({
-  businessId, current, onBack, onPick,
+  businessId, customerId, current, onBack, onPick, onReuse,
 }: {
   businessId: string; current: Service | null; onBack: () => void; onPick: (svc: Service) => void;
+  customerId?: string;
+  onReuse: (svc: Service, staff: Staff | null) => void;
 }) {
   const [q, setQ] = useState("");
   const { data: services, isLoading } = useQuery({
@@ -639,6 +661,30 @@ function ServiceStep({
       return data as Service[];
     },
   });
+
+  const { data: lastVisit, isError: historyUnavailable } = useQuery({
+    queryKey: ["booking-last-completed-visit", businessId, customerId],
+    enabled: !!customerId,
+    queryFn: async () => {
+      const { data: visit, error } = await supabase.from("bookings")
+        .select("service_id, staff_id, starts_at")
+        .eq("business_id", businessId).eq("customer_id", customerId!)
+        .eq("status", "completed").eq("is_custom", false)
+        .order("starts_at", { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      if (!visit?.service_id) return null;
+      const [staffResult, links] = await Promise.all([
+        supabase.from("staff").select("id, name, business_id")
+          .eq("id", visit.staff_id).eq("business_id", businessId).eq("active", true).maybeSingle(),
+        supabase.from("service_staff").select("staff_id").eq("service_id", visit.service_id),
+      ]);
+      if (staffResult.error || links.error) throw staffResult.error ?? links.error;
+      const previousStaff = staffResult.data;
+      const eligible = previousStaff && (!links.data.length || links.data.some((link) => link.staff_id === previousStaff.id));
+      return { ...visit, staff: eligible ? previousStaff : null };
+    },
+  });
+  const previousService = services?.find((item) => item.id === lastVisit?.service_id);
 
   // Filtered client-side: the whole active service list is already loaded,
   // and salons with long menus (colour variants, add-ons) otherwise mean a
@@ -654,6 +700,17 @@ function ServiceStep({
         <ChevronLeft className="h-3 w-3" /> Back
       </button>
       <Label className="text-xs uppercase tracking-wide text-muted-foreground">Service</Label>
+      {lastVisit && previousService && (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+          <p className="text-sm font-medium">Same as their last visit?</p>
+          <p className="text-sm">{previousService.name}{lastVisit.staff ? ` with ${lastVisit.staff.name}` : ""}</p>
+          <p className="text-xs text-muted-foreground">{previousService.duration_minutes} min · {fmtMoney(previousService.price_cents)} at today's price. Choose a fresh available time next.</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => onReuse(previousService, lastVisit.staff)}>
+            {lastVisit.staff ? "Use service & stylist" : "Use service, choose stylist"}
+          </Button>
+        </div>
+      )}
+      {historyUnavailable && <p className="text-xs text-muted-foreground">Previous visit unavailable — you can still choose any service below.</p>}
       {(services?.length ?? 0) > 5 && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -700,9 +757,10 @@ function StaffStep({
       let ids: string[] | null = null;
       if (!allowAny) {
         const linked = await supabase.from("service_staff").select("staff_id").eq("service_id", service.id);
+        if (linked.error) throw linked.error;
         if (linked.data && linked.data.length > 0) ids = linked.data.map((r) => r.staff_id);
       }
-      let q = supabase.from("staff").select("id, name").eq("business_id", businessId).eq("active", true);
+      let q = supabase.from("staff").select("id, name, business_id").eq("business_id", businessId).eq("active", true);
       if (ids) q = q.in("id", ids);
       const { data, error } = await q.order("name");
       if (error) throw error;
@@ -780,6 +838,21 @@ function SlotStep({
         <ChevronLeft className="h-3 w-3" /> Back
       </button>
 
+      <div className="shrink-0 flex flex-wrap gap-2" aria-label="Jump to a booking date">
+        {[0, 2, 4, 6, 8].map((weeks) => (
+          <Button key={weeks} type="button" size="sm" variant="outline" onClick={() => {
+            const next = startOfToday();
+            next.setDate(next.getDate() + weeks * 7);
+            setWeekStart(next);
+            setDate(next);
+          }}>
+            {weeks === 0 ? "Today" : `In ${weeks} weeks`}
+          </Button>
+        ))}
+      </div>
+      <p className="text-sm font-medium" aria-live="polite">
+        {date.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+      </p>
       <div className="shrink-0 flex items-center gap-1">
         <button
           type="button"

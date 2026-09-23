@@ -1,7 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, Plus, UserPlus, Users } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Clock3,
+  CreditCard,
+  ClipboardList,
+  Package,
+  Plus,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { Button } from "@/components/ui/button";
@@ -12,6 +22,7 @@ import {
   checkInDashboardBooking,
   getDashboardOverview,
   type DashboardBooking,
+  type DashboardAttentionItem,
 } from "@/lib/dashboard.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -38,10 +49,19 @@ function Dashboard() {
     month: "long",
     year: "numeric",
   });
-  const businessHour = Number(new Intl.DateTimeFormat("en-GB", {
-    timeZone: data?.business.timezone || "Europe/London", hour: "numeric", hourCycle: "h23",
-  }).format(new Date()));
-  const greeting = businessHour < 12 ? "Good morning" : businessHour < 18 ? "Good afternoon" : "Good evening";
+  const businessHour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: data?.business.timezone || "Europe/London",
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(new Date()),
+  );
+  const greeting =
+    businessHour < 12
+      ? "Good morning"
+      : businessHour < 18
+        ? "Good afternoon"
+        : "Good evening";
 
   const checkIn = async () => {
     if (!data?.nextBooking) return;
@@ -70,7 +90,8 @@ function Dashboard() {
     <div className="workspace-dashboard mx-auto w-full max-w-[1280px] p-5 sm:p-8 md:p-10">
       <header>
         <h1 className="max-w-4xl font-sans text-[clamp(1.9rem,3vw,2.4rem)] font-semibold leading-tight tracking-tight">
-          {greeting}{data?.business.name ? `, ${data.business.name}` : ""}
+          {greeting}
+          {data?.business.name ? `, ${data.business.name}` : ""}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground sm:text-base">
           {todayLabel}
@@ -98,6 +119,46 @@ function Dashboard() {
         )}
       </div>
 
+      {data && !isError && (
+        <section
+          aria-labelledby="attention-heading"
+          className="mt-8 rounded-2xl border bg-card p-5 shadow-soft sm:p-8"
+        >
+          <h2
+            id="attention-heading"
+            className="text-xl font-semibold tracking-tight"
+          >
+            Needs your attention
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            A short list to work through. Review each item before making any
+            changes.
+          </p>
+          {data.attention.length ? (
+            <ul className="mt-5 divide-y">
+              {data.attention.map((item) => (
+                <AttentionRow key={item.id} item={item} />
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-5 flex items-center gap-2 text-sm">
+              <CheckCircle2
+                aria-hidden="true"
+                className="h-4 w-4 text-primary"
+              />
+              No flagged items in these checks.
+            </p>
+          )}
+          <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+            Showing up to three pending bookings, three payment issues, one
+            unsigned form and two low-stock items. This is not a full safety or
+            forms checklist.
+            {!data.consultationAttentionAvailable &&
+              " Form checks are unavailable in this environment; check Consultations separately."}
+          </p>
+        </section>
+      )}
+
       {data?.business.id && (
         <NewBookingDialog
           open={newBookingOpen}
@@ -109,6 +170,56 @@ function Dashboard() {
         />
       )}
     </div>
+  );
+}
+
+function AttentionRow({ item }: { item: DashboardAttentionItem }) {
+  const Icon =
+    item.kind === "payment"
+      ? CreditCard
+      : item.kind === "consultation"
+        ? ClipboardList
+        : item.kind === "stock"
+          ? Package
+          : Clock3;
+  const content = (
+    <>
+      {item.action}
+      <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
+    </>
+  );
+  return (
+    <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3">
+        <Icon
+          aria-hidden="true"
+          className="mt-1 h-5 w-5 shrink-0 text-primary"
+        />
+        <div>
+          <p className="font-medium">{item.title}</p>
+          <p className="mt-1 text-sm text-muted-foreground break-words">
+            {item.description}
+          </p>
+        </div>
+      </div>
+      <Button
+        variant="outline"
+        asChild
+        className="shrink-0 self-start sm:self-center"
+      >
+        {item.bookingId ? (
+          <Link to="/bookings" search={{ bookingId: item.bookingId }}>
+            {content}
+          </Link>
+        ) : item.kind === "consultation" ? (
+          <Link to="/consultations" search={{ tab: "records" }}>
+            {content}
+          </Link>
+        ) : (
+          <Link to="/stock">{content}</Link>
+        )}
+      </Button>
+    </li>
   );
 }
 
