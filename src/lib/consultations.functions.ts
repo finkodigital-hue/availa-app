@@ -27,6 +27,7 @@ export type ConsultationTemplateInput = {
 
 export type StartConsultationInput = {
   templateId: string;
+  customerId?: string;
   customerName: string;
   customerEmail?: string;
   customerPhone?: string;
@@ -93,7 +94,11 @@ async function ownedBusiness(context: any) {
 
 export const getConsultationWorkspace = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .validator((data: { customerId?: string; bookingId?: string } = {}) => {
+    if (!validUuid(data.customerId) || !validUuid(data.bookingId)) throw new Error("That record could not be found.");
+    return data;
+  })
+  .handler(async ({ context, data }) => {
     const business = await ownedBusiness(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const db = supabaseAdmin as any;
@@ -119,6 +124,7 @@ export const getConsultationWorkspace = createServerFn({ method: "GET" })
         .from("consultation_submissions")
         .select("id, status, signed_at, expires_at, withdrawn_at, signer_name, signature_data, evidence_hash, patch_test_outcome, patch_tested_at, patch_tested_by, staff_notes, created_at, customer_id, booking_id, template_id, template_snapshot, answers, customers(name, email), bookings(starts_at, services(name)), consultation_templates(id, name, description, kind, questions, consent_text, validity_days, version)")
         .eq("business_id", business.id)
+        .match({ ...(data.customerId ? { customer_id: data.customerId } : {}), ...(data.bookingId ? { booking_id: data.bookingId } : {}) })
         .order("created_at", { ascending: false })
         .limit(250),
     ]);
@@ -137,11 +143,12 @@ export const startConsultationSubmission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data: StartConsultationInput) => {
     if (!validUuid(data.templateId) || !data.templateId) throw new Error("Choose a consultation form.");
+    if (!validUuid(data.customerId)) throw new Error("Choose a valid customer.");
     const customerName = text(data.customerName, 150, true);
     const customerEmail = text(data.customerEmail, 254).toLowerCase() || null;
     const customerPhone = text(data.customerPhone, 50) || null;
     if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) throw new Error("Enter a valid email address or leave it blank.");
-    return { templateId: data.templateId, customerName, customerEmail, customerPhone };
+    return { templateId: data.templateId, customerId: data.customerId, customerName, customerEmail, customerPhone };
   })
   .handler(async ({ data, context }) => {
     const business = await ownedBusiness(context);
@@ -158,7 +165,13 @@ export const startConsultationSubmission = createServerFn({ method: "POST" })
     if (!template) throw new Error("That consultation form is not available.");
 
     let customer: { id: string } | null = null;
-    if (data.customerEmail) {
+    if (data.customerId) {
+      const { data: selected, error } = await db.from("customers").select("id").eq("business_id", business.id).eq("id", data.customerId).maybeSingle();
+      if (error) throw error;
+      if (!selected) throw new Error("That customer is not available in this salon.");
+      customer = selected;
+    }
+    if (!customer && data.customerEmail) {
       const { data: matches, error } = await db.from("customers").select("id").eq("business_id", business.id).ilike("email", data.customerEmail).limit(1);
       if (error) throw error;
       customer = matches?.[0] ?? null;

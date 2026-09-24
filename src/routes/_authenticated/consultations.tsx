@@ -44,6 +44,7 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { SignaturePad } from "@/components/signature-pad";
+import { StartSigningDialog } from "@/components/start-signing-dialog";
 import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { toast } from "sonner";
 import { useMyBusiness } from "@/lib/business";
@@ -61,6 +62,11 @@ import {
 } from "@/lib/consultations.functions";
 
 export const Route = createFileRoute("/_authenticated/consultations")({
+  validateSearch: (search: Record<string, unknown>): { customerId?: string; bookingId?: string; tab?: "records" } => ({
+    customerId: typeof search.customerId === "string" ? search.customerId : undefined,
+    bookingId: typeof search.bookingId === "string" ? search.bookingId : undefined,
+    tab: search.tab === "records" ? "records" : undefined,
+  }),
   component: ConsultationsPage,
 });
 
@@ -186,6 +192,8 @@ function relationOne(value: any) {
 }
 
 function ConsultationsPage() {
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { data: business, isLoading: businessLoading } = useMyBusiness();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [startingForm, setStartingForm] = useState(false);
@@ -193,11 +201,11 @@ function ConsultationsPage() {
   const [saving, setSaving] = useState(false);
 
   const query = useQuery({
-    queryKey: ["consultation-workspace"],
+    queryKey: ["consultation-workspace", business?.id, search.customerId, search.bookingId],
     enabled: !!business?.id && business.plan === "studio",
     queryFn: async () => {
       const headers = await getServerFnAuthHeaders();
-      return getConsultationWorkspace({ headers });
+      return getConsultationWorkspace({ data: { customerId: search.customerId, bookingId: search.bookingId }, headers });
     },
   });
 
@@ -325,6 +333,7 @@ function ConsultationsPage() {
 
   const startSigning = async (details: {
     templateId: string;
+    customerId?: string;
     customerName: string;
     customerEmail: string;
     customerPhone: string;
@@ -336,8 +345,10 @@ function ConsultationsPage() {
         data: details,
         headers,
       });
-      const refreshed = await query.refetch();
-      const record = refreshed.data?.submissions.find(
+      // A newly created walk-in form may not belong to the current booking filter.
+      const workspace = await getConsultationWorkspace({ data: {}, headers });
+      await query.refetch();
+      const record = workspace.submissions.find(
         (item: any) => item.id === started.id,
       );
       if (!record)
@@ -432,7 +443,13 @@ function ConsultationsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="templates">
+      {(search.customerId || search.bookingId) && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 text-sm">
+          <span>Showing records for {search.bookingId ? "this appointment" : "this customer"}.</span>
+          <Button variant="ghost" size="sm" onClick={() => navigate({ search: { tab: "records" } })}>Show all records</Button>
+        </div>
+      )}
+      <Tabs key={`${search.customerId ?? ""}:${search.bookingId ?? ""}:${search.tab ?? ""}`} defaultValue={search.tab || search.customerId || search.bookingId ? "records" : "templates"}>
         <TabsList>
           <TabsTrigger value="templates">Form templates</TabsTrigger>
           <TabsTrigger value="records">
@@ -599,140 +616,6 @@ function SummaryCard({
   );
 }
 
-function StartSigningDialog({
-  open,
-  templates,
-  saving,
-  onStart,
-  onClose,
-}: {
-  open: boolean;
-  templates: any[];
-  saving: boolean;
-  onStart: (details: {
-    templateId: string;
-    customerName: string;
-    customerEmail: string;
-    customerPhone: string;
-  }) => Promise<void>;
-  onClose: () => void;
-}) {
-  const activeTemplates = useMemo(
-    () => templates.filter((template) => template.active),
-    [templates],
-  );
-  const [templateId, setTemplateId] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  useEffect(() => {
-    if (!open) return;
-    setTemplateId(activeTemplates[0]?.id ?? "");
-    setCustomerName("");
-    setCustomerEmail("");
-    setCustomerPhone("");
-  }, [open, activeTemplates]);
-
-  return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-display text-2xl">
-            Get customer signature
-          </DialogTitle>
-          <DialogDescription>
-            Enter the customer’s details, then hand them this device to complete
-            and sign the form.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div>
-            <Label>Form</Label>
-            <Select value={templateId} onValueChange={setTemplateId}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue placeholder="Choose a form" />
-              </SelectTrigger>
-              <SelectContent>
-                {activeTemplates.map((template) => (
-                  <SelectItem key={template.id} value={template.id}>
-                    {template.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Customer’s full name</Label>
-            <Input
-              className="mt-1.5"
-              value={customerName}
-              onChange={(event) => setCustomerName(event.target.value)}
-              placeholder="Full name"
-              autoComplete="name"
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label>
-                Phone{" "}
-                <span className="font-normal text-muted-foreground">
-                  (optional)
-                </span>
-              </Label>
-              <Input
-                className="mt-1.5"
-                value={customerPhone}
-                onChange={(event) => setCustomerPhone(event.target.value)}
-                placeholder="Phone number"
-                autoComplete="tel"
-              />
-            </div>
-            <div>
-              <Label>
-                Email{" "}
-                <span className="font-normal text-muted-foreground">
-                  (optional)
-                </span>
-              </Label>
-              <Input
-                className="mt-1.5"
-                type="email"
-                value={customerEmail}
-                onChange={(event) => setCustomerEmail(event.target.value)}
-                placeholder="Email address"
-                autoComplete="email"
-              />
-            </div>
-          </div>
-          <div className="rounded-xl bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
-            <ShieldCheck className="mr-2 inline h-4 w-4" />
-            Nothing is signed until the customer reviews the form and draws
-            their own signature.
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() =>
-              onStart({
-                templateId,
-                customerName,
-                customerEmail,
-                customerPhone,
-              })
-            }
-            disabled={saving || !templateId || !customerName.trim()}
-          >
-            {saving ? "Preparing…" : "Continue to signature"}
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function TemplateEditor({
   editor,

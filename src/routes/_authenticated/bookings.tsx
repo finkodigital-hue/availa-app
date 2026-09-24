@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarCheck,
@@ -42,19 +43,24 @@ import {
   statusMeta,
   type BookingStatus,
 } from "@/lib/format";
-import {
-  startBalanceCheckout,
-} from "@/lib/stripe-connect.functions";
+import { startBalanceCheckout } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { BookingConsultationStatus } from "@/components/booking-consultation-status";
+import { NewBookingDialog } from "@/components/new-booking-dialog";
+import { BookingCustomerNotes } from "@/components/booking-customer-notes";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
+  validateSearch: z.object({
+    bookingId: z.string().uuid().optional().catch(undefined),
+  }),
   component: BookingsPage,
 });
 
 const STATUSES = ["all", ...BOOKING_STATUSES.map((s) => s.id)] as const;
 
 function BookingsPage() {
+  const { bookingId } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { data: biz } = useMyBusiness();
   const fmtMoney = (cents: number) =>
     formatMoney(cents, biz?.currency ?? "GBP");
@@ -64,6 +70,63 @@ function BookingsPage() {
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("all");
   const [period, setPeriod] = useState<"upcoming" | "past" | "all">("upcoming");
   const [selected, setSelected] = useState<any | null>(null);
+  const [rebooking, setRebooking] = useState<{
+    customerId: string;
+    serviceId: string;
+    staffId?: string;
+  } | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const actionLock = useRef(false);
+
+  const linkedBooking = useQuery({
+    queryKey: ["booking-details", bid, bookingId],
+    enabled: !!bid && !!bookingId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*, services(name, color), staff(name)")
+        .eq("business_id", bid!)
+        .eq("id", bookingId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  useEffect(() => {
+    if (!bookingId || !bid || linkedBooking.isPending) return;
+    if (linkedBooking.isError || !linkedBooking.data)
+      toast.error(
+        "This booking could not be opened. Try finding it in the list.",
+      );
+    else setSelected(linkedBooking.data);
+    void navigate({ search: {}, replace: true });
+  }, [
+    bookingId,
+    bid,
+    linkedBooking.isPending,
+    linkedBooking.isError,
+    linkedBooking.data,
+    navigate,
+  ]);
+
+  const refreshBookings = () => {
+    for (const key of [
+      "bookings-list",
+      "booking-details",
+      "calendar",
+      "dashboard-overview",
+    ]) {
+      void qc.invalidateQueries({ queryKey: [key] });
+    }
+  };
+  const openRebooking = (booking: NonNullable<typeof selected>) => {
+    setRebooking({
+      customerId: booking.customer_id,
+      serviceId: booking.service_id,
+      staffId: booking.staff_id ?? undefined,
+    });
+    setSelected(null);
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["bookings-list", bid, status, period],
@@ -87,18 +150,40 @@ function BookingsPage() {
   });
 
   const setBookingStatus = async (id: string, next: BookingStatus) => {
-    const { error } = await supabase
-      .from("bookings")
-      .update({ status: next })
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success(`Marked as ${statusMeta(next).label}`);
-    setSelected((s: any) => (s && s.id === id ? { ...s, status: next } : s));
-    qc.invalidateQueries({ queryKey: ["bookings-list", bid] });
+    if (actionLock.current || !bid) return false;
+    actionLock.current = true;
+    setActionBusy(true);
+    try {
+      const { data: updated, error } = await supabase
+        .from("bookings")
+        .update({ status: next })
+        .eq("id", id)
+        .eq("business_id", bid)
+        .eq("status", selected?.status ?? "")
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!updated)
+        throw new Error(
+          "The booking could not be updated. Refresh and try again.",
+        );
+      toast.success(`Marked as ${statusMeta(next).label}`);
+      setSelected((s: any) => (s && s.id === id ? { ...s, status: next } : s));
+      refreshBookings();
+      return true;
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not update booking.");
+      return false;
+    } finally {
+      actionLock.current = false;
+      setActionBusy(false);
+    }
   };
 
   const collectBalance = async () => {
-    if (!selected) return;
+    if (!selected || actionLock.current) return;
+    actionLock.current = true;
+    setActionBusy(true);
     try {
       const headers = await getServerFnAuthHeaders();
       const result = await startBalanceCheckout({
@@ -107,8 +192,16 @@ function BookingsPage() {
       });
       if ("paid" in result) {
         toast.success("The balance payment is confirmed.");
-        setSelected(null);
-        qc.invalidateQueries({ queryKey: ["bookings-list", bid] });
+        setSelected((current: any) =>
+          current?.id === selected.id
+            ? {
+                ...current,
+                payment_status: "paid",
+                amount_paid_cents: current.price_cents,
+              }
+            : current,
+        );
+        refreshBookings();
         return;
       }
       window.location.assign(result.checkoutUrl);
@@ -117,6 +210,9 @@ function BookingsPage() {
       );
     } catch (error: any) {
       toast.error(error.message ?? "Could not start the balance payment.");
+    } finally {
+      actionLock.current = false;
+      setActionBusy(false);
     }
   };
 
@@ -260,8 +356,11 @@ function BookingsPage() {
         </div>
       )}
 
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog
+        open={!!selected}
+        onOpenChange={(o) => !o && !actionBusy && setSelected(null)}
+      >
+        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl">
               {selected?.customer_name}
@@ -357,6 +456,12 @@ function BookingsPage() {
               )}
             </div>
           )}
+          {selected?.customer_id && bid && (
+            <BookingCustomerNotes
+              businessId={bid}
+              customerId={selected.customer_id}
+            />
+          )}
           {selected && <BookingConsultationStatus bookingId={selected.id} />}
           {selected && (
             <div className="space-y-2">
@@ -369,6 +474,7 @@ function BookingsPage() {
                   return (
                     <button
                       key={s.id}
+                      disabled={actionBusy}
                       onClick={() => setBookingStatus(selected.id, s.id)}
                       className={`text-xs rounded-xl border px-2 py-1.5 transition-all ${on ? "ring-2 ring-offset-1 ring-offset-background font-medium" : "hover:bg-secondary/60"}`}
                       style={
@@ -394,11 +500,51 @@ function BookingsPage() {
             </div>
           )}
           <DialogFooter className="flex-wrap gap-2">
+            {selected?.customer_id &&
+              selected?.service_id &&
+              !selected.is_custom && (
+                <Button
+                  variant="outline"
+                  disabled={actionBusy}
+                  onClick={() => openRebooking(selected)}
+                >
+                  <CalendarCheck className="h-4 w-4 mr-1.5" /> Book again
+                </Button>
+              )}
+            {selected?.customer_id &&
+              selected?.service_id &&
+              !selected.is_custom &&
+              ["confirmed", "checked_in", "in_progress"].includes(
+                selected.status,
+              ) &&
+              new Date(selected.starts_at).getTime() <= Date.now() && (
+                <div className="w-full rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  <Button
+                    className="w-full"
+                    disabled={actionBusy}
+                    onClick={async () => {
+                      const booking = selected;
+                      if (await setBookingStatus(booking.id, "completed"))
+                        openRebooking(booking);
+                    }}
+                  >
+                    Finish appointment & rebook
+                  </Button>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Marks this visit completed, then opens the next booking. Any
+                    unpaid balance stays due.
+                  </p>
+                </div>
+              )}
             {selected &&
               selected.payment_status !== "paid" &&
               (selected.price_cents ?? 0) >
                 (selected.amount_paid_cents ?? 0) && (
-                <Button onClick={collectBalance} className="rounded-full">
+                <Button
+                  disabled={actionBusy}
+                  onClick={collectBalance}
+                  className="rounded-full"
+                >
                   <CreditCard className="h-4 w-4 mr-1.5" /> Take remaining
                   payment
                 </Button>
@@ -406,7 +552,11 @@ function BookingsPage() {
             {selected && selected.status !== "cancelled" && (
               <ConfirmDialog
                 trigger={
-                  <Button variant="destructive" className="rounded-full">
+                  <Button
+                    disabled={actionBusy}
+                    variant="destructive"
+                    className="rounded-full"
+                  >
                     <XCircle className="h-4 w-4 mr-1.5" /> Cancel booking
                   </Button>
                 }
@@ -414,17 +564,32 @@ function BookingsPage() {
                 description="The customer will be notified if reminders are enabled."
                 confirmLabel="Cancel booking"
                 onConfirm={async () => {
-                  await setBookingStatus(selected.id, "cancelled");
-                  setSelected(null);
+                  if (await setBookingStatus(selected.id, "cancelled"))
+                    setSelected(null);
                 }}
               />
             )}
-            <Button variant="ghost" onClick={() => setSelected(null)}>
+            <Button
+              disabled={actionBusy}
+              variant="ghost"
+              onClick={() => setSelected(null)}
+            >
               Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {bid && (
+        <NewBookingDialog
+          open={!!rebooking}
+          onOpenChange={(open) => {
+            if (!open) setRebooking(null);
+          }}
+          businessId={bid}
+          prefill={rebooking ?? undefined}
+          onCreated={refreshBookings}
+        />
+      )}
     </div>
   );
 }
