@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { readBodyWithLimit } from "@/lib/request-limits";
+import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
 
 const PROXY_PREFIX = "/api/supabase/";
 const ALLOWED_SERVICES = new Set(["auth", "rest", "storage", "functions"]);
@@ -130,6 +131,13 @@ async function proxySupabaseRequest(request: Request) {
   }
   if (decodedPath.includes("\\") || decodedPath.split("/").includes("..")) {
     return new Response("Invalid database gateway path", { status: 400 });
+  }
+
+  // Refreshing an already-issued session is not a new credential attempt.
+  // Supabase still applies its native limits to refresh and direct auth access.
+  if (service === "auth" && request.method === "POST" && decodedPath !== "auth/v1/logout" && !(decodedPath === "auth/v1/token" && incomingUrl.searchParams.get("grant_type") === "refresh_token")) {
+    try { await consumePublicRequest("auth", { headers: request.headers }); }
+    catch (error) { return publicRequestLimitResponse(error); }
   }
 
   const unsafeWrite = await rejectUnsafeRestWrite(

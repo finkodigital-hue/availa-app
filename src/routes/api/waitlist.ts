@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
 import { notifyWaitlistSignup } from "@/lib/resend.server";
+import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
 
 export const Route = createFileRoute("/api/waitlist")({
   server: {
@@ -22,6 +23,8 @@ export const Route = createFileRoute("/api/waitlist")({
         if (email.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
           return Response.json({ message: "INVALID_EMAIL" }, { status: 400 });
         }
+        try { await consumePublicRequest("waitlist", { headers: request.headers }); }
+        catch (error) { return publicRequestLimitResponse(error); }
         // The database validates, rate-limits and rejects duplicates before
         // any email is sent. The recipient is never supplied by the visitor.
         const { error } = await supabaseAdmin.rpc("join_waitlist", {

@@ -273,6 +273,8 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ checkoutUrl: string | null }> => {
+    const { consumePublicRequest } = await import("@/lib/public-request-limit.server");
+    await consumePublicRequest("booking");
     const { supabaseAdmin } =
       await import("@/integrations/supabase/client.server");
     const { data: business, error: businessError } = await supabaseAdmin

@@ -75,6 +75,8 @@ export async function checkSchemaRoles(db) {
  await login(8);await fail('select check_request_assurance()',/verification required/);
  same(await rows('select id from bookings'),[],'Unverified identity denied');
  await login(null);same((await rows('select id from public_businesses')).length,2,'Anonymous discovery');
+ await fail(`select join_waitlist('fixture@example.invalid',null)`,/permission denied/);
+ await fail(`select create_public_booking('${id(101)}','${id(301)}','${id(201)}','Fixture','','',now()+interval '7 days',now()+interval '7 days 1 hour','',null,null)`,/permission denied/);
  await fail('select * from balance_checkout_attempts',/permission denied/);
  await fail(`select claim_balance_checkout('${id(101)}','${id(501)}','https://example.invalid')`,/permission denied/);
  await db.exec('reset role');
@@ -86,6 +88,12 @@ export async function checkSchemaRoles(db) {
  same((await rows(`update bookings set status='completed' where id='${id(504)}' returning status`))[0].status,'completed','Reception can complete current appointment');
  same((await rows(`update bookings set status='cancelled' where id='${id(504)}' returning status`))[0].status,'cancelled','Reception can cancel on customer behalf');
  await fail(`update bookings set stripe_payment_intent_id='pi_forged' where id='${id(504)}'`,/server|payment|Stripe/i);
+ await db.exec('reset role');
+ await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({role:'service_role'})]);
+ await db.exec('set role service_role');
+ const publicBooking=(await rows(`select create_public_booking('${id(101)}','${id(301)}','${id(201)}','Public fictional customer','public-fixture@example.invalid','',date_trunc('week',now())+interval '14 days 13 hours',date_trunc('week',now())+interval '14 days 23 hours','',null,null) as id`))[0].id;
+ same((await rows(`select price_cents from bookings where id='${publicBooking}'`))[0].price_cents,1000,'Server booking preserves authoritative price');
+ same((await rows(`select extract(epoch from ends_at-starts_at)::integer as seconds from bookings where id='${publicBooking}'`))[0].seconds,1800,'Server booking ignores forged duration');
  await db.exec('reset role');
  console.log(`${checks} full-application-schema role, invitation, export, MFA and storage-policy assertions passed (local Auth/Storage fixtures).`);
  return checks;
