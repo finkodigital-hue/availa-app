@@ -38,6 +38,9 @@ export type AssistantFactsInput = {
   paymentsCount: number;
   services: AssistantService[];
   servicesCount: number;
+  reviewRequestsEnabled?: boolean;
+  verifiedSlots?: { startsAt: string; staff: string; service: string }[] | null;
+  availabilityNote?: string;
 };
 
 export function assistantFacts(input: AssistantFactsInput) {
@@ -154,10 +157,16 @@ export function assistantFacts(input: AssistantFactsInput) {
       durationMinutes: service.durationMinutes,
       currentPriceCents: service.priceCents,
     })),
+    reviewRequestsEnabled: input.reviewRequestsEnabled ?? null,
+    next7DaysVerifiedSlots:
+      input.verifiedSlots === undefined ? null : input.verifiedSlots,
+    availabilityNote:
+      input.availabilityNote ??
+      "Verified slots are unavailable. Check Calendar before sharing a time.",
     limitations: [
       "Appointment balance is price minus recorded amount paid, not a verified charge or refund ledger.",
       "Confirmed Stripe net includes succeeded charges minus refunds in the past 30 days only; it excludes cash, gift cards and other offline sales.",
-      "Booked counts do not prove available time slots. Open the Calendar to check actual availability.",
+      "Only next7DaysVerifiedSlots were checked against working hours, service/staff eligibility, existing appointments and blocked time. They may change; recheck Calendar before promising a slot. Null means availability could not be verified.",
       "No customer email addresses, consultation answers or private notes are included.",
       "A truncated list is not a complete report; use total and listed counts to identify truncation.",
     ],

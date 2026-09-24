@@ -18,6 +18,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
+import { AssistantGrowthGuide } from "@/components/assistant-growth-guide";
+import { AssistantRebookingCard } from "@/components/assistant-rebooking-card";
+import { BookingSourceReport } from "@/components/booking-source-report";
 import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,7 +41,7 @@ type Quick = {
   prompt: string;
 };
 
-const QUICK: Quick[] = [
+const DAILY_TASKS: Quick[] = [
   {
     icon: ClipboardList,
     label: "Plan my day",
@@ -66,6 +69,30 @@ const QUICK: Quick[] = [
     description: "Get copy you can review and send",
     prompt:
       "Draft a short, friendly one-to-one follow-up after a salon visit that I can personalise and copy. Include a subject line for email. Do not invent treatment details or say it has been sent.",
+  },
+];
+
+const GROWTH_TASKS: Quick[] = [
+  {
+    icon: CalendarDays,
+    label: "Fill an open slot",
+    description: "Prepare a post for verified availability",
+    prompt:
+      "Which verified bookable slots in the next seven days could I promote? Pick one, draft a short social post with a clear booking call to action, and remind me to recheck Calendar before sharing. Do not invent availability or claim you posted it.",
+  },
+  {
+    icon: RotateCcw,
+    label: "Bring clients back",
+    description: "See eligible return-visit opportunities",
+    prompt:
+      "Show me any verified, consent-eligible customers due to rebook, with their service and timing. If that information is unavailable, say so. Draft one friendly email I can review; do not send it or assume imported contacts can receive marketing.",
+  },
+  {
+    icon: Sparkles,
+    label: "Grow genuine reviews",
+    description: "Turn completed visits into trust",
+    prompt:
+      "Give me a practical plan for earning genuine reviews from completed visits. State whether Bookzenvo review requests are enabled if that fact is available. Do not invent a Google review link, offer rewards for reviews, or say any message was sent.",
   },
 ];
 
@@ -118,7 +145,7 @@ function AssistantPage() {
       </div>
     );
   }
-  if (business.plan === "free") {
+  if (business.plan !== "studio") {
     return (
       <div className="mx-auto max-w-4xl p-6 md:p-10">
         <PageHeader
@@ -133,10 +160,16 @@ function AssistantPage() {
       </div>
     );
   }
-  return <AssistantInner token={token} />;
+  return <AssistantInner token={token} businessId={business.id} />;
 }
 
-function AssistantInner({ token }: { token: string }) {
+function AssistantInner({
+  token,
+  businessId,
+}: {
+  token: string;
+  businessId: string;
+}) {
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -194,8 +227,31 @@ function AssistantInner({ token }: { token: string }) {
         }
       />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {QUICK.map(({ icon: Icon, label, description, prompt }) => (
+      <h2 className="mb-3 text-sm font-semibold">Run the day</h2>
+      <div className="mb-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {DAILY_TASKS.map(({ icon: Icon, label, description, prompt }) => (
+          <button
+            key={label}
+            type="button"
+            disabled={isLoading}
+            onClick={() => send(prompt)}
+            className="rounded-2xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            <Icon
+              className="mb-3 h-5 w-5 text-[color:var(--gold-deep)]"
+              aria-hidden="true"
+            />
+            <span className="block text-sm font-semibold">{label}</span>
+            <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+              {description}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <h2 className="mb-3 text-sm font-semibold">Grow the salon</h2>
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {GROWTH_TASKS.map(({ icon: Icon, label, description, prompt }) => (
           <button
             key={label}
             type="button"
@@ -351,7 +407,9 @@ function AssistantInner({ token }: { token: string }) {
                       </Link>
                     ) : (
                       <Link
-                        to={item.href === "/stock" ? "/stock" : "/consultations"}
+                        to={
+                          item.href === "/stock" ? "/stock" : "/consultations"
+                        }
                         className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--gold-deep)] hover:underline"
                       >
                         {item.action} <ArrowRight className="h-3 w-3" />
@@ -398,6 +456,9 @@ function AssistantInner({ token }: { token: string }) {
               />
             </div>
           </section>
+          <BookingSourceReport businessId={businessId} />
+          <AssistantRebookingCard />
+          <AssistantGrowthGuide />
         </aside>
       </div>
     </div>

@@ -1,7 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { assistantFacts, type AssistantVisit } from "@/lib/assistant-facts";
+import { verifiedAssistantSlots } from "@/lib/assistant-availability";
 import { businessDayRange } from "@/lib/business-day";
+import { bookingPageUrl } from "@/lib/booking-channels";
 import { requireVerifiedIdentity } from "@/lib/verified-identity.server";
+import { loadRebookingOpportunities } from "@/lib/rebooking-opportunities.server";
 
 function relationName(value: unknown, fallback: string): string {
   const row = Array.isArray(value) ? value[0] : value;
@@ -33,7 +36,9 @@ export async function buildAssistantContext(accessToken: string) {
   const identity = await requireVerifiedIdentity(supabase, accessToken);
   const { data: business, error: businessError } = await supabase
     .from("businesses")
-    .select("id, name, plan, timezone, currency")
+    .select(
+      "id, name, slug, plan, timezone, currency, review_requests_enabled, deletion_requested_at",
+    )
     .eq("owner_id", identity.user.id)
     .maybeSingle();
   if (businessError) throw businessError;
@@ -47,8 +52,23 @@ export async function buildAssistantContext(accessToken: string) {
   in14.setDate(in14.getDate() + 14);
   const past30 = new Date(now);
   past30.setDate(past30.getDate() - 30);
+  const slotLookupStart = new Date(start.getTime() - 86_400_000);
+  const slotLookupEnd = new Date(start.getTime() + 9 * 86_400_000);
 
-  const [todayQ, upcomingQ, recentQ, paymentsQ, servicesQ] = await Promise.all([
+  const [
+    todayQ,
+    upcomingQ,
+    recentQ,
+    paymentsQ,
+    servicesQ,
+    staffQ,
+    staffHoursQ,
+    businessHoursQ,
+    periodsQ,
+    slotBookingsQ,
+    blocksQ,
+    holidaysQ,
+  ] = await Promise.all([
     supabase
       .from("bookings")
       .select(
@@ -91,15 +111,131 @@ export async function buildAssistantContext(accessToken: string) {
       .limit(500),
     supabase
       .from("services")
-      .select("id, name, duration_minutes, price_cents", { count: "exact" })
+      .select(
+        "id, name, duration_minutes, price_cents, buffer_before_min, buffer_after_min, gap_min, active_after_min",
+        { count: "exact" },
+      )
       .eq("business_id", business.id)
       .eq("active", true)
       .is("archived_at", null)
       .order("name")
       .limit(100),
+    supabase
+      .from("staff")
+      .select("id, name", { count: "exact" })
+      .eq("business_id", business.id)
+      .eq("active", true)
+      .eq("bookable", true)
+      .is("archived_at", null)
+      .order("name")
+      .limit(50),
+    supabase
+      .from("staff_hours")
+      .select(
+        "staff_id, weekday, closed, open_time, close_time, repeat_weeks, repeat_anchor",
+        { count: "exact" },
+      )
+      .eq("business_id", business.id)
+      .limit(500),
+    supabase
+      .from("business_hours")
+      .select("weekday, closed, open_time, close_time", { count: "exact" })
+      .eq("business_id", business.id)
+      .limit(14),
+    supabase
+      .from("business_hour_periods")
+      .select("weekday, open_time, close_time", { count: "exact" })
+      .eq("business_id", business.id)
+      .limit(50),
+    supabase
+      .from("bookings")
+      .select(
+        "staff_id, starts_at, ends_at, status, gap_min, active_after_min, buffer_before_min, buffer_after_min",
+        { count: "exact" },
+      )
+      .eq("business_id", business.id)
+      .lt("starts_at", slotLookupEnd.toISOString())
+      .gt("ends_at", slotLookupStart.toISOString())
+      .neq("status", "cancelled")
+      .limit(1000),
+    supabase
+      .from("blocked_dates_public")
+      .select("staff_id, starts_at, ends_at", { count: "exact" })
+      .eq("business_id", business.id)
+      .lt("starts_at", slotLookupEnd.toISOString())
+      .gt("ends_at", slotLookupStart.toISOString())
+      .limit(500),
+    supabase
+      .from("holiday_closures")
+      .select("starts_on, ends_on", { count: "exact" })
+      .eq("business_id", business.id)
+      .lte("starts_on", slotLookupEnd.toISOString().slice(0, 10))
+      .gte("ends_on", slotLookupStart.toISOString().slice(0, 10))
+      .limit(100),
   ]);
   for (const result of [todayQ, upcomingQ, recentQ, paymentsQ, servicesQ]) {
     if (result.error) throw result.error;
+  }
+
+  let verifiedSlots: ReturnType<typeof verifiedAssistantSlots> | null = null;
+  let availabilityNote =
+    "Availability could not be verified; check Calendar before offering a time.";
+  const availabilityQueries = [
+    staffQ,
+    staffHoursQ,
+    businessHoursQ,
+    periodsQ,
+    slotBookingsQ,
+    blocksQ,
+    holidaysQ,
+  ];
+  const complete =
+    availabilityQueries.every(
+      (query) => !query.error && query.count === query.data?.length,
+    ) &&
+    servicesQ.count === servicesQ.data?.length &&
+    !business.deletion_requested_at;
+  if (complete) {
+    const linksQ = await supabase
+      .from("service_staff")
+      .select("service_id, staff_id", { count: "exact" })
+      .eq("business_id", business.id)
+      .limit(500);
+    if (!linksQ.error && linksQ.count === linksQ.data?.length) {
+      try {
+        verifiedSlots = verifiedAssistantSlots({
+          now,
+          timeZone: timezone,
+          staff: (staffQ.data ?? []).map((row) => ({
+            id: row.id,
+            name: boundedName(row.name, "Staff member"),
+          })),
+          services: (servicesQ.data ?? []).map((row) => ({
+            id: row.id,
+            name: boundedName(row.name, "Service"),
+            duration_minutes: row.duration_minutes,
+            buffer_before_min: row.buffer_before_min,
+            buffer_after_min: row.buffer_after_min,
+            gap_min: row.gap_min,
+            active_after_min: row.active_after_min,
+          })),
+          serviceStaff: linksQ.data ?? [],
+          staffHours: staffHoursQ.data ?? [],
+          businessHours: businessHoursQ.data ?? [],
+          businessPeriods: periodsQ.data ?? [],
+          bookings: slotBookingsQ.data ?? [],
+          blocks: blocksQ.data ?? [],
+          holidayClosures: holidaysQ.data ?? [],
+        });
+        availabilityNote = verifiedSlots.length
+          ? "Representative bookable slots in the next seven salon-local days; availability can change before sharing or booking."
+          : "No verified slots found in the next seven salon-local days for active, bookable staff and services.";
+      } catch {
+        verifiedSlots = null;
+        availabilityNote =
+          "Availability could not be verified; check Calendar before offering a time.";
+      }
+    }
   }
 
   const today: AssistantVisit[] = (todayQ.data ?? []).map((booking) => ({
@@ -151,6 +287,49 @@ export async function buildAssistantContext(accessToken: string) {
       priceCents: row.price_cents,
     })),
     servicesCount: servicesQ.count ?? servicesQ.data?.length ?? 0,
+    reviewRequestsEnabled: business.review_requests_enabled,
+    verifiedSlots,
+    availabilityNote,
   });
-  return { business, summary: JSON.stringify(facts) };
+  let rebooking: {
+    available: boolean;
+    partial: boolean;
+    opportunities: {
+      customerName: string;
+      serviceName: string;
+      dueAt: string;
+    }[];
+  } = { available: false, partial: false, opportunities: [] };
+  if (business.plan === "studio" && !business.deletion_requested_at) {
+    try {
+      const result = await loadRebookingOpportunities({
+        businessId: business.id,
+        businessName: business.name,
+      });
+      rebooking = {
+        available: result.available,
+        partial: result.partial,
+        opportunities: result.opportunities.slice(0, 8).map((item) => ({
+          customerName: boundedName(item.customerName, "Customer"),
+          serviceName: boundedName(item.serviceName, "Service"),
+          dueAt: item.dueAt,
+        })),
+      };
+    } catch (error) {
+      console.error("[assistant] rebooking opportunities unavailable", error);
+    }
+  }
+  const configuredOrigin = process.env.APP_URL || "https://bookzenvo.com";
+  const publicOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(
+    configuredOrigin,
+  )
+    ? "https://bookzenvo.com"
+    : configuredOrigin;
+  const bookingUrl = business.slug
+    ? bookingPageUrl(publicOrigin, business.slug)
+    : null;
+  return {
+    business,
+    summary: JSON.stringify({ ...facts, bookingUrl, rebooking }),
+  };
 }

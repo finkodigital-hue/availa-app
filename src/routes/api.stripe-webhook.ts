@@ -370,6 +370,11 @@ export const Route = createFileRoute("/api/stripe-webhook")({
               businessId: metadata.business_id,
             });
           }
+          if (bookingId && metadata.booking_source) {
+            const { recordBookingSource } = await import("@/lib/booking-attribution.server");
+            // Fulfilment is idempotent; webhook retries can safely repair attribution.
+            await recordBookingSource(bookingId, metadata.business_id, metadata.booking_source);
+          }
         } catch (error) {
           console.error("Stripe checkout fulfillment failed", error);
           return new Response("Could not fulfil checkout", { status: 500 });

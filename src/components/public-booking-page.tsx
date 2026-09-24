@@ -43,6 +43,7 @@ import {
 } from "@/lib/theme";
 import { startBookingCheckout } from "@/lib/stripe-connect.functions";
 import { createPublicBooking } from "@/lib/public-booking.functions";
+import { bookingSourceFromSearch } from "@/lib/booking-attribution";
 import { useAuth } from "@/lib/auth";
 import { usePortalCustomer } from "@/lib/portal-customer";
 import { BookingSignIn } from "@/components/booking-sign-in";
@@ -711,6 +712,7 @@ export function PublicBookingPage({
           endsAt: ends_at,
           notes: info.notes,
           returnPath: window.location.pathname,
+          bookingSource: bookingSourceFromSearch(window.location.search),
         },
       });
       if (checkout.checkoutUrl) {
@@ -731,6 +733,7 @@ export function PublicBookingPage({
           endsAt: ends_at,
           notes: info.notes,
           gapMin: service.gap_min ?? null,
+          bookingSource: bookingSourceFromSearch(window.location.search),
           activeAfterMin: service.active_after_min ?? null,
         },
       });

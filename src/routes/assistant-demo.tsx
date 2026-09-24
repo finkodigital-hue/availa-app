@@ -6,7 +6,9 @@ import {
   ClipboardList,
   Copy,
   CreditCard,
+  RotateCcw,
   Sparkles,
+  Star,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
@@ -64,6 +66,30 @@ const examples: Example[] = [
     answer:
       "Subject: Lovely to see you\n\nHi [first name],\n\nThank you for visiting us. We hope you enjoyed your appointment. If you have any questions, just reply and we’ll be happy to help.\n\nSee you again soon,\n[Salon name]\n\nThis is only a draft. Nothing has been sent; check the details and messaging consent before using it.",
   },
+  {
+    icon: CalendarDays,
+    title: "Fill an open slot",
+    description: "Prepare a post for real availability",
+    question: "How could I fill a quiet slot this week?",
+    answer:
+      "In this fictional example, a Cut & finish slot with Jordan Example is bookable on Thursday at 11:00.\n\nDraft post: A little time for you this Thursday. We have one Cut & finish appointment at 11:00. Book through our page if it suits you.\n\nNothing has been posted. In the real assistant, recheck Calendar before sharing because availability can change.",
+  },
+  {
+    icon: RotateCcw,
+    title: "Bring clients back",
+    description: "Suggest an eligible return visit",
+    question: "Who might be ready to book again?",
+    answer:
+      "In this fictional example, Jamie Example is due for a return Cut & finish and has no future booking. A booking-origin email permission is recorded in the example data.\n\nDraft: Hi Jamie, it was lovely to see you. If you're ready for your next visit, you can choose a time through our booking page.\n\nThis draft has not been sent. Recheck the booking and current email permission before contacting anyone. Imported contacts are not assumed eligible.",
+  },
+  {
+    icon: Star,
+    title: "Grow genuine reviews",
+    description: "Turn good visits into trust",
+    question: "How can we get more genuine reviews?",
+    answer:
+      "Bookzenvo can ask customers for an honest review after a completed visit. Check that review requests are enabled in Page Builder, and make it easy for people to find your booking link on Google.\n\nDo not offer a reward for a Google review or ask only happy customers. This is guidance; the demo has not contacted anyone or changed your settings.",
+  },
 ];
 
 function AssistantDemo() {
@@ -108,8 +134,44 @@ function AssistantDemo() {
           </p>
         </div>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {examples.map((item, index) => {
+        <h2 className="mt-8 mb-3 text-sm font-semibold">Run the day</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {examples.slice(0, 4).map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.title}
+                type="button"
+                aria-pressed={selected === index}
+                onClick={() => {
+                  setSelected(index);
+                  setCopied(false);
+                }}
+                className={`rounded-2xl border p-4 text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] ${
+                  selected === index
+                    ? "border-primary/70 bg-primary/10"
+                    : "bg-card hover:border-primary/40"
+                }`}
+              >
+                <Icon
+                  className="mb-3 h-5 w-5 text-[color:var(--gold-deep)]"
+                  aria-hidden="true"
+                />
+                <span className="block text-sm font-semibold">
+                  {item.title}
+                </span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                  {item.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <h2 className="mt-7 mb-3 text-sm font-semibold">Grow the salon</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {examples.slice(4).map((item, offset) => {
+            const index = offset + 4;
             const Icon = item.icon;
             return (
               <button
