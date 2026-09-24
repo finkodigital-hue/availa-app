@@ -39,3 +39,4 @@ Launch readiness reviewed 2026-09-24. A checked item needs evidence, not just pa
 
 - [x] ~~Run the public link and metadata audit locally~~ (2026-09-24) - 78 local pages/assets passed. This does not replace the final live-domain audit.
 - [x] ~~Run the main-branch build and isolated launch checks~~ (2026-09-24) - Build passed; 127 migrations replayed and security checks covered 61 public tables. No real provider journey was exercised.
+- [x] ~~Add safe public-page browser smoke checks~~ (2026-09-24) - Three local browser tests passed for legal/FAQ/help navigation, mobile menu and custom 404, with mutation requests guarded. This does not prove the live site or real-device accessibility.
