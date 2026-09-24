@@ -371,9 +371,13 @@ export const Route = createFileRoute("/api/stripe-webhook")({
             });
           }
           if (bookingId && metadata.booking_source) {
-            const { recordBookingSource } = await import("@/lib/booking-attribution.server");
-            // Fulfilment is idempotent; webhook retries can safely repair attribution.
-            await recordBookingSource(bookingId, metadata.business_id, metadata.booking_source);
+            try {
+              const { recordBookingSource } = await import("@/lib/booking-attribution.server");
+              await recordBookingSource(bookingId, metadata.business_id, metadata.booking_source);
+            } catch (attributionError) {
+              // Reporting is optional: never fail a fulfilled, paid booking for a missing label.
+              console.error("Could not record booking source", attributionError);
+            }
           }
         } catch (error) {
           console.error("Stripe checkout fulfillment failed", error);
