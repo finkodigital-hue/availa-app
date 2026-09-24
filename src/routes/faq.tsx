@@ -17,7 +17,7 @@ const QUESTIONS = [
   ],
   [
     "Do I need a card reader or other hardware to take payments?",
-    "No. Payments run through Stripe on whatever device you already have — phone, tablet or laptop. No proprietary hardware to buy or carry around.",
+    "Not for online payments. Customers can pay through Stripe Checkout or a payment link on their phone, tablet or laptop. Bookzenvo does not currently connect to a physical card reader or support in-salon Tap to Pay, so card-machine payments will not update a booking automatically.",
   ],
   [
     "Can I add more staff?",

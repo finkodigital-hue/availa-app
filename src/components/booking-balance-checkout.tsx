@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { CreditCard, ExternalLink, RefreshCw } from "lucide-react";
+import { Copy, CreditCard, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { startBalanceCheckout } from "@/lib/stripe-connect.functions";
@@ -18,6 +18,7 @@ export function BookingBalanceCheckout({
   onUpdated: (booking: Record<string, unknown>) => void;
 }) {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const lock = useRef(false);
@@ -58,6 +59,7 @@ export function BookingBalanceCheckout({
           )
             throw new Error("The secure payment link could not be verified.");
           setCheckoutUrl(url.href);
+          setCopied(false);
           setMessage(
             "Ready for customer approval. Your appointment stays open here.",
           );
@@ -89,12 +91,35 @@ export function BookingBalanceCheckout({
             {busy ? "Preparing payment…" : "Prepare payment"}
           </Button>
         ) : (
-          <Button asChild>
-            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">
-              Open secure payment <ExternalLink className="ml-1.5 h-4 w-4" />
-              <span className="sr-only"> (new tab)</span>
-            </a>
-          </Button>
+          <>
+            <Button asChild>
+              <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">
+                Open secure payment <ExternalLink className="ml-1.5 h-4 w-4" />
+                <span className="sr-only"> (new tab)</span>
+              </a>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(checkoutUrl);
+                  setCopied(true);
+                  setMessage(
+                    "Link copied. Share it privately with this customer only.",
+                  );
+                } catch {
+                  setCopied(false);
+                  setMessage(
+                    "Could not copy the link. Open it instead or try again.",
+                  );
+                }
+              }}
+            >
+              <Copy className="mr-1.5 h-4 w-4" />
+              {copied ? "Copied" : "Copy payment link"}
+            </Button>
+          </>
         )}
         <Button
           variant="outline"
