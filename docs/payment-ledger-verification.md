@@ -1,0 +1,13 @@
+# Gift redemption and booking refund verification — 24 September 2026
+
+Gift redemption now explicitly updates both paid and due amounts. It rejects expired cards, currency mismatches, cancelled/refunded bookings and unresolved balance checkouts. An idempotency replay must match its booking, card and actor. Database locks serialise booking balance and card changes.
+
+Confirmed booking refunds may be partial. Each provider refund is applied once and must match its original charge, business, booking, currency and remaining refundable amount. The website requests only outstanding charge balances, keeps partially refunded charges eligible, and reports requests as submitted rather than claiming bank delivery. The server records failed attempts after owner authorisation; authenticated clients still cannot forge payment rows.
+
+The signed webhook accepts `refund.created` and `refund.updated`. It resolves dashboard-originated refunds through the successful charge within the signed connected account; metadata cannot redirect it to another booking. Missing charges/database failures return 500 for retry instead of silently dropping reconciliation. Unfulfilled-booking recovery retains its separate durable process.
+
+Evidence: 25 payment-ledger assertions run against all application migrations; eight refund-balance assertions; 15 actual-handler assertions using fictional signed events and a mocked database. No test initiates a provider payment, refund, booking or message. TypeScript, production compilation and the security boundary check pass. These fixtures do not prove real Stripe delivery, concurrent independent database sessions or the complete refund lifecycle.
+
+Still open: gift-purchase refund reconciliation and spent-card handling; delayed refund failure/reversal handling; provider sandbox end-to-end journeys, operational alert receipt and owner reconciliation of historical payments. Do not mark commercial payments cleared from these tests alone. The connected sandbox webhook must subscribe to `refund.created` as well as its existing events after this handler is live.
+
+References: [Stripe refunds](https://docs.stripe.com/refunds) and [event types](https://docs.stripe.com/api/events/types). Refunds can remain pending or later fail; a submitted request is not final delivery.

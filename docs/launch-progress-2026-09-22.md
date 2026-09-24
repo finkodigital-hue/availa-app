@@ -84,3 +84,9 @@ First batch deployed and verified at revision af7de6756499eec73777cdb12406be03f7
 - Full local build passes 326 assertions, all 125 application migrations, TypeScript and the 60-table boundary check. Real source-spam/load tests, native Supabase auth limits and Cloudflare volumetric controls remain separate evidence.
 - The preceding scheduling release is live at babe51589569730b95fce1732c226566b8d166d3; all three release checks and marker passed. Mobile public service/staff/time/details screens reached at 390px with 375px content/scroll width and no page overflow; no submission made.
 - Limits, privacy assumptions and rollout: [public request protection](public-request-protection.md).
+
+## Payment ledger follow-up — 24 September
+
+- Source protections are live at 5c7e1407e079137d36a76ed1eda103db3b5d153f; all three release checks and the exact marker passed. Direct public/member booking and waitlist writes were then revoked. An inert unknown-auth-route probe confirmed the server source counter without creating an identity or sending mail.
+- Gift redemption now updates the due amount and validates replay identity, currency, expiry and unresolved balance checkouts. Confirmed partial refunds reconcile once against the original charge. The website retains partially refunded charges as refundable and reports submission accurately.
+- Added 25 full-schema ledger, eight balance-calculation and 15 signed-handler assertions. The handler supports dashboard-originated booking refunds without requiring metadata and rejects wrong accounts/identities. Database migration 20260924003000 applied successfully. Gift-purchase refunds and late refund failures remain open; see [payment ledger verification](payment-ledger-verification.md).

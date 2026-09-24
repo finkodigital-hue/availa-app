@@ -3,6 +3,7 @@ import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { checkSchemaRoles } from './schema-role-checks.mjs';
+import { checkSchemaPaymentLedger } from './schema-payment-ledger-checks.mjs';
 
 // Replay ALL application migrations. Supabase-owned Auth/Storage objects and
 // external cron/HTTP/Vault services are local fixtures, not a full Supabase stack.
@@ -64,5 +65,6 @@ try {
  assert.ok(tables>=59);
  console.log(`Replayed ${replayed} application migrations; ${tables} public tables; 2 metadata-backfill assertions passed. ${fixtures} external extension declarations use inert local fixtures.`);
  await checkSchemaRoles(db);
+ await checkSchemaPaymentLedger(db);
 } catch(error) {console.error(error.message);process.exitCode=1;}
 finally {await db.close();}

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { trustedAppOrigin } from "@/lib/app-origin.server";
+import { refundableCharges } from "@/lib/refund-balances";
 
 type StripeAccount = {
   id: string;
@@ -42,6 +43,7 @@ type NoShowPolicyInput = {
 type StripeRefund = {
   id: string;
   status: string;
+  amount: number;
 };
 
 type RefundChargeResult = {
@@ -442,7 +444,7 @@ export const refundBooking = createServerFn({ method: "POST" })
         .eq("owner_id", context.userId)
         .maybeSingle();
       if (businessError) throw businessError;
-      if (!business?.stripe_account_id || !business.stripe_charges_enabled) {
+      if (!business?.stripe_account_id) {
         throw new Error("Connect Stripe before issuing a refund.");
       }
 
@@ -472,38 +474,27 @@ export const refundBooking = createServerFn({ method: "POST" })
 
       const { data: refundRows, error: refundsError } = await context.supabase
         .from("payments")
-        .select("stripe_payment_intent_id")
+        .select("stripe_payment_intent_id, amount_cents")
         .eq("booking_id", booking.id)
         .eq("business_id", business.id)
         .eq("type", "refund")
         .eq("status", "succeeded");
       if (refundsError) throw refundsError;
-      const alreadyRefunded = new Set(
-        (refundRows ?? []).map((r) => r.stripe_payment_intent_id),
-      );
-
-      const outstanding = charges.filter(
-        (c) => !alreadyRefunded.has(c.stripe_payment_intent_id),
-      );
+      const outstanding = refundableCharges(charges, refundRows ?? []);
       if (outstanding.length === 0)
         throw new Error("This booking has already been fully refunded.");
 
-      const results: RefundChargeResult[] = charges
-        .filter((c) => alreadyRefunded.has(c.stripe_payment_intent_id))
-        .map((c) => ({
-          paymentIntentId: c.stripe_payment_intent_id,
-          amountCents: c.amount_cents,
-          ok: true,
-        }));
+      const results: RefundChargeResult[] = [];
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const stripeHeaders = {
         "Content-Type": "application/x-www-form-urlencoded",
         "Stripe-Account": business.stripe_account_id,
       };
       for (const charge of outstanding) {
-        const paymentIntentId = charge.stripe_payment_intent_id;
+        const paymentIntentId = charge.paymentIntentId;
         try {
-          await stripeRequest<StripeRefund>("/v1/refunds", {
+          const refund = await stripeRequest<StripeRefund>("/v1/refunds", {
             method: "POST",
             headers: {
               ...stripeHeaders,
@@ -516,9 +507,12 @@ export const refundBooking = createServerFn({ method: "POST" })
               "metadata[initiated_by_user_id]": context.userId,
             }),
           });
+          if (!["succeeded", "pending", "requires_action"].includes(refund.status)) {
+            throw new Error("Stripe did not accept this refund. Review the payment in Stripe before retrying.");
+          }
           results.push({
             paymentIntentId,
-            amountCents: charge.amount_cents,
+            amountCents: refund.amount,
             ok: true,
           });
         } catch (error) {
@@ -528,17 +522,17 @@ export const refundBooking = createServerFn({ method: "POST" })
               : "Stripe could not process this refund.";
           results.push({
             paymentIntentId,
-            amountCents: charge.amount_cents,
+            amountCents: charge.amountCents,
             ok: false,
             error: message,
           });
-          await context.supabase.from("payments").insert({
+          const { error: auditError } = await supabaseAdmin.from("payments").insert({
             business_id: business.id,
             booking_id: booking.id,
             stripe_payment_intent_id: paymentIntentId,
             type: "failure",
             status: "failed",
-            amount_cents: charge.amount_cents,
+            amount_cents: charge.amountCents,
             currency: business.currency.toLowerCase(),
             customer_name: booking.customer_name,
             customer_email: booking.customer_email,
@@ -546,6 +540,7 @@ export const refundBooking = createServerFn({ method: "POST" })
             error_message: message,
             initiated_by_user_id: context.userId,
           });
+          if (auditError) console.error("Could not record refund attempt failure", { code: auditError.code });
         }
       }
       return { results };
