@@ -1,119 +1,156 @@
 import { createClient } from "@supabase/supabase-js";
+import { assistantFacts, type AssistantVisit } from "@/lib/assistant-facts";
+import { businessDayRange } from "@/lib/business-day";
 import { requireVerifiedIdentity } from "@/lib/verified-identity.server";
 
+function relationName(value: unknown, fallback: string): string {
+  const row = Array.isArray(value) ? value[0] : value;
+  if (!row || typeof row !== "object" || !("name" in row)) return fallback;
+  return typeof row.name === "string" ? row.name : fallback;
+}
+
+function boundedName(
+  value: string | null | undefined,
+  fallback: string,
+): string {
+  return (value?.trim() || fallback).slice(0, 100);
+}
+
+/** Owner-scoped, read-only facts. Do not put private notes or health data here. */
 export async function buildAssistantContext(accessToken: string) {
   const supabase = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_PUBLISHABLE_KEY!,
     {
-      auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        storage: undefined,
+      },
       global: { headers: { Authorization: `Bearer ${accessToken}` } },
     },
   );
-
-  const userData = await requireVerifiedIdentity(supabase, accessToken);
-
-  const { data: business } = await supabase
+  const identity = await requireVerifiedIdentity(supabase, accessToken);
+  const { data: business, error: businessError } = await supabase
     .from("businesses")
-    .select("*")
-    .eq("owner_id", userData.user.id)
+    .select("id, name, plan, timezone, currency")
+    .eq("owner_id", identity.user.id)
     .maybeSingle();
-  if (!business) return { business: null, summary: "No business workspace found." };
+  if (businessError) throw businessError;
+  if (!business) return { business: null, summary: "" };
 
   const now = new Date();
-  const startToday = new Date(now); startToday.setHours(0, 0, 0, 0);
-  const endToday = new Date(startToday); endToday.setDate(endToday.getDate() + 1);
-  const in14 = new Date(startToday); in14.setDate(in14.getDate() + 14);
-  const past30 = new Date(startToday); past30.setDate(past30.getDate() - 30);
+  const timezone = business.timezone || "Europe/London";
+  const currency = business.currency || "GBP";
+  const { start, end } = businessDayRange(now, timezone);
+  const in14 = new Date(now);
+  in14.setDate(in14.getDate() + 14);
+  const past30 = new Date(now);
+  past30.setDate(past30.getDate() - 30);
 
-  const [todayQ, upcomingQ, recentQ, servicesQ, staffQ, customersQ, hoursQ] = await Promise.all([
-    supabase.from("bookings").select("id, starts_at, ends_at, status, price_cents, service_id, staff_id, customer_id, customers(name,email), services(name), staff(name)")
+  const [todayQ, upcomingQ, recentQ, paymentsQ, servicesQ] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select(
+        "id, starts_at, customer_name, status, payment_status, price_cents, amount_paid_cents, services(name), staff(name)",
+        { count: "exact" },
+      )
       .eq("business_id", business.id)
-      .gte("starts_at", startToday.toISOString())
-      .lt("starts_at", endToday.toISOString())
-      .order("starts_at"),
-    supabase.from("bookings").select("id, starts_at, status, service_id, staff_id, services(name), staff(name)")
+      .gte("starts_at", start.toISOString())
+      .lt("starts_at", end.toISOString())
+      .neq("status", "cancelled")
+      .order("starts_at")
+      .limit(80),
+    supabase
+      .from("bookings")
+      .select("id, starts_at, status, services(name), staff(name)", {
+        count: "exact",
+      })
       .eq("business_id", business.id)
-      .gte("starts_at", endToday.toISOString())
+      .gte("starts_at", now.toISOString())
       .lt("starts_at", in14.toISOString())
       .neq("status", "cancelled")
-      .order("starts_at"),
-    supabase.from("bookings").select("id, starts_at, status, price_cents, service_id, staff_id, services(name)")
+      .order("starts_at")
+      .limit(200),
+    supabase
+      .from("bookings")
+      .select("service_id, status", { count: "exact" })
       .eq("business_id", business.id)
       .gte("starts_at", past30.toISOString())
-      .lt("starts_at", endToday.toISOString()),
-    supabase.from("services").select("id, name, duration_minutes, price_cents").eq("business_id", business.id),
-    supabase.from("staff").select("id, name, role").eq("business_id", business.id),
-    supabase.from("customers").select("id, name, email").eq("business_id", business.id).limit(200),
-    supabase.from("business_hours").select("*").eq("business_id", business.id),
+      .lt("starts_at", now.toISOString())
+      .neq("status", "cancelled")
+      .limit(500),
+    supabase
+      .from("payments")
+      .select("type, amount_cents, currency", { count: "exact" })
+      .eq("business_id", business.id)
+      .eq("status", "succeeded")
+      .in("type", ["charge", "refund"])
+      .gte("created_at", past30.toISOString())
+      .lt("created_at", now.toISOString())
+      .limit(500),
+    supabase
+      .from("services")
+      .select("id, name, duration_minutes, price_cents", { count: "exact" })
+      .eq("business_id", business.id)
+      .eq("active", true)
+      .is("archived_at", null)
+      .order("name")
+      .limit(100),
   ]);
-
-  const today = todayQ.data ?? [];
-  const upcoming = upcomingQ.data ?? [];
-  const recent = recentQ.data ?? [];
-
-  // Day-of-week popularity (past 30d)
-  const dayCounts = [0,0,0,0,0,0,0];
-  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  recent.forEach((b: { starts_at: string; status: string }) => {
-    if (b.status === "cancelled") return;
-    dayCounts[new Date(b.starts_at).getDay()]++;
-  });
-  const busiest = dayNames
-    .map((n, i) => ({ day: n, bookings: dayCounts[i] }))
-    .sort((a, b) => b.bookings - a.bookings);
-
-  // Service popularity
-  const svcCount: Record<string, number> = {};
-  recent.forEach((b: any) => {
-    if (b.status === "cancelled") return;
-    const svc = Array.isArray(b.services) ? b.services[0] : b.services;
-    const name = svc?.name ?? b.service_id;
-    svcCount[name] = (svcCount[name] ?? 0) + 1;
-  });
-  const topServices = Object.entries(svcCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-  const revenue30 = recent
-    .filter((b) => b.status !== "cancelled")
-    .reduce((sum, b) => sum + (b.price_cents ?? 0), 0);
-
-  // Empty slots — find upcoming weekdays in next 7d with fewest bookings
-  const slotsByDay: Record<string, number> = {};
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(startToday); d.setDate(d.getDate() + i);
-    slotsByDay[d.toISOString().slice(0, 10)] = 0;
+  for (const result of [todayQ, upcomingQ, recentQ, paymentsQ, servicesQ]) {
+    if (result.error) throw result.error;
   }
-  upcoming.forEach((b) => {
-    const k = new Date(b.starts_at).toISOString().slice(0, 10);
-    if (k in slotsByDay) slotsByDay[k]++;
+
+  const today: AssistantVisit[] = (todayQ.data ?? []).map((booking) => ({
+    id: booking.id,
+    startsAt: booking.starts_at,
+    customer: boundedName(booking.customer_name, "Customer"),
+    service: boundedName(relationName(booking.services, "Service"), "Service"),
+    staff: boundedName(relationName(booking.staff, "Unassigned"), "Unassigned"),
+    status: booking.status,
+    paymentStatus: booking.payment_status,
+    priceCents: booking.price_cents ?? 0,
+    paidCents: booking.amount_paid_cents ?? 0,
+  }));
+  const upcoming: AssistantVisit[] = (upcomingQ.data ?? []).map((booking) => ({
+    id: booking.id,
+    startsAt: booking.starts_at,
+    customer: "",
+    service: boundedName(relationName(booking.services, "Service"), "Service"),
+    staff: boundedName(relationName(booking.staff, "Unassigned"), "Unassigned"),
+    status: booking.status,
+    paymentStatus: "",
+    priceCents: 0,
+    paidCents: 0,
+  }));
+  const facts = assistantFacts({
+    asOf: now.toISOString(),
+    businessName: boundedName(business.name, "Salon"),
+    timeZone: timezone,
+    currency,
+    today,
+    todayCount: todayQ.count ?? today.length,
+    upcoming,
+    upcomingCount: upcomingQ.count ?? upcoming.length,
+    recent: (recentQ.data ?? []).map((row) => ({
+      serviceId: row.service_id,
+      status: row.status,
+    })),
+    recentCount: recentQ.count ?? recentQ.data?.length ?? 0,
+    payments: (paymentsQ.data ?? []).map((row) => ({
+      type: row.type,
+      amountCents: row.amount_cents,
+      currency: row.currency,
+    })),
+    paymentsCount: paymentsQ.count ?? paymentsQ.data?.length ?? 0,
+    services: (servicesQ.data ?? []).map((row) => ({
+      id: row.id,
+      name: boundedName(row.name, "Service"),
+      durationMinutes: row.duration_minutes,
+      priceCents: row.price_cents,
+    })),
+    servicesCount: servicesQ.count ?? servicesQ.data?.length ?? 0,
   });
-  const quietDays = Object.entries(slotsByDay).sort((a, b) => a[1] - b[1]).slice(0, 5);
-
-  const currency = business.currency ?? "GBP";
-  const fmt = (cents: number) =>
-    new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(cents / 100);
-
-  const summary = [
-    `Business: ${business.name} (${business.timezone ?? "UTC"}, ${currency}).`,
-    `Today: ${today.length} bookings.`,
-    today.length
-      ? "Today's schedule:\n" + today.map((b: any) => {
-          const svc = Array.isArray(b.services) ? b.services[0] : b.services;
-          const st = Array.isArray(b.staff) ? b.staff[0] : b.staff;
-          const c = Array.isArray(b.customers) ? b.customers[0] : b.customers;
-          return `  • ${new Date(b.starts_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})} — ${svc?.name ?? "Service"} with ${st?.name ?? "staff"} for ${c?.name ?? "customer"} [${b.status}]`;
-        }).join("\n")
-      : "No bookings today.",
-    `Next 14 days: ${upcoming.length} upcoming bookings.`,
-    `Past 30 days: ${recent.length} bookings, ${fmt(revenue30)} revenue.`,
-    `Busiest days (past 30d): ${busiest.slice(0, 3).map(d => `${d.day} (${d.bookings})`).join(", ")}.`,
-    `Quietest upcoming days (next 7d): ${quietDays.map(([d, n]) => `${d} (${n})`).join(", ")}.`,
-    `Top services: ${topServices.map(([n, c]) => `${n} (${c})`).join(", ") || "n/a"}.`,
-    `Services offered: ${(servicesQ.data ?? []).map((s: {name:string;duration_minutes:number;price_cents:number}) => `${s.name} ${s.duration_minutes}min ${fmt(s.price_cents)}`).join("; ") || "none"}.`,
-    `Staff: ${(staffQ.data ?? []).map((s: {name:string}) => s.name).join(", ") || "none"}.`,
-    `Customer count: ${(customersQ.data ?? []).length}.`,
-    `Business hours rows: ${(hoursQ.data ?? []).length}.`,
-  ].join("\n");
-
-  return { business, summary };
+  return { business, summary: JSON.stringify(facts) };
 }
