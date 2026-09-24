@@ -8,7 +8,7 @@ import {
   XCircle,
   Package,
   ChevronDown,
-  CreditCard,
+  CalendarCheck,
   CalendarOff,
 } from "lucide-react";
 
@@ -31,8 +31,7 @@ import {
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { AddTimeOffDialog } from "@/components/time-off-editor";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { startBalanceCheckout } from "@/lib/stripe-connect.functions";
-import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
+import { BookingBalanceCheckout } from "@/components/booking-balance-checkout";
 import { BookingConsultationStatus } from "@/components/booking-consultation-status";
 import { fmtMoney as formatMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
 import { resolveDayPeriods, isMinuteWithinPeriods, type DayPeriod } from "@/lib/staff-hours";
@@ -78,30 +77,12 @@ function CalendarPage() {
   });
   const [selected, setSelected] = useState<any | null>(null);
   const [newOpen, setNewOpen] = useState(false);
-  const [prefill, setPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
+  const [prefill, setPrefill] = useState<{ customerId?: string; serviceId?: string; staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockPrefill, setBlockPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const calendarRef = useRef<HTMLDivElement>(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const calendarIsExpanded = isFocusMode;
-
-  const collectBalance = async () => {
-    if (!selected) return;
-    try {
-      const headers = await getServerFnAuthHeaders();
-      const result = await startBalanceCheckout({ data: { bookingId: selected.id }, headers });
-      if ("paid" in result) {
-        toast.success("The balance payment is confirmed.");
-        setSelected(null);
-        qc.invalidateQueries({ queryKey: ["calendar"] });
-        return;
-      }
-      window.location.assign(result.checkoutUrl);
-      toast.message("Opening Stripe Checkout for the customer to approve the payment.");
-    } catch (error: any) {
-      toast.error(error.message ?? "Could not start the balance payment.");
-    }
-  };
 
   // On phones, focus mode replaces the surrounding workspace rather than
   // sitting underneath its fixed header and navigation. This keeps the day
@@ -790,10 +771,20 @@ function CalendarPage() {
             </div>
           )}
           <DialogFooter className="flex-wrap gap-2">
-            {selected && selected.business_id === bid && selected.payment_status !== "paid" && (selected.price_cents ?? 0) > (selected.amount_paid_cents ?? 0) && (
-              <Button onClick={collectBalance}>
-                <CreditCard className="h-4 w-4 mr-1.5" /> Take remaining payment
+            {selected && selected.business_id === bid && selected.customer_id && selected.service_id && !selected.is_custom && (
+              <Button variant="outline" onClick={() => {
+                setPrefill({ customerId: selected.customer_id, serviceId: selected.service_id, staffId: selected.staff_id ?? undefined });
+                setSelected(null);
+                setNewOpen(true);
+              }}>
+                <CalendarCheck className="h-4 w-4 mr-1.5" /> Book again
               </Button>
+            )}
+            {selected && selected.business_id === bid && selected.payment_status !== "paid" && (selected.price_cents ?? 0) > (selected.amount_paid_cents ?? 0) && (
+              <BookingBalanceCheckout key={selected.id} bookingId={selected.id} businessId={bid!} onUpdated={(updated) => {
+                setSelected((current: any) => current?.id === updated.id ? { ...current, ...updated } : current);
+                for (const key of ["calendar", "bookings-list", "dashboard-overview"]) void qc.invalidateQueries({ queryKey: [key] });
+              }} />
             )}
             {selected && selected.status !== "cancelled" && (
               <ConfirmDialog

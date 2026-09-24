@@ -21,20 +21,31 @@ export type Segment = { start: number; end: number };
 // conflict-preview implementation (e.g. the public booking page, which reads
 // from the public_booking_slots view instead of the bookings table) shares
 // the exact same segment math rather than a second, driftable copy of it.
-export function expandBookingSegments(b: { starts_at: string; ends_at: string; gap_min?: number | null; active_after_min?: number | null }): Segment[] {
+export function expandBookingSegments(b: {
+  starts_at: string;
+  ends_at: string;
+  gap_min?: number | null;
+  active_after_min?: number | null;
+}): Segment[] {
   const start = new Date(b.starts_at).getTime();
   const end = new Date(b.ends_at).getTime();
   if (!b.gap_min || !b.active_after_min) return [{ start, end }];
   const activeAfterStart = end - b.active_after_min * 60000;
   const gapStart = activeAfterStart - b.gap_min * 60000;
-  return [{ start, end: gapStart }, { start: activeAfterStart, end }];
+  return [
+    { start, end: gapStart },
+    { start: activeAfterStart, end },
+  ];
 }
 
 // The candidate slot at time `t` for `service`. Buffers pad the leading edge
 // of the first segment and the trailing edge of the last segment — matching
 // today's behavior of padding the candidate's own occupied window — but the
 // gap in between stays unpadded and unchecked, so it's free for someone else.
-export function expandCandidateSegments(t: number, service: SlotService): Segment[] {
+export function expandCandidateSegments(
+  t: number,
+  service: SlotService,
+): Segment[] {
   const bufBefore = (service.buffer_before_min ?? 0) * 60000;
   const bufAfter = (service.buffer_after_min ?? 0) * 60000;
   const durationMs = service.duration_minutes * 60000;
@@ -45,7 +56,10 @@ export function expandCandidateSegments(t: number, service: SlotService): Segmen
   const activeAfterMs = service.active_after_min * 60000;
   const seg1End = t + bufBefore + durationMs;
   const seg2Start = seg1End + gapMs;
-  return [{ start: t, end: seg1End }, { start: seg2Start, end: seg2Start + activeAfterMs + bufAfter }];
+  return [
+    { start: t, end: seg1End },
+    { start: seg2Start, end: seg2Start + activeAfterMs + bufAfter },
+  ];
 }
 
 export function segmentsOverlap(a: Segment[], b: Segment[]): boolean {
@@ -58,82 +72,182 @@ export function useAvailableSlots(opts: {
   service: SlotService | undefined;
   date: Date;
   excludeBookingId?: string;
+  searchDays?: number;
 }) {
   const { businessId, staffId, service, date, excludeBookingId } = opts;
+  const searchDays = Math.max(1, Math.min(14, opts.searchDays ?? 1));
   const dateKey = date.toDateString();
 
   const dayQuery = useQuery({
-    queryKey: ["slots-day", businessId, staffId, dateKey],
+    queryKey: ["slots-day", businessId, staffId, dateKey, searchDays],
     enabled: !!businessId && !!staffId,
+    retry: false,
     queryFn: async () => {
-      const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(date); dayEnd.setHours(23, 59, 59, 999);
-      const wd = date.getDay();
-      const [periodsR, bizHoursR, staffHoursR, bookingsR, blockedR] = await Promise.all([
-        supabase.from("business_hour_periods").select("open_time, close_time").eq("business_id", businessId!).eq("weekday", wd).order("open_time"),
-        supabase.from("business_hours").select("*").eq("business_id", businessId!).eq("weekday", wd).maybeSingle(),
-        supabase.from("staff_hours").select("*").eq("staff_id", staffId!).eq("weekday", wd).maybeSingle(),
-        supabase.from("bookings").select("id, starts_at, ends_at, status, gap_min, active_after_min").eq("business_id", businessId!).eq("staff_id", staffId!).gte("starts_at", dayStart.toISOString()).lte("starts_at", dayEnd.toISOString()).neq("status", "cancelled"),
-        supabase.from("blocked_dates_public").select("starts_at, ends_at, staff_id").eq("business_id", businessId!).lt("starts_at", dayEnd.toISOString()).gt("ends_at", dayStart.toISOString()),
-      ]);
-      const periods = resolveDayPeriods({
-        weekday: wd,
-        staffHours: staffHoursR.data as any,
-        bizPeriods: (periodsR.data ?? []) as any,
-        bizHours: bizHoursR.data as any,
-        date,
-      });
-      return { periods, bookings: bookingsR.data ?? [], blocked: blockedR.data ?? [] };
-    },
+      const rangeStart = new Date(date);
+      rangeStart.setHours(0, 0, 0, 0);
+      const rangeEnd = new Date(rangeStart);
+      rangeEnd.setDate(rangeEnd.getDate() + searchDays);
+      const [periodsR, bizHoursR, staffHoursR, bookingsR, blockedR] =
+        await Promise.all([
+          supabase
+            .from("business_hour_periods")
+            .select("weekday, open_time, close_time")
+            .eq("business_id", businessId!)
+            .order("open_time"),
+          supabase
+            .from("business_hours")
+            .select("*")
+            .eq("business_id", businessId!),
+          supabase
+            .from("staff_hours")
+            .select("*")
+            .eq("staff_id", staffId!),
+          supabase
+            .from("bookings")
+            .select("id, starts_at, ends_at, status, gap_min, active_after_min")
+            .eq("business_id", businessId!)
+            .eq("staff_id", staffId!)
+            .lt("starts_at", rangeEnd.toISOString())
+            .gt("ends_at", rangeStart.toISOString())
+            .neq("status", "cancelled"),
+          supabase
+            .from("blocked_dates_public")
+            .select("starts_at, ends_at, staff_id")
+            .eq("business_id", businessId!)
+            .lt("starts_at", rangeEnd.toISOString())
+            .gt("ends_at", rangeStart.toISOString()),
+        ]);
+      for (const result of [
+        periodsR,
+        bizHoursR,
+        staffHoursR,
+        bookingsR,
+        blockedR,
+      ]) {
+        if (result.error) throw result.error;
+      }
+      const days = [];
+      for (let offset = 0; offset < searchDays; offset++) {
+        const searchDate = new Date(rangeStart);
+        searchDate.setDate(searchDate.getDate() + offset);
+        const wd = searchDate.getDay();
+        const periods = resolveDayPeriods({
+          weekday: wd,
+          staffHours: (staffHoursR.data ?? []).find((row) => row.weekday === wd) as any,
+          bizPeriods: (periodsR.data ?? []).filter((row) => row.weekday === wd) as any,
+          bizHours: (bizHoursR.data ?? []).find((row) => row.weekday === wd) as any,
+          date: searchDate,
+        });
+        days.push({
+          date: searchDate,
+          periods,
+          bookings: bookingsR.data ?? [],
+          blocked: blockedR.data ?? [],
+        });
+      }
+      return days;
+    }
   });
 
   const slots = useMemo(() => {
-    const dayData = dayQuery.data;
-    if (!dayData || !service) return [];
-    if (!dayData.periods.length) return [];
-    const slotMin = 15;
-    const bufBefore = service.buffer_before_min ?? 0;
-    const bufAfter = service.buffer_after_min ?? 0;
-    const gapMin = service.gap_min ?? 0;
-    const activeAfterMin = service.active_after_min ?? 0;
-    const totalMin = service.duration_minutes + bufBefore + bufAfter + gapMin + activeAfterMin;
-    const out: { time: string; iso: string; hour: number }[] = [];
-    const now = new Date();
-    const existingBookings = dayData.bookings.filter((b: any) => b.id !== excludeBookingId);
-    const existingSegments = existingBookings.map((b: any) => expandBookingSegments(b));
-    for (const p of dayData.periods) {
-      const [oh, om] = String(p.open_time).split(":").map(Number);
-      const [ch, cm] = String(p.close_time).split(":").map(Number);
-      const open = new Date(date); open.setHours(oh, om, 0, 0);
-      const close = new Date(date); close.setHours(ch, cm, 0, 0);
-      for (let t = new Date(open); t.getTime() + totalMin * 60000 <= close.getTime(); t = new Date(t.getTime() + slotMin * 60000)) {
-        if (t < now) continue;
-        const candidateSegments = expandCandidateSegments(t.getTime(), service);
-        const conflict = existingSegments.some((segs) => segmentsOverlap(candidateSegments, segs));
-        // A blocked_dates row only matters if it overlaps an actual active
-        // segment — staff being unavailable during a client's own gap (e.g.
-        // colour developing) doesn't invalidate the slot.
-        const blocked = dayData.blocked.some((b: any) => {
-          if (b.staff_id && b.staff_id !== staffId) return false;
-          const blockedSeg = [{ start: new Date(b.starts_at).getTime(), end: new Date(b.ends_at).getTime() }];
-          return segmentsOverlap(candidateSegments, blockedSeg);
-        });
-        if (!conflict && !blocked) {
-          const slotStart = new Date(t.getTime() + bufBefore * 60000);
-          out.push({ time: slotStart.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), iso: slotStart.toISOString(), hour: slotStart.getHours() });
+    if (!dayQuery.data || !service || dayQuery.isError || dayQuery.isFetching)
+      return [];
+    for (const dayData of dayQuery.data) {
+      const date = dayData.date;
+      if (!dayData.periods.length) continue;
+      const slotMin = 15;
+      const bufBefore = service.buffer_before_min ?? 0;
+      const bufAfter = service.buffer_after_min ?? 0;
+      const gapMin = service.gap_min ?? 0;
+      const activeAfterMin = service.active_after_min ?? 0;
+      const totalMin =
+        service.duration_minutes +
+        bufBefore +
+        bufAfter +
+        gapMin +
+        activeAfterMin;
+      const out: { time: string; iso: string; hour: number }[] = [];
+      const now = new Date();
+      const existingBookings = dayData.bookings.filter(
+        (b: any) => b.id !== excludeBookingId,
+      );
+      const existingSegments = existingBookings.map((b: any) =>
+        expandBookingSegments(b),
+      );
+      for (const p of dayData.periods) {
+        const [oh, om] = String(p.open_time).split(":").map(Number);
+        const [ch, cm] = String(p.close_time).split(":").map(Number);
+        const open = new Date(date);
+        open.setHours(oh, om, 0, 0);
+        const close = new Date(date);
+        close.setHours(ch, cm, 0, 0);
+        for (
+          let t = new Date(open);
+          t.getTime() + totalMin * 60000 <= close.getTime();
+          t = new Date(t.getTime() + slotMin * 60000)
+        ) {
+          if (t < now) continue;
+          const candidateSegments = expandCandidateSegments(
+            t.getTime(),
+            service,
+          );
+          const conflict = existingSegments.some((segs) =>
+            segmentsOverlap(candidateSegments, segs),
+          );
+          // A blocked_dates row only matters if it overlaps an actual active
+          // segment — staff being unavailable during a client's own gap (e.g.
+          // colour developing) doesn't invalidate the slot.
+          const blocked = dayData.blocked.some((b: any) => {
+            if (b.staff_id && b.staff_id !== staffId) return false;
+            const blockedSeg = [
+              {
+                start: new Date(b.starts_at).getTime(),
+                end: new Date(b.ends_at).getTime(),
+              },
+            ];
+            return segmentsOverlap(candidateSegments, blockedSeg);
+          });
+          if (!conflict && !blocked) {
+            const slotStart = new Date(t.getTime() + bufBefore * 60000);
+            out.push({
+              time: slotStart.toLocaleTimeString([], {
+                hour: "numeric",
+                minute: "2-digit",
+              }),
+              iso: slotStart.toISOString(),
+              hour: slotStart.getHours(),
+            });
+          }
         }
       }
+      if (out.length) return out;
     }
-    return out;
-  }, [dayQuery.data, service, date, staffId, excludeBookingId]);
+    return [];
+  }, [
+    dayQuery.data,
+    dayQuery.isError,
+    dayQuery.isFetching,
+    service,
+    staffId,
+    excludeBookingId,
+  ]);
 
-  return { slots, isLoading: dayQuery.isLoading };
+  return {
+    slots,
+    isLoading: dayQuery.isLoading || dayQuery.isFetching,
+    isError: dayQuery.isError,
+    retry: dayQuery.refetch,
+  };
 }
-
 
 export function buildDateStrip(days = 14): Date[] {
   const arr: Date[] = [];
-  const start = new Date(); start.setHours(0, 0, 0, 0);
-  for (let i = 0; i < days; i++) { const d = new Date(start); d.setDate(d.getDate() + i); arr.push(d); }
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  for (let i = 0; i < days; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    arr.push(d);
+  }
   return arr;
 }

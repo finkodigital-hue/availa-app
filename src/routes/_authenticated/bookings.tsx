@@ -9,7 +9,6 @@ import {
   Clock,
   User as UserIcon,
   XCircle,
-  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,8 +42,7 @@ import {
   statusMeta,
   type BookingStatus,
 } from "@/lib/format";
-import { startBalanceCheckout } from "@/lib/stripe-connect.functions";
-import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
+import { BookingBalanceCheckout } from "@/components/booking-balance-checkout";
 import { BookingConsultationStatus } from "@/components/booking-consultation-status";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { BookingCustomerNotes } from "@/components/booking-customer-notes";
@@ -174,42 +172,6 @@ function BookingsPage() {
     } catch (error: any) {
       toast.error(error.message ?? "Could not update booking.");
       return false;
-    } finally {
-      actionLock.current = false;
-      setActionBusy(false);
-    }
-  };
-
-  const collectBalance = async () => {
-    if (!selected || actionLock.current) return;
-    actionLock.current = true;
-    setActionBusy(true);
-    try {
-      const headers = await getServerFnAuthHeaders();
-      const result = await startBalanceCheckout({
-        data: { bookingId: selected.id },
-        headers,
-      });
-      if ("paid" in result) {
-        toast.success("The balance payment is confirmed.");
-        setSelected((current: any) =>
-          current?.id === selected.id
-            ? {
-                ...current,
-                payment_status: "paid",
-                amount_paid_cents: current.price_cents,
-              }
-            : current,
-        );
-        refreshBookings();
-        return;
-      }
-      window.location.assign(result.checkoutUrl);
-      toast.message(
-        "Opening Stripe Checkout for the customer to approve the payment.",
-      );
-    } catch (error: any) {
-      toast.error(error.message ?? "Could not start the balance payment.");
     } finally {
       actionLock.current = false;
       setActionBusy(false);
@@ -540,14 +502,10 @@ function BookingsPage() {
               selected.payment_status !== "paid" &&
               (selected.price_cents ?? 0) >
                 (selected.amount_paid_cents ?? 0) && (
-                <Button
-                  disabled={actionBusy}
-                  onClick={collectBalance}
-                  className="rounded-full"
-                >
-                  <CreditCard className="h-4 w-4 mr-1.5" /> Take remaining
-                  payment
-                </Button>
+                <BookingBalanceCheckout key={selected.id} bookingId={selected.id} businessId={bid!} disabled={actionBusy} onUpdated={(updated) => {
+                  setSelected((current: any) => current?.id === updated.id ? { ...current, ...updated } : current);
+                  refreshBookings();
+                }} />
               )}
             {selected && selected.status !== "cancelled" && (
               <ConfirmDialog
