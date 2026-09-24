@@ -58,6 +58,20 @@ type ExportConsultation = {
   created_at: string;
 };
 
+type ExportAppointmentRequest = {
+  id: string;
+  serviceId: string;
+  preferredStaffId: string | null;
+  preferredAfter: string;
+  preferredBefore: string;
+  preferredTime: string;
+  status: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  createdAt: string;
+};
+
 export type CustomerDataExport = {
   generatedAt: string;
   business: { id: string; name: string };
@@ -79,11 +93,13 @@ export type CustomerDataExport = {
   payments: ExportPayment[];
   reviews: ExportReview[];
   consultations: ExportConsultation[];
+  appointmentRequests: ExportAppointmentRequest[];
   notCovered: string[];
 };
 
 const NOT_COVERED_NOTICE = [
   "Older bell notifications: remove any that mention this customer by name.",
+  "Anonymous appointment requests are not automatically linked to a customer by name or email. Check Appointment requests manually after verifying ownership of the request, and delete any matching request there if appropriate.",
 ];
 
 // Export needs no new DB function: owners already have SELECT on their own
@@ -195,6 +211,14 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false });
     if (consultationsError) throw consultationsError;
 
+    const { data: waitlistExport, error: waitlistError } = await (
+      supabaseAdmin as any
+    ).rpc("customer_appointment_waitlist_export", {
+      p_business_id: business.id,
+      p_customer_id: customer.id,
+    });
+    if (waitlistError) throw waitlistError;
+
     const { error: resolveError } = await (context.supabase as any)
       .from("customer_data_requests")
       .update({
@@ -229,6 +253,7 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
       payments,
       reviews: reviews ?? [],
       consultations: consultations ?? [],
+      appointmentRequests: waitlistExport?.requests ?? [],
       notCovered: NOT_COVERED_NOTICE,
     };
   });
@@ -239,6 +264,7 @@ export type EraseCustomerResult = {
   notificationsDeleted: number;
   photosDeleted: number;
   consultationsDeleted: number;
+  appointmentRequestsDeleted: number;
   authAccountStatus:
     | "portal_access_removed"
     | "preserved_shared"
@@ -388,6 +414,7 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       notificationsDeleted: result.notifications_deleted ?? 0,
       photosDeleted,
       consultationsDeleted: result.consultations_deleted ?? 0,
+      appointmentRequestsDeleted: result.appointment_requests_deleted ?? 0,
       authAccountStatus,
       manualCheckNotice: photosDeleted < photoPaths.length
         ? [...NOT_COVERED_NOTICE, "Customer photo removal is queued for an automatic retry."]
