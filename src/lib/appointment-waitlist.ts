@@ -16,6 +16,28 @@ export type CancelledSlot = {
   ends_at: string;
 };
 
+/** The stored end is exclusive. Show the last requested salon day, not the next midnight. */
+export function formatRequestedSalonDates(
+  after: string,
+  before: string,
+  timeZone: string,
+  locale = "en-GB",
+): string {
+  const start = Date.parse(after);
+  const end = Date.parse(before);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
+    return "Date unavailable";
+  const formatter = new Intl.DateTimeFormat(locale, {
+    timeZone,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const first = formatter.format(start);
+  const last = formatter.format(end - 1);
+  return first === last ? first : `${first} – ${last}`;
+}
+
 /** Turn inclusive salon calendar dates into a UTC half-open window, including DST. */
 export function salonDateWindow(
   from: string,

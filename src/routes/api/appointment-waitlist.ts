@@ -162,7 +162,7 @@ export const Route = createFileRoute("/api/appointment-waitlist")({
         return Response.json({
           ok: true,
           message:
-            "Request saved. The salon will contact you if a suitable time becomes available; this is not a booking.",
+            "Request saved. The salon may contact you if a suitable time becomes available. This is not a booking.",
         });
       },
     },

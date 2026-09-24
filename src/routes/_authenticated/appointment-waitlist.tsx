@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useMyBusiness } from "@/lib/business";
 import {
+  formatRequestedSalonDates,
   requestMatchesCancelledSlot,
   type AppointmentWaitlistRequest,
   type CancelledSlot,
@@ -175,11 +176,11 @@ function AppointmentWaitlistPage() {
                           ? "Any time"
                           : request.preferred_time}{" "}
                         ·{" "}
-                        {new Date(request.preferred_after).toLocaleDateString()}
-                        –
-                        {new Date(
+                        {formatRequestedSalonDates(
+                          request.preferred_after,
                           request.preferred_before,
-                        ).toLocaleDateString()}
+                          business!.timezone || "UTC",
+                        )}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -234,7 +235,14 @@ function AppointmentWaitlistPage() {
                       {matches.length
                         ? matches.slice(0, 3).map((slot) => (
                             <span key={slot.id} className="block">
-                              {new Date(slot.starts_at).toLocaleString()} ·{" "}
+                              {new Intl.DateTimeFormat("en-GB", {
+                                timeZone: business!.timezone || "UTC",
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }).format(new Date(slot.starts_at))}{" "}
+                              ·{" "}
                               {query.data!.staff.get(slot.staff_id) ??
                                 "Stylist"}
                             </span>
