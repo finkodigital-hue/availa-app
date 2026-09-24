@@ -42,9 +42,8 @@ import {
   type BookingStatus,
 } from "@/lib/format";
 import { BookingBalanceCheckout } from "@/components/booking-balance-checkout";
-import { BookingConsultationStatus } from "@/components/booking-consultation-status";
+import { AppointmentBrief } from "@/components/appointment-brief";
 import { NewBookingDialog } from "@/components/new-booking-dialog";
-import { BookingCustomerNotes } from "@/components/booking-customer-notes";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -462,13 +461,14 @@ function BookingsPage() {
               )}
             </div>
           )}
-          {selected?.customer_id && bid && (
-            <BookingCustomerNotes
+          {selected && bid && (
+            <AppointmentBrief
+              bookingId={selected.id}
               businessId={bid}
               customerId={selected.customer_id}
+              startsAt={selected.starts_at}
             />
           )}
-          {selected && <BookingConsultationStatus bookingId={selected.id} />}
           {selected && (
             <div className="space-y-2">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">

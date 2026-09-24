@@ -45,7 +45,17 @@ export function BookingConsultationStatus({
         </button>
       </p>
     );
-  if (!query.data?.length) return null;
+  if (!query.data?.length)
+    return (
+      <Link
+        to="/consultations"
+        search={{ bookingId, tab: "records" }}
+        className="block rounded-xl border bg-background/80 p-3 text-xs text-muted-foreground hover:border-foreground/20"
+      >
+        No forms or patch tests linked to this appointment. Check whether any
+        are required. <span className="underline">View records</span>
+      </Link>
+    );
   const latestByTemplate = new Map<
     string,
     RecordStatus & { id: string; template_id?: string }
@@ -68,7 +78,7 @@ export function BookingConsultationStatus({
         ) : (
           <CheckCircle2 className="h-4 w-4 text-emerald-700" />
         )}
-        <span className="text-sm font-semibold">Consultation records</span>
+        <span className="text-sm font-semibold">Forms &amp; patch tests</span>
         <span className="ml-auto text-xs text-muted-foreground">
           {action.label}
         </span>
