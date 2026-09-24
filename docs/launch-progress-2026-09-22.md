@@ -68,3 +68,11 @@ First batch deployed and verified at revision af7de6756499eec73777cdb12406be03f7
 - Added private, immutable checkout attempts, stable provider idempotency, fresh session retrieval, payment identity/currency validation and manual review for uncertain attempts. Repeated completed payments reconcile without adding another ledger charge.
 - All 200 isolated regression assertions, TypeScript, production build and the 59-table security boundary check pass. Migration 20260923004000 applied successfully to production. No customer charge or message was initiated.
 - Integrated sandbox payment/SCA journeys, legacy payment reconciliation and production restore evidence remain open. See [balance payment safety](balance-payment-safety.md) for scope and limitations.
+
+## Scheduling and complete application migration replay — 24 September
+
+- Bookings and paid holds preserve buffer snapshots. Collision checks and public previews include preparation/cleanup without filling processing gaps. Future manual creation, drag/resize/undo and restoration enforce working hours, holidays, time off and staff/service availability at the database boundary.
+- Corrected the old cancellation deadline's interference with authorised reception work. Customer deadlines and provider-field protections remain enforced.
+- All 123 application migrations replay locally, with 45 full-application-schema role/invitation/export/MFA/storage-policy assertions and two metadata-backfill assertions. Full build passes 290 assertions, TypeScript and 59-table boundary checks. Auth/Storage and external services are fixtures; full Supabase and multi-connection staging evidence remain open.
+- Production preflight: no negative service buffers or active unpaid holds; 323 future buffered appointments. All 21 existing buffered conflict pairs belong to the explicitly fictional demo salon. No appointment was moved/cancelled. Three scheduling migrations applied successfully after a transactionally rolled-back first attempt exposed the old change-window rule; the corrected metadata backfill is regression-tested.
+- Details and limits: [scheduling and schema verification](scheduling-and-schema-verification.md).

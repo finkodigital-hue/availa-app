@@ -3,54 +3,8 @@ import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveDayPeriods } from "@/lib/staff-hours";
 
-export type SlotService = {
-  duration_minutes: number;
-  buffer_before_min?: number | null;
-  buffer_after_min?: number | null;
-  gap_min?: number | null;
-  active_after_min?: number | null;
-};
-
-export type Segment = { start: number; end: number };
-
-// A gap booking is busy for two segments (before the gap, after the gap) with
-// the gap itself left free — genuinely bookable by a different client. A
-// plain booking is busy for one segment: [starts, ends). Everything below
-// works in epoch ms rather than Date objects so overlap checks are cheap
-// inside the slot-search loop. Exported so every other slot-search /
-// conflict-preview implementation (e.g. the public booking page, which reads
-// from the public_booking_slots view instead of the bookings table) shares
-// the exact same segment math rather than a second, driftable copy of it.
-export function expandBookingSegments(b: { starts_at: string; ends_at: string; gap_min?: number | null; active_after_min?: number | null }): Segment[] {
-  const start = new Date(b.starts_at).getTime();
-  const end = new Date(b.ends_at).getTime();
-  if (!b.gap_min || !b.active_after_min) return [{ start, end }];
-  const activeAfterStart = end - b.active_after_min * 60000;
-  const gapStart = activeAfterStart - b.gap_min * 60000;
-  return [{ start, end: gapStart }, { start: activeAfterStart, end }];
-}
-
-// The candidate slot at time `t` for `service`. Buffers pad the leading edge
-// of the first segment and the trailing edge of the last segment — matching
-// today's behavior of padding the candidate's own occupied window — but the
-// gap in between stays unpadded and unchecked, so it's free for someone else.
-export function expandCandidateSegments(t: number, service: SlotService): Segment[] {
-  const bufBefore = (service.buffer_before_min ?? 0) * 60000;
-  const bufAfter = (service.buffer_after_min ?? 0) * 60000;
-  const durationMs = service.duration_minutes * 60000;
-  if (!service.gap_min || !service.active_after_min) {
-    return [{ start: t, end: t + bufBefore + durationMs + bufAfter }];
-  }
-  const gapMs = service.gap_min * 60000;
-  const activeAfterMs = service.active_after_min * 60000;
-  const seg1End = t + bufBefore + durationMs;
-  const seg2Start = seg1End + gapMs;
-  return [{ start: t, end: seg1End }, { start: seg2Start, end: seg2Start + activeAfterMs + bufAfter }];
-}
-
-export function segmentsOverlap(a: Segment[], b: Segment[]): boolean {
-  return a.some((x) => b.some((y) => x.start < y.end && x.end > y.start));
-}
+import { expandBookingSegments, expandCandidateSegments, segmentsOverlap, type SlotService } from "@/lib/booking-segments";
+export { expandBookingSegments, expandCandidateSegments, segmentsOverlap, type SlotService, type Segment } from "@/lib/booking-segments";
 
 export function useAvailableSlots(opts: {
   businessId: string | undefined;
@@ -73,7 +27,7 @@ export function useAvailableSlots(opts: {
         supabase.from("business_hour_periods").select("open_time, close_time").eq("business_id", businessId!).eq("weekday", wd).order("open_time"),
         supabase.from("business_hours").select("*").eq("business_id", businessId!).eq("weekday", wd).maybeSingle(),
         supabase.from("staff_hours").select("*").eq("staff_id", staffId!).eq("weekday", wd).maybeSingle(),
-        supabase.from("bookings").select("id, starts_at, ends_at, status, gap_min, active_after_min").eq("business_id", businessId!).eq("staff_id", staffId!).gte("starts_at", dayStart.toISOString()).lte("starts_at", dayEnd.toISOString()).neq("status", "cancelled"),
+        supabase.from("bookings").select("id, starts_at, ends_at, status, gap_min, active_after_min, buffer_before_min, buffer_after_min").eq("business_id", businessId!).eq("staff_id", staffId!).gte("starts_at", dayStart.toISOString()).lte("starts_at", dayEnd.toISOString()).neq("status", "cancelled"),
         supabase.from("blocked_dates_public").select("starts_at, ends_at, staff_id").eq("business_id", businessId!).lt("starts_at", dayEnd.toISOString()).gt("ends_at", dayStart.toISOString()),
       ]);
       const periods = resolveDayPeriods({
