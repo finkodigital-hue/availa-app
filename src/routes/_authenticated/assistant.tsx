@@ -182,6 +182,8 @@ function AssistantInner({
     transport,
   });
   const [input, setInput] = useState("");
+  const [mode, setMode] = useState<"today" | "grow">("today");
+  const [activeTask, setActiveTask] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const isLoading = status === "submitted" || status === "streaming";
@@ -209,7 +211,22 @@ function AssistantInner({
     const value = text.trim();
     if (!value || isLoading || value.length > 4_000) return;
     setInput("");
+    setActiveTask(null);
     void sendMessage({ text: value });
+  };
+  const sendTask = (task: Quick) => {
+    if (isLoading) return;
+    setInput("");
+    setActiveTask(task.label);
+    void sendMessage({ text: task.prompt });
+    requestAnimationFrame(() =>
+      scrollRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "center",
+      }),
+    );
   };
 
   return (
@@ -220,55 +237,115 @@ function AssistantInner({
         subtitle="Get a clear answer from your salon's current records, then open the right place to act. Nothing is changed or sent for you."
         action={
           messages.length ? (
-            <Button variant="outline" size="sm" onClick={() => setMessages([])}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setMessages([]);
+                setActiveTask(null);
+              }}
+            >
               <RotateCcw className="mr-2 h-4 w-4" /> New conversation
             </Button>
           ) : undefined
         }
       />
 
-      <h2 className="mb-3 text-sm font-semibold">Run the day</h2>
-      <div className="mb-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {DAILY_TASKS.map(({ icon: Icon, label, description, prompt }) => (
-          <button
-            key={label}
-            type="button"
-            disabled={isLoading}
-            onClick={() => send(prompt)}
-            className="rounded-2xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-          >
-            <Icon
-              className="mb-3 h-5 w-5 text-[color:var(--gold-deep)]"
-              aria-hidden="true"
-            />
-            <span className="block text-sm font-semibold">{label}</span>
-            <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-              {description}
-            </span>
-          </button>
-        ))}
+      <div
+        className="mb-5 inline-flex rounded-xl border bg-card p-1"
+        role="group"
+        aria-label="Assistant focus"
+      >
+        <button
+          type="button"
+          aria-pressed={mode === "today"}
+          onClick={() => setMode("today")}
+          className={cn(
+            "rounded-lg px-5 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            mode === "today"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Run the day
+        </button>
+        <button
+          type="button"
+          aria-pressed={mode === "grow"}
+          onClick={() => setMode("grow")}
+          className={cn(
+            "rounded-lg px-5 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            mode === "grow"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Grow the salon
+        </button>
       </div>
 
-      <h2 className="mb-3 text-sm font-semibold">Grow the salon</h2>
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {GROWTH_TASKS.map(({ icon: Icon, label, description, prompt }) => (
-          <button
-            key={label}
+      <div className="mb-6 rounded-2xl border bg-card p-5 sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--gold-deep)]">
+              A good place to start
+            </p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">
+              {mode === "today"
+                ? "Get a clear plan for today"
+                : "Put a real opportunity to work"}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              {mode === "today"
+                ? "See what needs attention, then open the booking or record to handle it."
+                : "Find a bookable time you can share, with a draft you can check before posting."}
+            </p>
+          </div>
+          <Button
             type="button"
+            size="lg"
             disabled={isLoading}
-            onClick={() => send(prompt)}
-            className="rounded-2xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            onClick={() =>
+              sendTask(mode === "today" ? DAILY_TASKS[0] : GROWTH_TASKS[0])
+            }
+            className="shrink-0"
           >
-            <Icon
-              className="mb-3 h-5 w-5 text-[color:var(--gold-deep)]"
-              aria-hidden="true"
-            />
-            <span className="block text-sm font-semibold">{label}</span>
-            <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-              {description}
-            </span>
-          </button>
-        ))}
+            {mode === "today" ? "Plan my day" : "Find an open slot"}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+        <div className="mt-5 grid gap-2 border-t pt-4 sm:grid-cols-2 lg:grid-cols-3">
+          {(mode === "today"
+            ? DAILY_TASKS.slice(1)
+            : GROWTH_TASKS.slice(1)
+          ).map((task) => {
+            const { icon: Icon, label, description } = task;
+            return (
+              <button
+                key={label}
+                type="button"
+                disabled={isLoading}
+                onClick={() => sendTask(task)}
+                className="group flex items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              >
+                <Icon
+                  className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--gold-deep)]"
+                  aria-hidden="true"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">{label}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                    {description}
+                  </span>
+                </span>
+                <ArrowRight
+                  className="ml-auto mt-0.5 h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                  aria-hidden="true"
+                />
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -313,6 +390,48 @@ function AssistantInner({
               </p>
             )}
           </div>
+          {activeTask &&
+            messages.at(-1)?.role === "assistant" &&
+            !isLoading &&
+            !error && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm">
+                <span className="text-muted-foreground">
+                  Ready to check the details and take the next step?
+                </span>
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    to={
+                      activeTask === "Fill an open slot"
+                        ? "/calendar"
+                        : activeTask === "Check payments"
+                          ? "/payments"
+                          : activeTask === "Spot service trends"
+                            ? "/services"
+                            : activeTask === "Bring clients back" ||
+                                activeTask === "Draft a follow-up"
+                              ? "/customers"
+                              : activeTask === "Grow genuine reviews"
+                                ? "/page-builder"
+                                : "/bookings"
+                    }
+                  >
+                    {activeTask === "Fill an open slot"
+                      ? "Recheck Calendar"
+                      : activeTask === "Check payments"
+                        ? "Open payments"
+                        : activeTask === "Spot service trends"
+                          ? "Review services"
+                          : activeTask === "Bring clients back" ||
+                              activeTask === "Draft a follow-up"
+                            ? "Open customers"
+                            : activeTask === "Grow genuine reviews"
+                              ? "Review page settings"
+                              : "Review bookings"}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            )}
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -358,76 +477,78 @@ function AssistantInner({
         </div>
 
         <aside className="space-y-4">
-          <section
-            className="rounded-2xl border bg-card p-5"
-            aria-labelledby="assistant-attention-heading"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <h2
-                id="assistant-attention-heading"
-                className="text-base font-semibold"
-              >
-                Needs a look
-              </h2>
-              <ClipboardList
-                className="h-4 w-4 text-[color:var(--gold-deep)]"
-                aria-hidden="true"
-              />
-            </div>
-            {overview.isLoading ? (
-              <p className="mt-4 text-sm text-muted-foreground">
-                Checking your workspace…
-              </p>
-            ) : overview.isError ? (
-              <div className="mt-4 space-y-2 text-sm">
-                <p>Could not load the shortlist.</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void overview.refetch()}
+          {mode === "today" && (
+            <section
+              className="rounded-2xl border bg-card p-5"
+              aria-labelledby="assistant-attention-heading"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h2
+                  id="assistant-attention-heading"
+                  className="text-base font-semibold"
                 >
-                  Try again
-                </Button>
+                  Needs a look
+                </h2>
+                <ClipboardList
+                  className="h-4 w-4 text-[color:var(--gold-deep)]"
+                  aria-hidden="true"
+                />
               </div>
-            ) : overview.data?.attention.length ? (
-              <div className="mt-3 divide-y">
-                {overview.data.attention.slice(0, 3).map((item) => (
-                  <div key={item.id} className="py-3 first:pt-0">
-                    <p className="text-sm font-medium">{item.title}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {item.description}
-                    </p>
-                    {item.bookingId ? (
-                      <Link
-                        to="/bookings"
-                        search={{ bookingId: item.bookingId }}
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--gold-deep)] hover:underline"
-                      >
-                        Open booking <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    ) : (
-                      <Link
-                        to={
-                          item.href === "/stock" ? "/stock" : "/consultations"
-                        }
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--gold-deep)] hover:underline"
-                      >
-                        {item.action} <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-4 text-sm text-muted-foreground">
-                No items in the dashboard shortlist. Check Bookings for the full
-                picture.
+              {overview.isLoading ? (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Checking your workspace…
+                </p>
+              ) : overview.isError ? (
+                <div className="mt-4 space-y-2 text-sm">
+                  <p>Could not load the shortlist.</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void overview.refetch()}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              ) : overview.data?.attention.length ? (
+                <div className="mt-3 divide-y">
+                  {overview.data.attention.slice(0, 3).map((item) => (
+                    <div key={item.id} className="py-3 first:pt-0">
+                      <p className="text-sm font-medium">{item.title}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {item.description}
+                      </p>
+                      {item.bookingId ? (
+                        <Link
+                          to="/bookings"
+                          search={{ bookingId: item.bookingId }}
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--gold-deep)] hover:underline"
+                        >
+                          Open booking <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      ) : (
+                        <Link
+                          to={
+                            item.href === "/stock" ? "/stock" : "/consultations"
+                          }
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--gold-deep)] hover:underline"
+                        >
+                          {item.action} <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  No items in the dashboard shortlist. Check Bookings for the
+                  full picture.
+                </p>
+              )}
+              <p className="mt-3 text-xs text-muted-foreground">
+                A shortlist, not a full form or patch-test check.
               </p>
-            )}
-            <p className="mt-3 text-xs text-muted-foreground">
-              A shortlist, not a full form or patch-test check.
-            </p>
-          </section>
+            </section>
+          )}
           <section
             className="rounded-2xl border bg-card p-5"
             aria-labelledby="assistant-shortcuts-heading"
@@ -456,9 +577,9 @@ function AssistantInner({
               />
             </div>
           </section>
-          <BookingSourceReport businessId={businessId} />
-          <AssistantRebookingCard />
-          <AssistantGrowthGuide />
+          {mode === "grow" && <BookingSourceReport businessId={businessId} />}
+          {mode === "grow" && <AssistantRebookingCard />}
+          {mode === "grow" && <AssistantGrowthGuide />}
         </aside>
       </div>
     </div>

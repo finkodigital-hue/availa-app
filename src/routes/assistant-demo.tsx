@@ -94,6 +94,7 @@ const examples: Example[] = [
 
 function AssistantDemo() {
   const [selected, setSelected] = useState(0);
+  const [mode, setMode] = useState<"today" | "grow">("today");
   const [copied, setCopied] = useState(false);
   const example = examples[selected];
 
@@ -134,73 +135,100 @@ function AssistantDemo() {
           </p>
         </div>
 
-        <h2 className="mt-8 mb-3 text-sm font-semibold">Run the day</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {examples.slice(0, 4).map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.title}
-                type="button"
-                aria-pressed={selected === index}
-                onClick={() => {
-                  setSelected(index);
-                  setCopied(false);
-                }}
-                className={`rounded-2xl border p-4 text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] ${
-                  selected === index
-                    ? "border-primary/70 bg-primary/10"
-                    : "bg-card hover:border-primary/40"
-                }`}
-              >
-                <Icon
-                  className="mb-3 h-5 w-5 text-[color:var(--gold-deep)]"
-                  aria-hidden="true"
-                />
-                <span className="block text-sm font-semibold">
-                  {item.title}
-                </span>
-                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                  {item.description}
-                </span>
-              </button>
-            );
-          })}
+        <div
+          className="mt-8 inline-flex rounded-xl border bg-card p-1"
+          role="group"
+          aria-label="Assistant focus"
+        >
+          <button
+            type="button"
+            aria-pressed={mode === "today"}
+            onClick={() => {
+              setMode("today");
+              setSelected(0);
+              setCopied(false);
+            }}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${mode === "today" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Run the day
+          </button>
+          <button
+            type="button"
+            aria-pressed={mode === "grow"}
+            onClick={() => {
+              setMode("grow");
+              setSelected(4);
+              setCopied(false);
+            }}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${mode === "grow" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Grow the salon
+          </button>
         </div>
 
-        <h2 className="mt-7 mb-3 text-sm font-semibold">Grow the salon</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {examples.slice(4).map((item, offset) => {
-            const index = offset + 4;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.title}
-                type="button"
-                aria-pressed={selected === index}
-                onClick={() => {
-                  setSelected(index);
-                  setCopied(false);
-                }}
-                className={`rounded-2xl border p-4 text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] ${
-                  selected === index
-                    ? "border-primary/70 bg-primary/10"
-                    : "bg-card hover:border-primary/40"
-                }`}
-              >
-                <Icon
-                  className="mb-3 h-5 w-5 text-[color:var(--gold-deep)]"
-                  aria-hidden="true"
-                />
-                <span className="block text-sm font-semibold">
-                  {item.title}
-                </span>
-                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                  {item.description}
-                </span>
-              </button>
-            );
-          })}
+        <div className="mt-5 rounded-2xl border bg-card p-5 sm:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--gold-deep)]">
+                A good place to start
+              </p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">
+                {mode === "today"
+                  ? "Get a clear plan for today"
+                  : "Put a real opportunity to work"}
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {mode === "today"
+                  ? "See what needs attention, then open the booking or record to handle it."
+                  : "Find a bookable time you can share, with a draft you can check before posting."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => {
+                setSelected(mode === "today" ? 0 : 4);
+                setCopied(false);
+              }}
+              className="shrink-0"
+            >
+              {mode === "today" ? "Plan my day" : "Find an open slot"}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+          <div className="mt-5 grid gap-2 border-t pt-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(mode === "today" ? examples.slice(1, 4) : examples.slice(5)).map(
+              (item) => {
+                const index = examples.indexOf(item);
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.title}
+                    type="button"
+                    aria-pressed={selected === index}
+                    onClick={() => {
+                      setSelected(index);
+                      setCopied(false);
+                    }}
+                    className={`flex items-start gap-3 rounded-xl px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selected === index ? "bg-primary/10" : "hover:bg-secondary/60"}`}
+                  >
+                    <Icon
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--gold-deep)]"
+                      aria-hidden="true"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold">
+                        {item.title}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                        {item.description}
+                      </span>
+                    </span>
+                  </button>
+                );
+              },
+            )}
+          </div>
         </div>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -208,16 +236,21 @@ function AssistantDemo() {
             className="min-w-0 rounded-2xl border bg-card p-5 sm:p-7"
             aria-label="Example conversation"
           >
-            <div className="flex items-center gap-2 border-b pb-4">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-[color:var(--gold-deep)]">
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <div>
-                <h2 className="text-sm font-semibold">Bookzenvo assistant</h2>
-                <p className="text-xs text-muted-foreground">
-                  Example conversation
-                </p>
+            <div className="flex items-center justify-between gap-3 border-b pb-4">
+              <div className="flex items-center gap-2">
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-[color:var(--gold-deep)]">
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 className="text-sm font-semibold">Bookzenvo assistant</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Example conversation
+                  </p>
+                </div>
               </div>
+              <span className="text-xs font-medium text-muted-foreground">
+                {mode === "today" ? "Daily work" : "More bookings"}
+              </span>
             </div>
             <div className="mt-6 flex justify-end">
               <p className="max-w-[85%] rounded-2xl bg-primary px-4 py-3 text-sm text-primary-foreground">
@@ -243,32 +276,34 @@ function AssistantDemo() {
           </section>
 
           <aside className="space-y-4">
-            <section className="rounded-2xl border bg-card p-5">
-              <h2 className="text-base font-semibold">Needs a look</h2>
-              <div className="mt-3 divide-y text-sm">
-                <div className="py-3 first:pt-0">
-                  <p className="font-medium">Booking awaiting confirmation</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Alex Example · 10:30
-                  </p>
-                  <p className="mt-2 text-xs font-semibold text-[color:var(--gold-deep)]">
-                    Open booking <ArrowRight className="inline h-3 w-3" />
-                  </p>
+            {mode === "today" && (
+              <section className="rounded-2xl border bg-card p-5">
+                <h2 className="text-base font-semibold">Needs a look</h2>
+                <div className="mt-3 divide-y text-sm">
+                  <div className="py-3 first:pt-0">
+                    <p className="font-medium">Booking awaiting confirmation</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Alex Example · 10:30
+                    </p>
+                    <p className="mt-2 text-xs font-semibold text-[color:var(--gold-deep)]">
+                      Open booking <ArrowRight className="inline h-3 w-3" />
+                    </p>
+                  </div>
+                  <div className="py-3">
+                    <p className="font-medium">Balance to review</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Morgan Example · £15 recorded
+                    </p>
+                    <p className="mt-2 text-xs font-semibold text-[color:var(--gold-deep)]">
+                      Open booking <ArrowRight className="inline h-3 w-3" />
+                    </p>
+                  </div>
                 </div>
-                <div className="py-3">
-                  <p className="font-medium">Balance to review</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Morgan Example · £15 recorded
-                  </p>
-                  <p className="mt-2 text-xs font-semibold text-[color:var(--gold-deep)]">
-                    Open booking <ArrowRight className="inline h-3 w-3" />
-                  </p>
-                </div>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Examples only; these links are inactive in the demo.
-              </p>
-            </section>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Examples only; these links are inactive in the demo.
+                </p>
+              </section>
+            )}
             <section className="rounded-2xl border bg-card p-5">
               <h2 className="text-base font-semibold">Go straight to it</h2>
               <div className="mt-3 space-y-2 text-sm">
