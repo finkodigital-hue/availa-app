@@ -63,6 +63,18 @@ function GiftCardsPage() {
     },
   });
 
+  const refundReviews = useQuery({
+    queryKey: ["gift-card-refund-reviews", businessId],
+    enabled: !!businessId,
+    queryFn: async () => {
+      const { count, error } = await (supabase as any).from("gift_card_refunds")
+        .select("stripe_refund_id", { count: "exact", head: true })
+        .eq("business_id", businessId).eq("manual_review", true);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   const transactions = useQuery({
     queryKey: ["gift-card-transactions", businessId],
     enabled: !!businessId,
@@ -136,6 +148,8 @@ function GiftCardsPage() {
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
       <PageHeader eyebrow="Revenue" title="Gift cards" subtitle="Sell experiences now and let customers book later." />
+      {refundReviews.isError && <p role="alert" className="mb-4 rounded-xl border p-4 text-sm">Refund review status could not be loaded. Check Stripe before issuing replacement credit.</p>}
+      {(refundReviews.data ?? 0) > 0 && <p role="alert" className="mb-4 rounded-xl border border-amber-500 p-4 text-sm">{refundReviews.data} gift-card refund(s) need review because some refunded credit had already been spent. Remaining credit has been removed. Check the original purchase and bookings with support before issuing replacement credit.</p>}
 
       <div className="grid gap-4 sm:grid-cols-3 mb-7">
         <div className="rounded-2xl border bg-card p-5"><div className="text-sm text-muted-foreground">Active cards</div><div className="font-display text-3xl mt-1">{(cards.data ?? []).filter((c) => c.status === "active").length}</div></div>

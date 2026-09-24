@@ -88,7 +88,22 @@ export const Route = createFileRoute("/api/stripe-webhook")({
               .eq("status", "succeeded")
               .maybeSingle();
             if (chargeError) throw chargeError;
-            if (!charge?.booking_id) throw new Error("Refund charge is not yet reconciled");
+            if (!charge?.booking_id) {
+              if ((metadata.business_id && metadata.business_id !== business.id) || metadata.booking_id) {
+                return new Response("Refund identity mismatch", { status: 400 });
+              }
+              // The private function matches an issued Stripe gift card and
+              // returns an error until its purchase has been reconciled.
+              const { error: giftError } = await (supabaseAdmin as any).rpc("fulfill_gift_card_refund", {
+                p_business_id: business.id,
+                p_stripe_payment_intent_id: refund.payment_intent,
+                p_stripe_refund_id: refund.id,
+                p_amount_cents: refund.amount,
+                p_currency: refund.currency,
+              });
+              if (giftError) throw giftError;
+              return Response.json({ received: true });
+            }
             if ((metadata.business_id && metadata.business_id !== business.id) ||
               (metadata.booking_id && metadata.booking_id !== charge.booking_id)) {
               return new Response("Refund identity mismatch", { status: 400 });

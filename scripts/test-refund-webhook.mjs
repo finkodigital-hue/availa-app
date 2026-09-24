@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { createHmac } from 'node:crypto';
 import path from 'node:path';
 const root=path.resolve(import.meta.dirname,'..');
-let rpcCalls=[], lookupFailure=false, missingCharge=false, account='acct_fixture';
+let rpcCalls=[], lookupFailure=false, missingCharge=false, giftExists=false, account='acct_fixture';
 globalThis.__refundTestDatabase={
  from(table){ const filters={};return {select(){return this;},eq(k,v){filters[k]=v;return this;},async maybeSingle(){
    if(lookupFailure)return {error:new Error('fictional outage')};
@@ -12,7 +12,7 @@ globalThis.__refundTestDatabase={
    assert.equal(table,'payments');assert.deepEqual(filters,{business_id:'business_fixture',stripe_payment_intent_id:'pi_fixture',type:'charge',status:'succeeded'});
    return {data:missingCharge?null:{booking_id:'booking_fixture'}};
  }};},
- async rpc(name,args){rpcCalls.push({name,args});return {error:null};}
+ async rpc(name,args){if(name==='fulfill_gift_card_refund'&&!giftExists)return {error:new Error('Gift purchase is not yet reconciled')};rpcCalls.push({name,args});return {error:null};}
 };
 // Load the actual handler, replacing only the router registration and database
 // boundary. Other dynamic provider branches are never invoked by these cases.
@@ -38,14 +38,20 @@ same((await send(event(),-600)).status,400);
 const pending=event();pending.data.object.status='pending';same((await send(pending)).status,200);
 same((await send(event('refund.created',{resolution:'unfulfilled_booking'}))).status,200);
 same(rpcCalls.length,2);
+lookupFailure=false;giftExists=true;missingCharge=true;
+same((await send(event())).status,200);
+same(rpcCalls.at(-1).name,'fulfill_gift_card_refund');
+same(rpcCalls.at(-1).args.p_business_id,'business_fixture');
+same((await send(event('refund.created',{booking_id:'other'}))).status,400);
 const originalError=console.error;
 const expectedErrors=[];
+giftExists=false;
 try {
  console.error=(message)=>expectedErrors.push(message);
  missingCharge=true;same((await send(event())).status,500);missingCharge=false;
  lookupFailure=true;same((await send(event())).status,500);
 } finally {console.error=originalError;}
 same(expectedErrors.length,2);
-same(rpcCalls.length,2);
+same(rpcCalls.length,3);
 delete globalThis.__refundTestDatabase;
 console.log(`Refund webhook: ${checks} assertions passed with fictional signed events; no provider requests.`);

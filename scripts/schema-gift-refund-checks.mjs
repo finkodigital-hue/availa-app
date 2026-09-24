@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+export async function checkGiftRefunds(db) {
+ const id=n=>`10000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+ let checks=0;const same=(a,b)=>{assert.deepEqual(a,b);checks++;};
+ const q=async(sql,args=[])=>(await db.query(sql,args)).rows;
+ const fail=async(p,re)=>{await assert.rejects(p,re);checks++;};
+ await db.exec('reset role');await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({role:'service_role'})]);
+ await db.query("insert into gift_cards(id,business_id,code_hash,code_hint,initial_balance_cents,balance_cents,currency,source,stripe_payment_intent_id) values($1,$2,$3,'GIFT',5000,5000,'gbp','stripe_purchase','pi_gift_fixture')",[id(801),id(101),'d'.repeat(64)]);
+ const refund=(amount,key='re_gift_first',currency='gbp',biz=id(101),pi='pi_gift_fixture')=>q('select fulfill_gift_card_refund($1,$2,$3,$4,$5) as id',[biz,pi,key,amount,currency]);
+ const card=async()=>(await q('select balance_cents,status from gift_cards where id=$1',[id(801)]))[0];
+ const first=await refund(1000);same(first[0].id,id(801));same(await card(),{balance_cents:4000,status:'active'});
+ same(await refund(1000),first);same((await q('select count(*)::int as n from gift_card_refunds'))[0].n,1);
+ await fail(refund(2000),/identity/);await fail(refund(1000,'re_other','usd'),/currency/);
+ await fail(refund(1000,'re_other','gbp',id(102)),/not yet/);
+ await fail(refund(1000,'re_other','gbp',id(101),'pi_missing'),/not yet/);
+ await fail(refund(4001,'re_excess'),/exceeds/);await fail(refund(null,'re_null'),/Invalid/);
+ await refund(4000,'re_gift_final');same(await card(),{balance_cents:0,status:'void'});
+ same((await q('select count(*)::int as n from gift_card_refunds where manual_review'))[0].n,0);
+ same((await q("select sum(amount_cents)::int as n from gift_card_transactions where gift_card_id=$1",[id(801)]))[0].n,-5000);
+ await db.query("insert into gift_cards(id,business_id,code_hash,code_hint,initial_balance_cents,balance_cents,currency,source,stripe_payment_intent_id) values($1,$2,$3,'USED',5000,500,'gbp','stripe_purchase','pi_spent_fixture')",[id(802),id(101),'e'.repeat(64)]);
+ await refund(5000,'re_spent','gbp',id(101),'pi_spent_fixture');
+ same((await q("select amount_cents,removed_credit_cents,manual_review from gift_card_refunds where stripe_refund_id='re_spent'"))[0],{amount_cents:5000,removed_credit_cents:500,manual_review:true});
+ same((await q('select balance_cents,status from gift_cards where id=$1',[id(802)]))[0],{balance_cents:0,status:'void'});
+ await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({role:'authenticated',sub:id(1),aal:'aal2'})]);
+ same((await q('select count(*)::int as n from gift_card_refunds'))[0].n,3);
+ await fail(refund(1,'re_forged'),/permission denied/);
+ await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({role:'authenticated',sub:id(2),aal:'aal2'})]);
+ same((await q('select count(*)::int as n from gift_card_refunds'))[0].n,0);
+ await db.exec('reset role');
+ console.log(`Gift purchase refunds: ${checks} full-schema assertions passed.`);
+}
