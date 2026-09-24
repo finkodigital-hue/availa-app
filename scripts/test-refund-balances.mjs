@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { refundableCharges } from '../src/lib/refund-balances.ts';
+const payment = (id, amount) => ({stripe_payment_intent_id:id,amount_cents:amount});
+const charges=[payment('pi_one',5000),payment('pi_two',2000)];
+assert.deepEqual(refundableCharges(charges,[]),[{paymentIntentId:'pi_one',amountCents:5000},{paymentIntentId:'pi_two',amountCents:2000}]);
+assert.deepEqual(refundableCharges(charges,[payment('pi_one',1000)]),[{paymentIntentId:'pi_one',amountCents:4000},{paymentIntentId:'pi_two',amountCents:2000}]);
+assert.deepEqual(refundableCharges(charges,[payment('pi_one',1000),payment('pi_one',4000)]),[{paymentIntentId:'pi_two',amountCents:2000}]);
+assert.deepEqual(refundableCharges(charges,[payment('pi_one',5000),payment('pi_two',2000)]),[]);
+assert.deepEqual(refundableCharges([payment(null,1000)],[]),[]);
+assert.throws(()=>refundableCharges(charges,[payment('pi_one',5001)]),/review/);
+assert.throws(()=>refundableCharges(charges,[payment('pi_one',-1)]),/review/);
+assert.throws(()=>refundableCharges([payment('pi_one',1.5)],[]),/review/);
+console.log('Refund balances: 8 assertions passed.');

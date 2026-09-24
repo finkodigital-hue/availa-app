@@ -57,6 +57,8 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         if (leaseSweepError) console.error("[notification-recovery] Delivery lease sweep failed");
         const { error: usageCleanupError } = await (supabaseAdmin as any).rpc("prune_business_usage_counters");
         if (usageCleanupError) console.error("[usage-protection] Usage counter cleanup failed");
+        const { error: publicCounterCleanupError } = await (supabaseAdmin as any).rpc("cleanup_public_request_counters");
+        if (publicCounterCleanupError) console.error("[request-protection] Counter cleanup failed");
         const bookingPaymentRecovery = await reconcileFailedBookingPayments().catch(() => {
           console.error("[booking-payment-recovery] Reconciliation unavailable; notification processing continues");
           return { checked: 0, refunded: 0, failed: 1 };

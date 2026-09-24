@@ -85,6 +85,8 @@ export type Database = {
       }
       bookings: {
         Row: {
+          buffer_before_min: number
+          buffer_after_min: number
           active_after_min: number | null
           aftercare_sent_at: string | null
           amount_due_cents: number
@@ -119,6 +121,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          buffer_before_min?: number
+          buffer_after_min?: number
           active_after_min?: number | null
           aftercare_sent_at?: string | null
           amount_due_cents?: number
@@ -153,6 +157,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          buffer_before_min?: number
+          buffer_after_min?: number
           active_after_min?: number | null
           aftercare_sent_at?: string | null
           amount_due_cents?: number

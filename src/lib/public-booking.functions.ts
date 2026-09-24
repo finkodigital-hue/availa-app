@@ -1,6 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
 
 type PublicBookingInput = {
   businessId: string;
@@ -26,20 +24,6 @@ function text(value: string | undefined, max: number) {
   if (cleaned.length > max)
     throw new Error("One of the booking details is too long.");
   return cleaned;
-}
-
-function createPublicServerClient() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) throw new Error("The booking service is not configured.");
-
-  return createClient<Database>(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
 }
 
 /**
@@ -77,7 +61,9 @@ export const createPublicBooking = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
-    const supabase = createPublicServerClient();
+    const { consumePublicRequest } = await import("@/lib/public-request-limit.server");
+    await consumePublicRequest("booking");
+    const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
     const { data: bookingId, error } = await supabase.rpc(
       "create_public_booking",
       {

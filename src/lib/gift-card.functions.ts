@@ -113,6 +113,8 @@ export const startGiftCardCheckout = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ checkoutUrl: string }> => {
+    const { consumePublicRequest } = await import("@/lib/public-request-limit.server");
+    const sourceKey = await consumePublicRequest("gift");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: business, error } = await supabaseAdmin
       .from("businesses")
@@ -128,15 +130,6 @@ export const startGiftCardCheckout = createServerFn({ method: "POST" })
     const claimToken = randomToken();
     const code = await codeForCard(orderId, business.id);
     const currency = business.currency.toLowerCase();
-    const { getRequestHeaders } = await import("@tanstack/react-start/server");
-    const requestHeaders = getRequestHeaders();
-    // Cloudflare overwrites cf-connecting-ip, so callers cannot rotate it.
-    // Forwarded headers are accepted only in local/preview environments.
-    const connection = requestHeaders.get("cf-connecting-ip") ||
-      (process.env.APP_ENV !== "production"
-        ? requestHeaders.get("x-real-ip") || requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim()
-        : undefined) ||
-      "unknown";
     const order = {
       id: orderId,
       business_id: business.id,
@@ -150,7 +143,7 @@ export const startGiftCardCheckout = createServerFn({ method: "POST" })
       code_hash: await sha256(code),
       code_hint: code.slice(-4),
       display_token_hash: await sha256(claimToken),
-      request_key: await sha256(`${business.id}:${connection}`),
+      request_key: await sha256(`${business.id}:${sourceKey}`),
     };
     const { error: insertError } = await (supabaseAdmin as any).rpc("create_gift_card_order", {
       p_order_id: order.id,

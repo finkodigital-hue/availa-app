@@ -10,10 +10,14 @@ let readError = false;
 let reads = 0;
 const source = fs.readFileSync(new URL('../src/lib/slots.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+const segmentSource = fs.readFileSync(new URL('../src/lib/booking-segments.ts', import.meta.url), 'utf8');
+const segmentExports = {};
+vm.runInNewContext(ts.transpileModule(segmentSource, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: segmentExports, Date });
 const exports = {};
 vm.runInNewContext(compiled, { exports, Date, require(name) {
   if (name === 'react') return { useMemo: fn => fn() };
   if (name === '@tanstack/react-query') return { useQuery: options => { query = options; return response; } };
+  if (name.includes('booking-segments')) return segmentExports;
   if (name.includes('staff-hours')) return { resolveDayPeriods: () => [{ open_time: '09:00', close_time: '11:00' }] };
   if (name.includes('supabase')) return { supabase: { from() {
     reads++;

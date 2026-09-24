@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/stripe-webhook")({
           }
         }
 
-        if (event.type === "refund.updated") {
+        if (event.type === "refund.created" || event.type === "refund.updated") {
           const refund = event.data?.object;
           if (refund?.status !== "succeeded")
             return Response.json({ received: true });
@@ -55,8 +55,6 @@ export const Route = createFileRoute("/api/stripe-webhook")({
           // sweep verifies their status using the payment-issue record.
           if (metadata.resolution === "unfulfilled_booking") return Response.json({ received: true });
           if (
-            !metadata.business_id ||
-            !metadata.booking_id ||
             !refund.payment_intent ||
             !event.account
           ) {
@@ -67,8 +65,8 @@ export const Route = createFileRoute("/api/stripe-webhook")({
               await import("@/integrations/supabase/client.server");
             const { data: business, error: businessError } = await supabaseAdmin
               .from("businesses")
-              .select("stripe_account_id")
-              .eq("id", metadata.business_id)
+              .select("id, stripe_account_id")
+              .eq("stripe_account_id", event.account)
               .maybeSingle();
             if (businessError) throw businessError;
             if (
@@ -79,11 +77,42 @@ export const Route = createFileRoute("/api/stripe-webhook")({
                 status: 400,
               });
             }
+            // Dashboard refunds need not carry our metadata. Resolve the
+            // booking from its recorded charge inside the signed account.
+            const { data: charge, error: chargeError } = await supabaseAdmin
+              .from("payments")
+              .select("booking_id")
+              .eq("business_id", business.id)
+              .eq("stripe_payment_intent_id", refund.payment_intent)
+              .eq("type", "charge")
+              .eq("status", "succeeded")
+              .maybeSingle();
+            if (chargeError) throw chargeError;
+            if (!charge?.booking_id) {
+              if ((metadata.business_id && metadata.business_id !== business.id) || metadata.booking_id) {
+                return new Response("Refund identity mismatch", { status: 400 });
+              }
+              // The private function matches an issued Stripe gift card and
+              // returns an error until its purchase has been reconciled.
+              const { error: giftError } = await (supabaseAdmin as any).rpc("fulfill_gift_card_refund", {
+                p_business_id: business.id,
+                p_stripe_payment_intent_id: refund.payment_intent,
+                p_stripe_refund_id: refund.id,
+                p_amount_cents: refund.amount,
+                p_currency: refund.currency,
+              });
+              if (giftError) throw giftError;
+              return Response.json({ received: true });
+            }
+            if ((metadata.business_id && metadata.business_id !== business.id) ||
+              (metadata.booking_id && metadata.booking_id !== charge.booking_id)) {
+              return new Response("Refund identity mismatch", { status: 400 });
+            }
             const { error } = await (supabaseAdmin as any).rpc(
               "fulfill_stripe_refund",
               {
-                p_business_id: metadata.business_id,
-                p_booking_id: metadata.booking_id,
+                p_business_id: business.id,
+                p_booking_id: charge.booking_id,
                 p_amount_cents: refund.amount,
                 p_currency: refund.currency,
                 p_stripe_refund_id: refund.id,

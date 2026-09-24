@@ -3,68 +3,19 @@ import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveDayPeriods } from "@/lib/staff-hours";
 
-export type SlotService = {
-  duration_minutes: number;
-  buffer_before_min?: number | null;
-  buffer_after_min?: number | null;
-  gap_min?: number | null;
-  active_after_min?: number | null;
-};
-
-export type Segment = { start: number; end: number };
-
-// A gap booking is busy for two segments (before the gap, after the gap) with
-// the gap itself left free — genuinely bookable by a different client. A
-// plain booking is busy for one segment: [starts, ends). Everything below
-// works in epoch ms rather than Date objects so overlap checks are cheap
-// inside the slot-search loop. Exported so every other slot-search /
-// conflict-preview implementation (e.g. the public booking page, which reads
-// from the public_booking_slots view instead of the bookings table) shares
-// the exact same segment math rather than a second, driftable copy of it.
-export function expandBookingSegments(b: {
-  starts_at: string;
-  ends_at: string;
-  gap_min?: number | null;
-  active_after_min?: number | null;
-}): Segment[] {
-  const start = new Date(b.starts_at).getTime();
-  const end = new Date(b.ends_at).getTime();
-  if (!b.gap_min || !b.active_after_min) return [{ start, end }];
-  const activeAfterStart = end - b.active_after_min * 60000;
-  const gapStart = activeAfterStart - b.gap_min * 60000;
-  return [
-    { start, end: gapStart },
-    { start: activeAfterStart, end },
-  ];
-}
-
-// The candidate slot at time `t` for `service`. Buffers pad the leading edge
-// of the first segment and the trailing edge of the last segment — matching
-// today's behavior of padding the candidate's own occupied window — but the
-// gap in between stays unpadded and unchecked, so it's free for someone else.
-export function expandCandidateSegments(
-  t: number,
-  service: SlotService,
-): Segment[] {
-  const bufBefore = (service.buffer_before_min ?? 0) * 60000;
-  const bufAfter = (service.buffer_after_min ?? 0) * 60000;
-  const durationMs = service.duration_minutes * 60000;
-  if (!service.gap_min || !service.active_after_min) {
-    return [{ start: t, end: t + bufBefore + durationMs + bufAfter }];
-  }
-  const gapMs = service.gap_min * 60000;
-  const activeAfterMs = service.active_after_min * 60000;
-  const seg1End = t + bufBefore + durationMs;
-  const seg2Start = seg1End + gapMs;
-  return [
-    { start: t, end: seg1End },
-    { start: seg2Start, end: seg2Start + activeAfterMs + bufAfter },
-  ];
-}
-
-export function segmentsOverlap(a: Segment[], b: Segment[]): boolean {
-  return a.some((x) => b.some((y) => x.start < y.end && x.end > y.start));
-}
+import {
+  expandBookingSegments,
+  expandCandidateSegments,
+  segmentsOverlap,
+  type SlotService,
+} from "@/lib/booking-segments";
+export {
+  expandBookingSegments,
+  expandCandidateSegments,
+  segmentsOverlap,
+  type SlotService,
+  type Segment,
+} from "@/lib/booking-segments";
 
 export function useAvailableSlots(opts: {
   businessId: string | undefined;
@@ -87,6 +38,12 @@ export function useAvailableSlots(opts: {
       rangeStart.setHours(0, 0, 0, 0);
       const rangeEnd = new Date(rangeStart);
       rangeEnd.setDate(rangeEnd.getDate() + searchDays);
+      // Include adjacent dates so another appointment's preparation/cleanup
+      // buffer can block a slot at either end of the search range.
+      const lookupStart = new Date(rangeStart);
+      lookupStart.setDate(lookupStart.getDate() - 1);
+      const lookupEnd = new Date(rangeEnd);
+      lookupEnd.setDate(lookupEnd.getDate() + 1);
       const [periodsR, bizHoursR, staffHoursR, bookingsR, blockedR] =
         await Promise.all([
           supabase
@@ -98,17 +55,16 @@ export function useAvailableSlots(opts: {
             .from("business_hours")
             .select("*")
             .eq("business_id", businessId!),
-          supabase
-            .from("staff_hours")
-            .select("*")
-            .eq("staff_id", staffId!),
+          supabase.from("staff_hours").select("*").eq("staff_id", staffId!),
           supabase
             .from("bookings")
-            .select("id, starts_at, ends_at, status, gap_min, active_after_min")
+            .select(
+              "id, starts_at, ends_at, status, gap_min, active_after_min, buffer_before_min, buffer_after_min",
+            )
             .eq("business_id", businessId!)
             .eq("staff_id", staffId!)
-            .lt("starts_at", rangeEnd.toISOString())
-            .gt("ends_at", rangeStart.toISOString())
+            .lt("starts_at", lookupEnd.toISOString())
+            .gt("ends_at", lookupStart.toISOString())
             .neq("status", "cancelled"),
           supabase
             .from("blocked_dates_public")
@@ -133,9 +89,11 @@ export function useAvailableSlots(opts: {
         const wd = searchDate.getDay();
         const periods = resolveDayPeriods({
           weekday: wd,
-          staffHours: (staffHoursR.data ?? []).find((row) => row.weekday === wd) as any,
-          bizPeriods: (periodsR.data ?? []).filter((row) => row.weekday === wd) as any,
-          bizHours: (bizHoursR.data ?? []).find((row) => row.weekday === wd) as any,
+          staffHours: (staffHoursR.data ?? []).find(
+            (row) => row.weekday === wd,
+          ),
+          bizPeriods: (periodsR.data ?? []).filter((row) => row.weekday === wd),
+          bizHours: (bizHoursR.data ?? []).find((row) => row.weekday === wd),
           date: searchDate,
         });
         days.push({
@@ -146,7 +104,7 @@ export function useAvailableSlots(opts: {
         });
       }
       return days;
-    }
+    },
   });
 
   const slots = useMemo(() => {
@@ -169,9 +127,9 @@ export function useAvailableSlots(opts: {
       const out: { time: string; iso: string; hour: number }[] = [];
       const now = new Date();
       const existingBookings = dayData.bookings.filter(
-        (b: any) => b.id !== excludeBookingId,
+        (b) => b.id !== excludeBookingId,
       );
-      const existingSegments = existingBookings.map((b: any) =>
+      const existingSegments = existingBookings.map((b) =>
         expandBookingSegments(b),
       );
       for (const p of dayData.periods) {
@@ -197,8 +155,9 @@ export function useAvailableSlots(opts: {
           // A blocked_dates row only matters if it overlaps an actual active
           // segment — staff being unavailable during a client's own gap (e.g.
           // colour developing) doesn't invalidate the slot.
-          const blocked = dayData.blocked.some((b: any) => {
+          const blocked = dayData.blocked.some((b) => {
             if (b.staff_id && b.staff_id !== staffId) return false;
+            if (!b.starts_at || !b.ends_at) return true;
             const blockedSeg = [
               {
                 start: new Date(b.starts_at).getTime(),

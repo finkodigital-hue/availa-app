@@ -192,7 +192,7 @@ function PaymentsPage() {
               {refundResults ? (
                 <div className="pt-3 border-t space-y-2">
                   <div className="text-sm font-medium">
-                    {refundResults.every((r) => r.ok) ? "Refund submitted" : "Refund partially went through"}
+                    {refundResults.every((r) => r.ok) ? "Refund submitted" : "Some refund requests need attention"}
                   </div>
                   <div className="space-y-1.5">
                     {refundResults.map((r) => (
@@ -203,7 +203,7 @@ function PaymentsPage() {
                           <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                         )}
                         <div className="min-w-0">
-                          <div className="tabular-nums">{fmtMoney(r.amountCents)} {r.ok ? "refunded" : "failed"}</div>
+                          <div className="tabular-nums">{fmtMoney(r.amountCents)} {r.ok ? "submitted" : "not accepted"}</div>
                           {!r.ok && r.error && <div className="text-xs text-muted-foreground">{r.error}</div>}
                         </div>
                       </div>

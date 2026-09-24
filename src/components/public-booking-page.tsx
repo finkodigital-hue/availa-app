@@ -508,11 +508,11 @@ export function PublicBookingPage({
             .maybeSingle(),
           (supabase as any)
             .from("public_booking_slots")
-            .select("starts_at, ends_at, gap_min, active_after_min")
+            .select("starts_at, ends_at, gap_min, active_after_min, buffer_before_min, buffer_after_min")
             .eq("business_id", service!.business_id)
             .eq("staff_id", staff!.id)
-            .gte("starts_at", dayStart.toISOString())
-            .lte("starts_at", dayEnd.toISOString()),
+            .lt("occupied_starts_at", dayEnd.toISOString())
+            .gt("occupied_ends_at", dayStart.toISOString()),
           supabase
             .from("blocked_dates_public")
             .select("starts_at, ends_at, staff_id")
@@ -679,12 +679,12 @@ export function PublicBookingPage({
       ).toISOString();
       const { data: clashRows } = await (supabase as any)
         .from("public_booking_slots")
-        .select("starts_at, ends_at, gap_min, active_after_min")
+        .select("starts_at, ends_at, gap_min, active_after_min, buffer_before_min, buffer_after_min")
         .eq("staff_id", staff.id)
-        .lt("starts_at", ends_at)
-        .gt("ends_at", starts_at);
+        .lt("occupied_starts_at", new Date(new Date(ends_at).getTime() + (service.buffer_after_min ?? 0) * 60000).toISOString())
+        .gt("occupied_ends_at", new Date(new Date(starts_at).getTime() - (service.buffer_before_min ?? 0) * 60000).toISOString());
       const candidateSegments = expandCandidateSegments(
-        new Date(starts_at).getTime(),
+        new Date(starts_at).getTime() - (service.buffer_before_min ?? 0) * 60000,
         service,
       );
       const clash = (clashRows ?? []).some((b: any) =>

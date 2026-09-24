@@ -68,3 +68,31 @@ First batch deployed and verified at revision af7de6756499eec73777cdb12406be03f7
 - Added private, immutable checkout attempts, stable provider idempotency, fresh session retrieval, payment identity/currency validation and manual review for uncertain attempts. Repeated completed payments reconcile without adding another ledger charge.
 - All 200 isolated regression assertions, TypeScript, production build and the 59-table security boundary check pass. Migration 20260923004000 applied successfully to production. No customer charge or message was initiated.
 - Integrated sandbox payment/SCA journeys, legacy payment reconciliation and production restore evidence remain open. See [balance payment safety](balance-payment-safety.md) for scope and limitations.
+
+## Scheduling and complete application migration replay — 24 September
+
+- Bookings and paid holds preserve buffer snapshots. Collision checks and public previews include preparation/cleanup without filling processing gaps. Future manual creation, drag/resize/undo and restoration enforce working hours, holidays, time off and staff/service availability at the database boundary.
+- Corrected the old cancellation deadline's interference with authorised reception work. Customer deadlines and provider-field protections remain enforced.
+- All 123 application migrations replay locally, with 45 full-application-schema role/invitation/export/MFA/storage-policy assertions and two metadata-backfill assertions. Full build passes 290 assertions, TypeScript and 59-table boundary checks. Auth/Storage and external services are fixtures; full Supabase and multi-connection staging evidence remain open.
+- Production preflight: no negative service buffers or active unpaid holds; 323 future buffered appointments. All 21 existing buffered conflict pairs belong to the explicitly fictional demo salon. No appointment was moved/cancelled. Three scheduling migrations applied successfully after a transactionally rolled-back first attempt exposed the old change-window rule; the corrected metadata backfill is regression-tested.
+- Details and limits: [scheduling and schema verification](scheduling-and-schema-verification.md).
+
+## Public source protections — 24 September
+
+- Added atomic source counters for booking/Checkout, gift cards, waitlist and website authentication. Daily keyed source identifiers avoid storing raw IP addresses in the counter table; bounded cleanup expires them. Counter failures stop the protected action.
+- Validated free booking now runs through the server credential after the source check. A separate post-deployment permission migration closes direct anonymous/member booking and waitlist RPC access; discovery remains public. Rollout order is mandatory.
+- Full local build passes 326 assertions, all 125 application migrations, TypeScript and the 60-table boundary check. Real source-spam/load tests, native Supabase auth limits and Cloudflare volumetric controls remain separate evidence.
+- The preceding scheduling release is live at babe51589569730b95fce1732c226566b8d166d3; all three release checks and marker passed. Mobile public service/staff/time/details screens reached at 390px with 375px content/scroll width and no page overflow; no submission made.
+- Limits, privacy assumptions and rollout: [public request protection](public-request-protection.md).
+
+## Payment ledger follow-up — 24 September
+
+- Source protections are live at 5c7e1407e079137d36a76ed1eda103db3b5d153f; all three release checks and the exact marker passed. Direct public/member booking and waitlist writes were then revoked. An inert unknown-auth-route probe confirmed the server source counter without creating an identity or sending mail.
+- Gift redemption now updates the due amount and validates replay identity, currency, expiry and unresolved balance checkouts. Confirmed partial refunds reconcile once against the original charge. The website retains partially refunded charges as refundable and reports submission accurately.
+- Added 25 full-schema ledger, eight balance-calculation and 15 signed-handler assertions. The handler supports dashboard-originated booking refunds without requiring metadata and rejects wrong accounts/identities. Database migration 20260924003000 applied successfully. Gift-purchase refunds and late refund failures remain open; see [payment ledger verification](payment-ledger-verification.md).
+
+## Gift purchase refunds — 24 September
+
+- Confirmed gift-purchase refunds remove unspent value once and retain a refund/credit ledger. Refunds exceeding remaining credit create owner-visible and monitoring review flags, with remaining credit removed. No automatic customer charge or invented debt is created.
+- Added 18 full-schema assertions and four signed-handler assertions. All 127 migrations replay, with 61 public tables checked. Provider delivery, late failures and spent-credit operator reconciliation remain open.
+- The preceding booking-refund release is live at 57af0c1a7c504f075cd0de23f8a9618b8dfa00e1, with all checks and marker verified. Its sandbox webhook now includes refund.created. See [payment ledger verification](payment-ledger-verification.md).
