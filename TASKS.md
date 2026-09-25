@@ -18,7 +18,7 @@ Launch readiness reviewed 2026-09-24. A checked item needs evidence, not just pa
 - [ ] **Run independent security and dependency review** - Review secrets, role boundaries, provider callbacks, rate limits and current dependency advisories; today's npm audit could not reach the registry.
   - Read-only browser tests now block every app-origin write, including new endpoints. Dependency advisory retrieval is still blocked by registry access; no clean audit is claimed.
 - [ ] **Complete real-device and accessibility review** - Physical iPhone/Android, desktop browsers, keyboard, screen reader, 200%/400% zoom, contrast and form errors; fix material issues.
-  - Local mobile-menu and 404 browser checks pass. The 404 and error fallback now provide a main landmark; physical devices and assistive technology remain untested.
+  - Local mobile-menu, 404 and 320px horizontal-overflow checks pass across home, FAQ, legal and sign-in. Sign-in, 404 and error fallbacks now provide main landmarks; physical devices and assistive technology remain untested.
 - [ ] **Measure launch-page performance** - Check mobile page speed and resolve severe bottlenecks; the build currently warns about large bundles.
   - Desktop favicon now uses the existing 31 KB `.ico` instead of the 539 KB PNG; full page-speed and bundle measurements remain outstanding.
 - [ ] **Run a consented salon pilot with a fallback diary** - Track duplicate/lost appointments, incorrect times/messages/payments, staff friction and support incidents; use the pilot stop criteria.

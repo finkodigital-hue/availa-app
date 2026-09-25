@@ -95,3 +95,25 @@ test("read-only guard stops an unlisted app write", async ({ page }) => {
     expect.stringMatching(/POST .*\/api\/unguarded-future-endpoint$/),
   ]);
 });
+
+test("key public pages do not overflow a narrow phone viewport", async ({
+  page,
+}) => {
+  const safety = await installMutationGuard(page);
+  await page.setViewportSize({ width: 320, height: 720 });
+
+  for (const path of ["/", "/faq", "/privacy", "/terms", "/auth"]) {
+    await page.goto(path);
+    await expect(page.getByRole("main")).toBeVisible();
+    const widths = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    expect(
+      widths.content,
+      `${path} has horizontal page overflow`,
+    ).toBeLessThanOrEqual(widths.viewport + 1);
+  }
+
+  safety.expectNothingBlocked();
+});

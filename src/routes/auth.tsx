@@ -134,9 +134,7 @@ function AuthPage() {
         const error = response.ok ? null : await response.json();
         if (error) {
           if (error.message?.includes("ALREADY_ON_LIST")) {
-            toast.success(
-              "You're already on the waitlist. We'll be in touch.",
-            );
+            toast.success("You're already on the waitlist. We'll be in touch.");
             setWaitlistDone(true);
             return;
           }
@@ -236,12 +234,9 @@ function AuthPage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-center p-6">
+      <main className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm animate-rise">
-          <Link
-            to="/"
-            className="md:hidden mb-8 inline-block"
-          >
+          <Link to="/" className="md:hidden mb-8 inline-block">
             <Wordmark className="text-[25px]" dotClassName="text-primary" />
           </Link>
           <h1 className="font-display text-3xl md:text-4xl tracking-tight">
@@ -453,7 +448,7 @@ function AuthPage() {
             </p>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
