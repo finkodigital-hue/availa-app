@@ -28,6 +28,7 @@ Launch readiness reviewed 2026-09-24. A checked item needs evidence, not just pa
 
 ## Waiting On
 
+- [ ] **Confirm ownership and copyright protection for Bookzenvo code** - For the founders and a UK IP solicitor: document who owns contributions, check employment/contractor assignments and third-party licences, and decide what evidence or formal steps are worth taking before launch.
 - [ ] **Legal review of terms and salon contracts** - For founders and a qualified UK solicitor: operator disclosures, subscriptions, refunds, marketplace responsibilities, liability and consultation/guardian wording.
 - [ ] **Complete UK data-protection decisions** - For founders/privacy adviser: ICO fee assessment, processing records, salon DPA, subprocessors, transfers, retention, rights-request and breach processes, Article 6/9 bases and DPIA for health data.
 - [ ] **Confirm marketing and review compliance** - For founders/legal reviewer: email/SMS opt-in and unsubscribe, imported contacts, genuine-review provenance, moderation and displayed ratings.
