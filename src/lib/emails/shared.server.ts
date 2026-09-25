@@ -34,12 +34,12 @@ function escapeHtml(s: string): string {
 }
 
 export function emailButton(label: string, href: string, color: string): string {
-  return `<a href="${escapeHtml(href)}" style="display:block;width:100%;box-sizing:border-box;background:${escapeHtml(color)};color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:14px 20px;border-radius:10px;text-align:center;font-family:${SYSTEM_FONT_STACK};">${escapeHtml(label)}</a>`;
+  return `<a href="${escapeHtml(href)}" style="display:block;width:100%;box-sizing:border-box;background:${escapeHtml(color)};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;line-height:22px;padding:15px 20px;border-radius:12px;text-align:center;font-family:${SYSTEM_FONT_STACK};">${escapeHtml(label)}</a>`;
 }
 
 export function emailButtonOutline(label: string, href: string, color: string): string {
   const safeColor = escapeHtml(color);
-  return `<a href="${escapeHtml(href)}" style="display:block;width:100%;box-sizing:border-box;background:#ffffff;color:${safeColor};text-decoration:none;font-weight:600;font-size:16px;padding:13px 20px;border-radius:10px;text-align:center;border:1.5px solid ${safeColor};font-family:${SYSTEM_FONT_STACK};">${escapeHtml(label)}</a>`;
+  return `<a href="${escapeHtml(href)}" style="display:block;width:100%;box-sizing:border-box;background:#ffffff;color:${safeColor};text-decoration:none;font-weight:700;font-size:15px;line-height:22px;padding:14px 20px;border-radius:12px;text-align:center;border:1px solid ${safeColor};font-family:${SYSTEM_FONT_STACK};">${escapeHtml(label)}</a>`;
 }
 
 // Single-column, table-based, inline-styled shell — the layout that survives
@@ -59,8 +59,8 @@ export function emailShell({
 }): string {
   const brand = escapeHtml(theme.colors.primary || "#111111");
   const logo = theme.logoUrl
-    ? `<img src="${escapeHtml(theme.logoUrl)}" alt="${escapeHtml(businessName)}" height="36" style="height:36px;max-width:220px;object-fit:contain;" />`
-    : `<span style="font-size:20px;font-weight:700;color:#111111;font-family:${SYSTEM_FONT_STACK};">${escapeHtml(businessName)}</span>`;
+    ? `<img src="${escapeHtml(theme.logoUrl)}" alt="${escapeHtml(businessName)}" height="40" style="height:40px;max-width:220px;object-fit:contain;vertical-align:middle;" />`
+    : `<span style="font-size:21px;line-height:28px;letter-spacing:-0.4px;font-weight:700;color:#191919;font-family:${SYSTEM_FONT_STACK};">${escapeHtml(businessName)}</span>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -69,21 +69,24 @@ export function emailShell({
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(businessName)}</title>
 </head>
-<body style="margin:0;padding:0;background:#f3f3f4;font-family:${SYSTEM_FONT_STACK};">
+<body style="margin:0;padding:0;background:#f6f5f2;font-family:${SYSTEM_FONT_STACK};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(previewText)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f3f4;padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f5f2;padding:32px 12px;">
 <tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;">
-<tr><td style="padding:24px 24px 0 24px;border-top:4px solid ${brand};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:500px;background:#ffffff;border:1px solid #e8e6e1;border-radius:18px;overflow:hidden;">
+<tr><td style="padding:28px 28px 23px 28px;border-top:4px solid ${brand};border-bottom:1px solid #eeece7;">
 ${logo}
 </td></tr>
-<tr><td style="padding:20px 24px 28px 24px;color:#111111;font-size:15px;line-height:1.5;">
+<tr><td style="padding:28px 28px 32px 28px;color:#242424;font-size:15px;line-height:1.6;">
 ${bodyHtml}
 </td></tr>
 </table>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
-<tr><td style="padding:16px 24px;text-align:center;color:#8a8a8f;font-size:12px;font-family:${SYSTEM_FONT_STACK};">
-Sent by ${escapeHtml(businessName)} via Bookzenvo
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:500px;">
+<tr><td style="padding:18px 24px 8px;text-align:center;color:#6e6d69;font-size:12px;line-height:18px;font-family:${SYSTEM_FONT_STACK};">
+Sent by ${escapeHtml(businessName)} via
+</td></tr>
+<tr><td style="padding:0 24px 20px;text-align:center;font-family:${SYSTEM_FONT_STACK};">
+<span style="color:#26231e;font-size:16px;font-weight:700;letter-spacing:-0.065em;line-height:20px;">Bookzenvo<span style="color:#b6924e;">.</span></span>
 </td></tr>
 </table>
 </td></tr>
