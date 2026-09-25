@@ -9,7 +9,7 @@ const QUESTIONS = [
   ],
   [
     "Can my clients book online?",
-    "Yes. Every business gets a shareable booking link. Clients can choose a service, team member and available time. Studio adds a customer portal; on every plan, confirmation emails still include one-tap links to confirm, cancel or reschedule.",
+    "Yes. Every business gets a shareable booking link. Clients can choose a service, team member and available time. Booking confirmation emails include the appointment details and a calendar file. Studio adds a customer portal and one-tap options in appointment reminder emails.",
   ],
   [
     "Can I take deposits and payments?",
@@ -29,7 +29,7 @@ const QUESTIONS = [
   ],
   [
     "Can clients cancel or reschedule?",
-    "On Studio, clients can manage eligible bookings from their portal. On every plan they can use the one-tap links in their confirmation email. You control your cancellation policy and can still manage any booking directly from your dashboard.",
+    "On Studio, clients can manage eligible bookings from their portal or use the one-tap links in appointment reminder emails. Confirmation emails do not contain change links. You control your cancellation policy and can manage bookings directly from your dashboard on every plan.",
   ],
   [
     "Will Bookzenvo block dates on my calendar automatically?",
