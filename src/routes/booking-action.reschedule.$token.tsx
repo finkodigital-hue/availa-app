@@ -35,7 +35,15 @@ type Peek =
         active_after_min: number | null;
       };
     }
-  | { ok: false; reason: "invalid" | "expired" | "used" };
+  | { ok: false; reason: "invalid" | "expired" | "used" }
+  | {
+      ok: false;
+      reason: "window_passed";
+      businessName: string;
+      windowHours: number;
+      contactPhone: string | null;
+      contactEmail: string | null;
+    };
 
 export const Route = createFileRoute("/booking-action/reschedule/$token")({
   component: ReschedulePage,
@@ -96,7 +104,23 @@ function ReschedulePage() {
           </div>
         )}
 
-        {state === "error" && (
+        {state === "error" && peek?.ok === false && peek.reason === "window_passed" && (
+          <div className="text-center py-8">
+            <AlertTriangle className="h-8 w-8 mx-auto" style={{ color: "var(--brand)" }} />
+            <h1 className="font-display text-xl mt-4">Too close to reschedule online</h1>
+            <p className="mt-2 text-sm" style={{ color: "var(--brand-text-muted)" }}>
+              This appointment is within {peek.windowHours} hours. Please contact {peek.businessName} directly to change it.
+            </p>
+            {(peek.contactPhone || peek.contactEmail) && (
+              <div className="mt-4 text-sm font-medium space-y-0.5">
+                {peek.contactPhone && <div>{peek.contactPhone}</div>}
+                {peek.contactEmail && <div>{peek.contactEmail}</div>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {state === "error" && !(peek?.ok === false && peek.reason === "window_passed") && (
           <div className="text-center py-8">
             <AlertTriangle className="h-8 w-8 mx-auto text-destructive" />
             <h1 className="font-display text-xl mt-4">
@@ -204,7 +228,9 @@ function SlotPicker({
         setError(
           data.reason === "slot_taken"
             ? "That slot was just taken — pick another."
-            : "This link is no longer valid.",
+            : data.reason === "window_passed"
+              ? `It's now too close to your appointment to reschedule online. Please contact ${peek.businessName} directly.`
+              : "This link is no longer valid.",
         );
         onFail();
       }

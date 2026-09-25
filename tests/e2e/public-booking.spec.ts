@@ -3,6 +3,50 @@ import { collectPageErrors, installMutationGuard } from "./support/safety";
 
 const bookingSlug = process.env.E2E_BOOKING_SLUG;
 
+async function reachCustomerDetails(page: import("@playwright/test").Page) {
+  await page.goto(`/book/${bookingSlug}`);
+  const service = page.getByRole("button").filter({ hasText: /£|\$/ }).first();
+  await expect(
+    service,
+    "The pilot workspace needs at least one active service",
+  ).toBeVisible();
+  await service.click();
+
+  const staff = page
+    .locator("main button")
+    .filter({ has: page.locator("div.font-medium") })
+    .first();
+  await expect(
+    staff,
+    "The selected service needs at least one active staff member",
+  ).toBeVisible();
+  await staff.click();
+  await expect(page.getByText(/Step 3 of 4\s*Time/)).toBeVisible();
+
+  let slot = page
+    .locator("main button")
+    .filter({ hasText: /^\d{1,2}:\d{2}(?:\s?[AP]M)?$/i })
+    .first();
+  for (
+    let day = 0;
+    day < 14 && !(await slot.isVisible().catch(() => false));
+    day += 1
+  ) {
+    await page.getByRole("button", { name: "Next day" }).click();
+    await page.waitForTimeout(150);
+    slot = page
+      .locator("main button")
+      .filter({ hasText: /^\d{1,2}:\d{2}(?:\s?[AP]M)?$/i })
+      .first();
+  }
+  await expect(
+    slot,
+    "The pilot workspace needs an available slot in the next 14 days",
+  ).toBeVisible();
+  await slot.click();
+  await expect(page.getByText(/Step 4 of 4\s*Details/)).toBeVisible();
+}
+
 test.beforeEach(() => {
   test.skip(
     !bookingSlug,
@@ -48,58 +92,20 @@ test("customer can reach details without creating a booking", async ({
   const safety = await installMutationGuard(page);
   const assertNoPageErrors = collectPageErrors(page);
 
-  await page.goto(`/book/${bookingSlug}`);
-  const service = page.getByRole("button").filter({ hasText: /£|\$/ }).first();
-  await expect(
-    service,
-    "The pilot workspace needs at least one active service",
-  ).toBeVisible();
-  await service.click();
-
-  const staff = page
-    .locator("main button")
-    .filter({ has: page.locator("div.font-medium") })
-    .first();
-  await expect(
-    staff,
-    "The selected service needs at least one active staff member",
-  ).toBeVisible();
-  await staff.click();
-  await expect(page.getByText(/Step 3 of 4\s*Time/)).toBeVisible();
-
-  let slot = page
-    .locator("main button")
-    .filter({ hasText: /^\d{1,2}:\d{2}(?:\s?[AP]M)?$/i })
-    .first();
-  for (
-    let day = 0;
-    day < 14 && !(await slot.isVisible().catch(() => false));
-    day += 1
-  ) {
-    await page.getByRole("button", { name: "Next day" }).click();
-    await page.waitForTimeout(150);
-    slot = page
-      .locator("main button")
-      .filter({ hasText: /^\d{1,2}:\d{2}(?:\s?[AP]M)?$/i })
-      .first();
-  }
-  await expect(
-    slot,
-    "The pilot workspace needs an available slot in the next 14 days",
-  ).toBeVisible();
-  await slot.click();
-
-  await expect(page.getByText(/Step 4 of 4\s*Details/)).toBeVisible();
+  await reachCustomerDetails(page);
   await expect(page.getByLabel("Your name")).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "Email", exact: true }),
   ).toBeVisible();
   await expect(page.getByLabel("Phone")).toBeVisible();
+  await expect(page.getByText(/may text you a reminder about this appointment/)).toBeVisible();
+  await expect(page.getByLabel(/Send me an SMS reminder/)).toHaveCount(0);
   await expect(
     page.getByText(
       /Email me occasional offers and helpful rebooking reminders/,
     ),
   ).toBeVisible();
+  await expect(page.getByLabel(/Email me occasional offers/)).not.toBeChecked();
   await expect(
     page.getByRole("button", {
       name: /Continue to secure payment|Confirm booking/,
@@ -122,11 +128,15 @@ test("booking journey remains usable on a salon customer's phone", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const safety = await installMutationGuard(page);
-  await page.goto(`/book/${bookingSlug}`);
-  await expect(page.getByText(/Step 1 of 4\s*Service/)).toBeVisible();
-  await expect(
-    page.getByRole("searchbox", { name: "Search services" }),
-  ).toBeVisible();
-  await expect(page.locator("body")).not.toHaveCSS("overflow-x", "scroll");
+  const assertNoPageErrors = collectPageErrors(page);
+  await reachCustomerDetails(page);
+  await expect(page.getByLabel("Your name")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Email", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Phone")).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+    "The booking journey must fit a 390px viewport",
+  ).toBe(false);
   safety.expectNothingBlocked();
+  assertNoPageErrors();
 });

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { consumeBookingActionToken } from "@/lib/booking-tokens.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
+import { processBookingChangeEmails } from "@/lib/booking-change-email.server";
 
 // Backs the Confirm and Cancel one-tap links. The token is the *only*
 // locator — there is no booking id anywhere in the request other than what
@@ -92,6 +93,9 @@ export const Route = createFileRoute("/api/booking-actions/act")({
             ...shared,
           });
         }
+
+        try { await processBookingChangeEmails(booking.id); }
+        catch { console.error("[cancel] Customer email queued for cron retry"); }
 
         return Response.json({ ok: true, action: "cancel", ...shared });
       },

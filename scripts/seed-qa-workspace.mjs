@@ -4,7 +4,7 @@
 // All customers use @example.com addresses. Idempotent: safe to re-run,
 // skips anything that already exists.
 //
-// Usage: node --env-file=.env scripts/seed-qa-workspace.mjs
+// Usage: QA_SEED_OWNER_PASSWORD=<private strong password> node --env-file=.env scripts/seed-qa-workspace.mjs
 import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.SUPABASE_URL;
@@ -15,7 +15,11 @@ if (!url || !key) {
 }
 const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-const PASSWORD = "QaWorkspace123!";
+const password = process.env.QA_SEED_OWNER_PASSWORD;
+if (!password || password.length < 16) {
+  console.error("QA_SEED_OWNER_PASSWORD must be set to a private password of at least 16 characters");
+  process.exit(1);
+}
 const CUSTOMER_NAMES = [
   "Ava Thompson", "Noah Bennett", "Isla Robertson", "Leo Campbell",
   "Mia Sinclair", "Oscar Whyte", "Freya Duncan", "Jack Ferguson",
@@ -25,12 +29,13 @@ async function ensureOwner(email, fullName) {
   const { data: list } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
   const existing = list.users.find((u) => u.email?.toLowerCase() === email);
   if (existing) {
-    await supabase.auth.admin.updateUserById(existing.id, { password: PASSWORD, email_confirm: true });
+    // Never reset an existing QA owner's credential as a side effect of a
+    // repeat seed. Rotation must be a separate, deliberate operator action.
     return existing.id;
   }
   const { data, error } = await supabase.auth.admin.createUser({
     email,
-    password: PASSWORD,
+    password,
     email_confirm: true,
     user_metadata: { full_name: fullName },
   });
@@ -196,8 +201,9 @@ async function main() {
   await seedBookings(free);
 
   console.log("\nDone.");
-  console.log(`  Studio: qa-studio-owner@example.com / ${PASSWORD}  (business id ${studio.biz.id})`);
-  console.log(`  Free:   qa-free-owner@example.com / ${PASSWORD}  (business id ${free.biz.id})`);
+  console.log(`  Studio: qa-studio-owner@example.com (business id ${studio.biz.id})`);
+  console.log(`  Free:   qa-free-owner@example.com (business id ${free.biz.id})`);
+  console.log("  Existing owner passwords were not changed. Keep QA credentials outside the repository.");
 }
 
 main().catch((err) => {

@@ -21,7 +21,7 @@ Record evidence for every check: UTC time, project reference, backup/PITR status
 
 ## Recovery objectives and retention
 
-Start with an RPO of 24 hours and RTO of 8 hours; tighten these when customer commitments require it. Retain daily recovery points for 35 days and monthly encrypted archives for 12 months, subject to the organisation's legal basis and retention schedule. Do not retain customer data merely because a backup exists: expire backup generations consistently, and document how erasure requests age out of immutable backups.
+Start with an RPO of 24 hours and RTO of 8 hours; tighten these when customer commitments require it. The target is 35 days of daily recovery points and 12 months of monthly encrypted archives, subject to the organisation's legal basis and retention schedule. This target is **not met by Supabase Pro's seven-day managed-backup window alone**: it requires a separately operated, encrypted and restore-tested archive. Until that exists, record the shorter actual recovery window rather than claiming this target has been met. Do not retain customer data merely because a backup exists: expire backup generations consistently, and document how erasure requests age out of immutable backups.
 
 Owner workspace closure is recoverable for 30 days. Closing hides the public business and cancels billing, but retains database rows, authentication and Storage. A permanent purge is never automatic in application code: an operator must confirm the deadline has passed, the owner has not cancelled, a usable backup predates the purge, legal holds are clear, and the exact business ID and both Storage prefixes have been reviewed.
 

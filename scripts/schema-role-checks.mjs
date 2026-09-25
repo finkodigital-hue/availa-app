@@ -75,8 +75,18 @@ export async function checkSchemaRoles(db) {
  await login(8);await fail('select check_request_assurance()',/verification required/);
  same(await rows('select id from bookings'),[],'Unverified identity denied');
  await login(null);same((await rows('select id from public_businesses')).length,2,'Anonymous discovery');
+ // These four views intentionally run as their owner so public booking can
+ // read a narrow projection without opening the underlying tenant tables.
+ // Lock down the projection: a later migration must not silently expose a
+ // private field through a security-definer view.
+ const viewColumns=async name=>(await db.query(`select column_name from information_schema.columns where table_schema='public' and table_name=$1 order by ordinal_position`,[name])).rows.map(row=>row.column_name);
+ same(await viewColumns('blocked_dates_public'),['id','business_id','staff_id','starts_at','ends_at','kind'],'Public blocked dates expose only scheduling fields');
+ same(await viewColumns('public_staff'),['id','business_id','name','role','photo_url','bio','bookable','active'],'Public staff expose no contact or account fields');
+ same(await viewColumns('public_businesses'),['id','name','slug','logo_url','description','address','phone','email','website','timezone','instagram','facebook','twitter','tiktok','cover_image_url','welcome_message','booking_instructions','cancellation_policy','terms','faq','show_prices','show_staff','show_durations','emergency_message','emergency_active','custom_domain','favicon_url','browser_title','currency','hide_powered_by','deposit_percent','payment_mode','cancellation_window_hours','page_theme','reminder_hours_before'],'Public business view exposes only published storefront fields');
+ same(await viewColumns('public_booking_slots'),['business_id','staff_id','starts_at','ends_at','gap_min','active_after_min','buffer_before_min','buffer_after_min','occupied_starts_at','occupied_ends_at'],'Public booking slots expose no customer or payment fields');
  await fail(`select join_waitlist('fixture@example.invalid',null)`,/permission denied/);
  await fail(`select create_public_booking('${id(101)}','${id(301)}','${id(201)}','Fixture','','',now()+interval '7 days',now()+interval '7 days 1 hour','',null,null)`,/permission denied/);
+ await fail(`select assert_no_booking_conflict('${id(201)}',now()+interval '7 days',now()+interval '7 days 1 hour',null,null,null)`,/permission denied/);
  await fail('select * from balance_checkout_attempts',/permission denied/);
  await fail(`select claim_balance_checkout('${id(101)}','${id(501)}','https://example.invalid')`,/permission denied/);
  await db.exec('reset role');

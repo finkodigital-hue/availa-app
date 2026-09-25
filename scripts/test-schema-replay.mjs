@@ -64,9 +64,41 @@ try {
  }
  const tables=(await db.query(`select count(*)::int as n from pg_tables where schemaname='public'`)).rows[0].n;
  assert.ok(tables>=59);
- console.log(`Replayed ${replayed} application migrations; ${tables} public tables; 2 metadata-backfill assertions passed. ${fixtures} external extension declarations use inert local fixtures.`);
+ await db.exec(`create temp table reminder_reset_fixture (
+  starts_at timestamptz, reminder_sent_at timestamptz,
+  sms_reminder_sent_at timestamptz, client_confirmed_at timestamptz
+ );
+ create trigger reset_fixture before update on reminder_reset_fixture
+ for each row execute function public.reset_reminder_state_on_reschedule();
+ insert into reminder_reset_fixture values (
+  now()+interval '7 days',now(),now(),now()
+ );`);
+ await db.exec(`update reminder_reset_fixture set client_confirmed_at=client_confirmed_at`);
+ let reminderState=(await db.query(`select reminder_sent_at,sms_reminder_sent_at,client_confirmed_at from reminder_reset_fixture`)).rows[0];
+ assert.ok(reminderState.reminder_sent_at && reminderState.sms_reminder_sent_at && reminderState.client_confirmed_at);
+ await db.exec(`update reminder_reset_fixture set starts_at=starts_at+interval '1 day'`);
+ reminderState=(await db.query(`select reminder_sent_at,sms_reminder_sent_at,client_confirmed_at from reminder_reset_fixture`)).rows[0];
+ assert.deepEqual(reminderState,{reminder_sent_at:null,sms_reminder_sent_at:null,client_confirmed_at:null});
+ await db.exec(`select set_config('request.jwt.claims','{}',false);
+  insert into auth.users(id,email,email_confirmed_at) values('30000000-0000-4000-8000-000000000001','change-fixture@example.invalid',now());
+  insert into businesses(id,owner_id,name,slug,timezone) values('30000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000001','Change fixture','change-fixture','UTC');
+  insert into services(id,business_id,name) values('30000000-0000-4000-8000-000000000003','30000000-0000-4000-8000-000000000002','Fixture');
+  insert into staff(id,business_id,name) values('30000000-0000-4000-8000-000000000004','30000000-0000-4000-8000-000000000002','Fixture');
+  insert into bookings(id,business_id,service_id,staff_id,customer_name,starts_at,ends_at)
+  values('30000000-0000-4000-8000-000000000005','30000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000003','30000000-0000-4000-8000-000000000004','Fixture','2030-01-07 10:00+00','2030-01-07 11:00+00');
+  update bookings set customer_name='Still fixture' where id='30000000-0000-4000-8000-000000000005';`);
+ assert.equal((await db.query("select count(*)::int as n from booking_change_email_outbox")).rows[0].n,0);
+ assert.equal((await db.query("select sms_reminder_notice_at from bookings where id='30000000-0000-4000-8000-000000000005'")).rows[0].sms_reminder_notice_at,null);
+ await db.exec("update bookings set sms_reminder_notice_at=now(),sms_reminder_notice_version='appointment-service-sms-v1' where id='30000000-0000-4000-8000-000000000005'");
+ assert.equal((await db.query("select sms_reminder_notice_version from bookings where id='30000000-0000-4000-8000-000000000005'")).rows[0].sms_reminder_notice_version,'appointment-service-sms-v1');
+ await db.exec(`update bookings set starts_at=starts_at+interval '1 day',ends_at=ends_at+interval '1 day' where id='30000000-0000-4000-8000-000000000005'`);
+ assert.deepEqual((await db.query("select change_type from booking_change_email_outbox order by created_at,id")).rows.map(row=>row.change_type),['rescheduled']);
+ await db.exec(`update bookings set status='cancelled' where id='30000000-0000-4000-8000-000000000005'`);
+ assert.deepEqual((await db.query("select change_type from booking_change_email_outbox order by created_at,id")).rows.map(row=>row.change_type).sort(),['cancelled','rescheduled']);
+ await db.exec("delete from businesses where slug='change-fixture';delete from auth.users where email='change-fixture@example.invalid'");
+ console.log(`Replayed ${replayed} application migrations; ${tables} public tables; metadata, reminder-reset and booking-change assertions passed. ${fixtures} external extension declarations use inert local fixtures.`);
  await checkSchemaRoles(db);
  await checkSchemaPaymentLedger(db);
  await checkGiftRefunds(db);
-} catch(error) {console.error(error.message);process.exitCode=1;}
+} catch(error) {console.error(error);process.exitCode=1;}
 finally {await db.close();}
