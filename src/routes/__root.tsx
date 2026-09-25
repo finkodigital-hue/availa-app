@@ -35,11 +35,13 @@ function reportClientError(message: string, stack?: string) {
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="font-display text-7xl">404</h1>
         <h2 className="mt-4 text-xl text-foreground">Not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">This page doesn't exist or has moved.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          This page doesn't exist or has moved.
+        </p>
         <div className="mt-6">
           <Link
             to="/"
@@ -49,7 +51,7 @@ function NotFoundComponent() {
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -58,10 +60,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   reportClientError(error.message, error.stack);
   const router = useRouter();
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="font-display text-2xl">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          We couldn't load this page. Please try again, or return home.
+        </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -77,54 +81,74 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           </a>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Bookzenvo · Your salon. All in one place." },
-      {
-        name: "description",
-        content:
-          "A multi-tenant booking platform for modern studios, salons and service businesses.",
-      },
-      { property: "og:title", content: "Bookzenvo — Bookings made beautiful" },
-      {
-        property: "og:description",
-        content:
-          "A multi-tenant booking platform for modern studios, salons and service businesses.",
-      },
-      { property: "og:site_name", content: "Bookzenvo" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Bookzenvo — Bookings made beautiful" },
-      {
-        name: "twitter:description",
-        content:
-          "A multi-tenant booking platform for modern studios, salons and service businesses.",
-      },
-      { property: "og:image", content: "https://bookzenvo.com/bookzenvo-social-share.png" },
-      { property: "og:image:width", content: "1730" },
-      { property: "og:image:height", content: "909" },
-      { property: "og:image:alt", content: "Bookzenvo — Bookings made beautiful" },
-      { name: "twitter:image", content: "https://bookzenvo.com/bookzenvo-social-share.png" },
-      { name: "twitter:image:alt", content: "Bookzenvo — Bookings made beautiful" },
-    ],
-    links: [
-      { rel: "icon", type: "image/png", href: "/favicon.png" },
-      { rel: "apple-touch-icon", href: "/favicon.png" },
-      { rel: "stylesheet", href: appCss },
-    ],
-  }),
-  shellComponent: RootShell,
-  component: RootComponent,
-  notFoundComponent: NotFoundComponent,
-  errorComponent: ErrorComponent,
-});
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
+  {
+    head: () => ({
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { title: "Bookzenvo · Your salon. All in one place." },
+        {
+          name: "description",
+          content:
+            "A multi-tenant booking platform for modern studios, salons and service businesses.",
+        },
+        {
+          property: "og:title",
+          content: "Bookzenvo — Bookings made beautiful",
+        },
+        {
+          property: "og:description",
+          content:
+            "A multi-tenant booking platform for modern studios, salons and service businesses.",
+        },
+        { property: "og:site_name", content: "Bookzenvo" },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+        {
+          name: "twitter:title",
+          content: "Bookzenvo — Bookings made beautiful",
+        },
+        {
+          name: "twitter:description",
+          content:
+            "A multi-tenant booking platform for modern studios, salons and service businesses.",
+        },
+        {
+          property: "og:image",
+          content: "https://bookzenvo.com/bookzenvo-social-share.png",
+        },
+        { property: "og:image:width", content: "1730" },
+        { property: "og:image:height", content: "909" },
+        {
+          property: "og:image:alt",
+          content: "Bookzenvo — Bookings made beautiful",
+        },
+        {
+          name: "twitter:image",
+          content: "https://bookzenvo.com/bookzenvo-social-share.png",
+        },
+        {
+          name: "twitter:image:alt",
+          content: "Bookzenvo — Bookings made beautiful",
+        },
+      ],
+      links: [
+        { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+        { rel: "apple-touch-icon", href: "/favicon.png" },
+        { rel: "stylesheet", href: appCss },
+      ],
+    }),
+    shellComponent: RootShell,
+    component: RootComponent,
+    notFoundComponent: NotFoundComponent,
+    errorComponent: ErrorComponent,
+  },
+);
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
@@ -165,7 +189,10 @@ function RootComponent() {
     };
     const onRejection = (e: PromiseRejectionEvent) => {
       const reason = e.reason;
-      reportClientError(reason?.message ?? String(reason ?? "Unhandled rejection"), reason?.stack);
+      reportClientError(
+        reason?.message ?? String(reason ?? "Unhandled rejection"),
+        reason?.stack,
+      );
     };
     window.addEventListener("error", onError);
     window.addEventListener("unhandledrejection", onRejection);

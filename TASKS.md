@@ -14,11 +14,16 @@ Launch readiness reviewed 2026-09-24. A checked item needs evidence, not just pa
 - [ ] **Verify monitoring reaches two maintainers** - Test uptime, browser-error, failed-delivery and unresolved-payment alerts, plus the on-call/fallback response.
 - [ ] **Review real, demo and historic accounts** - Confirm identity provenance, demo labels, testshop/Pasha data boundaries and outbound suppression; do not message imported contacts.
 - [ ] **Run final live release audit** - After the final deployment, verify exact commit, homepage, sign-in, public booking, health, links, legal pages, metadata, robots and sitemap from a connected machine.
+  - The 2026-09-25 local development-server audit passed 79 pages/assets. `vite preview` currently returns 500 on this Cloudflare build because it looks for `dist/server/server.js`; fix or replace that preview path before using it for release smoke tests.
 - [ ] **Run independent security and dependency review** - Review secrets, role boundaries, provider callbacks, rate limits and current dependency advisories; today's npm audit could not reach the registry.
+  - Read-only browser tests now block every app-origin write, including new endpoints. Dependency advisory retrieval is still blocked by registry access; no clean audit is claimed.
 - [ ] **Complete real-device and accessibility review** - Physical iPhone/Android, desktop browsers, keyboard, screen reader, 200%/400% zoom, contrast and form errors; fix material issues.
+  - Local mobile-menu and 404 browser checks pass. The 404 and error fallback now provide a main landmark; physical devices and assistive technology remain untested.
 - [ ] **Measure launch-page performance** - Check mobile page speed and resolve severe bottlenecks; the build currently warns about large bundles.
+  - Desktop favicon now uses the existing 31 KB `.ico` instead of the 539 KB PNG; full page-speed and bundle measurements remain outstanding.
 - [ ] **Run a consented salon pilot with a fallback diary** - Track duplicate/lost appointments, incorrect times/messages/payments, staff friction and support incidents; use the pilot stop criteria.
 - [ ] **Check every public claim against enabled features** - Pricing, plans, payments, AI, reminders, reviews, integrations and card machines must match what actually works.
+  - Initial code-to-copy matrix: `docs/launch-claims-audit-2026-09-24.md`. FAQ now calls £22 Studio **planned** pricing. Production/provider proof and founder launch-scope decisions are still needed.
 
 ## Waiting On
 

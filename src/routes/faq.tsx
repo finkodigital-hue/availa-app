@@ -5,7 +5,7 @@ import { Wordmark } from "@/components/wordmark";
 const QUESTIONS = [
   [
     "Is Bookzenvo really free?",
-    "Yes. Solo includes one staff member, unlimited bookings, manual page editing, payments, refunds, confirmations, one-tap booking links, the client book, import/export and support. Studio is £22 per month and adds unlimited staff, reminders, analytics, AI, consultation forms, verified reviews, stock, the customer portal and rent tracking.",
+    "Our planned launch pricing has a free Solo plan with one staff member, unlimited bookings, manual page editing, payments, refunds, confirmations, one-tap booking links, the client book, import/export and support. Studio is planned at £22 per month and adds unlimited staff, reminders, analytics, AI, consultation forms, verified reviews, stock, the customer portal and rent tracking. Final availability will be confirmed before launch.",
   ],
   [
     "Can my clients book online?",
@@ -49,7 +49,10 @@ export const Route = createFileRoute("/faq")({
   head: () => ({
     meta: [
       { title: "Frequently asked questions · Bookzenvo" },
-      { name: "description", content: "Answers to common Bookzenvo questions." },
+      {
+        name: "description",
+        content: "Answers to common Bookzenvo questions.",
+      },
     ],
     links: [{ rel: "canonical", href: "https://bookzenvo.com/faq" }],
   }),
@@ -62,7 +65,10 @@ function FaqPage() {
       <header className="border-b border-border">
         <div className="max-w-[860px] mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/">
-            <Wordmark className="text-[1.5rem]" dotClassName="text-[color:var(--gold-deep)]" />
+            <Wordmark
+              className="text-[1.5rem]"
+              dotClassName="text-[color:var(--gold-deep)]"
+            />
           </Link>
           <Link
             to="/"
@@ -91,7 +97,9 @@ function FaqPage() {
                   +
                 </span>
               </summary>
-              <p className="pt-3 text-[.94rem] leading-7 text-muted-foreground">{answer}</p>
+              <p className="pt-3 text-[.94rem] leading-7 text-muted-foreground">
+                {answer}
+              </p>
             </details>
           ))}
         </div>
