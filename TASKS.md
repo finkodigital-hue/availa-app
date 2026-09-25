@@ -15,8 +15,8 @@ Launch readiness reviewed 2026-09-24. A checked item needs evidence, not just pa
 - [ ] **Review real, demo and historic accounts** - Confirm identity provenance, demo labels, testshop/Pasha data boundaries and outbound suppression; do not message imported contacts.
 - [ ] **Run final live release audit** - After the final deployment, verify exact commit, homepage, sign-in, public booking, health, links, legal pages, metadata, robots and sitemap from a connected machine.
   - The 2026-09-25 local development-server audit passed 79 pages/assets. `vite preview` currently returns 500 on this Cloudflare build because it looks for `dist/server/server.js`; fix or replace that preview path before using it for release smoke tests.
-- [ ] **Run independent security and dependency review** - Review secrets, role boundaries, provider callbacks, rate limits and current dependency advisories; today's npm audit could not reach the registry.
-  - Read-only browser tests now block every app-origin write, including new endpoints. Dependency advisory retrieval is still blocked by registry access; no clean audit is claimed.
+- [ ] **Run independent security and dependency review** - Review secrets, role boundaries, provider callbacks and rate limits. An advisory scan alone is not a security review.
+  - Read-only browser tests now block every app-origin write, including new endpoints. The 2026-09-25 npm advisory checks reported zero vulnerabilities for both production and all locked dependencies; recheck before release.
 - [ ] **Complete real-device and accessibility review** - Physical iPhone/Android, desktop browsers, keyboard, screen reader, 200%/400% zoom, contrast and form errors; fix material issues.
   - Local mobile-menu, 404 and 320px horizontal-overflow checks pass across home, FAQ, legal and sign-in. Sign-in, 404 and error fallbacks now provide main landmarks; physical devices and assistive technology remain untested.
 - [ ] **Measure launch-page performance** - Check mobile page speed and resolve severe bottlenecks; the build currently warns about large bundles.
@@ -45,3 +45,4 @@ Launch readiness reviewed 2026-09-24. A checked item needs evidence, not just pa
 - [x] ~~Run the public link and metadata audit locally~~ (2026-09-24) - 78 local pages/assets passed. This does not replace the final live-domain audit.
 - [x] ~~Run the main-branch build and isolated launch checks~~ (2026-09-24) - Build passed; 127 migrations replayed and security checks covered 61 public tables. No real provider journey was exercised.
 - [x] ~~Add safe public-page browser smoke checks~~ (2026-09-24) - Three local browser tests passed for legal/FAQ/help navigation, mobile menu and custom 404, with mutation requests guarded. This does not prove the live site or real-device accessibility.
+- [x] ~~Check locked dependencies against npm advisories~~ (2026-09-25) - Production-only and full `npm audit` both reported zero known vulnerabilities at the time of the check. This is not an independent code security review.
