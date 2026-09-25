@@ -262,7 +262,6 @@ export function PublicBookingPage({
     notes: "",
   });
   const [infoTouched, setInfoTouched] = useState(false);
-  const [smsReminderConsent, setSmsReminderConsent] = useState(false);
   const [emailMarketingConsent, setEmailMarketingConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
@@ -658,16 +657,6 @@ export function PublicBookingPage({
       toast.error("Please enter a valid phone number.");
       return;
     }
-    if (
-      smsReminderConsent &&
-      !/^\+[1-9]\d{7,14}$/.test(info.phone.replace(/[\s().-]/g, ""))
-    ) {
-      toast.error(
-        "Use an international phone number (for example +44 7123 456789) for SMS reminders.",
-      );
-      return;
-    }
-
     setSubmitting(true);
     try {
       const starts_at = time;
@@ -705,7 +694,6 @@ export function PublicBookingPage({
           customerName: info.name,
           customerEmail: info.email,
           customerPhone: info.phone,
-          smsReminderConsent,
           emailMarketingConsent,
           startsAt: starts_at,
           endsAt: ends_at,
@@ -725,7 +713,6 @@ export function PublicBookingPage({
           customerName: info.name,
           customerEmail: info.email,
           customerPhone: info.phone,
-          smsReminderConsent,
           emailMarketingConsent,
           startsAt: starts_at,
           endsAt: ends_at,
@@ -778,7 +765,6 @@ export function PublicBookingPage({
     setBookedEndsAt(null);
     setBookedBookingId(null);
     setInfo({ name: "", email: "", phone: "", notes: "" });
-    setSmsReminderConsent(false);
     setEmailMarketingConsent(false);
     setInfoTouched(false);
   };
@@ -1713,25 +1699,11 @@ export function PublicBookingPage({
                 )}
               </div>
             </div>
-            <label className="flex items-start gap-3 rounded-xl border p-3 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4"
-                checked={smsReminderConsent}
-                disabled={!info.phone.trim()}
-                onChange={(event) =>
-                  setSmsReminderConsent(event.target.checked)
-                }
-              />
-              <span>
-                Send me an SMS reminder for this appointment. Optional; standard
-                message rates may apply.
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  Enter your number in international format, such as +44 7123
-                  456789. This consent applies only to this booking.
-                </span>
-              </span>
-            </label>
+            <p className="rounded-xl border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              If you provide a mobile number, {biz.name} may text you a reminder
+              about this appointment. Booking messages contain no offers. You
+              can book without a phone number.
+            </p>
             <label className="flex items-start gap-3 rounded-xl border p-3 text-sm">
               <input
                 type="checkbox"
@@ -1772,9 +1744,10 @@ export function PublicBookingPage({
             <div className="rounded-xl border bg-secondary/20 p-4 text-sm space-y-2">
               <p className="font-medium">Booking and cancellation policy</p>
               <p className="text-muted-foreground leading-5">
-                Cancel or reschedule online at least{" "}
+                You can cancel or reschedule online until{" "}
                 {selectedPolicy.cancellation_window_hours ?? 24} hours before
-                your appointment. After that, contact {biz.name} directly.
+                your appointment. Closer to the time, online changes close;
+                {" "}{biz.name} can let you know what options remain under its policy.
               </p>
               {selectedPolicy.cancellation_policy && (
                 <p className="text-muted-foreground leading-5 whitespace-pre-wrap">

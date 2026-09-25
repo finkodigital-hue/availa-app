@@ -343,20 +343,16 @@ export const Route = createFileRoute("/api/stripe-webhook")({
             .update({ status: "resolved", resolved_at: new Date().toISOString() })
             .eq("payment_intent_id", session.payment_intent).eq("status", "open");
           if (resolutionError) throw resolutionError;
-          if (
-            bookingId &&
-            metadata.sms_reminder_consent === "true" &&
-            metadata.customer_phone
-          ) {
-            const { error: consentError } = await (supabaseAdmin as any)
+          if (bookingId && metadata.customer_phone &&
+              (metadata.sms_reminder_notice === "true" || metadata.sms_reminder_consent === "true")) {
+            const { error: noticeError } = await (supabaseAdmin as any)
               .from("bookings")
-              .update({
-                sms_reminder_consent_at: new Date().toISOString(),
-                sms_reminder_consent_version: "appointment-sms-v1",
-              })
+              .update(metadata.sms_reminder_notice === "true"
+                ? { sms_reminder_notice_at: new Date().toISOString(), sms_reminder_notice_version: "appointment-service-sms-v1" }
+                : { sms_reminder_consent_at: new Date().toISOString(), sms_reminder_consent_version: "appointment-sms-v1" })
               .eq("id", bookingId)
               .eq("business_id", metadata.business_id);
-            if (consentError) throw consentError;
+            if (noticeError) throw noticeError;
           }
           if (
             bookingId &&

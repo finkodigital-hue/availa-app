@@ -23,11 +23,19 @@ export async function installMutationGuard(page: Page) {
     const request = route.request();
     const url = new URL(request.url());
     const isWrite = !["GET", "HEAD", "OPTIONS"].includes(request.method());
+    // PostgREST invokes RPCs with POST even for STABLE, read-only SQL
+    // functions. This one only lists public-bookable professionals; keep the
+    // exception exact so new or mutating RPCs still fail closed.
+    const isReadOnlyPublicProfessionals =
+      request.method() === "POST" &&
+      url.pathname ===
+        "/api/supabase/rest/v1/rpc/get_public_salon_professionals";
     // These tests only read app pages. Block every app-origin write, including
     // new endpoints not yet listed below. Keep third-party auth token refresh
     // outside this rule so a signed-in read-only test can still load.
     const isAppWrite =
       isWrite &&
+      !isReadOnlyPublicProfessionals &&
       page.url() !== "about:blank" &&
       url.origin === new URL(page.url()).origin;
     const isExternalWrite =

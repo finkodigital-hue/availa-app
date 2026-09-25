@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   check:
-    name: Check browser error volume
+    name: Check production incidents
     runs-on: ubuntu-latest
     timeout-minutes: 3
     env:
@@ -25,7 +25,7 @@ jobs:
         run: |
           echo "MONITORING_SECRET is not configured. See docs/production-operations.md." >&2
           exit 1
-      - name: Check recent browser errors
+      - name: Check production incident status
         if: ${{ env.MONITORING_SECRET != '' }}
         run: |
           curl --fail-with-body --silent --show-error \

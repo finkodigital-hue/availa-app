@@ -3,14 +3,11 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { deliverNotification, DeliveryDeferredError, ProviderDeliveryError } from "./notification-delivery.server";
 import { consumeBusinessUsage } from "./usage-limits.server";
 import { trustedAppOrigin } from "./app-origin.server";
+import { normalizeSmsPhone } from "./sms-phone";
 
 const SEND_TIMEOUT_MS = 10_000;
 export class SmsSendError extends Error {}
 
-export function normalizeSmsPhone(value: string): string | null {
-  const compact = value.trim().replace(/[\s().-]/g, "");
-  return /^\+[1-9]\d{7,14}$/.test(compact) ? compact : null;
-}
 const maskPhone = (value: string) => `***${value.slice(-4)}`;
 
 async function sendWithTwilio(to: string, body: string, deliveryId: string) {

@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "npm run check:launch && vite build && node scripts/prepare-cloudflare-deploy.mjs && node scripts/verify-security-boundary.mjs",
-    "check:launch": "tsc --noEmit && node scripts/test-launch-security.mjs && node scripts/test-booking-schedule.mjs && node scripts/test-verified-identity.mjs && node scripts/test-studio-billing.mjs && node scripts/test-business-day.mjs && node scripts/test-payment-recovery.mjs && node scripts/test-notification-delivery.mjs && node scripts/test-usage-limits.mjs && node scripts/test-balance-checkout.mjs && node scripts/test-schema-replay.mjs && node scripts/test-public-request-limits.mjs && node scripts/test-refund-balances.mjs && node scripts/test-refund-webhook.mjs",
+    "check:launch": "tsc --noEmit && node scripts/test-launch-security.mjs && node scripts/test-booking-schedule.mjs && node scripts/test-verified-identity.mjs && node scripts/test-studio-billing.mjs && node scripts/test-business-day.mjs && node scripts/test-payment-recovery.mjs && node scripts/test-notification-delivery.mjs && node scripts/test-sms-phone.mjs && node scripts/test-usage-limits.mjs && node scripts/test-balance-checkout.mjs && node scripts/test-schema-replay.mjs && node scripts/test-public-request-limits.mjs && node scripts/test-refund-balances.mjs && node scripts/test-refund-webhook.mjs",
     "build:dev": "vite build --mode development",
     "verify:security": "node scripts/verify-security-boundary.mjs",
     "verify:production": "node scripts/verify-production.mjs",
