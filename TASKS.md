@@ -14,7 +14,8 @@ Launch readiness reviewed 2026-09-24. A checked item needs evidence, not just pa
 - [ ] **Verify monitoring reaches two maintainers** - Test uptime, browser-error, failed-delivery and unresolved-payment alerts, plus the on-call/fallback response.
 - [ ] **Review real, demo and historic accounts** - Confirm identity provenance, demo labels, testshop/Pasha data boundaries and outbound suppression; do not message imported contacts.
 - [ ] **Run final live release audit** - After the final deployment, verify exact commit, homepage, sign-in, public booking, health, links, legal pages, metadata, robots and sitemap from a connected machine.
-  - The 2026-09-25 local development-server audit passed 79 pages/assets. `vite preview` currently returns 500 on this Cloudflare build because it looks for `dist/server/server.js`; fix or replace that preview path before using it for release smoke tests.
+  - A read-only 2026-09-25 baseline check passed for the current live homepage/client bundle/health endpoint and 118 public links/pages/assets. This does **not** verify the new branch or the final deployed commit.
+  - The local development-server audit passed 79 pages/assets. `vite preview` currently returns 500 on this Cloudflare build because it looks for `dist/server/server.js`; fix or replace that preview path before using it for release smoke tests.
 - [ ] **Run independent security and dependency review** - Review secrets, role boundaries, provider callbacks and rate limits. An advisory scan alone is not a security review.
   - Read-only browser tests now block every app-origin write, including new endpoints. The 2026-09-25 npm advisory checks reported zero vulnerabilities for both production and all locked dependencies; recheck before release.
 - [ ] **Complete real-device and accessibility review** - Physical iPhone/Android, desktop browsers, keyboard, screen reader, 200%/400% zoom, contrast and form errors; fix material issues.
