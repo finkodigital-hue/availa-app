@@ -27,6 +27,7 @@ Launch readiness reviewed 2026-09-24. A checked item needs evidence, not just pa
   - Local mobile-menu, 404 and 320px horizontal-overflow checks pass across home, FAQ, legal and sign-in. Sign-in, 404 and error fallbacks now provide main landmarks; physical devices and assistive technology remain untested.
 - [ ] **Measure launch-page performance** - Check mobile page speed and resolve severe bottlenecks; the build currently warns about large bundles.
   - Desktop favicon now uses the existing 31 KB `.ico` instead of the 539 KB PNG; full page-speed and bundle measurements remain outstanding.
+  - 2026-09-25: Google PageSpeed Insights API returned HTTP 429 (daily quota exhausted), so no mobile score was obtained. Retry a measured run later; do not infer a pass from this attempt.
 - [ ] **Run a consented salon pilot with a fallback diary** - Track duplicate/lost appointments, incorrect times/messages/payments, staff friction and support incidents; use the pilot stop criteria.
 - [ ] **Check every public claim against enabled features** - Pricing, plans, payments, AI, reminders, reviews, integrations and card machines must match what actually works.
   - Initial code-to-copy matrix: `docs/launch-claims-audit-2026-09-24.md`. FAQ now calls £22 Studio **planned** pricing. Production/provider proof and founder launch-scope decisions are still needed.
