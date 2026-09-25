@@ -5,7 +5,7 @@ This page separates repository automation from controls that only the account ow
 ## Automated in this repository
 
 - **Production uptime** checks the HTML shell, fingerprinted browser bundle, Supabase Auth, and the Supabase database API every 15 minutes. On each push to `main`, it also waits for the exact commit marker before probing health, so an older healthy deployment cannot produce a false pass.
-- **Production error alerts** fails when at least five uncaught browser errors arrive in a 20-minute window. A failed workflow is the alert signal.
+- **Production error alerts** fails when at least five uncaught browser errors arrive in a 20-minute window, a notification delivery needs manual review, an aged booking-payment issue remains open, a balance checkout or gift-card refund needs review, or a monitoring query fails. A failed workflow is the alert signal; read its response counts before deciding what to investigate.
 - `npm run verify:production` performs the same release smoke test on demand.
 - `npm run verify:recovery-controls` prevents accidental removal of the local-only restore guardrails.
 
@@ -24,4 +24,4 @@ Perform the disposable local restore rehearsal in `backup-and-recovery.md`. Reco
 
 ## Alert response
 
-For an uptime failure, check Cloudflare deployment/logs and Supabase status before changing production. For an error-volume alert, inspect recent `client_errors` rows in Supabase, group by message and URL, and avoid copying personal data into tickets. Silence an alert only after documenting its cause; do not raise the threshold merely to hide an unresolved regression.
+For an uptime failure, check Cloudflare deployment/logs and Supabase status before changing production. For an incident alert, inspect the response counts first. For browser errors, group recent `client_errors` by message and URL; for notification deliveries or payments, follow `notification-and-usage-operations.md` and reconcile provider records before any resend or refund. Avoid copying personal data into tickets. Silence an alert only after documenting its cause; do not raise the threshold merely to hide an unresolved regression.
