@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { checkSchemaRoles } from './schema-role-checks.mjs';
 import { checkSchemaPaymentLedger } from './schema-payment-ledger-checks.mjs';
 import { checkGiftRefunds } from './schema-gift-refund-checks.mjs';
+import { checkGiftPurchases } from './schema-gift-purchase-checks.mjs';
 import { checkRefundReviews } from './schema-refund-review-checks.mjs';
 import { checkFunctionAccess } from './schema-function-access-checks.mjs';
 
@@ -102,6 +103,7 @@ try {
  await checkSchemaRoles(db);
  await checkSchemaPaymentLedger(db);
  await checkGiftRefunds(db);
+ await checkGiftPurchases(db);
  await checkRefundReviews(db);
  await checkFunctionAccess(db);
 } catch(error) {console.error(error);process.exitCode=1;}
