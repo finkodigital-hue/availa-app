@@ -24,21 +24,21 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       {
-        title: "Bookzenvo · The whole salon day, connected",
+        title: "Bookzenvo · A simpler day at the salon",
       },
       {
         name: "description",
         content:
-          "Keep salon bookings, client care, payments and rebooking connected in Bookzenvo. Join the waitlist for launch updates.",
+          "Keep salon bookings, client care and payments in one place with Bookzenvo. Join the waitlist for launch updates.",
       },
       {
         property: "og:title",
-        content: "Bookzenvo · The whole salon day, connected",
+        content: "Bookzenvo · A simpler day at the salon",
       },
       {
         property: "og:description",
         content:
-          "Bookings are only one part of a salon day. See how Bookzenvo connects client care, payments and the next visit.",
+          "Bookings, client care and payments in one place. Less time on admin, more time with your clients.",
       },
       {
         property: "og:image",
@@ -285,22 +285,22 @@ function Landing() {
           <section className="lp-hero">
             <div className="lp-hero-copy">
               <h1>
-                The whole salon day.
+                A simpler day
                 <br />
-                <span>Not just the booking.</span>
+                <span>at the salon.</span>
               </h1>
               <p className="lp-hero-lede">
-                Bookings, client care, payments and rebooking stay connected, so
-                your team can focus on the work in front of them.
+                Bookings, client care and payments in one place. Less time on
+                admin, more time with your clients.
               </p>
               <WaitlistForm />
             </div>
             <figure className="lp-hero-photo">
               <img
-                src="/landing/salon-at-work.jpg"
-                alt="A stylist carefully cutting a client's hair in a salon"
+                src="/landing/salon-haircut.jpg"
+                alt="A client and stylist in a contemporary hair salon"
                 width="1400"
-                height="933"
+                height="2100"
                 fetchPriority="high"
               />
             </figure>
