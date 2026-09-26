@@ -403,7 +403,7 @@ function PageBuilderPage() {
       <PageHeader
         eyebrow="Your creative space"
         title="Make it yours."
-        subtitle="A beautiful first impression, built by you."
+        subtitle="Change your booking page and see the result as you go."
         action={
           <div className="flex flex-wrap items-center gap-1.5">
             <Button

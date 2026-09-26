@@ -218,7 +218,7 @@ function SettingsPage() {
         <PageHeader
           eyebrow="Workspace"
           title="Settings"
-          subtitle="Manage your account, business details and operational preferences."
+          subtitle="Update your salon details, booking rules and account settings."
           action={
             biz.slug ? (
               <Button

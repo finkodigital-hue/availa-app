@@ -62,7 +62,7 @@ function AssistantUpsell() {
       <PageHeader
         eyebrow="AI Assistant"
         title="Your business co-pilot"
-        subtitle="Ask anything about your bookings, customers and growth. Answers use your live workspace data."
+        subtitle="Ask a question about your bookings, customers or business."
       />
       <StudioUpgradePanel
         title="The AI assistant is a Studio feature"
@@ -107,7 +107,7 @@ function AssistantInner({ endpoint, token }: { endpoint: string; token: string }
       <PageHeader
           eyebrow="AI Assistant"
           title="Your business co-pilot"
-          subtitle="Ask anything about your bookings, customers and growth. Answers use your live workspace data."
+          subtitle="Ask a question about your bookings, customers or business."
           action={
             messages.length > 0 ? (
               <Button variant="ghost" size="sm" onClick={() => setMessages([])}>

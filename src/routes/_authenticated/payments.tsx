@@ -147,7 +147,7 @@ function PaymentsPage() {
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
-      <PageHeader eyebrow="Money" title="Payments" subtitle="All transactions in one place." />
+      <PageHeader eyebrow="Money" title="Payments" subtitle="See what has been paid and what is still owed." />
       {refundReviews.isError && <p role="alert" className="mb-4 rounded-xl border p-4 text-sm">Refund review status could not be loaded. Check Stripe before retrying a refund.</p>}
       {(refundReviews.data ?? 0) > 0 && <p role="alert" className="mb-4 rounded-xl border border-amber-500 p-4 text-sm">{refundReviews.data} refund(s) need review. Stripe reported a failure, cancellation or required action. Check their current status and reconcile the payment with support before refunding again or restoring gift credit.</p>}
 

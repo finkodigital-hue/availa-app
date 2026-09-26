@@ -501,7 +501,7 @@ function StockPage() {
   if ((biz?.plan ?? "free") !== "studio") {
     return (
       <div className="p-5 sm:p-8 xl:p-10">
-        <PageHeader eyebrow="Inventory" title="Stock" subtitle="Your product shelf at a glance." />
+        <PageHeader eyebrow="Inventory" title="Stock" subtitle="See what you have and what you need to order." />
         <StudioUpgradePanel
           title="Stock and inventory are a Studio feature"
           description="Upgrade to track supplies, scan shelves from a photo and deduct products when bookings are completed."
@@ -518,7 +518,7 @@ function StockPage() {
       <PageHeader
         eyebrow="Inventory"
         title="Stock"
-        subtitle="Your product shelf at a glance."
+        subtitle="See what you have and what you need to order."
         action={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <div className="relative sm:w-72">

@@ -41,7 +41,7 @@ function ImportPage() {
       <PageHeader
         eyebrow="Import data"
         title="Import from any booking system"
-        subtitle="Bring over your team, clients, services and appointment history. Review every step before anything is written, and undo an import whenever you need to."
+        subtitle="Move your team, customers, services and bookings here. Check them before saving."
       />
 
       <div className="space-y-5">

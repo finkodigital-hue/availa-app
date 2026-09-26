@@ -386,7 +386,7 @@ function CustomersPage() {
       <PageHeader
         eyebrow="People"
         title="Customers"
-        subtitle="Your relationship workspace. Get to know your clients and keep every visit personal."
+        subtitle="Find a customer, see their visits and update their details."
         action={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <Button

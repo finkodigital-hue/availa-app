@@ -175,7 +175,7 @@ function GiftCardsPage() {
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
-      <PageHeader eyebrow="Revenue" title="Gift cards" subtitle="Sell experiences now and let customers book later." />
+      <PageHeader eyebrow="Revenue" title="Gift cards" subtitle="See gift cards, their balances and recent use." />
       {refundReviews.isError && <p role="alert" className="mb-4 rounded-xl border p-4 text-sm">Refund review status could not be loaded. Check Stripe before issuing replacement credit.</p>}
       {(refundReviews.data ?? 0) > 0 && <p role="alert" className="mb-4 rounded-xl border border-amber-500 p-4 text-sm">{refundReviews.data} gift-card refund(s) need review because some refunded credit had already been spent. Remaining credit has been removed. Check the original purchase and bookings with support before issuing replacement credit.</p>}
 

@@ -225,7 +225,7 @@ function BookingsPage() {
       <PageHeader
         eyebrow="Bookings"
         title="All bookings"
-        subtitle="Search, filter and review every appointment."
+        subtitle="Find an appointment, check its details or make a change."
       />
 
       <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border bg-card p-4 shadow-soft">
