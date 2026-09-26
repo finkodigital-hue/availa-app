@@ -23,12 +23,17 @@ export async function checkSchemaRoles(db) {
  ('${id(502)}','${id(102)}','${id(302)}','${id(202)}','${id(402)}','Customer B','other@example.invalid',date_trunc('week',now())+interval '14 days 10 hours',date_trunc('week',now())+interval '14 days 10 hours 30 minutes'),
  ('${id(503)}','${id(101)}','${id(301)}','${id(205)}','${id(401)}','Customer A','fixture7@example.invalid',date_trunc('week',now())+interval '14 days 11 hours',date_trunc('week',now())+interval '14 days 11 hours 30 minutes');
  insert into storage.buckets(id,name,public) values('business-assets','business-assets',false) on conflict do nothing;
- insert into storage.objects(bucket_id,name,owner) values('business-assets','${id(101)}/private.txt','${id(1)}'),('business-assets','${id(102)}/private.txt','${id(2)}');
+ insert into storage.objects(bucket_id,name,owner) values
+ ('business-assets','${id(101)}/private.txt','${id(1)}'),
+ ('business-assets','${id(102)}/private.txt','${id(2)}'),
+ ('business-public-assets','${id(101)}/logo/public.jpg','${id(1)}'),
+ ('business-public-assets','${id(102)}/logo/public.jpg','${id(2)}');
  `);
  await login(1);
  same((await rows('select id from bookings order by id')).map(x=>x.id),[id(501),id(503)],'Owner sees own appointments only');
  same((await rows('select id from customers')).map(x=>x.id),[id(401)],'Owner sees own customers only');
  same((await rows("select name from storage.objects where bucket_id='business-assets'")).map(x=>x.name),[`${id(101)}/private.txt`],'Private storage owner scope');
+ same((await rows("select name from storage.objects where bucket_id='business-public-assets'")).map(x=>x.name),[`${id(101)}/logo/public.jpg`],'Owner can manage own public asset metadata');
  await fail(`insert into storage.objects(bucket_id,name,owner) values('business-public-assets','${id(102)}/overwrite.png','${id(1)}')`,/row-level security/);
  same((await rows(`update bookings set notes='cross-tenant attack' where id='${id(502)}' returning id`)),[],'Cross-tenant update denied');
  const exported=(await rows(`select export_owner_workspace('${id(101)}') as data`))[0].data;
@@ -40,6 +45,7 @@ export async function checkSchemaRoles(db) {
  same(await rows('select id from customers'),[],'Stranger cannot read customers');
  same(await rows('select id from bookings'),[],'Stranger cannot read bookings');
  same(await rows("select name from storage.objects where bucket_id='business-assets'"),[],'Stranger cannot read private files');
+ same(await rows("select name from storage.objects where bucket_id='business-public-assets'"),[],'Stranger cannot list public asset metadata');
  await fail(`insert into customers(business_id,name) values('${id(101)}','Injected')`,/row-level security/);
  await fail(`select get_calendar_credentials('${id(101)}')`,/permission denied/);
  await fail(`select * from balance_checkout_attempts`,/permission denied/);
@@ -75,6 +81,7 @@ export async function checkSchemaRoles(db) {
  await login(8);await fail('select check_request_assurance()',/verification required/);
  same(await rows('select id from bookings'),[],'Unverified identity denied');
  await login(null);same((await rows('select id from public_businesses')).length,2,'Anonymous discovery');
+ same(await rows("select name from storage.objects where bucket_id='business-public-assets'"),[],'Anonymous callers cannot enumerate public asset names');
  // These four views intentionally run as their owner so public booking can
  // read a narrow projection without opening the underlying tenant tables.
  // Lock down the projection: a later migration must not silently expose a
