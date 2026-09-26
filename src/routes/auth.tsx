@@ -16,6 +16,11 @@ const search = z
 
 type AuthMode = "signin" | "signup" | "reset" | "update";
 
+// Keep public account creation off until the launch decision and provider
+// configuration are complete. The signup route remains a waitlist by default.
+const publicSignupEnabled =
+  import.meta.env.VITE_PUBLIC_SIGNUP_ENABLED === "true";
+
 function friendlyAuthError(error: unknown, mode: AuthMode) {
   const message =
     error instanceof Error
@@ -93,6 +98,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [formError, setFormError] = useState("");
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -126,6 +132,22 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
+        if (publicSignupEnabled) {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth?mode=signin`,
+            },
+          });
+          if (error) throw error;
+          if (!data.session) {
+            toast.success("Check your email to confirm your account.");
+            return;
+          }
+          navigate({ to: "/onboarding", replace: true });
+          return;
+        }
         const response = await fetch("/api/waitlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -180,9 +202,28 @@ function AuthPage() {
     }
   };
 
+  const continueWithGoogle = async () => {
+    if (!publicSignupEnabled || (mode !== "signup" && mode !== "signin"))
+      return;
+    setFormError("");
+    setGoogleBusy(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth?mode=signin` },
+      });
+      if (error) throw error;
+    } catch (err: unknown) {
+      setFormError(friendlyAuthError(err, mode));
+      setGoogleBusy(false);
+    }
+  };
+
   const heading =
     mode === "signup"
-      ? "Join the waitlist"
+      ? publicSignupEnabled
+        ? "Create your account"
+        : "Join the waitlist"
       : mode === "reset"
         ? "Reset password"
         : mode === "update"
@@ -190,7 +231,9 @@ function AuthPage() {
           : "Welcome back";
   const sub =
     mode === "signup"
-      ? "Be first to hear when Bookzenvo launches. Leave your email below. No account is created."
+      ? publicSignupEnabled
+        ? "Get your salon set up in a few simple steps."
+        : "Be first to hear when Bookzenvo launches. Leave your email below. No account is created."
       : mode === "reset"
         ? "We'll email you a secure link."
         : mode === "update"
@@ -198,7 +241,9 @@ function AuthPage() {
           : "Sign in to your dashboard.";
   const cta =
     mode === "signup"
-      ? "Join waitlist"
+      ? publicSignupEnabled
+        ? "Create account"
+        : "Join waitlist"
       : mode === "reset"
         ? "Send reset link"
         : mode === "update"
@@ -244,7 +289,7 @@ function AuthPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-2">{sub}</p>
 
-          {mode === "signup" && waitlistDone ? (
+          {mode === "signup" && !publicSignupEnabled && waitlistDone ? (
             <div className="mt-8 rounded-xl border bg-card p-5 animate-rise">
               <p className="text-sm">
                 You're on the list! We'll email you when Bookzenvo launches.
@@ -263,7 +308,7 @@ function AuthPage() {
                 <div>
                   <Label
                     htmlFor="email"
-                  className="text-sm font-medium text-muted-foreground"
+                    className="text-sm font-medium text-muted-foreground"
                   >
                     Email
                   </Label>
@@ -299,14 +344,18 @@ function AuthPage() {
                   </div>
                 </div>
               )}
-              {(mode === "signin" || mode === "update") && (
+              {(mode === "signin" ||
+                mode === "update" ||
+                (mode === "signup" && publicSignupEnabled)) && (
                 <div>
                   <div className="flex items-baseline justify-between">
                     <Label
                       htmlFor="password"
                       className="text-sm font-medium text-muted-foreground"
                     >
-                      {mode === "update" ? "New password" : "Password"}
+                      {mode === "update" || mode === "signup"
+                        ? "New password"
+                        : "Password"}
                     </Label>
                     {mode === "signin" && (
                       <Link
@@ -324,7 +373,9 @@ function AuthPage() {
                       id="password"
                       type={showPassword ? "text" : "password"}
                       autoComplete={
-                        mode === "update" ? "new-password" : "current-password"
+                        mode === "update" || mode === "signup"
+                          ? "new-password"
+                          : "current-password"
                       }
                       value={password}
                       onChange={(e) => {
@@ -383,7 +434,7 @@ function AuthPage() {
               <Button
                 type="submit"
                 className="w-full h-11 shadow-glow"
-                disabled={busy}
+                disabled={busy || googleBusy}
               >
                 {busy ? (
                   <>
@@ -394,7 +445,7 @@ function AuthPage() {
                   cta
                 )}
               </Button>
-              {mode === "signup" && (
+              {mode === "signup" && !publicSignupEnabled && (
                 <p className="text-xs leading-5 text-muted-foreground text-center">
                   By joining, you ask us to contact you about Bookzenvo and
                   acknowledge our{" "}
@@ -410,7 +461,49 @@ function AuthPage() {
             </form>
           )}
 
-          {!(mode === "signup" && waitlistDone) && (
+          {publicSignupEnabled && (mode === "signin" || mode === "signup") && (
+            <div className="mt-5 space-y-4">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                or continue with
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 w-full gap-3"
+                disabled={busy || googleBusy}
+                onClick={continueWithGoogle}
+              >
+                {googleBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="text-base font-bold text-[#4285f4]"
+                  >
+                    G
+                  </span>
+                )}
+                Continue with Google
+              </Button>
+              {mode === "signup" && (
+                <p className="text-center text-xs leading-5 text-muted-foreground">
+                  By creating an account, you agree to our{" "}
+                  <Link to="/terms" className="underline underline-offset-4">
+                    Terms
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/privacy" className="underline underline-offset-4">
+                    Privacy Policy
+                  </Link>
+                  .
+                </p>
+              )}
+            </div>
+          )}
+
+          {!(mode === "signup" && !publicSignupEnabled && waitlistDone) && (
             <p className="mt-6 text-xs text-muted-foreground text-center">
               {mode === "signin" && (
                 <>
@@ -420,7 +513,9 @@ function AuthPage() {
                     search={{ mode: "signup" }}
                     className="text-foreground underline-offset-4 hover:underline"
                   >
-                    Join the waitlist
+                    {publicSignupEnabled
+                      ? "Create an account"
+                      : "Join the waitlist"}
                   </Link>
                 </>
               )}
