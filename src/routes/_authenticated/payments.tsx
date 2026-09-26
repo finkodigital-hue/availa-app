@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CreditCard, RefreshCcw, Undo2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,46 +29,78 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
   partially_refunded: "Partially refunded",
   failed: "Failed",
 };
+const PAGE_SIZE = 50;
+const TOTALS_BATCH_SIZE = 500;
+
+const collectedFor = (booking: { payment_status?: string | null; amount_paid_cents?: number | null; price_cents?: number | null }) =>
+  booking.payment_status === "paid"
+    ? Math.max(booking.amount_paid_cents ?? 0, booking.price_cents ?? 0)
+    : (booking.amount_paid_cents ?? 0);
 
 function PaymentsPage() {
   const { data: biz } = useMyBusiness();
   const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
   const bid = biz?.id;
   const qc = useQueryClient();
+  const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<any | null>(null);
   const [refundConfirming, setRefundConfirming] = useState(false);
   const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [refundResults, setRefundResults] = useState<Array<{ paymentIntentId: string; amountCents: number; ok: boolean; error?: string }> | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["payments", bid],
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["payments", bid, page],
     enabled: !!bid,
     queryFn: async () => {
-      const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-      const { data, error } = await supabase
+      const { data, count, error } = await supabase
         .from("bookings")
-        .select("id, customer_name, price_cents, payment_status, amount_paid_cents, amount_refunded_cents, starts_at, services(name)")
+        .select("id, customer_name, price_cents, payment_status, amount_paid_cents, amount_refunded_cents, starts_at, services(name)", { count: "exact" })
         .eq("business_id", bid!)
         .neq("status", "cancelled")
         .order("starts_at", { ascending: false })
-        .limit(100);
+        .order("id", { ascending: true })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) throw error;
-      // amount_paid_cents is the source of truth for money actually
-      // collected, but older bookings marked "paid" before it was tracked
-      // may still have it at 0 — treat "paid" as the full price collected
-      // at minimum so those don't show as $0.
-      const collectedFor = (b: any) =>
-        b.payment_status === "paid"
-          ? Math.max(b.amount_paid_cents ?? 0, b.price_cents ?? 0)
-          : (b.amount_paid_cents ?? 0);
-      const monthly = (data ?? []).filter((b: any) => new Date(b.starts_at) >= monthStart);
-      const collected = monthly.reduce((a, b: any) => a + collectedFor(b), 0);
-      const outstanding = (data ?? [])
-        .filter((b: any) => b.payment_status !== "refunded")
-        .reduce((a, b: any) => a + Math.max(0, (b.price_cents ?? 0) - collectedFor(b)), 0);
-      return { rows: (data ?? []).map((b: any) => ({ ...b, collected: collectedFor(b) })), collected, outstanding };
+      return { rows: (data ?? []).map((b) => ({ ...b, collected: collectedFor(b) })), count: count ?? 0 };
     },
   });
+
+  const { data: totals, isLoading: totalsLoading, isError: totalsError } = useQuery({
+    queryKey: ["payments-totals", bid],
+    enabled: !!bid,
+    queryFn: async () => {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const nextMonth = new Date(monthStart);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      let collected = 0;
+      let outstanding = 0;
+      // Fetch only the fields needed for totals in bounded batches. A single
+      // Supabase request may otherwise silently stop at the API row limit.
+      for (let offset = 0; ; offset += TOTALS_BATCH_SIZE) {
+        const { data: batch, error } = await supabase
+          .from("bookings")
+          .select("id, starts_at, price_cents, payment_status, amount_paid_cents")
+          .eq("business_id", bid!)
+          .neq("status", "cancelled")
+          .order("id", { ascending: true })
+          .range(offset, offset + TOTALS_BATCH_SIZE - 1);
+        if (error) throw error;
+        for (const booking of batch ?? []) {
+          const paid = collectedFor(booking);
+          if (booking.starts_at >= monthStart.toISOString() && booking.starts_at < nextMonth.toISOString()) collected += paid;
+          if (booking.payment_status !== "refunded") outstanding += Math.max(0, (booking.price_cents ?? 0) - paid);
+        }
+        if (!batch || batch.length < TOTALS_BATCH_SIZE) break;
+      }
+      return { collected, outstanding };
+    },
+  });
+  const totalPages = Math.ceil((data?.count ?? 0) / PAGE_SIZE);
+  useEffect(() => {
+    if (data && page > 0 && page >= totalPages) setPage(Math.max(0, totalPages - 1));
+  }, [data, page, totalPages]);
 
   const closeDetail = () => {
     setSelected(null);
@@ -85,6 +117,7 @@ function PaymentsPage() {
       const headers = await getServerFnAuthHeaders();
       const { results } = await refundBooking({ data: { bookingId: selected.id }, headers });
       qc.invalidateQueries({ queryKey: ["payments", bid] });
+      qc.invalidateQueries({ queryKey: ["payments-totals", bid] });
       if (results.every((r) => r.ok)) {
         toast.success(`Refund submitted for ${fmtMoney(results.reduce((a, r) => a + r.amountCents, 0))}.`);
         closeDetail();
@@ -106,14 +139,16 @@ function PaymentsPage() {
       <PageHeader eyebrow="Money" title="Payments" subtitle="All transactions in one place." />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-        <StatCard accent loading={isLoading} icon={CreditCard} label="Collected this month" value={fmtMoney(data?.collected ?? 0)} />
-        <StatCard loading={isLoading} icon={RefreshCcw} label="Outstanding" value={fmtMoney(data?.outstanding ?? 0)} />
+        <StatCard accent loading={totalsLoading} icon={CreditCard} label="Paid value of this month's visits" hint="Based on appointment dates, not payment settlement dates." value={totalsError ? "Unavailable" : fmtMoney(totals?.collected ?? 0)} />
+        <StatCard loading={totalsLoading} icon={RefreshCcw} label="Outstanding" value={totalsError ? "Unavailable" : fmtMoney(totals?.outstanding ?? 0)} />
       </div>
 
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
         </div>
+      ) : isError ? (
+        <EmptyState icon={CreditCard} title="Could not load payments" description="Please refresh and try again." />
       ) : (data?.rows.length ?? 0) === 0 ? (
         <EmptyState
           icon={CreditCard}
@@ -147,6 +182,16 @@ function PaymentsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!isLoading && !isError && (data?.count ?? 0) > 0 && (
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+          <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, data!.count)} of {data!.count} bookings</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+          </div>
         </div>
       )}
 

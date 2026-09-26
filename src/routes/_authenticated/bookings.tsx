@@ -55,6 +55,7 @@ export const Route = createFileRoute("/_authenticated/bookings")({
 });
 
 const STATUSES = ["all", ...BOOKING_STATUSES.map((s) => s.id)] as const;
+const PAGE_SIZE = 50;
 
 function BookingsPage() {
   const { bookingId } = Route.useSearch();
@@ -65,6 +66,8 @@ function BookingsPage() {
   const bid = biz?.id;
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("all");
   const [period, setPeriod] = useState<"upcoming" | "past" | "all">("upcoming");
   const [selected, setSelected] = useState<any | null>(null);
@@ -75,6 +78,14 @@ function BookingsPage() {
   } | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
   const actionLock = useRef(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(q.trim());
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [q]);
 
   const linkedBooking = useQuery({
     queryKey: ["booking-details", bid, bookingId],
@@ -126,14 +137,32 @@ function BookingsPage() {
     setSelected(null);
   };
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["bookings-list", bid, status, period],
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["bookings-list", bid, status, period, search, page],
     enabled: !!bid,
     queryFn: async () => {
       let qb = supabase
         .from("bookings")
-        .select("*, services(name, color), staff(name)")
+        .select("*, services(name, color), staff(name)", { count: "exact" })
         .eq("business_id", bid!);
+      if (search) {
+        const { data: services, error: serviceError } = await supabase
+          .from("services")
+          .select("id")
+          .eq("business_id", bid!)
+          .ilike("name", `%${search}%`);
+        if (serviceError) throw serviceError;
+        // PostgREST's OR syntax requires quoted, escaped values. Service IDs
+        // are UUIDs returned by the database, so they are safe in the IN list.
+        const pattern = `"%${search.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}%"`;
+        const conditions = [
+          `customer_name.ilike.${pattern}`,
+          `customer_email.ilike.${pattern}`,
+          `customer_phone.ilike.${pattern}`,
+        ];
+        if (services?.length) conditions.push(`service_id.in.(${services.map((s) => s.id).join(",")})`);
+        qb = qb.or(conditions.join(","));
+      }
       const now = new Date().toISOString();
       if (period === "upcoming")
         qb = qb.gte("starts_at", now).order("starts_at", { ascending: true });
@@ -141,9 +170,11 @@ function BookingsPage() {
         qb = qb.lt("starts_at", now).order("starts_at", { ascending: false });
       else qb = qb.order("starts_at", { ascending: false });
       if (status !== "all") qb = qb.eq("status", status);
-      const { data, error } = await qb.limit(200);
+      const { data, count, error } = await qb
+        .order("id", { ascending: true })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) throw error;
-      return data ?? [];
+      return { rows: data ?? [], count: count ?? 0 };
     },
   });
 
@@ -178,16 +209,11 @@ function BookingsPage() {
     }
   };
 
-  const filtered = (data ?? []).filter((b: any) => {
-    if (!q.trim()) return true;
-    const s = q.toLowerCase();
-    return (
-      b.customer_name?.toLowerCase().includes(s) ||
-      b.customer_email?.toLowerCase().includes(s) ||
-      b.customer_phone?.toLowerCase().includes(s) ||
-      b.services?.name?.toLowerCase().includes(s)
-    );
-  });
+  const rows = data?.rows ?? [];
+  const totalPages = Math.ceil((data?.count ?? 0) / PAGE_SIZE);
+  useEffect(() => {
+    if (data && page > 0 && page >= totalPages) setPage(Math.max(0, totalPages - 1));
+  }, [data, page, totalPages]);
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
@@ -207,7 +233,7 @@ function BookingsPage() {
             className="pl-9 h-10"
           />
         </div>
-        <Select value={period} onValueChange={(v: any) => setPeriod(v)}>
+        <Select value={period} onValueChange={(v: any) => { setPeriod(v); setPage(0); }}>
           <SelectTrigger
             className="w-[140px] h-10"
             aria-label="Filter bookings by period"
@@ -220,7 +246,7 @@ function BookingsPage() {
             <SelectItem value="all">All time</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+        <Select value={status} onValueChange={(v: any) => { setStatus(v); setPage(0); }}>
           <SelectTrigger
             className="w-[150px] h-10"
             aria-label="Filter bookings by status"
@@ -245,15 +271,17 @@ function BookingsPage() {
             <Skeleton key={i} className="h-16 rounded-xl" />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : isError ? (
+        <EmptyState icon={CalendarCheck} title="Could not load bookings" description="Please refresh and try again." />
+      ) : rows.length === 0 ? (
         <EmptyState
           icon={CalendarCheck}
-          title="No bookings yet"
-          description="They'll appear here as customers book."
+          title={search ? "No matching bookings" : "No bookings in this view"}
+          description={search ? "Try a different name, email, phone or service." : "Try another date or status filter."}
         />
       ) : (
         <div className="rounded-2xl border bg-card overflow-hidden divide-y">
-          {filtered.map((b: any) => {
+          {rows.map((b: any) => {
             const color = b.services?.color || "var(--gold-deep)";
             const meta = statusMeta(b.status);
             return (
@@ -315,6 +343,16 @@ function BookingsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!isLoading && !isError && (data?.count ?? 0) > 0 && (
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+          <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, data!.count)} of {data!.count} bookings</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+          </div>
         </div>
       )}
 

@@ -35,3 +35,19 @@ export function consultationStatus(row: RecordStatus, now = Date.now()) {
   }
   return { label: "Signed", attention: false };
 }
+
+/** Opens the first record needing human review; a pass is never treatment clearance. */
+export function consultationActionTarget<
+  T extends RecordStatus & { id: string },
+>(rows: T[], now = Date.now()) {
+  const record = rows.find((row) => consultationStatus(row, now).attention);
+  return {
+    recordId: record?.id,
+    needsAttention: Boolean(record),
+    label: record
+      ? record.status === "pending"
+        ? "Open form"
+        : "Review record"
+      : "View records",
+  };
+}

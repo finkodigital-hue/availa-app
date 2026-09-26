@@ -28,6 +28,7 @@ export type DashboardAttentionItem = {
   href: string;
   action: string;
   bookingId?: string;
+  recordId?: string;
 };
 
 type DashboardOverview = {
@@ -297,7 +298,8 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
         title: "Unsigned consultation",
         description: `${customerName}'s form is waiting for a signature.`,
         href: "/consultations",
-        action: "Open",
+        recordId: submission.id,
+        action: "Open form",
       });
     }
 

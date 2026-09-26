@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
-import { Copy, CreditCard, ExternalLink, RefreshCw } from "lucide-react";
+import { Copy, CreditCard, ExternalLink, Gift, RefreshCw } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { startBalanceCheckout } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
+import { useWorkspaceAccess } from "@/lib/business";
 
 /** Keep the appointment open. Only the database can confirm payment. */
 export function BookingBalanceCheckout({
@@ -22,6 +24,7 @@ export function BookingBalanceCheckout({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const lock = useRef(false);
+  const { isOwner } = useWorkspaceAccess();
 
   async function refresh() {
     const { data, error } = await supabase
@@ -85,6 +88,11 @@ export function BookingBalanceCheckout({
         link does not mark this visit as paid.
       </p>
       <div className="flex flex-wrap gap-2">
+        {isOwner && <Button asChild variant="outline" disabled={disabled}>
+          <Link to="/gift-cards" search={{ bookingId }} aria-disabled={disabled} tabIndex={disabled ? -1 : undefined} onClick={(event) => { if (disabled) event.preventDefault(); }}>
+            <Gift className="mr-1.5 h-4 w-4" /> Apply gift card
+          </Link>
+        </Button>}
         {!checkoutUrl ? (
           <Button disabled={busy || disabled} onClick={() => void run(true)}>
             <CreditCard className="mr-1.5 h-4 w-4" />

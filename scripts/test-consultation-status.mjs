@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { consultationStatus } from "../src/lib/consultation-status.ts";
+import {
+  consultationActionTarget,
+  consultationStatus,
+} from "../src/lib/consultation-status.ts";
 
 const now = Date.parse("2026-09-23T12:00:00Z");
 const signed = { status: "signed" };
@@ -48,4 +51,27 @@ assert.equal(
   ).attention,
   true,
 );
-console.log("11 consultation status checks passed.");
+assert.deepEqual(consultationActionTarget([{ id: "signed", ...signed }], now), {
+  recordId: undefined,
+  needsAttention: false,
+  label: "View records",
+});
+assert.deepEqual(
+  consultationActionTarget(
+    [
+      { id: "signed", ...signed },
+      { id: "pending", status: "pending" },
+      { id: "failed", ...patch, patch_test_outcome: "failed" },
+    ],
+    now,
+  ),
+  { recordId: "pending", needsAttention: true, label: "Open form" },
+);
+assert.deepEqual(
+  consultationActionTarget(
+    [{ id: "failed", ...patch, patch_test_outcome: "failed" }],
+    now,
+  ),
+  { recordId: "failed", needsAttention: true, label: "Review record" },
+);
+console.log("14 consultation status checks passed.");

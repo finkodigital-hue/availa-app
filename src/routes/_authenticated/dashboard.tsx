@@ -339,7 +339,7 @@ function AttentionRow({ item }: { item: DashboardAttentionItem }) {
             {content}
           </Link>
         ) : item.kind === "consultation" ? (
-          <Link to="/consultations" search={{ tab: "records" }}>
+          <Link to="/consultations" search={{ tab: "records", recordId: item.recordId }}>
             {content}
           </Link>
         ) : (

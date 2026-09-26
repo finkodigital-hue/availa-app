@@ -94,6 +94,9 @@ function relativeVisit(value: string | null | undefined): string {
 }
 
 export const Route = createFileRoute("/_authenticated/customers")({
+  validateSearch: (search: Record<string, unknown>): { customerId?: string } => ({
+    customerId: typeof search.customerId === "string" ? search.customerId : undefined,
+  }),
   component: CustomersPage,
 });
 
@@ -109,7 +112,15 @@ type Customer = {
   created_at: string;
 };
 
+type CustomerBookingPrefill = {
+  customerId: string;
+  serviceId?: string;
+  staffId?: string;
+};
+
 function CustomersPage() {
+  const { customerId: linkedCustomerId } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { data: biz } = useMyBusiness();
   const fmtMoney = (cents: number) =>
     formatMoney(cents, biz?.currency ?? "GBP");
@@ -119,7 +130,7 @@ function CustomersPage() {
   const [mergeFor, setMergeFor] = useState<any | null>(null);
   const [editing, setEditing] = useState<Partial<Customer> | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [bookingFor, setBookingFor] = useState<string | null>(null);
+  const [bookingFor, setBookingFor] = useState<CustomerBookingPrefill | null>(null);
   const [exporting, setExporting] = useState(false);
   const [customerView, setCustomerView] = useState<
     "all" | "recent" | "regulars"
@@ -183,22 +194,70 @@ function CustomersPage() {
     },
   });
 
+  // The list is capped for speed, but a link must still reach any customer.
+  const { data: linkedCustomer, isFetched: linkedCustomerFetched } = useQuery({
+    queryKey: ["linked-customer", bid, linkedCustomerId],
+    enabled: !!bid && !!linkedCustomerId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, email, phone, address, avatar_url, notes, created_at")
+        .eq("business_id", bid!)
+        .eq("id", linkedCustomerId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const listedCustomers = useMemo(() => {
+    if (!customers) return [];
+    if (!linkedCustomer || customers.some((customer) => customer.id === linkedCustomer.id))
+      return customers;
+    return [
+      { ...linkedCustomer, visits: -1, lastVisit: null, totalSpent: 0 },
+      ...customers,
+    ];
+  }, [customers, linkedCustomer]);
+
   const visibleCustomers = useMemo(() => {
     if (!customers) return [];
     if (customerView === "regulars")
-      return customers.filter((customer) => customer.visits >= 3);
+      return listedCustomers.filter((customer) => customer.visits >= 3);
     if (customerView === "recent") {
       const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
-      return customers.filter(
+      return listedCustomers.filter(
         (customer) =>
           customer.lastVisit &&
           new Date(customer.lastVisit).getTime() >= cutoff,
       );
     }
-    return customers;
-  }, [customerView, customers]);
+    return listedCustomers;
+  }, [customerView, customers, listedCustomers]);
 
   useEffect(() => {
+    if (!linkedCustomerId) return;
+    setCustomerView("all");
+    setOpenId(linkedCustomerId);
+  }, [linkedCustomerId]);
+
+  useEffect(() => {
+    if (!linkedCustomerId || !linkedCustomerFetched || linkedCustomer) return;
+    toast.error("Customer not found in this workspace.");
+    navigate({ search: { customerId: undefined }, replace: true });
+  }, [linkedCustomerId, linkedCustomerFetched, linkedCustomer, navigate]);
+
+  useEffect(() => {
+    if (!linkedCustomer || linkedCustomer.id !== linkedCustomerId) return;
+    if (!window.matchMedia("(max-width: 1279px)").matches) return;
+    const timeout = window.setTimeout(() => {
+      document.getElementById("customer-profile")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [linkedCustomer, linkedCustomerId]);
+
+  useEffect(() => {
+    if (linkedCustomerId && !linkedCustomer) return;
     if (!visibleCustomers.length) {
       setOpenId(null);
       return;
@@ -209,10 +268,11 @@ function CustomersPage() {
     ) {
       setOpenId(visibleCustomers[0].id);
     }
-  }, [visibleCustomers, openId]);
+  }, [visibleCustomers, openId, linkedCustomerId, linkedCustomer]);
 
   const selectCustomer = (customerId: string) => {
     setOpenId(customerId);
+    if (linkedCustomerId) navigate({ search: { customerId: undefined }, replace: true });
     if (window.matchMedia("(max-width: 1279px)").matches) {
       window.setTimeout(() => {
         document
@@ -486,12 +546,18 @@ function CustomersPage() {
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
-                      <div className="text-xs font-medium">
-                        {c.visits} visit{c.visits === 1 ? "" : "s"}
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-muted-foreground">
-                        {relativeVisit(c.lastVisit)}
-                      </div>
+                      {c.visits < 0 ? (
+                        <div className="text-xs font-medium">Open profile</div>
+                      ) : (
+                        <>
+                          <div className="text-xs font-medium">
+                            {c.visits} visit{c.visits === 1 ? "" : "s"}
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-muted-foreground">
+                            {relativeVisit(c.lastVisit)}
+                          </div>
+                        </>
+                      )}
                     </div>
                     <ChevronRight
                       className={`h-4 w-4 shrink-0 ${selected ? "text-[color:var(--gold-deep)]" : "text-muted-foreground/50"}`}
@@ -533,7 +599,7 @@ function CustomersPage() {
           open={!!bookingFor}
           onOpenChange={(o) => !o && setBookingFor(null)}
           businessId={bid}
-          prefill={bookingFor ? { customerId: bookingFor } : undefined}
+          prefill={bookingFor ?? undefined}
           onCreated={() => {
             setBookingFor(null);
             qc.invalidateQueries({ queryKey: ["customers"] });
@@ -1221,7 +1287,7 @@ function CustomerDetailPanel({
   currency?: string;
   onEdit: (c: any) => void;
   onDelete: () => void;
-  onBook: (id: string) => void;
+  onBook: (prefill: CustomerBookingPrefill) => void;
   onMerge: (c: any) => void;
 }) {
   const { data, isLoading } = useQuery({
@@ -1237,8 +1303,9 @@ function CustomerDetailPanel({
       const { data: bookings } = await supabase
         .from("bookings")
         .select(
-          "id, starts_at, ends_at, status, price_cents, notes, services(name), staff(name)",
+          "id, starts_at, ends_at, status, price_cents, notes, service_id, staff_id, services(name), staff(name)",
         )
+        .eq("business_id", businessId!)
         .eq("customer_id", customerId!)
         .order("starts_at", { ascending: false });
       return { customer, bookings: bookings ?? [] };
@@ -1309,6 +1376,9 @@ function CustomerDetailPanel({
   const c = data?.customer;
   const nextBooking = stats.upcoming[0];
   const lastBooking = stats.past[0];
+  const lastCompletedService = stats.past.find(
+    (booking) => booking.status === "completed" && booking.service_id,
+  );
 
   if (!customerId) {
     return (
@@ -1489,7 +1559,25 @@ function CustomerDetailPanel({
           )}
 
           <div className="mt-6 grid gap-2 sm:grid-cols-2">
-            <Button className="sm:col-span-2" onClick={() => onBook(c.id)}>
+            {lastCompletedService && (
+              <Button
+                className="sm:col-span-2"
+                onClick={() =>
+                  onBook({
+                    customerId: c.id,
+                    serviceId: lastCompletedService.service_id,
+                    staffId: lastCompletedService.staff_id ?? undefined,
+                  })
+                }
+              >
+                <Calendar className="mr-2 h-4 w-4" /> Repeat last visit
+              </Button>
+            )}
+            <Button
+              variant={lastCompletedService ? "outline" : "default"}
+              className="sm:col-span-2"
+              onClick={() => onBook({ customerId: c.id })}
+            >
               <Calendar className="mr-2 h-4 w-4" /> Book appointment
             </Button>
             <Button variant="outline" onClick={() => onEdit(c)}>

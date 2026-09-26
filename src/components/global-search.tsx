@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Calendar, ClipboardCheck, LayoutDashboard, Scissors, Search, UserCircle, Users } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useMyBusiness } from "@/lib/business";
+import { useMyBusiness, useWorkspaceAccess } from "@/lib/business";
 import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
@@ -34,6 +34,7 @@ type SearchResults = {
 export function GlobalSearch() {
   const router = useRouter();
   const { data: business } = useMyBusiness();
+  const access = useWorkspaceAccess();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResults>({ customers: [], services: [] });
@@ -87,6 +88,11 @@ export function GlobalSearch() {
     router.navigate({ to: to as any });
   };
 
+  const goToCustomer = (customerId: string) => {
+    setOpen(false);
+    router.navigate({ to: "/customers", search: { customerId } });
+  };
+
   return (
     <>
       <Button variant="outline" className="w-full justify-start gap-2 h-9 text-xs" onClick={() => setOpen(true)}>
@@ -100,7 +106,7 @@ export function GlobalSearch() {
           <CommandEmpty>No matches found.</CommandEmpty>
           {query.trim().length < 2 && (
             <CommandGroup heading="Quick links">
-              {QUICK_LINKS.map(({ label, to, icon: Icon }) => (
+              {QUICK_LINKS.filter(({ to }) => to !== "/consultations" || access.isOwner).map(({ label, to, icon: Icon }) => (
                 <CommandItem key={to} value={label} onSelect={() => go(to)}>
                   <Icon /> {label}
                 </CommandItem>
@@ -110,7 +116,7 @@ export function GlobalSearch() {
           {results.customers.length > 0 && (
             <CommandGroup heading="Customers">
               {results.customers.map((customer) => (
-                <CommandItem key={customer.id} value={`${customer.name} ${customer.email ?? ""} ${customer.phone ?? ""}`} onSelect={() => go("/customers")}>
+                <CommandItem key={customer.id} value={`${customer.name} ${customer.email ?? ""} ${customer.phone ?? ""}`} onSelect={() => goToCustomer(customer.id)}>
                   <UserCircle />
                   <span className="min-w-0"><span className="block">{customer.name}</span><span className="block text-xs text-muted-foreground truncate">{customer.email ?? customer.phone ?? "Customer"}</span></span>
                 </CommandItem>
