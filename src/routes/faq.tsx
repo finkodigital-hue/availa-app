@@ -5,11 +5,11 @@ import { Wordmark } from "@/components/wordmark";
 const QUESTIONS = [
   [
     "Is Bookzenvo really free?",
-    "Yes. Solo includes one staff member, unlimited bookings, manual page editing, payments, refunds, confirmations, one-tap booking links, the client book, import/export and support. Studio is £22 per month and adds unlimited staff, reminders, analytics, AI, consultation forms, verified reviews, stock, the customer portal and rent tracking.",
+    "Our planned launch pricing has a free Solo plan with one staff member, unlimited bookings, manual page editing, payments, refunds, confirmations, one-tap booking links, the client book, import/export and support. Studio is planned at £22 per month and adds unlimited staff, reminders, analytics, AI, consultation forms, verified reviews, stock, the customer portal and rent tracking. Final availability will be confirmed before launch.",
   ],
   [
     "Can my clients book online?",
-    "Yes. Every business gets a shareable booking link. Clients can choose a service, team member and available time. Studio adds a customer portal; on every plan, confirmation emails still include one-tap links to confirm, cancel or reschedule.",
+    "Yes. Every business gets a shareable booking link. Clients can choose a service, team member and available time. Booking confirmation emails include the appointment details and a calendar file. Studio adds a customer portal and one-tap options in appointment reminder emails.",
   ],
   [
     "Can I take deposits and payments?",
@@ -17,7 +17,7 @@ const QUESTIONS = [
   ],
   [
     "Do I need a card reader or other hardware to take payments?",
-    "No. Payments run through Stripe on whatever device you already have — phone, tablet or laptop. No proprietary hardware to buy or carry around.",
+    "Not for online payments. Customers can pay through Stripe Checkout or a payment link on their phone, tablet or laptop. Bookzenvo does not currently connect to a physical card reader or support in-salon Tap to Pay, so card-machine payments will not update a booking automatically.",
   ],
   [
     "Can I add more staff?",
@@ -29,7 +29,7 @@ const QUESTIONS = [
   ],
   [
     "Can clients cancel or reschedule?",
-    "On Studio, clients can manage eligible bookings from their portal. On every plan they can use the one-tap links in their confirmation email. You control your cancellation policy and can still manage any booking directly from your dashboard.",
+    "On Studio, clients can manage eligible bookings from their portal or use the one-tap links in appointment reminder emails. Confirmation emails do not contain change links. You control your cancellation policy and can manage bookings directly from your dashboard on every plan.",
   ],
   [
     "Will Bookzenvo block dates on my calendar automatically?",
@@ -49,7 +49,10 @@ export const Route = createFileRoute("/faq")({
   head: () => ({
     meta: [
       { title: "Frequently asked questions · Bookzenvo" },
-      { name: "description", content: "Answers to common Bookzenvo questions." },
+      {
+        name: "description",
+        content: "Answers to common Bookzenvo questions.",
+      },
     ],
     links: [{ rel: "canonical", href: "https://bookzenvo.com/faq" }],
   }),
@@ -62,7 +65,10 @@ function FaqPage() {
       <header className="border-b border-border">
         <div className="max-w-[860px] mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/">
-            <Wordmark className="text-[1.5rem]" dotClassName="text-[color:var(--gold-deep)]" />
+            <Wordmark
+              className="text-[1.5rem]"
+              dotClassName="text-[color:var(--gold-deep)]"
+            />
           </Link>
           <Link
             to="/"
@@ -91,7 +97,9 @@ function FaqPage() {
                   +
                 </span>
               </summary>
-              <p className="pt-3 text-[.94rem] leading-7 text-muted-foreground">{answer}</p>
+              <p className="pt-3 text-[.94rem] leading-7 text-muted-foreground">
+                {answer}
+              </p>
             </details>
           ))}
         </div>

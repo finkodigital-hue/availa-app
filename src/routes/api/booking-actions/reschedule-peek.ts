@@ -23,12 +23,24 @@ export const Route = createFileRoute("/api/booking-actions/reschedule-peek")({
 
         const { data: booking } = await (supabaseAdmin as any)
           .from("bookings")
-          .select("id, business_id, staff_id, status, starts_at, services(name, duration_minutes, buffer_before_min, buffer_after_min, gap_min, active_after_min), staff(name), businesses(name, timezone, page_theme)")
+          .select("id, business_id, staff_id, status, starts_at, services(name, duration_minutes, buffer_before_min, buffer_after_min, gap_min, active_after_min), staff(name), businesses(name, timezone, page_theme, cancellation_window_hours, phone, email)")
           .eq("id", result.bookingId)
           .maybeSingle();
 
-        if (!booking || booking.status === "cancelled") {
+        if (!booking || booking.status !== "confirmed") {
           return Response.json({ ok: false, reason: "invalid" });
+        }
+
+        const windowHours = booking.businesses?.cancellation_window_hours ?? 24;
+        if (new Date(booking.starts_at).getTime() < Date.now() + windowHours * 60 * 60 * 1000) {
+          return Response.json({
+            ok: false,
+            reason: "window_passed",
+            businessName: booking.businesses?.name ?? "the salon",
+            windowHours,
+            contactPhone: booking.businesses?.phone ?? null,
+            contactEmail: booking.businesses?.email ?? null,
+          });
         }
 
         return Response.json({

@@ -45,18 +45,18 @@ export function buildReminderEmail({
   const brand = theme.colors.primary || "#111111";
 
   const bodyHtml = `
-<h1 style="margin:0 0 4px 0;font-size:20px;font-weight:700;">Upcoming appointment</h1>
-<p style="margin:0 0 20px 0;color:#57575e;">A reminder about your appointment with ${escapeHtml(businessName)}.</p>
+<h1 style="margin:0 0 8px 0;font-size:25px;line-height:1.2;letter-spacing:-0.6px;font-weight:700;color:#191919;">Upcoming appointment</h1>
+<p style="margin:0 0 24px 0;color:#555550;">A reminder about your appointment with ${escapeHtml(businessName)}.</p>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f7f9;border-radius:12px;margin-bottom:20px;">
-<tr><td style="padding:16px 18px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
-<tr><td style="padding:4px 0;color:#8a8a8f;width:88px;">Service</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(serviceName)}</td></tr>
-<tr><td style="padding:4px 0;color:#8a8a8f;">With</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(staffName)}</td></tr>
-<tr><td style="padding:4px 0;color:#8a8a8f;">Date</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(date)}</td></tr>
-<tr><td style="padding:4px 0;color:#8a8a8f;">Time</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(time)}</td></tr>
-<tr><td style="padding:4px 0;color:#8a8a8f;">Price</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(fmtMoney(priceCents, currency))}</td></tr>
-${location ? `<tr><td style="padding:4px 0;color:#8a8a8f;">Location</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(location)}</td></tr>` : ""}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f7f4;border:1px solid #ebe8e2;border-radius:14px;margin-bottom:22px;">
+<tr><td style="padding:19px 20px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:20px;">
+<tr><td style="padding:5px 10px 5px 0;color:#62615e;width:88px;vertical-align:top;">Service</td><td style="padding:5px 0;font-weight:600;color:#222222;">${escapeHtml(serviceName)}</td></tr>
+<tr><td style="padding:5px 10px 5px 0;color:#62615e;vertical-align:top;">With</td><td style="padding:5px 0;font-weight:600;color:#222222;">${escapeHtml(staffName)}</td></tr>
+<tr><td style="padding:5px 10px 5px 0;color:#62615e;vertical-align:top;">Date</td><td style="padding:5px 0;font-weight:600;color:#222222;">${escapeHtml(date)}</td></tr>
+<tr><td style="padding:5px 10px 5px 0;color:#62615e;vertical-align:top;">Time</td><td style="padding:5px 0;font-weight:600;color:#222222;">${escapeHtml(time)}</td></tr>
+<tr><td style="padding:5px 10px 5px 0;color:#62615e;vertical-align:top;">Price</td><td style="padding:5px 0;font-weight:600;color:#222222;">${escapeHtml(fmtMoney(priceCents, currency))}</td></tr>
+${location ? `<tr><td style="padding:5px 10px 5px 0;color:#62615e;vertical-align:top;">Location</td><td style="padding:5px 0;font-weight:600;color:#222222;">${escapeHtml(location)}</td></tr>` : ""}
 </table>
 </td></tr>
 </table>

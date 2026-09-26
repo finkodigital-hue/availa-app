@@ -1,6 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { businessDayRange } from "@/lib/business-day";
+import {
+  preparationBalance,
+  preparationFormSummary,
+} from "@/lib/dashboard-preparation";
 
 export type DashboardBooking = {
   id: string;
@@ -12,6 +16,8 @@ export type DashboardBooking = {
   paymentStatus: string;
   serviceName: string;
   staffName: string;
+  customerId: string | null;
+  balanceCents: number;
 };
 
 export type DashboardAttentionItem = {
@@ -22,6 +28,7 @@ export type DashboardAttentionItem = {
   href: string;
   action: string;
   bookingId?: string;
+  recordId?: string;
 };
 
 type DashboardOverview = {
@@ -36,6 +43,7 @@ type DashboardOverview = {
     timezone: string | null;
   };
   nextBooking: DashboardBooking | null;
+  preparation: (DashboardBooking & { formSummary: string })[];
   today: {
     bookings: number;
     expectedTakingsCents: number;
@@ -126,7 +134,7 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
       db
         .from("bookings")
         .select(
-          "id, customer_name, starts_at, ends_at, price_cents, status, payment_status, services(name), staff(name)",
+          "id, customer_id, customer_name, starts_at, ends_at, price_cents, amount_paid_cents, status, payment_status, services(name), staff(name)",
         )
         .eq("business_id", business.id)
         .gte("starts_at", start.toISOString())
@@ -238,6 +246,12 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
         paymentStatus: booking.payment_status,
         serviceName: firstRelationName(booking.services) || "Appointment",
         staffName: firstRelationName(booking.staff) || "Unassigned",
+        customerId: booking.customer_id ?? null,
+        balanceCents: preparationBalance(
+          booking.price_cents ?? 0,
+          booking.amount_paid_cents ?? 0,
+          booking.payment_status,
+        ),
       }),
     );
     const upcoming = bookings.filter(
@@ -246,6 +260,30 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
         new Date(booking.endsAt).getTime() > Date.now(),
     );
     const attention: DashboardAttentionItem[] = [];
+    // Only appointment-linked metadata is returned. Never bulk-load medical
+    // answers, signatures, patch-test results or customer notes here.
+    const preparationBookings = upcoming.slice(0, 20);
+    let preparationForms:
+      | {
+          booking_id: string;
+          status: string;
+          expires_at: string | null;
+          withdrawn_at: string | null;
+        }[]
+      | null = null;
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY && preparationBookings.length) {
+      const { supabaseAdmin } =
+        await import("@/integrations/supabase/client.server");
+      const result = await (supabaseAdmin as any)
+        .from("consultation_submissions")
+        .select("booking_id, status, expires_at, withdrawn_at")
+        .eq("business_id", business.id)
+        .in(
+          "booking_id",
+          preparationBookings.map((booking) => booking.id),
+        );
+      if (!result.error) preparationForms = result.data ?? [];
+    }
 
     if (consultationResult.data) {
       const submission = consultationResult.data as any;
@@ -260,7 +298,8 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
         title: "Unsigned consultation",
         description: `${customerName}'s form is waiting for a signature.`,
         href: "/consultations",
-        action: "Open",
+        recordId: submission.id,
+        action: "Open form",
       });
     }
 
@@ -335,6 +374,15 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
     return {
       business,
       nextBooking: upcoming[0] ?? null,
+      preparation: preparationBookings.map((booking) => ({
+        ...booking,
+        formSummary: preparationFormSummary(
+          preparationForms === null
+            ? null
+            : preparationForms.filter((form) => form.booking_id === booking.id),
+          Date.now(),
+        ),
+      })),
       today: {
         bookings: bookings.length,
         expectedTakingsCents: bookings.reduce(
@@ -352,6 +400,26 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
       ),
       setup,
     } satisfies DashboardOverview;
+  });
+
+export const getDashboardCustomerNotes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: { customerId: string }) => {
+    if (!/^[0-9a-f-]{36}$/i.test(data.customerId))
+      throw new Error("Customer not found.");
+    return data;
+  })
+  .handler(async ({ data, context }) => {
+    const business = await ownedBusiness(context);
+    const result = await context.supabase
+      .from("customers")
+      .select("notes")
+      .eq("business_id", business.id)
+      .eq("id", data.customerId)
+      .maybeSingle();
+    if (result.error) throw result.error;
+    if (!result.data) throw new Error("Customer not found.");
+    return { notes: result.data.notes ?? "" };
   });
 
 export const checkInDashboardBooking = createServerFn({ method: "POST" })

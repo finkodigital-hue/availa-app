@@ -693,7 +693,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         type: "note",
-        text: "Booking confirmation emails send automatically as soon as a booking is made, on every plan. On Studio, clients also get an automatic reminder email a configurable number of hours before their appointment — set the lead time in Settings → Business. SMS confirmations and reminders aren't built yet.",
+        text: "Booking confirmation emails send automatically as soon as a booking is made, on every plan. On Studio, clients also get an automatic reminder email a configurable number of hours before their appointment — set the lead time in Settings → Business. Appointment SMS reminders need a working Twilio account and must be delivery-tested before launch; SMS confirmations are not sent.",
       },
     ],
     keywords: ["reminders", "email", "sms", "bell"],
@@ -740,7 +740,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         type: "note",
-        text: "Data export and deletion requests don't happen automatically — they show up as a pending-requests banner on your Customers page for you to action. Since automatic booking-confirmation emails aren't wired up yet, clients need to know to visit /portal themselves rather than following a link from a confirmation email.",
+        text: "Data export and deletion requests don't happen automatically — they show up as a pending-requests banner on your Customers page for you to action. Booking confirmation emails are automatic, but do not include a portal link; Studio clients can visit /portal and sign in with an email code.",
       },
     ],
     keywords: ["portal", "self-serve", "reschedule", "cancel", "gdpr", "otp"],

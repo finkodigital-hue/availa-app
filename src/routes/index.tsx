@@ -30,7 +30,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Bookings, payments, consultations, patch tests, verified reviews, stock, chair rentals and practical AI in one place, for salons, barbershops, nail studios and tattoo artists.",
+          "Explore Bookzenvo, a salon platform in development for bookings, payments and client care. Join the waitlist for launch updates.",
       },
       {
         property: "og:title",
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Bookings, payments, consultations, patch tests, verified reviews, stock, chair rentals and practical AI in one place. Free for one chair.",
+          "Explore the planned Bookzenvo salon platform and join the waitlist for launch updates.",
       },
       {
         property: "og:image",

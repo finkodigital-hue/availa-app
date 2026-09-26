@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useMyBusiness } from "@/lib/business";
 import { slugify } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,43 +19,68 @@ function Onboarding() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { data: existingBusiness } = useMyBusiness();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [busy, setBusy] = useState(false);
+  const [createdBusiness, setCreatedBusiness] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const workspace = createdBusiness ?? (existingBusiness?.owner_id === user?.id ? existingBusiness : null);
+
+  useEffect(() => {
+    if (workspace) {
+      setName(workspace.name);
+      setSlug(workspace.slug);
+    }
+  }, [workspace?.id]);
+
+  const ensureHours = async (businessId: string) => {
+    const { error: repairError } = await supabase.rpc("ensure_business_hours", { _business_id: businessId });
+    if (repairError) throw repairError;
+    const { data: verified, error: verifyError } = await supabase.from("business_hours")
+      .select("weekday").eq("business_id", businessId);
+    if (verifyError) throw verifyError;
+    if (new Set((verified ?? []).map((row) => row.weekday)).size !== 7) {
+      throw new Error("Opening hours could not be completed. Try again.");
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setBusy(true);
     try {
-      const finalSlug = slugify(slug || name);
-      const { data, error } = await supabase
-        .from("businesses")
-        .insert({
-          owner_id: user.id,
-          name,
-          slug: finalSlug,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      const hours = Array.from({ length: 7 }, (_, w) => ({
-        business_id: data.id,
-        weekday: w,
-        open_time: w === 0 || w === 6 ? null : "09:00",
-        close_time: w === 0 || w === 6 ? null : "17:00",
-        closed: w === 0 || w === 6,
-      }));
-      await supabase.from("business_hours").insert(hours);
+      let current = workspace;
+      if (!current) {
+        // A prior attempt may have created the workspace before the page was reloaded.
+        const { data: found, error: lookupError } = await supabase.from("businesses")
+          .select("id, name, slug").eq("owner_id", user.id).maybeSingle();
+        if (lookupError) throw lookupError;
+        current = found;
+      }
+      if (!current) {
+        const { data, error } = await supabase
+          .from("businesses")
+          .insert({
+            owner_id: user.id,
+            name,
+            slug: slugify(slug || name),
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          })
+          .select("id, name, slug")
+          .single();
+        if (error) throw error;
+        current = data;
+      }
+      setCreatedBusiness(current);
+      await ensureHours(current.id);
       await qc.invalidateQueries({ queryKey: ["my-business"] });
-      toast.success("Workspace created");
+      toast.success("Workspace is ready");
       navigate({ to: "/dashboard" });
     } catch (err: any) {
-      if (err.code === "23505") {
+      if (err.code === "23505" && !workspace && !createdBusiness) {
         toast.error("That booking page URL is already taken — try another.");
       } else {
-        toast.error(err.message ?? "Could not create workspace");
+        toast.error(err.message ?? "Could not finish workspace setup. Try again.");
       }
     } finally {
       setBusy(false);
@@ -72,8 +98,9 @@ function Onboarding() {
           Name your <span className="italic text-primary">workspace</span>.
         </h1>
         <p className="text-sm text-muted-foreground mt-3 text-pretty">
-          This is what customers will see on your booking page. Don't sweat
-          it — you can change everything later.
+          {workspace
+            ? "Your workspace has been created. Finish checking its opening hours to continue."
+            : "This is what customers will see on your booking page. Don't sweat it — you can change everything later."}
         </p>
         <form onSubmit={submit} className="mt-8 space-y-5">
           <div>
@@ -88,6 +115,7 @@ function Onboarding() {
                 if (!slug) setSlug(slugify(e.target.value));
               }}
               required
+              disabled={!!workspace}
               autoFocus
               className="mt-1.5 h-11"
               placeholder="Maison Coiffure"
@@ -106,6 +134,7 @@ function Onboarding() {
                 value={slug}
                 onChange={(e) => setSlug(slugify(e.target.value))}
                 required
+                disabled={!!workspace}
                 className="border-0 focus-visible:ring-0 h-11"
                 placeholder="maison-coiffure"
               />
@@ -117,11 +146,11 @@ function Onboarding() {
           <Button type="submit" className="w-full h-11 shadow-glow" disabled={busy || !name}>
             {busy ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating…
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Finishing…
               </>
             ) : (
               <>
-                Create workspace <ArrowRight className="h-4 w-4 ml-1" />
+                {workspace ? "Finish setup" : "Create workspace"} <ArrowRight className="h-4 w-4 ml-1" />
               </>
             )}
           </Button>

@@ -171,7 +171,11 @@ export function StripeSettings({ business }: { business: Business }) {
           <Label>When should customers pay?</Label>
           <div className="grid sm:grid-cols-3 gap-2 mt-2">
             {[
-              ["none", "No online payment", "Take payment in person"],
+              [
+                "none",
+                "No online payment",
+                "Collect in person outside Bookzenvo",
+              ],
               ["deposit", "Take a deposit", "Secure each booking up front"],
               ["full", "Take full payment", "Collect the full service price"],
             ].map(([value, title, detail]) => (

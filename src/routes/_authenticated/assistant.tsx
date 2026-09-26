@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, Send, CalendarCheck, Megaphone, TrendingUp, LineChart, Mail, Loader2, RotateCcw } from "lucide-react";
+import { Sparkles, Send, CalendarCheck, Megaphone, TrendingUp, LineChart, Mail, Loader2, RotateCcw, Copy } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/assistant")({
   component: AssistantPage,
@@ -19,7 +20,7 @@ type Quick = { icon: typeof Sparkles; label: string; prompt: string };
 
 const QUICK: Quick[] = [
   { icon: CalendarCheck, label: "Today's bookings", prompt: "Give me a concise summary of today's bookings — who's coming in, when, with which staff member, and total expected revenue. Flag anything that needs attention." },
-  { icon: Megaphone, label: "Promote empty slots", prompt: "Look at the quietest upcoming days in the next 7 days and suggest 3 specific empty slots to promote. For each, recommend a short promotional angle (e.g. last-minute discount, bundled service) tailored to my services." },
+  { icon: Megaphone, label: "Promote quiet days", prompt: "Use the quiet-day booking counts to suggest up to 3 days worth checking in my live calendar. Do not claim any exact time is free. Draft one concise post I can review and copy, including my public booking link and no unapproved discount." },
   { icon: TrendingUp, label: "Busiest days", prompt: "Which days of the week are my busiest based on the past 30 days, and what does that imply for staffing and promotions? Be specific." },
   { icon: LineChart, label: "Weekly insights", prompt: "Generate a weekly business insights report. Cover: revenue, booking volume, top services, busiest day, quietest day, and 3 concrete actions I should take this week." },
   { icon: Mail, label: "Draft promo email", prompt: "Draft a friendly promotional email to send to my customer list inviting them to book this week. Include a subject line, a short warm body, and a clear call-to-action. Reference my actual top service." },
@@ -196,13 +197,32 @@ function MessageBubble({ message }: { message: UIMessage }) {
   return (
     <div className={cn("flex gap-3", isUser && "flex-row-reverse")}>
       <Avatar role={message.role} />
-      <div
-        className={cn(
-          "rounded-2xl px-4 py-3 max-w-[85%] text-sm leading-relaxed whitespace-pre-wrap",
-          isUser ? "bg-primary text-primary-foreground" : "bg-background border",
+      <div className="max-w-[85%]">
+        <div
+          className={cn(
+            "rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
+            isUser ? "bg-primary text-primary-foreground" : "bg-background border",
+          )}
+        >
+          {text || <span className="text-muted-foreground italic">…</span>}
+        </div>
+        {!isUser && text && (
+          <button
+            type="button"
+            className="mt-1 inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Copy assistant response"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(text);
+                toast.success("Draft copied. Review it before sharing.");
+              } catch {
+                toast.error("Could not copy the draft. Select the text instead.");
+              }
+            }}
+          >
+            <Copy className="h-3.5 w-3.5" /> Copy draft
+          </button>
         )}
-      >
-        {text || <span className="text-muted-foreground italic">…</span>}
       </div>
     </div>
   );

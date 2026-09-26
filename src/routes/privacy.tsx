@@ -137,6 +137,14 @@ function PrivacyPage() {
                 rather than altering what was signed.
               </p>
               <p>
+                If you provide a usable mobile number when making a new booking,
+                the business may send a factual reminder about that appointment
+                by SMS. It will not contain offers. The booking records that
+                this notice was shown, and delivery is handled by our messaging
+                provider. Providing a phone number is optional; older bookings
+                are not enrolled automatically by this change.
+              </p>
+              <p>
                 We do not sell personal information and do not use
                 booking-client information for Bookzenvo advertising. We do not
                 make solely automated decisions about individuals that produce
@@ -159,11 +167,6 @@ function PrivacyPage() {
               </p>
               <p>
                 A review is not published unless the customer actively agrees.
-                If you explicitly opt in during booking, we use your phone
-                number to send a one-off appointment reminder by SMS. Your
-                consent is recorded against that booking, and delivery is
-                handled by our messaging provider. You can book without opting
-                in.
               </p>
               <p>
                 The public booking page shows the rating, review text, first

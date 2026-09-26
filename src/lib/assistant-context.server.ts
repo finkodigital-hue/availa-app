@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { requireVerifiedIdentity } from "@/lib/verified-identity.server";
+import { trustedAppOrigin } from "@/lib/app-origin.server";
+import { bookingPageUrl } from "@/lib/booking-channels";
 
 export async function buildAssistantContext(accessToken: string) {
   const supabase = createClient(
@@ -44,7 +46,7 @@ export async function buildAssistantContext(accessToken: string) {
       .lt("starts_at", endToday.toISOString()),
     supabase.from("services").select("id, name, duration_minutes, price_cents").eq("business_id", business.id),
     supabase.from("staff").select("id, name, role").eq("business_id", business.id),
-    supabase.from("customers").select("id, name, email").eq("business_id", business.id).limit(200),
+    supabase.from("customers").select("id", { count: "exact", head: true }).eq("business_id", business.id),
     supabase.from("business_hours").select("*").eq("business_id", business.id),
   ]);
 
@@ -111,7 +113,9 @@ export async function buildAssistantContext(accessToken: string) {
     `Top services: ${topServices.map(([n, c]) => `${n} (${c})`).join(", ") || "n/a"}.`,
     `Services offered: ${(servicesQ.data ?? []).map((s: {name:string;duration_minutes:number;price_cents:number}) => `${s.name} ${s.duration_minutes}min ${fmt(s.price_cents)}`).join("; ") || "none"}.`,
     `Staff: ${(staffQ.data ?? []).map((s: {name:string}) => s.name).join(", ") || "none"}.`,
-    `Customer count: ${(customersQ.data ?? []).length}.`,
+    `Customer count: ${customersQ.count ?? "unavailable"}.`,
+    `Public booking link: ${business.slug ? bookingPageUrl(trustedAppOrigin(), business.slug) : "not configured"}.`,
+    "Quiet days are booking-count estimates, NOT verified available appointment slots. Confirm live availability before naming a time or making a promise.",
     `Business hours rows: ${(hoursQ.data ?? []).length}.`,
   ].join("\n");
 

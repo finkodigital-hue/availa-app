@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ClipboardCheck, TriangleAlert } from "lucide-react";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { getCustomerConsultationStatus } from "@/lib/consultations.functions";
+import { useWorkspaceAccess } from "@/lib/business";
 import {
   consultationStatus,
   type RecordStatus,
@@ -13,13 +14,16 @@ export function CustomerConsultationSummary({
 }: {
   customerId: string;
 }) {
+  const access = useWorkspaceAccess();
   const query = useQuery({
     queryKey: ["customer-consultations", customerId],
+    enabled: access.isOwner,
     queryFn: async () => {
       const headers = await getServerFnAuthHeaders();
       return getCustomerConsultationStatus({ data: { customerId }, headers });
     },
   });
+  if (!access.isOwner) return null;
   if (query.isLoading)
     return (
       <p className="mt-5 text-sm text-muted-foreground">

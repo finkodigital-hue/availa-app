@@ -2,7 +2,7 @@
 
 The suite deliberately exercises pages as a reader. It does not submit booking,
 payment, message, signature, deletion, or settings forms. A request guard aborts
-known Stripe, email, booking-action, review, and stock-scanner writes.
+all writes to the app origin, plus known third-party payment/message writes.
 
 Run the signed-out shell coverage (no database configuration required):
 

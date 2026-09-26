@@ -20,7 +20,6 @@ type CheckoutInput = {
   endsAt: string;
   notes: string;
   returnPath: string;
-  smsReminderConsent?: boolean;
   emailMarketingConsent?: boolean;
 };
 
@@ -275,6 +274,7 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ checkoutUrl: string | null }> => {
+    const { normalizeSmsPhone } = await import("@/lib/sms-phone");
     const { consumePublicRequest } = await import("@/lib/public-request-limit.server");
     await consumePublicRequest("booking");
     const { supabaseAdmin } =
@@ -365,7 +365,7 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
           "metadata[customer_name]": data.customerName.trim(),
           "metadata[customer_email]": data.customerEmail.trim(),
           "metadata[customer_phone]": data.customerPhone.trim(),
-          "metadata[sms_reminder_consent]": data.smsReminderConsent
+          "metadata[sms_reminder_notice]": normalizeSmsPhone(data.customerPhone)
             ? "true"
             : "false",
           "metadata[email_marketing_consent]": data.emailMarketingConsent

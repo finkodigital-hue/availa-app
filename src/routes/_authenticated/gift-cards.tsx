@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Copy, Gift, Loader2, Plus, TicketCheck } from "lucide-react";
@@ -17,7 +17,12 @@ import { fmtMoney } from "@/lib/format";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { issueGiftCard, redeemGiftCard } from "@/lib/gift-card.functions";
 
-export const Route = createFileRoute("/_authenticated/gift-cards")({ component: GiftCardsPage });
+export const Route = createFileRoute("/_authenticated/gift-cards")({
+  validateSearch: (search: Record<string, unknown>): { bookingId?: string } => ({
+    bookingId: typeof search.bookingId === "string" ? search.bookingId : undefined,
+  }),
+  component: GiftCardsPage,
+});
 
 type GiftCardRow = {
   id: string;
@@ -33,6 +38,8 @@ type GiftCardRow = {
 };
 
 function GiftCardsPage() {
+  const { bookingId: linkedBookingId } = Route.useSearch();
+  const navigate = useNavigate();
   const { data: business } = useMyBusiness();
   const businessId = business?.id;
   const currency = business?.currency ?? "GBP";
@@ -106,6 +113,23 @@ function GiftCardsPage() {
     },
   });
 
+  const linkedBooking = useQuery({
+    queryKey: ["gift-card-linked-booking", businessId, linkedBookingId],
+    enabled: !!businessId && !!linkedBookingId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("bookings")
+        .select("id, customer_name, starts_at, price_cents, amount_paid_cents, status")
+        .eq("business_id", businessId!).eq("id", linkedBookingId!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const selectedBookingId = linkedBookingId || bookingId;
+  const linkedBalance = linkedBooking.data
+    ? (linkedBooking.data.price_cents ?? 0) - (linkedBooking.data.amount_paid_cents ?? 0)
+    : 0;
+  const linkedPayable = !!linkedBooking.data && linkedBooking.data.status !== "cancelled" && linkedBalance > 0;
+
   const activeValue = (cards.data ?? []).filter((card) => card.status === "active").reduce((sum, card) => sum + card.balance_cents, 0);
 
   const submitIssue = async (event: React.FormEvent) => {
@@ -131,15 +155,19 @@ function GiftCardsPage() {
     try {
       const headers = await getServerFnAuthHeaders();
       const result = await redeemGiftCard({ data: {
-        bookingId, code: redeemCode, requestId: crypto.randomUUID(),
+        bookingId: selectedBookingId, code: redeemCode, requestId: crypto.randomUUID(),
       }, headers });
       toast.success(`${fmtMoney(result.amountCents, currency)} applied. ${fmtMoney(result.balanceCents, currency)} remains.`);
       setRedeemCode("");
-      setBookingId("");
+      if (!linkedBookingId) setBookingId("");
       qc.invalidateQueries({ queryKey: ["gift-cards", businessId] });
       qc.invalidateQueries({ queryKey: ["gift-card-transactions", businessId] });
       qc.invalidateQueries({ queryKey: ["gift-card-payable-bookings", businessId] });
+      qc.invalidateQueries({ queryKey: ["gift-card-linked-booking", businessId, linkedBookingId] });
       qc.invalidateQueries({ queryKey: ["payments", businessId] });
+      qc.invalidateQueries({ queryKey: ["bookings-list", businessId] });
+      qc.invalidateQueries({ queryKey: ["booking-details", businessId, selectedBookingId] });
+      qc.invalidateQueries({ queryKey: ["calendar"] });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not redeem gift card.");
     } finally { setRedeeming(false); }
@@ -204,8 +232,17 @@ function GiftCardsPage() {
           <form onSubmit={submitRedemption} className="rounded-2xl border bg-card p-5 space-y-4">
             <div className="flex gap-3"><div className="h-10 w-10 rounded-xl bg-secondary grid place-items-center"><TicketCheck className="h-5 w-5" /></div><div><h2 className="font-medium">Redeem a gift card</h2><p className="text-xs text-muted-foreground mt-0.5">The correct amount is calculated automatically.</p></div></div>
             <div><Label htmlFor="redeem-code">Gift card code</Label><Input id="redeem-code" className="mt-1.5 font-mono uppercase" placeholder="BZV-XXXX-XXXX-XXXX" value={redeemCode} onChange={(e) => setRedeemCode(e.target.value.toUpperCase())} maxLength={18} required /></div>
-            <div><Label>Booking</Label><Select value={bookingId} onValueChange={setBookingId} required><SelectTrigger className="mt-1.5"><SelectValue placeholder="Choose an unpaid booking" /></SelectTrigger><SelectContent>{bookings.data?.map((booking) => <SelectItem key={booking.id} value={booking.id}>{booking.customer_name} · {new Date(booking.starts_at).toLocaleDateString()} · {fmtMoney((booking.price_cents ?? 0) - (booking.amount_paid_cents ?? 0), currency)}</SelectItem>)}</SelectContent></Select></div>
-            <Button type="submit" className="w-full" disabled={redeeming || !bookingId || !redeemCode}>{redeeming && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Apply to booking</Button>
+            {linkedBookingId ? (
+              <div className="rounded-xl border bg-secondary/30 p-3 text-sm">
+                <div className="flex items-center justify-between gap-2"><span className="font-medium">Selected booking</span><Button type="button" variant="ghost" size="sm" onClick={() => navigate({ to: "/gift-cards", search: {} })}>Change</Button></div>
+                {linkedBooking.isLoading ? <p className="text-muted-foreground">Loading booking…</p> : linkedBooking.isError ? <p role="alert">Could not load this booking. Try again.</p> : !linkedBooking.data ? <p role="alert">This booking could not be found in your workspace.</p> : (
+                  <p>{linkedBooking.data.customer_name} · {new Date(linkedBooking.data.starts_at).toLocaleDateString()} · {linkedPayable ? `${fmtMoney(linkedBalance, currency)} due` : "No balance due"}</p>
+                )}
+              </div>
+            ) : (
+              <div><Label>Booking</Label><Select value={bookingId} onValueChange={setBookingId} required><SelectTrigger className="mt-1.5"><SelectValue placeholder="Choose an unpaid booking" /></SelectTrigger><SelectContent>{bookings.data?.map((booking) => <SelectItem key={booking.id} value={booking.id}>{booking.customer_name} · {new Date(booking.starts_at).toLocaleDateString()} · {fmtMoney((booking.price_cents ?? 0) - (booking.amount_paid_cents ?? 0), currency)}</SelectItem>)}</SelectContent></Select></div>
+            )}
+            <Button type="submit" className="w-full" disabled={redeeming || !selectedBookingId || !redeemCode || (!!linkedBookingId && !linkedPayable)}>{redeeming && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Apply to booking</Button>
           </form>
 
           <section>

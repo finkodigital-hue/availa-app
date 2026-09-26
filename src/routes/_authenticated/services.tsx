@@ -109,6 +109,11 @@ function ServicesPage() {
   const [newStockUnit, setNewStockUnit] = useState("unit");
   const [newStockAmount, setNewStockAmount] = useState(0);
   const [creatingStock, setCreatingStock] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<"price" | "archive">("price");
+  const [bulkPercent, setBulkPercent] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const { data: services, isLoading } = useQuery({
     queryKey: ["services", bid],
@@ -605,6 +610,83 @@ function ServicesPage() {
   const archivedCount = (services ?? []).filter(
     (service) => !!service.archived_at,
   ).length;
+  const bulkServices = (services ?? []).filter(
+    (service) => bulkSelected.has(service.id) && !service.archived_at,
+  );
+  const percent = Number(bulkPercent);
+  const validPercent =
+    bulkPercent.trim() !== "" &&
+    Number.isFinite(percent) &&
+    percent >= -100 &&
+    percent <= 500 &&
+    percent !== 0;
+  const priceAfter = (cents: number) =>
+    Math.max(0, Math.round((cents * (100 + percent)) / 100));
+
+  const applyBulk = async () => {
+    if (
+      !bid ||
+      !bulkServices.length ||
+      (bulkAction === "price" && !validPercent)
+    )
+      return;
+    setBulkSaving(true);
+    const succeeded: string[] = [];
+    let failed = 0;
+    try {
+      // Each write checks the value shown in the preview so another editor's
+      // changes cannot silently be overwritten while this dialog is open.
+      for (const service of bulkServices) {
+        const query = supabase
+          .from("services")
+          .update(
+            bulkAction === "price"
+              ? { price_cents: priceAfter(service.price_cents) }
+              : { archived_at: new Date().toISOString(), active: false },
+          )
+          .eq("business_id", bid)
+          .eq("id", service.id)
+          .is("archived_at", null);
+        const result = await (
+          bulkAction === "price"
+            ? query.eq("price_cents", service.price_cents)
+            : query.eq("active", service.active)
+        )
+          .select("id")
+          .maybeSingle();
+        if (result.error || !result.data) failed += 1;
+        else succeeded.push(service.id);
+      }
+      await qc.invalidateQueries({ queryKey: ["services", bid] });
+      await qc.invalidateQueries({ queryKey: ["slots-day"] });
+      if (edit?.id && succeeded.includes(edit.id)) {
+        const current = bulkServices.find((service) => service.id === edit.id)!;
+        setEdit({
+          ...edit,
+          ...(bulkAction === "price"
+            ? { price_cents: priceAfter(current.price_cents) }
+            : { archived_at: new Date().toISOString(), active: false }),
+        });
+      }
+      setBulkSelected((previous) => {
+        const next = new Set(previous);
+        succeeded.forEach((id) => next.delete(id));
+        return next;
+      });
+      if (failed) {
+        toast.error(
+          `${succeeded.length} updated, ${failed} skipped. Refresh and review the remaining services.`,
+        );
+      } else {
+        toast.success(
+          `${succeeded.length} service${succeeded.length === 1 ? "" : "s"} updated`,
+        );
+        setBulkOpen(false);
+      }
+    } finally {
+      setBulkSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-[1280px] p-5 sm:p-8 md:p-10">
@@ -613,9 +695,18 @@ function ServicesPage() {
         title="Services"
         subtitle="Create and manage the services your customers can book."
         action={
-          <Button onClick={startNewService} className="shadow-glow">
-            <Plus className="mr-1 h-4 w-4" /> New service
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setBulkOpen(true)}
+              disabled={!activeCount}
+            >
+              <Pencil className="mr-1 h-4 w-4" /> Update several
+            </Button>
+            <Button onClick={startNewService} className="shadow-glow">
+              <Plus className="mr-1 h-4 w-4" /> New service
+            </Button>
+          </div>
         }
       />
 
@@ -1326,6 +1417,179 @@ function ServicesPage() {
           </section>
         </div>
       )}
+
+      <Dialog
+        open={bulkOpen}
+        onOpenChange={(open) => {
+          if (!bulkSaving) setBulkOpen(open);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Update several services</DialogTitle>
+            <DialogDescription>
+              Choose the services and review every change before applying it.
+              Existing bookings keep their recorded prices.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant={bulkAction === "price" ? "default" : "outline"}
+              onClick={() => setBulkAction("price")}
+            >
+              Change prices
+            </Button>
+            <Button
+              type="button"
+              variant={bulkAction === "archive" ? "default" : "outline"}
+              onClick={() => setBulkAction("archive")}
+            >
+              Archive services
+            </Button>
+          </div>
+          {bulkAction === "price" && (
+            <div className="space-y-1">
+              <Label htmlFor="bulk-percent">Price change (%)</Label>
+              <Input
+                id="bulk-percent"
+                type="number"
+                min={-100}
+                max={500}
+                step="0.1"
+                value={bulkPercent}
+                onChange={(event) => setBulkPercent(event.target.value)}
+                placeholder="For example, 10 or -5"
+              />
+              <p className="text-xs text-muted-foreground">
+                A positive number increases prices; a negative number reduces
+                them.
+              </p>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground">
+              {bulkSelected.size} selected
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={
+                  !filteredServices.some((service) => !service.archived_at)
+                }
+                onClick={() =>
+                  setBulkSelected(
+                    new Set(
+                      filteredServices
+                        .filter((service) => !service.archived_at)
+                        .map((service) => service.id),
+                    ),
+                  )
+                }
+              >
+                Select matching active
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={!bulkSelected.size}
+                onClick={() => setBulkSelected(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+          <div className="max-h-72 space-y-1 overflow-y-auto rounded-xl border p-2">
+            {(services ?? [])
+              .filter((service) => !service.archived_at)
+              .map((service) => (
+                <label
+                  key={service.id}
+                  className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-secondary/50"
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={bulkSelected.has(service.id)}
+                      onChange={(event) =>
+                        setBulkSelected((previous) => {
+                          const next = new Set(previous);
+                          if (event.target.checked) next.add(service.id);
+                          else next.delete(service.id);
+                          return next;
+                        })
+                      }
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span className="truncate text-sm font-medium">
+                      {service.name}
+                    </span>
+                  </span>
+                  <span className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
+                    {fmtMoney(service.price_cents)}
+                  </span>
+                </label>
+              ))}
+          </div>
+          <div className="space-y-2 rounded-xl bg-secondary/50 p-4 text-sm">
+            <p className="font-medium">
+              Review {bulkServices.length} selected service
+              {bulkServices.length === 1 ? "" : "s"}
+            </p>
+            {bulkServices.length > 0 &&
+            (bulkAction === "archive" || validPercent) ? (
+              <div className="max-h-40 space-y-1 overflow-y-auto">
+                {bulkServices.map((service) => (
+                  <p key={service.id} className="flex justify-between gap-3">
+                    <span className="truncate">{service.name}</span>
+                    <span className="whitespace-nowrap tabular-nums">
+                      {bulkAction === "archive"
+                        ? "Will be hidden from new bookings"
+                        : `${fmtMoney(service.price_cents)} → ${fmtMoney(priceAfter(service.price_cents))}`}
+                    </span>
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                Select services
+                {bulkAction === "price"
+                  ? " and enter a change between -100% and 500%"
+                  : ""}{" "}
+                to see the preview.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setBulkOpen(false)}
+              disabled={bulkSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={applyBulk}
+              disabled={
+                bulkSaving ||
+                !bulkServices.length ||
+                (bulkAction === "price" && !validPercent)
+              }
+            >
+              {bulkSaving
+                ? "Applying…"
+                : bulkAction === "archive"
+                  ? `Archive ${bulkServices.length}`
+                  : `Update ${bulkServices.length} prices`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={categoryManagerOpen}

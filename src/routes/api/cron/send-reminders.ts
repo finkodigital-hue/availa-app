@@ -10,6 +10,7 @@ import { sendSms, SmsSendError } from "@/lib/sms.server";
 import { buildReminderSms } from "@/lib/sms/reminder-sms.server";
 import { runRetentionSweep } from "@/lib/retention-sweep.server";
 import { markBookingNotification } from "@/lib/notification-delivery.server";
+import { processBookingChangeEmails } from "@/lib/booking-change-email.server";
 
 // Woken up every 15 minutes by a Supabase pg_cron + pg_net job (see
 // supabase/migrations/20260723150000_add_booking_reminders.sql). This route,
@@ -200,7 +201,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 "id,starts_at,customer_phone,customers(phone),services(name)",
               )
               .eq("business_id", business.id)
-              .not("sms_reminder_consent_at", "is", null)
+              .or("sms_reminder_notice_at.not.is.null,sms_reminder_consent_at.not.is.null")
               .is("sms_reminder_sent_at", null)
               .not("status", "in", "(cancelled,completed,no_show)")
               .gt("starts_at", now.toISOString())
@@ -444,6 +445,13 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           console.error("[send-reminders] retention sweep failed", error);
         }
 
+        let bookingChangeEmails = { sent: 0, suppressed: 0, skipped: 0, failed: 0 };
+        try {
+          bookingChangeEmails = await processBookingChangeEmails();
+        } catch {
+          console.error("[send-reminders] booking change email sweep unavailable");
+        }
+
         // --- Studio subscription status sweep ---
         // Renewal/cancellation truth arrives by re-checking Stripe rather than
         // webhooks (same fulfil-by-verification philosophy as checkout).
@@ -532,6 +540,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           reviewRequestsSent,
           reviewRequestsFailed,
           ...retention,
+          bookingChangeEmails,
           subscriptionsChecked,
           subscriptionsDowngraded,
         });

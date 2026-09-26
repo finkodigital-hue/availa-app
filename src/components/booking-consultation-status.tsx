@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { getBookingConsultationStatus } from "@/lib/consultations.functions";
+import { useWorkspaceAccess } from "@/lib/business";
 import {
+  consultationActionTarget,
   consultationStatus,
   type RecordStatus,
 } from "@/lib/consultation-status";
@@ -19,13 +21,16 @@ export function BookingConsultationStatus({
 }: {
   bookingId: string;
 }) {
+  const access = useWorkspaceAccess();
   const query = useQuery({
     queryKey: ["booking-consultations", bookingId],
+    enabled: access.isOwner,
     queryFn: async () => {
       const headers = await getServerFnAuthHeaders();
       return getBookingConsultationStatus({ data: { bookingId }, headers });
     },
   });
+  if (!access.isOwner) return null;
   if (query.isLoading) return <Skeleton className="h-16 rounded-xl" />;
   if (query.isError)
     return (
@@ -50,24 +55,22 @@ export function BookingConsultationStatus({
     latestByTemplate.set(key, row);
   }
   const currentRows = Array.from(latestByTemplate.values());
-  const needsAttention = currentRows.some(
-    (row) => consultationStatus(row).attention,
-  );
+  const action = consultationActionTarget(currentRows);
   return (
     <Link
       to="/consultations"
-      search={{ bookingId, tab: "records" }}
-      className={`block rounded-xl border p-3 transition hover:border-foreground/20 ${needsAttention ? "border-amber-300/60 bg-amber-50/60 dark:bg-amber-950/20" : "border-emerald-300/60 bg-emerald-50/60 dark:bg-emerald-950/20"}`}
+      search={{ bookingId, recordId: action.recordId, tab: "records" }}
+      className={`block rounded-xl border p-3 transition hover:border-foreground/20 ${action.needsAttention ? "border-amber-300/60 bg-amber-50/60 dark:bg-amber-950/20" : "border-emerald-300/60 bg-emerald-50/60 dark:bg-emerald-950/20"}`}
     >
       <div className="flex items-center gap-2">
-        {needsAttention ? (
+        {action.needsAttention ? (
           <TriangleAlert className="h-4 w-4 text-amber-700" />
         ) : (
           <CheckCircle2 className="h-4 w-4 text-emerald-700" />
         )}
-        <span className="text-sm font-semibold">Consultation safety</span>
+        <span className="text-sm font-semibold">Consultation records</span>
         <span className="ml-auto text-xs text-muted-foreground">
-          View records
+          {action.label}
         </span>
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">

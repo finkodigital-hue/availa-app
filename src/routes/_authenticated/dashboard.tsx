@@ -21,6 +21,7 @@ import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import {
   checkInDashboardBooking,
   getDashboardOverview,
+  getDashboardCustomerNotes,
   type DashboardBooking,
   type DashboardAttentionItem,
 } from "@/lib/dashboard.functions";
@@ -121,6 +122,85 @@ function Dashboard() {
 
       {data && !isError && (
         <section
+          aria-labelledby="preparation-heading"
+          className="mt-8 rounded-2xl border bg-card p-5 shadow-soft sm:p-8"
+        >
+          <h2
+            id="preparation-heading"
+            className="text-xl font-semibold tracking-tight"
+          >
+            Prepare for today's clients
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Upcoming and in-progress visits, in appointment order. Private notes
+            stay hidden until you open them.
+          </p>
+          {data.preparation?.length ? (
+            <ul className="mt-5 divide-y">
+              {data.preparation.map((booking) => (
+                <li key={booking.id} className="py-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        {new Date(booking.startsAt).toLocaleTimeString(
+                          "en-GB",
+                          {
+                            timeZone: data.business.timezone || "Europe/London",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}{" "}
+                        · {booking.customerName}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {booking.serviceName} · {booking.staffName}
+                      </p>
+                      <p className="mt-2 text-sm">{booking.formSummary}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {booking.paymentStatus === "failed"
+                          ? "Payment needs review · "
+                          : ""}
+                        {booking.balanceCents > 0
+                          ? `${new Intl.NumberFormat("en-GB", { style: "currency", currency: data.business.currency || "GBP" }).format(booking.balanceCents / 100)} appointment balance`
+                          : "No appointment balance shown"}
+                      </p>
+                    </div>
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="self-start shrink-0"
+                    >
+                      <Link to="/bookings" search={{ bookingId: booking.id }}>
+                        Open appointment
+                        <ArrowRight
+                          aria-hidden="true"
+                          className="ml-2 h-4 w-4"
+                        />
+                      </Link>
+                    </Button>
+                  </div>
+                  {booking.customerId && (
+                    <PrivatePreparationNotes customerId={booking.customerId} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-5 text-sm text-muted-foreground">
+              No upcoming visits left today.
+            </p>
+          )}
+          <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+            Showing up to 20 visits. Form counts cover only records linked to
+            each appointment, not every required form or patch-test clearance.
+            Open the appointment to check customer records and requirements.
+            Balances are for the appointment only.
+          </p>
+        </section>
+      )}
+
+      {data && !isError && (
+        <section
           aria-labelledby="attention-heading"
           className="mt-8 rounded-2xl border bg-card p-5 shadow-soft sm:p-8"
         >
@@ -173,6 +253,53 @@ function Dashboard() {
   );
 }
 
+function PrivatePreparationNotes({ customerId }: { customerId: string }) {
+  const [open, setOpen] = useState(false);
+  const notes = useQuery({
+    queryKey: ["dashboard-private-notes", customerId],
+    enabled: open,
+    gcTime: 0,
+    queryFn: async () =>
+      getDashboardCustomerNotes({
+        data: { customerId },
+        headers: await getServerFnAuthHeaders(),
+      }),
+  });
+  return (
+    <div className="mt-3">
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {open ? "Hide private notes" : "Show private notes"}
+      </Button>
+      {open && (
+        <div
+          className="mt-2 rounded-lg border bg-muted/30 p-3 text-sm"
+          role="status"
+        >
+          {notes.isPending ? (
+            "Loading notes…"
+          ) : notes.isError ? (
+            <>
+              <p>Notes could not be loaded.</p>
+              <Button variant="link" onClick={() => notes.refetch()}>
+                Try again
+              </Button>
+            </>
+          ) : (
+            <p className="whitespace-pre-wrap break-words">
+              {notes.data?.notes || "No customer notes recorded."}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AttentionRow({ item }: { item: DashboardAttentionItem }) {
   const Icon =
     item.kind === "payment"
@@ -212,7 +339,7 @@ function AttentionRow({ item }: { item: DashboardAttentionItem }) {
             {content}
           </Link>
         ) : item.kind === "consultation" ? (
-          <Link to="/consultations" search={{ tab: "records" }}>
+          <Link to="/consultations" search={{ tab: "records", recordId: item.recordId }}>
             {content}
           </Link>
         ) : (

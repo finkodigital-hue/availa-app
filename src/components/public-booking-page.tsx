@@ -53,6 +53,7 @@ import {
 } from "@/lib/storefront";
 import { safeImageSrc } from "@/lib/safe-url";
 import { sanitizePageBlocks } from "@/lib/page-block-security";
+import { previousStepFromTime, soleEligibleStaff } from "@/lib/public-booking-flow";
 
 // The real public booking page renderer — used both at /book/$slug and,
 // embedded/scaled/non-interactive, as the live preview in the setup wizard
@@ -262,7 +263,6 @@ export function PublicBookingPage({
     notes: "",
   });
   const [infoTouched, setInfoTouched] = useState(false);
-  const [smsReminderConsent, setSmsReminderConsent] = useState(false);
   const [emailMarketingConsent, setEmailMarketingConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
@@ -644,6 +644,13 @@ export function PublicBookingPage({
     setStep("time");
   };
 
+  // Once the eligible staff response arrives, a sole match is already the
+  // customer's choice. Resolve its business-specific service before times load.
+  useEffect(() => {
+    const onlyStaff = soleEligibleStaff(allStaff);
+    if (step === "staff" && onlyStaff) pickStaff(onlyStaff);
+  }, [step, allStaff, serviceGroup]);
+
   const book = async () => {
     if (!service || !staff || !time) return;
     if (!info.name.trim()) {
@@ -658,16 +665,6 @@ export function PublicBookingPage({
       toast.error("Please enter a valid phone number.");
       return;
     }
-    if (
-      smsReminderConsent &&
-      !/^\+[1-9]\d{7,14}$/.test(info.phone.replace(/[\s().-]/g, ""))
-    ) {
-      toast.error(
-        "Use an international phone number (for example +44 7123 456789) for SMS reminders.",
-      );
-      return;
-    }
-
     setSubmitting(true);
     try {
       const starts_at = time;
@@ -705,7 +702,6 @@ export function PublicBookingPage({
           customerName: info.name,
           customerEmail: info.email,
           customerPhone: info.phone,
-          smsReminderConsent,
           emailMarketingConsent,
           startsAt: starts_at,
           endsAt: ends_at,
@@ -725,7 +721,6 @@ export function PublicBookingPage({
           customerName: info.name,
           customerEmail: info.email,
           customerPhone: info.phone,
-          smsReminderConsent,
           emailMarketingConsent,
           startsAt: starts_at,
           endsAt: ends_at,
@@ -778,7 +773,6 @@ export function PublicBookingPage({
     setBookedEndsAt(null);
     setBookedBookingId(null);
     setInfo({ name: "", email: "", phone: "", notes: "" });
-    setSmsReminderConsent(false);
     setEmailMarketingConsent(false);
     setInfoTouched(false);
   };
@@ -922,7 +916,7 @@ export function PublicBookingPage({
         )}
 
         {step !== "done" && step !== "service" && (
-          <Stepper step={step} brand={brand} />
+          <Stepper step={step} brand={brand} skipStaff={allStaff?.length === 1} />
         )}
 
         {/* Selection summary */}
@@ -976,6 +970,8 @@ export function PublicBookingPage({
                         <img
                           src={safeImageSrc(heroPhotos[0].url) ?? undefined}
                           alt=""
+                          fetchPriority="high"
+                          decoding="async"
                           className="absolute inset-0 h-full w-full object-cover opacity-65"
                         />
                       )}
@@ -1033,6 +1029,8 @@ export function PublicBookingPage({
                                 key={photo.id}
                                 src={safeImageSrc(photo.url) ?? undefined}
                                 alt=""
+                                loading="lazy"
+                                decoding="async"
                                 className="h-full min-h-0 w-full rounded-2xl object-cover ring-1 ring-white/25"
                               />
                             ))}
@@ -1054,7 +1052,7 @@ export function PublicBookingPage({
                       data-storefront-section="booking"
                       className="scroll-mt-5"
                     >
-                      <Stepper step={step} brand={brand} />
+                      <Stepper step={step} brand={brand} skipStaff={allStaff?.length === 1} />
                       <div className="mt-10 max-w-3xl">
                         {section.heading && (
                           <h2 className="font-display text-3xl sm:text-5xl">
@@ -1455,7 +1453,7 @@ export function PublicBookingPage({
         {/* TIME */}
         {step === "time" && service && (
           <div key="time" className="animate-rise">
-            <BackBtn onClick={() => setStep("staff")} />
+            <BackBtn onClick={() => setStep(previousStepFromTime(allStaff?.length))} />
             {/* Date strip */}
             <div className="rounded-2xl border bg-card p-3 mb-5 shadow-soft">
               <div className="flex items-center justify-between mb-2 px-1">
@@ -1713,25 +1711,11 @@ export function PublicBookingPage({
                 )}
               </div>
             </div>
-            <label className="flex items-start gap-3 rounded-xl border p-3 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4"
-                checked={smsReminderConsent}
-                disabled={!info.phone.trim()}
-                onChange={(event) =>
-                  setSmsReminderConsent(event.target.checked)
-                }
-              />
-              <span>
-                Send me an SMS reminder for this appointment. Optional; standard
-                message rates may apply.
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  Enter your number in international format, such as +44 7123
-                  456789. This consent applies only to this booking.
-                </span>
-              </span>
-            </label>
+            <p className="rounded-xl border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              If you provide a mobile number, {biz.name} may text you a reminder
+              about this appointment. Booking messages contain no offers. You
+              can book without a phone number.
+            </p>
             <label className="flex items-start gap-3 rounded-xl border p-3 text-sm">
               <input
                 type="checkbox"
@@ -1772,9 +1756,10 @@ export function PublicBookingPage({
             <div className="rounded-xl border bg-secondary/20 p-4 text-sm space-y-2">
               <p className="font-medium">Booking and cancellation policy</p>
               <p className="text-muted-foreground leading-5">
-                Cancel or reschedule online at least{" "}
+                You can cancel or reschedule online until{" "}
                 {selectedPolicy.cancellation_window_hours ?? 24} hours before
-                your appointment. After that, contact {biz.name} directly.
+                your appointment. Closer to the time, online changes close;
+                {" "}{biz.name} can let you know what options remain under its policy.
               </p>
               {selectedPolicy.cancellation_policy && (
                 <p className="text-muted-foreground leading-5 whitespace-pre-wrap">
@@ -1969,18 +1954,19 @@ function SlotGroup({
   );
 }
 
-function Stepper({ step, brand }: { step: Step; brand: string }) {
-  const idx = STEPS.findIndex((s) => s.id === step);
+function Stepper({ step, brand, skipStaff = false }: { step: Step; brand: string; skipStaff?: boolean }) {
+  const steps = skipStaff ? STEPS.filter((s) => s.id !== "staff") : STEPS;
+  const idx = steps.findIndex((s) => s.id === step);
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
         <span>
-          Step {idx + 1} of {STEPS.length}
+          Step {idx + 1} of {steps.length}
         </span>
-        <span>{STEPS[idx]?.label}</span>
+        <span>{steps[idx]?.label}</span>
       </div>
       <div className="mt-2 flex gap-1.5">
-        {STEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <div
             key={s.id}
             className="h-1 flex-1 rounded-full bg-secondary overflow-hidden"

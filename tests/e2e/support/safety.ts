@@ -22,13 +22,28 @@ export async function installMutationGuard(page: Page) {
   await page.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    const isWrite = !["GET", "HEAD", "OPTIONS"].includes(request.method());
+    // PostgREST invokes RPCs with POST even for STABLE, read-only SQL
+    // functions. This one only lists public-bookable professionals; keep the
+    // exception exact so new or mutating RPCs still fail closed.
+    const isReadOnlyPublicProfessionals =
+      request.method() === "POST" &&
+      url.pathname ===
+        "/api/supabase/rest/v1/rpc/get_public_salon_professionals";
+    // These tests only read app pages. Block every app-origin write, including
+    // new endpoints not yet listed below. Keep third-party auth token refresh
+    // outside this rule so a signed-in read-only test can still load.
+    const isAppWrite =
+      isWrite &&
+      !isReadOnlyPublicProfessionals &&
+      page.url() !== "about:blank" &&
+      url.origin === new URL(page.url()).origin;
     const isExternalWrite =
-      request.method() !== "GET" && EXTERNAL_WRITE_HOSTS.includes(url.hostname);
+      isWrite && EXTERNAL_WRITE_HOSTS.includes(url.hostname);
     const isDangerousPath =
-      request.method() !== "GET" &&
-      DANGEROUS_PATHS.some((pattern) => pattern.test(url.pathname));
+      isWrite && DANGEROUS_PATHS.some((pattern) => pattern.test(url.pathname));
 
-    if (isExternalWrite || isDangerousPath) {
+    if (isAppWrite || isExternalWrite || isDangerousPath) {
       blocked.push(`${request.method()} ${url.href}`);
       await route.abort("blockedbyclient");
       return;
@@ -42,6 +57,9 @@ export async function installMutationGuard(page: Page) {
         blocked,
         `Unsafe requests attempted:\n${blocked.join("\n")}`,
       ).toEqual([]);
+    },
+    blockedRequests() {
+      return [...blocked];
     },
   };
 }

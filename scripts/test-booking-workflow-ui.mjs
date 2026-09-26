@@ -8,7 +8,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { chromium } from "playwright";
 
-const server = await createServer({ configFile: false, plugins: [react(), tailwindcss()], resolve: { alias: { "@": resolve("src") } }, server: { host: "127.0.0.1", port: 4188, strictPort: true } });
+const server = await createServer({ configFile: false, optimizeDeps: { entries: ["tests/fixtures/booking-workflow.html"] }, plugins: [react(), tailwindcss()], resolve: { alias: { "@": resolve("src") } }, server: { host: "127.0.0.1", port: 4188, strictPort: true } });
 await server.listen();
 let browser;
 try {
@@ -48,6 +48,8 @@ try {
   await page.goto("http://127.0.0.1:4188/tests/fixtures/booking-workflow.html");
   await page.getByRole("button", { name: "Use service & stylist" }).click();
   await page.getByRole("button", { name: "In 4 weeks", exact: true }).click();
+  await page.getByRole("button", { name: "Find next available" }).click();
+  await page.getByText(/Next available:/).waitFor();
   await page.getByRole("button", { name: "9:00", exact: true }).click();
   await page.getByRole("button", { name: "unpaid", exact: true }).waitFor();
   assert.match(await page.getByRole("dialog").innerText(), /45\.00/);
@@ -88,7 +90,7 @@ try {
   assert.deepEqual(Object.keys(formPayload).sort(), ["customerEmail", "customerId", "customerName", "customerPhone", "templateId"].sort());
   assert.equal(writes, 1, "Form fixture uses a callback only; no real form is created");
   assert.deepEqual(errors, []);
-  console.log("Workflow UI passed: booking reuse, date shortcut, unpaid review, confirmation, mobile width, private notes, contact reuse and explicit review. One intercepted mock write; no real requests.");
+  console.log("Workflow UI passed: booking reuse, next available, unpaid review, confirmation, mobile width, private notes, contact reuse and explicit review. One intercepted mock write; no real requests.");
 } finally {
   await browser?.close();
   await server.close();

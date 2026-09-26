@@ -62,9 +62,21 @@ import {
 } from "@/lib/consultations.functions";
 
 export const Route = createFileRoute("/_authenticated/consultations")({
-  validateSearch: (search: Record<string, unknown>): { customerId?: string; bookingId?: string; tab?: "records" } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    customerId?: string;
+    bookingId?: string;
+    recordId?: string;
+    tab?: "records";
+  } => ({
     customerId: typeof search.customerId === "string" ? search.customerId : undefined,
     bookingId: typeof search.bookingId === "string" ? search.bookingId : undefined,
+    recordId:
+      typeof search.recordId === "string" &&
+      /^[0-9a-f-]{36}$/i.test(search.recordId)
+        ? search.recordId
+        : undefined,
     tab: search.tab === "records" ? "records" : undefined,
   }),
   component: ConsultationsPage,
@@ -208,6 +220,14 @@ function ConsultationsPage() {
       return getConsultationWorkspace({ data: { customerId: search.customerId, bookingId: search.bookingId }, headers });
     },
   });
+
+  useEffect(() => {
+    if (!search.recordId || !query.data) return;
+    const record = query.data.submissions.find(
+      (item: { id: string }) => item.id === search.recordId,
+    );
+    if (record) setSelectedRecord(record);
+  }, [search.recordId, query.data]);
 
   const templates = query.data?.templates ?? [];
   const services = query.data?.services ?? [];
@@ -572,7 +592,19 @@ function ConsultationsPage() {
       />
       <RecordDialog
         record={selectedRecord}
-        onClose={() => setSelectedRecord(null)}
+        onClose={() => {
+          setSelectedRecord(null);
+          if (search.recordId) {
+            void navigate({
+              search: {
+                customerId: search.customerId,
+                bookingId: search.bookingId,
+                tab: "records",
+              },
+              replace: true,
+            });
+          }
+        }}
         onSaved={async () => {
           const refreshed = await query.refetch();
           setSelectedRecord(

@@ -39,8 +39,8 @@ function Layout() {
 
     useEffect(() => {
       if (!biz || access.isLoading || !access.role) return;
-      const ownerOnly = ["/settings", "/payments", "/professionals", "/assistant", "/page-builder", "/import"];
-      const gated: [string, WorkspacePermission][] = [["/customers","customers.manage"],["/consultations","customers.manage"],["/staff","staff.manage"],["/services","services.manage"],["/stock","inventory.manage"],["/reports","reports.read"]];
+      const ownerOnly = ["/settings", "/payments", "/gift-cards", "/professionals", "/assistant", "/page-builder", "/import", "/consultations"];
+      const gated: [string, WorkspacePermission][] = [["/customers","customers.manage"],["/staff","staff.manage"],["/services","services.manage"],["/stock","inventory.manage"],["/reports","reports.read"]];
       if ((!access.isOwner && ownerOnly.some((p) => path.startsWith(p))) || gated.some(([p, permission]) => path.startsWith(p) && !access.can(permission))) navigate({ to: "/dashboard", replace: true });
     }, [access, biz, navigate, path]);
   

@@ -134,9 +134,7 @@ function AuthPage() {
         const error = response.ok ? null : await response.json();
         if (error) {
           if (error.message?.includes("ALREADY_ON_LIST")) {
-            toast.success(
-              "You're already on the waitlist. We'll be in touch.",
-            );
+            toast.success("You're already on the waitlist. We'll be in touch.");
             setWaitlistDone(true);
             return;
           }
@@ -211,7 +209,7 @@ function AuthPage() {
     <div className="workspace-theme min-h-screen grid md:grid-cols-2 bg-background">
       <div className="hidden md:flex relative overflow-hidden bg-foreground text-background">
         <div className="absolute inset-0 mesh-bg opacity-70 pointer-events-none" />
-        <div className="absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-primary/30 blur-3xl animate-float" />
+        <div className="absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-primary/30 blur-3xl motion-safe:animate-float" />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <Link to="/">
             <Wordmark className="text-[25px]" dotClassName="text-primary" />
@@ -236,12 +234,9 @@ function AuthPage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm animate-rise">
-          <Link
-            to="/"
-            className="md:hidden mb-8 inline-block"
-          >
+      <main className="flex items-center justify-center p-6">
+        <div className="w-full max-w-sm motion-safe:animate-rise">
+          <Link to="/" className="md:hidden mb-8 inline-block">
             <Wordmark className="text-[25px]" dotClassName="text-primary" />
           </Link>
           <h1 className="font-display text-3xl md:text-4xl tracking-tight">
@@ -268,7 +263,7 @@ function AuthPage() {
                 <div>
                   <Label
                     htmlFor="email"
-                    className="text-xs uppercase tracking-wide text-muted-foreground"
+                  className="text-sm font-medium text-muted-foreground"
                   >
                     Email
                   </Label>
@@ -285,7 +280,7 @@ function AuthPage() {
                       }}
                       required
                       placeholder="you@studio.com"
-                      className="h-11 pr-10"
+                      className="h-11 pr-11"
                     />
                     {email && (
                       <button
@@ -296,7 +291,7 @@ function AuthPage() {
                           emailRef.current?.focus();
                         }}
                         aria-label="Clear email address"
-                        className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="absolute right-0.5 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <X className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -309,7 +304,7 @@ function AuthPage() {
                   <div className="flex items-baseline justify-between">
                     <Label
                       htmlFor="password"
-                      className="text-xs uppercase tracking-wide text-muted-foreground"
+                      className="text-sm font-medium text-muted-foreground"
                     >
                       {mode === "update" ? "New password" : "Password"}
                     </Label>
@@ -317,9 +312,9 @@ function AuthPage() {
                       <Link
                         to="/auth"
                         search={{ mode: "reset" }}
-                        className="text-xs text-muted-foreground hover:text-foreground"
+                        className="inline-flex min-h-10 items-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
-                        Forgot?
+                        Forgot password?
                       </Link>
                     )}
                   </div>
@@ -350,7 +345,7 @@ function AuthPage() {
                           passwordRef.current?.focus();
                         }}
                         aria-label="Clear password"
-                        className="absolute right-10 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="absolute right-10 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <X className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -361,7 +356,7 @@ function AuthPage() {
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
                       }
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2 h-10 w-10 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -453,7 +448,7 @@ function AuthPage() {
             </p>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

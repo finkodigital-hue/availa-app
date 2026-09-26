@@ -28,3 +28,29 @@ test("private pages redirect signed-out visitors", async ({ page }) => {
     page.getByRole("heading", { name: "Welcome back" }),
   ).toBeVisible();
 });
+
+test("sign-in stays readable and keyboard-friendly at 320px", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const safety = await installMutationGuard(page);
+
+  await page.goto("/auth");
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  const forgotPassword = page.getByRole("link", { name: "Forgot password?" });
+  await expect(forgotPassword).toBeVisible();
+  expect((await forgotPassword.boundingBox())?.height).toBeGreaterThanOrEqual(40);
+
+  const showPassword = page.getByRole("button", { name: "Show password" });
+  await page.getByRole("textbox", { name: "Email", exact: true }).focus();
+  await page.keyboard.press("Tab");
+  await expect(forgotPassword).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(showPassword).toBeFocused();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+  ).toBe(false);
+  safety.expectNothingBlocked();
+});

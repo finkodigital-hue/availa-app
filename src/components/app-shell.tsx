@@ -86,7 +86,7 @@ const NAV_GROUPS: readonly {
         to: "/consultations",
         icon: ClipboardCheck,
         label: "Consultations",
-        permission: "customers.manage",
+        ownerOnly: true,
       },
     ],
   },
