@@ -24,21 +24,21 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       {
-        title: "Bookzenvo · Be ready for every salon visit",
+        title: "Bookzenvo · The whole salon day, connected",
       },
       {
         name: "description",
         content:
-          "A colour booking is only the start. Keep consultations, patch-test records, payments and rebooking connected in Bookzenvo. Join the waitlist.",
+          "Keep salon bookings, client care, payments and rebooking connected in Bookzenvo. Join the waitlist for launch updates.",
       },
       {
         property: "og:title",
-        content: "Bookzenvo · Be ready for every salon visit",
+        content: "Bookzenvo · The whole salon day, connected",
       },
       {
         property: "og:description",
         content:
-          "See how Bookzenvo helps a salon prepare for a colour appointment, look after the visit and welcome the client back.",
+          "Bookings are only one part of a salon day. See how Bookzenvo connects client care, payments and the next visit.",
       },
       {
         property: "og:image",
@@ -284,46 +284,25 @@ function Landing() {
         <main id="top" tabIndex={-1}>
           <section className="lp-hero">
             <div className="lp-hero-copy">
-              <p className="lp-kicker lp-hero-label">
-                For appointments that need more than a time slot
-              </p>
               <h1>
-                The colour client
+                The whole salon day.
                 <br />
-                <span>is booked. Now what?</span>
+                <span>Not just the booking.</span>
               </h1>
               <p className="lp-hero-lede">
-                Check the consultation and patch-test record before they arrive.
-                Keep the visit connected through payment and rebooking.
+                Bookings, client care, payments and rebooking stay connected, so
+                your team can focus on the work in front of them.
               </p>
-              <div className="lp-hero-actions">
-                <a className="lp-text-link" href="#how">
-                  Follow the appointment <ArrowRight aria-hidden="true" />
-                </a>
-              </div>
               <WaitlistForm />
             </div>
-            <figure className="lp-hero-product">
-              <div className="lp-hero-product-image">
-                <img
-                  src="/landing/consultation-workflow.png"
-                  alt="Bookzenvo's consultation form editor with questions about allergies and previous reactions"
-                  width="1536"
-                  height="1840"
-                  fetchPriority="high"
-                />
-              </div>
-              <figcaption>
-                <span>Inside Bookzenvo</span>
-                <strong>Build the consultation your team needs.</strong>
-                <a
-                  href="/landing/consultation-workflow.png"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View full screenshot <ArrowRight aria-hidden="true" />
-                </a>
-              </figcaption>
+            <figure className="lp-hero-photo">
+              <img
+                src="/landing/salon-at-work.jpg"
+                alt="A stylist carefully cutting a client's hair in a salon"
+                width="1400"
+                height="933"
+                fetchPriority="high"
+              />
             </figure>
           </section>
 
