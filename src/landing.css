@@ -220,6 +220,7 @@
   border-left: 3px solid var(--lp-gold);
   border-radius: 6px;
   background: var(--lp-tint);
+  color: #7d5d32;
   font-size: clamp(14px, 1.1vw, 16px);
   font-weight: 600;
   letter-spacing: 0;
@@ -955,7 +956,7 @@
 }
 .lp-price-top strong span {
   font-size: 13px;
-  color: #756c61;
+  color: #6f665b;
   font-weight: 400;
   letter-spacing: 0;
   margin-left: 5px;
@@ -1662,7 +1663,7 @@
   line-height: 1.4;
 }
 .lp-includes {
-  color: var(--lp-gold);
+  color: #7d5d32;
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-page *,
