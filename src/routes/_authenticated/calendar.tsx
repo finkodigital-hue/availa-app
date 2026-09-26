@@ -415,7 +415,9 @@ function CalendarPage() {
     }
 
     // Haptic on mobile
-    try { (navigator as any).vibrate?.(12); } catch {}
+    try { (navigator as any).vibrate?.(12); } catch {
+      // Haptics are optional and unsupported on some browsers.
+    }
 
     toast.success("Booking moved", {
       description: `${fmtTime(prev.starts_at)} → ${fmtTime(newStart.toISOString())}`,
@@ -473,7 +475,9 @@ function CalendarPage() {
       return;
     }
 
-    try { (navigator as any).vibrate?.(10); } catch {}
+    try { (navigator as any).vibrate?.(10); } catch {
+      // Haptics are optional and unsupported on some browsers.
+    }
 
     toast.success("Booking resized", {
       description: `${fmtTime(next.starts_at)} – ${fmtTime(next.ends_at)}`,
