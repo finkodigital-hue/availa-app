@@ -545,7 +545,7 @@ function BookingsPage() {
               selected.payment_status !== "paid" &&
               (selected.price_cents ?? 0) >
                 (selected.amount_paid_cents ?? 0) && (
-                <BookingBalanceCheckout key={selected.id} bookingId={selected.id} businessId={bid!} disabled={actionBusy} onUpdated={(updated) => {
+                <BookingBalanceCheckout key={selected.id} bookingId={selected.id} businessId={bid!} amountDueCents={selected.price_cents - (selected.amount_paid_cents ?? 0)} currency={biz?.currency ?? "GBP"} disabled={actionBusy} onUpdated={(updated) => {
                   setSelected((current: any) => current?.id === updated.id ? { ...current, ...updated } : current);
                   refreshBookings();
                 }} />

@@ -8,6 +8,7 @@ import { checkGiftRefunds } from './schema-gift-refund-checks.mjs';
 import { checkGiftPurchases } from './schema-gift-purchase-checks.mjs';
 import { checkRefundReviews } from './schema-refund-review-checks.mjs';
 import { checkFunctionAccess } from './schema-function-access-checks.mjs';
+import { checkCashPayments } from './schema-cash-payment-checks.mjs';
 
 // Replay ALL application migrations. Supabase-owned Auth/Storage objects and
 // external cron/HTTP/Vault services are local fixtures, not a full Supabase stack.
@@ -106,5 +107,6 @@ try {
  await checkGiftPurchases(db);
  await checkRefundReviews(db);
  await checkFunctionAccess(db);
+ await checkCashPayments(db);
 } catch(error) {console.error(error);process.exitCode=1;}
 finally {await db.close();}

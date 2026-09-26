@@ -785,7 +785,7 @@ function CalendarPage() {
               </Button>
             )}
             {selected && selected.business_id === bid && selected.payment_status !== "paid" && (selected.price_cents ?? 0) > (selected.amount_paid_cents ?? 0) && (
-              <BookingBalanceCheckout key={selected.id} bookingId={selected.id} businessId={bid!} onUpdated={(updated) => {
+              <BookingBalanceCheckout key={selected.id} bookingId={selected.id} businessId={bid!} amountDueCents={selected.price_cents - (selected.amount_paid_cents ?? 0)} currency={biz?.currency ?? "GBP"} onUpdated={(updated) => {
                 setSelected((current: any) => current?.id === updated.id ? { ...current, ...updated } : current);
                 for (const key of ["calendar", "bookings-list", "dashboard-overview"]) void qc.invalidateQueries({ queryKey: [key] });
               }} />
