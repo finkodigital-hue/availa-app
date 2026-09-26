@@ -6,6 +6,7 @@ import { checkSchemaRoles } from './schema-role-checks.mjs';
 import { checkSchemaPaymentLedger } from './schema-payment-ledger-checks.mjs';
 import { checkGiftRefunds } from './schema-gift-refund-checks.mjs';
 import { checkRefundReviews } from './schema-refund-review-checks.mjs';
+import { checkFunctionAccess } from './schema-function-access-checks.mjs';
 
 // Replay ALL application migrations. Supabase-owned Auth/Storage objects and
 // external cron/HTTP/Vault services are local fixtures, not a full Supabase stack.
@@ -102,5 +103,6 @@ try {
  await checkSchemaPaymentLedger(db);
  await checkGiftRefunds(db);
  await checkRefundReviews(db);
+ await checkFunctionAccess(db);
 } catch(error) {console.error(error);process.exitCode=1;}
 finally {await db.close();}

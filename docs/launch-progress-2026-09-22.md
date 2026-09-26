@@ -103,6 +103,11 @@ First batch deployed and verified at revision af7de6756499eec73777cdb12406be03f7
 - Integrated remote main through b163d65, preserving the new payment pagination, booking-change email monitoring, consultation restrictions and public workflow improvements. Resolved conflicts by keeping both sets of checks.
 - Combined production build passed, including all 132 migrations and security-boundary checks across 63 public tables; the new review cases add 12 full-schema and nine signed-handler assertions. Actual Stripe event delivery and operator reconciliation remain separate evidence.
 
+## Function-access follow-up — 26 September
+
+- Reviewed live anonymous security-definer access. Restricted an internal notification-preference helper to the server and removed inherited anonymous grants from seven signed-in-only operations, preserving their authenticated/server callers. Public discovery and invitation-token lookup remain available.
+- All 133 migrations replay with nine additional grant/notification-trigger assertions. See [function access review](database-function-access-review.md); remaining advisor warnings are not declared cleared.
+
 ## Security-advisor triage — 25 September
 
 - The production Supabase Security Advisor shows four security-definer-view errors. These are the deliberately narrow public business, staff, blocked-time and booking-slot projections used for storefront discovery and availability. Do not change them to invoker mode without redesigning public access; that would break public booking. A full-schema regression now checks the exact exposed columns of all four views so future additions cannot silently publish private fields. This does **not** clear the advisor errors or replace a live permission review.
