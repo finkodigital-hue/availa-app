@@ -45,6 +45,7 @@ function InviteAcceptPage() {
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   if (isLoading || authLoading) {
     return <Centered><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></Centered>;
@@ -85,7 +86,7 @@ function InviteAcceptPage() {
         // If session exists we proceed immediately; otherwise we still create the business
         // when they sign back in (they'll be redirected to /invite/:token again).
         if (data.session) {
-          await createProAndLink(data.user!.id, businessName);
+          await createProAndLink(businessName);
         } else {
           toast.success("Check your inbox to confirm your email, then return here.");
         }
@@ -99,7 +100,7 @@ function InviteAcceptPage() {
         if (!businessName.trim()) {
           throw new Error("Enter a name for your business");
         }
-        await createProAndLink(data.user!.id, businessName);
+        await createProAndLink(businessName);
       }
     } catch (e: any) {
       toast.error(e.message ?? "Could not accept invitation");
@@ -113,7 +114,7 @@ function InviteAcceptPage() {
     if (!businessName.trim()) return toast.error("Enter a name for your business");
     setBusy(true);
     try {
-      await createProAndLink(user.id, businessName);
+      await createProAndLink(businessName);
     } catch (e: any) {
       toast.error(e.message ?? "Could not accept invitation");
     } finally {
@@ -121,51 +122,14 @@ function InviteAcceptPage() {
     }
   };
 
-  async function createProAndLink(userId: string, bizName: string) {
-    // Check if this user already owns a business
-    const { data: existing } = await supabase
-      .from("businesses")
-      .select("id")
-      .eq("owner_id", userId)
-      .maybeSingle();
-
-    let proBusinessId = existing?.id as string | undefined;
-
-    if (proBusinessId && proBusinessId === invite.salon?.id) {
-      throw new Error("You already own this salon — it can't rent a chair from itself.");
-    }
-
-    if (!proBusinessId) {
-      const finalSlug = `${slugify(bizName)}-${Math.random().toString(36).slice(2, 6)}`;
-      const { data: newBiz, error: bizErr } = await supabase
-        .from("businesses")
-        .insert({
-          owner_id: userId,
-          name: bizName,
-          slug: finalSlug,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        })
-        .select("id")
-        .single();
-      if (bizErr) throw bizErr;
-      proBusinessId = newBiz.id;
-
-      // Default hours
-      const hours = Array.from({ length: 7 }, (_, w) => ({
-        business_id: proBusinessId!,
-        weekday: w,
-        open_time: w === 0 || w === 6 ? null : "09:00",
-        close_time: w === 0 || w === 6 ? null : "17:00",
-        closed: w === 0 || w === 6,
-      }));
-      await supabase.from("business_hours").insert(hours);
-    }
-
-    // Accept the invite via security-definer RPC (verifies token + ownership,
-    // creates the salon<->pro link and marks the invitation accepted).
-    const { error: acceptErr } = await (supabase as any).rpc("accept_professional_invitation", {
-      _token: token,
-      _pro_business_id: proBusinessId!,
+  async function createProAndLink(bizName: string) {
+    const finalSlug = `${slugify(bizName)}-${Math.random().toString(36).slice(2, 6)}`;
+    const { error: acceptErr } = await (supabase as any).rpc("accept_professional_invitation_with_workspace", {
+      p_token: token,
+      p_business_name: bizName,
+      p_slug: finalSlug,
+      p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      p_terms_version: "2026-09-26",
     });
     if (acceptErr) throw acceptErr;
 
@@ -219,6 +183,15 @@ function InviteAcceptPage() {
             )}
           </div>
         )}
+        <label className="mt-5 flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={termsAccepted}
+            onChange={(event) => setTermsAccepted(event.target.checked)}
+            className="mt-1"
+          />
+          <span>I agree to the <Link to="/terms" target="_blank" className="underline">Bookzenvo Terms</Link> and acknowledge the <Link to="/privacy" target="_blank" className="underline">Privacy Policy</Link> (version 26 September 2026).</span>
+        </label>
 
         {user ? (
           <div className="mt-8 space-y-4">
@@ -240,7 +213,7 @@ function InviteAcceptPage() {
                 className="mt-1.5 h-11"
               />
             </div>
-            <Button onClick={acceptForExistingUser} disabled={busy} className="w-full h-11">
+            <Button onClick={acceptForExistingUser} disabled={busy || !termsAccepted} className="w-full h-11">
               {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Accept invitation
             </Button>
@@ -290,7 +263,7 @@ function InviteAcceptPage() {
                 required
               />
             </div>
-            <Button type="submit" disabled={busy} className="w-full h-11">
+            <Button type="submit" disabled={busy || !termsAccepted} className="w-full h-11">
               {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {mode === "signup" ? "Create account & accept" : "Sign in & accept"}
             </Button>

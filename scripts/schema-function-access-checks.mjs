@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 export async function checkFunctionAccess(db) {
  let checks=0;const same=(a,b)=>{assert.deepEqual(a,b);checks++;};
  await db.exec('reset role');
- const signatures=['accept_professional_invitation(text,uuid)','customer_export_stats(uuid)','customer_visit_counts(uuid)','get_portal_bookings()','get_portal_customer_records()','request_customer_data_action(text)','revoke_staff_account_invitation(uuid)'];
+ const signatures=['accept_professional_invitation_with_workspace(text,text,text,text,text)','accept_staff_account_invitation_with_terms(text,text)','claim_current_customer_records()','customer_export_stats(uuid)','customer_visit_counts(uuid)','get_portal_bookings()','get_portal_customer_records()','request_customer_data_action(text)','revoke_staff_account_invitation(uuid)'];
  for(const signature of signatures) {
   const {rows}=await db.query("select has_function_privilege('anon',$1,'execute') as anonymous,has_function_privilege('authenticated',$1,'execute') as member",['public.'+signature]);
   same(rows[0],{anonymous:false,member:true});
  }
+ const {rows:workspaceExportAccess}=await db.query("select has_function_privilege('anon','public.export_owner_workspace(uuid)','execute') as anonymous,has_function_privilege('authenticated','public.export_owner_workspace(uuid)','execute') as member,has_function_privilege('service_role','public.export_owner_workspace(uuid)','execute') as server");
+ same(workspaceExportAccess[0],{anonymous:false,member:false,server:true});
  const {rows}=await db.query("select has_function_privilege('anon','public.notification_preference_enabled(uuid,text)','execute') as anonymous,has_function_privilege('authenticated','public.notification_preference_enabled(uuid,text)','execute') as member,has_function_privilege('service_role','public.notification_preference_enabled(uuid,text)','execute') as server");
  same(rows[0],{anonymous:false,member:false,server:true});
  for(const signature of ['is_linked_pro_of(uuid)','merge_customers(uuid,uuid)']) {

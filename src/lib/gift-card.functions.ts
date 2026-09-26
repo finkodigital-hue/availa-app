@@ -54,6 +54,7 @@ function formBody(values: Record<string, string>) {
 async function stripeRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`https://api.stripe.com${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(15_000),
     headers: { Authorization: `Bearer ${stripeSecretKey()}`, ...init.headers },
   });
   const body = await response.json();
@@ -113,6 +114,9 @@ export const startGiftCardCheckout = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ checkoutUrl: string }> => {
+    if (process.env.ENABLE_PUBLIC_GIFT_CARD_SALES !== "true") {
+      throw new Error("Public gift card sales are not available yet.");
+    }
     const { consumePublicRequest } = await import("@/lib/public-request-limit.server");
     const sourceKey = await consumePublicRequest("gift");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -173,6 +177,7 @@ export const startGiftCardCheckout = createServerFn({ method: "POST" })
         },
         body: formBody({
           mode: "payment",
+          "payment_method_types[0]": "card",
           customer_email: order.purchaser_email,
           success_url: success,
           cancel_url: `${origin}${data.returnPath}?gift=cancelled`,

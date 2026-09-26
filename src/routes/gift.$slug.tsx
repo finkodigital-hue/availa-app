@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { startGiftCardCheckout, getGiftCardPurchaseResult } from "@/lib/gift-card.functions";
 import { fmtMoney } from "@/lib/format";
 
+const PUBLIC_GIFT_SALES_OPEN = false;
+
 export const Route = createFileRoute("/gift/$slug")({
   loader: async ({ params }) => {
     const { data, error } = await (supabase as any)
@@ -84,6 +86,23 @@ function GiftCardPage() {
               <p className="text-muted-foreground mt-2">Refresh this page shortly. If it continues, contact {business.name}.</p>
             </>
           )}
+        </section>
+      </main>
+    );
+  }
+
+  if (!PUBLIC_GIFT_SALES_OPEN) {
+    return (
+      <main className="min-h-screen bg-background px-5 py-14 grid place-items-center">
+        <section className="w-full max-w-lg rounded-3xl border bg-card p-7 sm:p-10 shadow-sm text-center">
+          <Gift className="mx-auto h-10 w-10 text-muted-foreground" />
+          <h1 className="font-display text-3xl mt-5">Gift card sales are coming soon</h1>
+          <p className="text-muted-foreground mt-2">
+            {business.name} is not taking online gift card payments yet.
+          </p>
+          <Button asChild variant="outline" className="mt-6">
+            <a href={`/book/${business.slug}`}>Back to booking</a>
+          </Button>
         </section>
       </main>
     );

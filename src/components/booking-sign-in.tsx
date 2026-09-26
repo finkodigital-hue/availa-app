@@ -48,6 +48,8 @@ export function BookingSignIn({ onSignedIn }: { onSignedIn: (email: string) => v
         type: "email",
       });
       if (error) throw error;
+      const { error: claimError } = await (supabase as any).rpc("claim_current_customer_records");
+      if (claimError) throw claimError;
       toast.success("Signed in");
       onSignedIn(email.trim().toLowerCase());
     } catch (err: any) {

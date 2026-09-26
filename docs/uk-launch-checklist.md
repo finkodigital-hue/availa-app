@@ -1,6 +1,8 @@
 # Bookzenvo UK launch checklist
 
-Status date: 8 September 2026. This is a practical engineering hand-off, not legal approval.
+Status date: 26 September 2026. This is a practical engineering hand-off, not legal approval.
+
+The external evidence needed from the founders, grant records, providers and qualified advisers is listed in [`founder-legal-launch-evidence.md`](./founder-legal-launch-evidence.md). A source-code check cannot close those gates.
 
 ## Engineering completed
 
@@ -15,12 +17,16 @@ Status date: 8 September 2026. This is a practical engineering hand-off, not leg
 
 ## Owner must complete before public launch
 
+- Assemble and review the grant award, submitted application, approved budget, conditions and variations. Record eligible-spend, procurement/card, match-funding, reporting, IP, publicity and London conference obligations.
 - Set and verify `VITE_LEGAL_OPERATOR_NAME`, `VITE_LEGAL_OPERATOR_FORM`, `VITE_LEGAL_OPERATOR_ADDRESS`, and the public contact email. Add company number and registration jurisdiction, VAT and ICO numbers where applicable.
 - Run `npm run audit:launch -- https://bookzenvo.com` against the final production deployment and do not waive failures.
 - Confirm the privacy notice reflects the actual production hosts, regions, subprocessors, email flows, payment setup and AI features.
 - Choose and document retention periods by record type. Configure provider backup expiry consistently; do not keep data merely because storage is available.
 - Establish a secure identity-check and delivery method for access requests. Record extensions, refusals, restrictions and legal holds outside the product until dedicated workflow support exists.
 - Maintain evidence of licences/permissions for every bundled photograph, font, icon and marketing asset, plus a notice-and-takedown channel.
+- Complete the contributor/IP ownership chain for founder, collaborator, contractor and pre-incorporation work before asserting that BOOKZENVO LTD owns the code and brand assets.
+- Activate and prove each enabled production provider with end-to-end evidence, including Stripe, Twilio, Resend/domain email, Supabase backups and Storage, Cloudflare deployment controls and any enabled AI or calendar provider.
+- Complete a physical salon pilot on real mobile devices and retain a signed go/no-go record for the exact release.
 - Perform production keyboard, 200%/400% zoom, screen-reader and colour-contrast checks.
 
 ## ICO / data-protection actions

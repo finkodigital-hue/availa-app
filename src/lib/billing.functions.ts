@@ -51,6 +51,7 @@ function stripeSecretKey() {
 async function stripeRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`https://api.stripe.com${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${stripeSecretKey()}`,
       ...init.headers,

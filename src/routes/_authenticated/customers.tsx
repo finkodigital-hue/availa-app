@@ -883,8 +883,8 @@ function DataRequestActionDialog({
               <div className="flex items-start justify-between gap-4 border-t px-4 py-3">
                 <dt className="text-muted-foreground">Portal access</dt>
                 <dd className="max-w-[16rem] text-right font-medium text-foreground">
-                  {eraseResult.authAccountStatus === "removed"
-                    ? "Sign-in removed"
+                  {eraseResult.authAccountStatus === "portal_access_removed"
+                    ? "This salon's portal access removed; platform sign-in kept safely"
                     : eraseResult.authAccountStatus === "preserved_shared"
                       ? "Kept for another business"
                       : eraseResult.authAccountStatus === "not_found"

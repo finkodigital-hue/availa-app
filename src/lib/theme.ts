@@ -32,69 +32,28 @@ export interface Theme {
   updatedAt: string;
 }
 
-// Curated Google Fonts offered in the display-font picker. `stack` is the
-// full font-family fallback chain; `googleParam` is the family spec used to
-// build the Google Fonts CSS2 URL (weights cover body + display use).
-export const FONT_CHOICES: { id: string; label: string; stack: string; googleParam: string }[] = [
+// Curated fonts bundled with Bookzenvo. Keeping the public booking page
+// self-hosted avoids disclosing each visitor's network details to a font CDN.
+export const FONT_CHOICES: { id: string; label: string; stack: string }[] = [
   {
     id: "Inter",
     label: "Inter (modern sans)",
     stack: '"Inter", ui-sans-serif, system-ui, sans-serif',
-    googleParam: "Inter:wght@400;500;600;700",
-  },
-  {
-    id: "Playfair Display",
-    label: "Playfair Display (luxe serif)",
-    stack: '"Playfair Display", ui-serif, Georgia, serif',
-    googleParam: "Playfair+Display:wght@400;500;600;700",
-  },
-  {
-    id: "Space Grotesk",
-    label: "Space Grotesk (technical)",
-    stack: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
-    googleParam: "Space+Grotesk:wght@400;500;600;700",
-  },
-  {
-    id: "Lato",
-    label: "Lato (friendly)",
-    stack: '"Lato", ui-sans-serif, system-ui, sans-serif',
-    googleParam: "Lato:wght@400;700",
-  },
-  {
-    id: "Poppins",
-    label: "Poppins (geometric)",
-    stack: '"Poppins", ui-sans-serif, system-ui, sans-serif',
-    googleParam: "Poppins:wght@400;500;600;700",
   },
   {
     id: "Fraunces",
     label: "Fraunces (editorial serif)",
     stack: '"Fraunces", ui-serif, Georgia, serif',
-    googleParam: "Fraunces:wght@400;500;600;700",
   },
   {
     id: "DM Sans",
     label: "DM Sans (clean sans)",
     stack: '"DM Sans", ui-sans-serif, system-ui, sans-serif',
-    googleParam: "DM+Sans:wght@400;500;600;700",
-  },
-  {
-    id: "Manrope",
-    label: "Manrope (geometric)",
-    stack: '"Manrope", ui-sans-serif, system-ui, sans-serif',
-    googleParam: "Manrope:wght@400;500;600;700",
   },
   {
     id: "Cormorant Garamond",
     label: "Cormorant Garamond (elegant serif)",
     stack: '"Cormorant Garamond", ui-serif, Georgia, serif',
-    googleParam: "Cormorant+Garamond:wght@400;500;600;700",
-  },
-  {
-    id: "Work Sans",
-    label: "Work Sans (neutral sans)",
-    stack: '"Work Sans", ui-sans-serif, system-ui, sans-serif',
-    googleParam: "Work+Sans:wght@400;500;600;700",
   },
 ];
 
@@ -118,18 +77,6 @@ export function themeFontOverrideCss(
   const body = fontStack(theme.typography.bodyFont);
   return `${scopeSelector} { font-family: ${body}; }
 ${scopeSelector} h1, ${scopeSelector} h2, ${scopeSelector} h3, ${scopeSelector} .font-display { font-family: ${display} !important; }`;
-}
-
-// Builds a single Google Fonts CSS2 stylesheet URL for the fonts a theme
-// actually uses, for use in a route's `head()` `links`.
-export function googleFontsHref(theme: Pick<Theme, "typography">): string {
-  const families = Array.from(
-    new Set([theme.typography.displayFont, theme.typography.bodyFont]),
-  ).map(
-    (name) =>
-      FONT_CHOICES.find((f) => f.id === name)?.googleParam ?? FONT_CHOICES[0].googleParam,
-  );
-  return `https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join("&")}&display=swap`;
 }
 
 export const BUTTON_RADIUS_MIN = 0;

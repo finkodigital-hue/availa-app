@@ -28,8 +28,9 @@ const send=async(payload,offset=0,signature=true)=>{const body=JSON.stringify(pa
  const hash=createHmac('sha256',process.env.STRIPE_WEBHOOK_SECRET).update(`${t}.${body}`).digest('hex');
  return Route.server.handlers.POST({request:new Request('https://example.invalid/api/stripe-webhook',{method:'POST',headers:signature?{'stripe-signature':`t=${t},v1=${hash}`}:{},body})});};
 let checks=0;const same=(a,b)=>{assert.deepEqual(a,b);checks++;};
-same((await send(event())).status,200);same(rpcCalls.length,1);
+same((await send(event())).status,200);same(rpcCalls.length,2);
 same(rpcCalls[0],{name:'fulfill_stripe_refund',args:{p_business_id:'business_fixture',p_booking_id:'booking_fixture',p_amount_cents:1000,p_currency:'gbp',p_stripe_refund_id:'re_fixture',p_stripe_payment_intent_id:'pi_fixture',p_initiated_by_user_id:null}});
+same(rpcCalls[1],{name:'resolve_stripe_refund_review',args:{p_stripe_refund_id:'re_fixture'}});
 same((await send(event('refund.updated',{business_id:'business_fixture',booking_id:'booking_fixture'}))).status,200);
 same((await send(event('refund.created',{business_id:'other'}))).status,400);
 same((await send({...event(),account:'acct_other'})).status,400);
@@ -37,11 +38,12 @@ same((await send(event(),0,false)).status,400);
 same((await send(event(),-600)).status,400);
 const pending=event();pending.data.object.status='pending';same((await send(pending)).status,200);
 same((await send(event('refund.created',{resolution:'unfulfilled_booking'}))).status,200);
-same(rpcCalls.length,2);
+same(rpcCalls.length,4);
 lookupFailure=false;giftExists=true;missingCharge=true;
 same((await send(event())).status,200);
-same(rpcCalls.at(-1).name,'fulfill_gift_card_refund');
-same(rpcCalls.at(-1).args.p_business_id,'business_fixture');
+same(rpcCalls.at(-2).name,'fulfill_gift_card_refund');
+same(rpcCalls.at(-2).args.p_business_id,'business_fixture');
+same(rpcCalls.at(-1).name,'resolve_stripe_refund_review');
 same((await send(event('refund.created',{booking_id:'other'}))).status,400);
 const originalError=console.error;
 const expectedErrors=[];
@@ -52,7 +54,7 @@ try {
  lookupFailure=true;same((await send(event())).status,500);
 } finally {console.error=originalError;}
 same(expectedErrors.length,2);
-same(rpcCalls.length,3);
+same(rpcCalls.length,6);
 lookupFailure=false;
 for(const status of ['failed','canceled','requires_action']) {
  const adverse=event('refund.failed');adverse.data.object.status=status;

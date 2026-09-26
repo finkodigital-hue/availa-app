@@ -17,7 +17,7 @@ export async function checkSchemaRoles(db) {
  insert into staff(id,business_id,name) values ('${id(201)}','${id(101)}','A owner'),('${id(202)}','${id(102)}','B owner'),('${id(203)}','${id(101)}','A manager'),('${id(204)}','${id(101)}','A front desk'),('${id(205)}','${id(101)}','A practitioner'),('${id(206)}','${id(101)}','A invite');
  insert into staff_memberships(business_id,staff_id,user_id,access_role) values ('${id(101)}','${id(203)}','${id(3)}','manager'),('${id(101)}','${id(204)}','${id(4)}','front_desk'),('${id(101)}','${id(205)}','${id(5)}','practitioner');
  insert into services(id,business_id,name,duration_minutes,price_cents) values ('${id(301)}','${id(101)}','A cut',30,1000),('${id(302)}','${id(102)}','B cut',30,1000);
- insert into customers(id,business_id,name,email) values ('${id(401)}','${id(101)}','Customer A','fixture7@example.invalid'),('${id(402)}','${id(102)}','Customer B','other@example.invalid');
+ insert into customers(id,business_id,name,email,auth_user_id) values ('${id(401)}','${id(101)}','Customer A','fixture7@example.invalid','${id(7)}'),('${id(402)}','${id(102)}','Customer B','other@example.invalid',null);
  insert into bookings(id,business_id,service_id,staff_id,customer_id,customer_name,customer_email,starts_at,ends_at) values
  ('${id(501)}','${id(101)}','${id(301)}','${id(201)}','${id(401)}','Customer A','fixture7@example.invalid',date_trunc('week',now())+interval '14 days 10 hours',date_trunc('week',now())+interval '14 days 10 hours 30 minutes'),
  ('${id(502)}','${id(102)}','${id(302)}','${id(202)}','${id(402)}','Customer B','other@example.invalid',date_trunc('week',now())+interval '14 days 10 hours',date_trunc('week',now())+interval '14 days 10 hours 30 minutes'),
@@ -36,9 +36,13 @@ export async function checkSchemaRoles(db) {
  same((await rows("select name from storage.objects where bucket_id='business-public-assets'")).map(x=>x.name),[`${id(101)}/logo/public.jpg`],'Owner can manage own public asset metadata');
  await fail(`insert into storage.objects(bucket_id,name,owner) values('business-public-assets','${id(102)}/overwrite.png','${id(1)}')`,/row-level security/);
  same((await rows(`update bookings set notes='cross-tenant attack' where id='${id(502)}' returning id`)),[],'Cross-tenant update denied');
+ await fail(`select export_owner_workspace('${id(101)}')`,/permission denied/);
+ await db.exec('reset role');
+ await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({role:'service_role'})]);
+ await db.exec('set role service_role');
  const exported=(await rows(`select export_owner_workspace('${id(101)}') as data`))[0].data;
- same(exported.bookings?.length??exported.tables?.bookings?.length,2,'Full schema export includes own bookings');
- await fail(`select export_owner_workspace('${id(102)}')`,/Workspace not found/);
+ same(exported.bookings?.length??exported.tables?.bookings?.length,2,'Server-only full schema export includes requested workspace');
+ await login(1);
  await login(6);
  same(await rows('select id from businesses'),[],'Stranger cannot read base business secrets');
  same(await rows('select id from staff'),[],'Stranger cannot read private staff');
@@ -47,6 +51,8 @@ export async function checkSchemaRoles(db) {
  same(await rows("select name from storage.objects where bucket_id='business-assets'"),[],'Stranger cannot read private files');
  same(await rows("select name from storage.objects where bucket_id='business-public-assets'"),[],'Stranger cannot list public asset metadata');
  await fail(`insert into customers(business_id,name) values('${id(101)}','Injected')`,/row-level security/);
+ await fail(`insert into businesses(owner_id,name,slug,timezone) values('${id(6)}','Unapproved','unapproved','Europe/London')`,/permission denied/);
+ await fail(`select * from claim_approved_business_signup('Unapproved','unapproved','Europe/London')`,/INVITE_REQUIRED/);
  await fail(`select get_calendar_credentials('${id(101)}')`,/permission denied/);
  await fail(`select * from balance_checkout_attempts`,/permission denied/);
  same((await rows('select id from public_businesses')).length,2,'Public discovery remains available');
@@ -64,28 +70,54 @@ export async function checkSchemaRoles(db) {
  same(await rows(`update bookings set notes='Forbidden edit' where id='${id(503)}' returning id`),[],'Practitioner calendar read only');
  await login(7);
  same((await rows('select id from bookings order by id')).map(x=>x.id),[id(501),id(503)],'Customer own email only');
+ await db.exec('reset role');
+ await db.exec(`insert into customers(id,business_id,name,email,auth_user_id) values ('${id(403)}','${id(102)}','Unlinked customer','fixture7@example.invalid',null)`);
+ await login(7);
+ same((await rows('select claim_current_customer_records() as claimed'))[0].claimed,1,'Verified portal user claims an unbound matching customer record');
+ same((await rows(`select auth_user_id from customers where id='${id(403)}'`))[0].auth_user_id,id(7),'Portal claim binds immutable Auth UID');
  await fail(`update bookings set price_cents=1 where id='${id(501)}'`,/only change booking status/);
+ await db.exec('reset role');
+ await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({role:'authenticated',sub:id(6),email:'fixture7@example.invalid',aal:'aal1'})]);
+ await db.exec('set role authenticated');
+ same(await rows('select id from bookings'),[],'Reassigned mailbox cannot take over UID-bound customer history');
  await login(1);
  const invitation=(await rows(`select * from create_staff_account_invitation('${id(206)}','fixture9@example.invalid','front_desk')`))[0];
- await login(6);await fail(`select accept_staff_account_invitation('${invitation.token}')`,/invited email/);
- await login(9);same((await rows(`select accept_staff_account_invitation('${invitation.token}') as business`))[0].business,id(101),'Intended invite accepted');
- await fail(`select accept_staff_account_invitation('${invitation.token}')`,/invalid or expired/);
+ await login(6);await fail(`select accept_staff_account_invitation_with_terms('${invitation.token}','2026-09-26')`,/invited email/);
+ await login(8);await fail(`select accept_staff_account_invitation_with_terms('${invitation.token}','2026-09-26')`,/Verify your email/);
+ await login(9);same((await rows(`select accept_staff_account_invitation_with_terms('${invitation.token}','2026-09-26') as business`))[0].business,id(101),'Intended invite accepted with versioned terms');
+ await fail(`select accept_staff_account_invitation_with_terms('${invitation.token}','2026-09-26')`,/invalid or expired/);
+ await db.exec('reset role');
+ await db.exec(`insert into business_signup_entitlements(email,note)
+  values('fixture6@example.invalid','local security fixture')`);
  await login(6);
- await db.exec(`insert into businesses(id,owner_id,name,slug,timezone)
-  values('${id(103)}','${id(6)}','Fictional C','fictional-c','Europe/London')`);
+ const claimedBusiness=(await rows(`select * from claim_approved_business_signup('Fictional C','fictional-c','Europe/London')`))[0];
+ same(claimedBusiness.name,'Fictional C','Approved verified identity claims one workspace');
+ await fail(`select * from claim_approved_business_signup('Fictional duplicate','fictional-duplicate','Europe/London')`,/WORKSPACE_EXISTS/);
  await login(1);
  const professionalInvitation=(await rows(`insert into professional_invitations(salon_business_id,invited_by,email,token)
   values('${id(101)}','${id(1)}','fixture2@example.invalid','professional-security-audit-token') returning id`))[0];
  await login(6);
- await fail(`select accept_professional_invitation('professional-security-audit-token','${id(103)}')`,/invited email/);
+ await fail(`select accept_professional_invitation_with_workspace('professional-security-audit-token','Wrong user','wrong-user','Europe/London','2026-09-26')`,/invited email/);
  await login(2);
- same((await rows(`select accept_professional_invitation('professional-security-audit-token','${id(102)}') as invitation`))[0].invitation,professionalInvitation.id,'Professional invite is accepted only by the addressed owner');
- await fail(`select accept_professional_invitation('professional-security-audit-token','${id(102)}')`,/no longer valid/);
+ same((await rows(`select accept_professional_invitation_with_workspace('professional-security-audit-token','Existing business','existing-business','Europe/London','2026-09-26') as business`))[0].business,id(102),'Professional invite is accepted only by the addressed owner with versioned terms');
+ await fail(`select accept_professional_invitation_with_workspace('professional-security-audit-token','Existing business','existing-business','Europe/London','2026-09-26')`,/no longer valid/);
  same((await rows(`select count(*)::int as n from salon_professionals where salon_business_id='${id(101)}' and pro_business_id='${id(102)}'`))[0].n,1,'Professional invite creates one link');
  await db.exec('reset role');
  await db.exec(`delete from salon_professionals where salon_business_id='${id(101)}' and pro_business_id='${id(102)}';
   delete from professional_invitations where id='${professionalInvitation.id}';
-  delete from businesses where id='${id(103)}'`);
+  delete from businesses where id='${claimedBusiness.id}';
+  delete from business_signup_entitlements where email='fixture6@example.invalid'`);
+ await login(1);
+ await rows(`insert into professional_invitations(salon_business_id,invited_by,email,token)
+  values('${id(101)}','${id(1)}','fixture7@example.invalid','professional-workspace-token')`);
+ await login(7);
+ const invitedWorkspace=(await rows(`select accept_professional_invitation_with_workspace('professional-workspace-token','Invited Pro','invited-pro','Europe/London','2026-09-26') as id`))[0].id;
+ same((await rows(`select count(*)::int as n from business_hours where business_id='${invitedWorkspace}'`))[0].n,7,'Professional invite atomically creates default opening hours');
+ await fail(`select accept_professional_invitation_with_workspace('professional-workspace-token','Replay','replay-pro','Europe/London','2026-09-26')`,/no longer valid/);
+ await db.exec('reset role');
+ await db.exec(`delete from salon_professionals where pro_business_id='${invitedWorkspace}';
+  delete from professional_invitations where token='professional-workspace-token';
+  delete from businesses where id='${invitedWorkspace}'`);
  await login(1);await db.exec(`update staff_memberships set active=false where user_id='${id(9)}'`);
  await login(9);same(await rows('select id from bookings'),[],'Revocation applies to existing identity');
  await db.exec('reset role');await db.exec(`insert into auth.mfa_factors values('${id(601)}','${id(1)}','verified')`);
@@ -98,6 +130,13 @@ export async function checkSchemaRoles(db) {
  same(await rows('select id from bookings'),[],'Unverified identity denied');
  await login(null);same((await rows('select id from public_businesses')).length,2,'Anonymous discovery');
  same(await rows("select name from storage.objects where bucket_id='business-public-assets'"),[],'Anonymous callers cannot enumerate public asset names');
+ await db.exec('reset role');
+ const uploadBuckets=await rows("select id,file_size_limit,allowed_mime_types from storage.buckets where id in ('business-assets','business-public-assets') order by id");
+ same(uploadBuckets.map(x=>[x.id,Number(x.file_size_limit),x.allowed_mime_types]),[
+  ['business-assets',5242880,['image/jpeg','image/png','image/webp']],
+  ['business-public-assets',5242880,['image/jpeg','image/png','image/webp']],
+ ],'Upload buckets reject active document types and oversized files');
+ await login(null);
  // These four views intentionally run as their owner so public booking can
  // read a narrow projection without opening the underlying tenant tables.
  // Lock down the projection: a later migration must not silently expose a

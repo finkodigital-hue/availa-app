@@ -14,6 +14,12 @@ consultations, low stock and failed booking payments.
 Keep these values in Cloudflare's encrypted production secrets (never as
 `VITE_` variables):
 
+- `STRIPE_WEBHOOK_SECRET` — signing secret for the Stripe Connect webhook
+  destination. Subscribe to account updates, Checkout completion and refund
+  lifecycle events used by `src/routes/api.stripe-webhook.ts`.
+- `STRIPE_PLATFORM_WEBHOOK_SECRET` — separate signing secret for the Stripe
+  platform-account webhook destination. Do not reuse the Connect secret.
+
 - `RESEND_API_KEY` — existing outbound email credential.
 - `RESEND_WEBHOOK_SECRET` — signing secret for a Resend webhook targeting
   `https://bookzenvo.com/api/resend-webhook`. Subscribe it to delivered,
