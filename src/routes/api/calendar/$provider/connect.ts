@@ -6,6 +6,7 @@ import {
   makeOauthState,
   type CalendarProvider,
 } from "@/lib/calendar-sync.server";
+import { trustedAppOrigin } from "@/lib/app-origin.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
 import { requireVerifiedIdentity } from "@/lib/verified-identity.server";
 
@@ -24,8 +25,14 @@ export const Route = createFileRoute("/api/calendar/$provider/connect")({
           ?.replace(/^Bearer /, "");
         if (!token)
           return Response.json({ error: "Unauthorized" }, { status: 401 });
-        const auth = await requireVerifiedIdentity(supabaseAdmin, token).catch(() => null);
-        if (!auth) return Response.json({ error: "Verification required" }, { status: 401 });
+        const auth = await requireVerifiedIdentity(supabaseAdmin, token).catch(
+          () => null,
+        );
+        if (!auth)
+          return Response.json(
+            { error: "Verification required" },
+            { status: 401 },
+          );
         const parsed = await readJsonWithLimit<{ businessId?: string }>(
           request,
           2048,
@@ -43,7 +50,7 @@ export const Route = createFileRoute("/api/calendar/$provider/connect")({
           .maybeSingle();
         if (!business)
           return Response.json({ error: "Forbidden" }, { status: 403 });
-        const redirect = callbackUrl(provider, new URL(request.url).origin);
+        const redirect = callbackUrl(provider, trustedAppOrigin());
         const state = makeOauthState({
           provider,
           businessId: business.id,

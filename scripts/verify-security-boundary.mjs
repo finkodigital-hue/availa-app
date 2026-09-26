@@ -54,6 +54,12 @@ const emailWebhook = await read("src/routes/api.resend-webhook.ts");
 const smsProvider = await read("src/lib/sms.server.ts");
 const smsWebhook = await read("src/routes/api.twilio-sms-webhook.ts");
 const devSeed = await read("src/lib/dev-seed.functions.ts");
+const calendarConnect = await read(
+  "src/routes/api/calendar/$provider/connect.ts",
+);
+const calendarCallback = await read(
+  "src/routes/api/calendar/$provider/callback.ts",
+);
 
 assert(
   runtimeEnv.includes("${window.location.origin}/api/supabase"),
@@ -174,8 +180,10 @@ assert(
 assert(
   smsWebhook.includes("validTwilioSignature") &&
     smsWebhook.includes('rpc("record_notification_provider_status"') &&
-    smsWebhook.includes('p_provider_id: messageId') &&
-    smsWebhook.includes('form.get("AccountSid") !== process.env.TWILIO_ACCOUNT_SID'),
+    smsWebhook.includes("p_provider_id: messageId") &&
+    smsWebhook.includes(
+      'form.get("AccountSid") !== process.env.TWILIO_ACCOUNT_SID',
+    ),
   "Twilio delivery callbacks must be authenticated before updating delivery state.",
 );
 assert(
@@ -185,6 +193,14 @@ assert(
     !devSeed.includes("updateUserById") &&
     devSeed.includes("randomDemoPassword()"),
   "The development seeder must require an explicit local gate and must not contain or reset a reusable password.",
+);
+assert(
+  calendarConnect.includes("trustedAppOrigin()") &&
+    !calendarConnect.includes("new URL(request.url).origin") &&
+    calendarCallback.includes("const appOrigin = trustedAppOrigin()") &&
+    calendarCallback.includes("callbackUrl(provider, appOrigin)") &&
+    !calendarCallback.includes("process.env.APP_URL || url.origin"),
+  "Calendar OAuth redirects must use the configured trusted application origin, never the incoming Host header.",
 );
 
 const sourceFiles = (await walk("src")).filter((file) =>

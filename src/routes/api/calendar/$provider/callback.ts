@@ -7,12 +7,14 @@ import {
   readOauthState,
   type CalendarProvider,
 } from "@/lib/calendar-sync.server";
+import { trustedAppOrigin } from "@/lib/app-origin.server";
 
 export const Route = createFileRoute("/api/calendar/$provider/callback")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
         const url = new URL(request.url);
+        const appOrigin = trustedAppOrigin();
         const provider = params.provider as CalendarProvider;
         try {
           const state = readOauthState(url.searchParams.get("state") || "");
@@ -28,7 +30,7 @@ export const Route = createFileRoute("/api/calendar/$provider/callback")({
           const tokens = await exchangeCode(
             provider,
             url.searchParams.get("code")!,
-            callbackUrl(provider, url.origin),
+            callbackUrl(provider, appOrigin),
           );
           const identity = await providerIdentity(provider, tokens.accessToken);
           const { error } = await (supabaseAdmin as any).rpc(
@@ -46,7 +48,7 @@ export const Route = createFileRoute("/api/calendar/$provider/callback")({
           );
           if (error) throw error;
           return Response.redirect(
-            `${process.env.APP_URL || url.origin}/settings?tab=calendar&calendar=connected`,
+            `${appOrigin}/settings?tab=calendar&calendar=connected`,
             303,
           );
         } catch (error) {
@@ -55,7 +57,7 @@ export const Route = createFileRoute("/api/calendar/$provider/callback")({
             error instanceof Error ? error.message : error,
           );
           return Response.redirect(
-            `${process.env.APP_URL || url.origin}/settings?tab=calendar&calendar=error`,
+            `${appOrigin}/settings?tab=calendar&calendar=error`,
             303,
           );
         }
