@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isTenantAssetPath, safeImageSrc } from "@/lib/safe-url";
+import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -34,6 +35,8 @@ export const Route = createFileRoute("/api/public-booking-staff")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        try { await consumePublicRequest("public_read", { headers: request.headers }); }
+        catch (error) { return publicRequestLimitResponse(error); }
         const rawIds =
           new URL(request.url).searchParams.get("service_ids") ?? "";
         const serviceIds = Array.from(

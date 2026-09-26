@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isTenantAssetPath } from "@/lib/safe-url";
+import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
 
 const PUBLIC_KINDS = ["cover", "interior", "exterior", "team", "portfolio", "before-after"];
 const UUID_PATTERN =
@@ -10,6 +11,8 @@ export const Route = createFileRoute("/api/public-gallery")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        try { await consumePublicRequest("public_read", { headers: request.headers }); }
+        catch (error) { return publicRequestLimitResponse(error); }
         const businessId = new URL(request.url).searchParams.get("business_id");
         if (!businessId || !UUID_PATTERN.test(businessId)) {
           return Response.json({ photos: [] }, { status: 400 });

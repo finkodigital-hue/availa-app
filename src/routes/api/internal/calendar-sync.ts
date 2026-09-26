@@ -7,16 +7,13 @@ import {
   type CalendarProvider,
 } from "@/lib/calendar-sync.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
+import { hasExpectedBearer } from "@/lib/internal-auth.server";
 
 export const Route = createFileRoute("/api/internal/calendar-sync")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = process.env.CALENDAR_SYNC_SECRET;
-        if (
-          !expected ||
-          request.headers.get("authorization") !== `Bearer ${expected}`
-        )
+        if (!hasExpectedBearer(request, process.env.CALENDAR_SYNC_SECRET))
           return new Response(null, { status: 401 });
         const parsed = await readJsonWithLimit<{ booking_id?: string }>(
           request,

@@ -4,11 +4,14 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseTheme } from "@/lib/theme";
 import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
+import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
 
 export const Route = createFileRoute("/api/reviews/peek")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        try { await consumePublicRequest("token", { headers: request.headers }); }
+        catch (error) { return publicRequestLimitResponse(error); }
         const parsed = await readJsonWithLimit<{ token?: string }>(request, 4 * 1024);
         const { token } = "error" in parsed ? {} : parsed.value;
         if (!token)

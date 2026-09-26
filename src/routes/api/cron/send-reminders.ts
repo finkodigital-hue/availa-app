@@ -11,6 +11,7 @@ import { buildReminderSms } from "@/lib/sms/reminder-sms.server";
 import { runRetentionSweep } from "@/lib/retention-sweep.server";
 import { markBookingNotification } from "@/lib/notification-delivery.server";
 import { processBookingChangeEmails } from "@/lib/booking-change-email.server";
+import { hasExpectedBearer } from "@/lib/internal-auth.server";
 
 // Woken up every 15 minutes by a Supabase pg_cron + pg_net job (see
 // supabase/migrations/20260723150000_add_booking_reminders.sql). This route,
@@ -29,13 +30,6 @@ import { processBookingChangeEmails } from "@/lib/booking-change-email.server";
 
 const CONFIRMATION_BACKSTOP_WINDOW_MS = 6 * 60 * 60 * 1000;
 
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 export const Route = createFileRoute("/api/cron/send-reminders")({
   server: {
     handlers: {
@@ -45,11 +39,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           console.error("CRON_REMINDER_SECRET is not configured");
           return new Response("Not configured", { status: 500 });
         }
-        const auth = request.headers.get("authorization") ?? "";
-        const provided = auth.toLowerCase().startsWith("bearer ")
-          ? auth.slice(7)
-          : "";
-        if (!provided || !timingSafeEqual(provided, secret)) {
+        if (!hasExpectedBearer(request, secret)) {
           return new Response("Unauthorized", { status: 401 });
         }
 

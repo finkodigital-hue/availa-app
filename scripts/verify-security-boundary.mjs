@@ -65,6 +65,19 @@ const confirmationRoute = await read(
 );
 const clientErrorRoute = await read("src/routes/api/client-errors.ts");
 const waitlistRoute = await read("src/routes/api/waitlist.ts");
+const publicStaffRoute = await read("src/routes/api/public-booking-staff.ts");
+const publicGalleryRoute = await read("src/routes/api/public-gallery.ts");
+const publicReviewsRoute = await read("src/routes/api/public-reviews.ts");
+const bookingActionRoute = await read("src/routes/api/booking-actions/act.ts");
+const reschedulePeekRoute = await read("src/routes/api/booking-actions/reschedule-peek.ts");
+const rescheduleCommitRoute = await read("src/routes/api/booking-actions/reschedule-commit.ts");
+const reviewPeekRoute = await read("src/routes/api/reviews/peek.ts");
+const reviewSubmitRoute = await read("src/routes/api/reviews/submit.ts");
+const internalAuth = await read("src/lib/internal-auth.server.ts");
+const calendarSyncRoute = await read("src/routes/api/internal/calendar-sync.ts");
+const monitoringRoute = await read("src/routes/api/monitoring/client-errors.ts");
+const reminderRoute = await read("src/routes/api/cron/send-reminders.ts");
+const marketingUnsubscribeRoute = await read("src/routes/api.marketing-unsubscribe.$token.ts");
 
 assert(
   runtimeEnv.includes("${window.location.origin}/api/supabase"),
@@ -214,6 +227,23 @@ assert(
     waitlistRoute.includes("trustedAppOrigin()") &&
     !waitlistRoute.includes("new URL(request.url).origin"),
   "Public confirmation, telemetry and waitlist endpoints must be source-limited and use the trusted application origin.",
+);
+assert(
+  [publicStaffRoute, publicGalleryRoute, publicReviewsRoute].every(route => route.includes('consumePublicRequest("public_read"')) &&
+  [bookingActionRoute, reschedulePeekRoute, rescheduleCommitRoute, reviewPeekRoute, reviewSubmitRoute].every(route => route.includes('consumePublicRequest("token"')),
+  "Anonymous public-data and one-time-link endpoints must have privacy-preserving source quotas.",
+);
+assert(
+  internalAuth.includes("timingSafeTextEqual") &&
+  [calendarSyncRoute, monitoringRoute, reminderRoute].every(route => route.includes("hasExpectedBearer")) &&
+  !calendarSyncRoute.includes('!== `Bearer ${expected}`') && !monitoringRoute.includes('supplied === `Bearer ${secret}`'),
+  "Internal bearer secrets must use the shared timing-resistant comparison.",
+);
+assert(
+  marketingUnsubscribeRoute.includes("GET: async") && marketingUnsubscribeRoute.includes("POST: async") &&
+  marketingUnsubscribeRoute.includes('consumePublicRequest("token"') && marketingUnsubscribeRoute.includes("trustedAppOrigin()") &&
+  !marketingUnsubscribeRoute.includes("GET: async ({ params }) => {\n        try {\n          const changed"),
+  "Email link scanners must not unsubscribe customers with an unauthenticated GET request.",
 );
 
 const sourceFiles = (await walk("src")).filter((file) =>

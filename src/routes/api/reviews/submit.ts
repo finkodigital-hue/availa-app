@@ -3,6 +3,7 @@ import { peekBookingActionToken, sha256Hex } from "@/lib/booking-tokens.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
+import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
 
 const MAX_REVIEW_BODY_BYTES = 8 * 1024;
 
@@ -10,6 +11,8 @@ export const Route = createFileRoute("/api/reviews/submit")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        try { await consumePublicRequest("token", { headers: request.headers }); }
+        catch (error) { return publicRequestLimitResponse(error); }
         const parsed = await readJsonWithLimit<{
           token?: string;
           rating?: number;

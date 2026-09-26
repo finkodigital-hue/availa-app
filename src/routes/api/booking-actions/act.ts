@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { consumeBookingActionToken } from "@/lib/booking-tokens.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
 import { processBookingChangeEmails } from "@/lib/booking-change-email.server";
+import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
 
 // Backs the Confirm and Cancel one-tap links. The token is the *only*
 // locator — there is no booking id anywhere in the request other than what
@@ -12,6 +13,8 @@ export const Route = createFileRoute("/api/booking-actions/act")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        try { await consumePublicRequest("token", { headers: request.headers }); }
+        catch (error) { return publicRequestLimitResponse(error); }
         const parsed = await readJsonWithLimit<{ action?: string; token?: string }>(request, 4 * 1024);
         if ("error" in parsed) {
           return new Response("Invalid request", { status: 400 });

@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { hasExpectedBearer } from "@/lib/internal-auth.server";
 
 const DEFAULT_WINDOW_MINUTES = 20;
 const DEFAULT_THRESHOLD = 5;
 
 function isAuthorized(request: Request) {
-  const secret = process.env.MONITORING_SECRET;
-  const supplied = request.headers.get("authorization");
-  return Boolean(secret && supplied === `Bearer ${secret}`);
+  return hasExpectedBearer(request, process.env.MONITORING_SECRET);
 }
 
 export const Route = createFileRoute("/api/monitoring/client-errors")({

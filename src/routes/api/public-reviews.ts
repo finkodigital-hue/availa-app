@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
+import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
 
 function publicName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -14,6 +15,8 @@ export const Route = createFileRoute("/api/public-reviews")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        try { await consumePublicRequest("public_read", { headers: request.headers }); }
+        catch (error) { return publicRequestLimitResponse(error); }
         const businessId = new URL(request.url).searchParams.get("business_id");
         if (!businessId || !UUID_PATTERN.test(businessId)) {
           return Response.json({ reviews: [] }, { status: 400 });

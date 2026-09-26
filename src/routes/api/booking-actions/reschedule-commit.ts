@@ -3,11 +3,14 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { peekBookingActionToken, sha256Hex } from "@/lib/booking-tokens.server";
 import { processBookingChangeEmails } from "@/lib/booking-change-email.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
+import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
 
 export const Route = createFileRoute("/api/booking-actions/reschedule-commit")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        try { await consumePublicRequest("token", { headers: request.headers }); }
+        catch (error) { return publicRequestLimitResponse(error); }
         const parsed = await readJsonWithLimit<{ token?: string; starts_at?: string }>(request, 4 * 1024);
         if ("error" in parsed) {
           return new Response("Invalid request", { status: 400 });
