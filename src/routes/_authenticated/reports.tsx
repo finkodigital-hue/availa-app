@@ -99,7 +99,7 @@ function ReportsPage() {
       <PageHeader
         eyebrow="Analytics"
         title="Reports"
-        subtitle="Deep-dive numbers and exports for your accountant, payroll, or your own records."
+        subtitle="See what your salon earned and download the numbers you need."
         action={
           <ReportDateRangePicker
             from={from}

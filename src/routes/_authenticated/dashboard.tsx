@@ -161,8 +161,8 @@ function Dashboard() {
                           ? "Payment needs review · "
                           : ""}
                         {booking.balanceCents > 0
-                          ? `${new Intl.NumberFormat("en-GB", { style: "currency", currency: data.business.currency || "GBP" }).format(booking.balanceCents / 100)} appointment balance`
-                          : "No appointment balance shown"}
+                          ? `${new Intl.NumberFormat("en-GB", { style: "currency", currency: data.business.currency || "GBP" }).format(booking.balanceCents / 100)} still to pay`
+                          : "No payment due"}
                       </p>
                     </div>
                     <Button

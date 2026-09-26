@@ -109,14 +109,14 @@ function ProfessionalsPage() {
       .from("professional_invitations")
       .update({ status: "revoked" })
       .eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Could not revoke the invitation. It may still be active; try again.");
     toast.success("Invitation revoked");
     qc.invalidateQueries({ queryKey: ["professional-invitations", biz?.id] });
   };
 
   const removeLink = async (id: string) => {
     const { error } = await supabase.from("salon_professionals").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Could not unlink this professional. The link is still in place; try again.");
     toast.success("Professional unlinked");
     qc.invalidateQueries({ queryKey: ["salon-professionals", biz?.id] });
   };
@@ -132,7 +132,7 @@ function ProfessionalsPage() {
       <PageHeader
         eyebrow="Team"
         title="Independent Professionals"
-        subtitle="Rent chairs or rooms to self-employed pros. They run their own business, but appear together with your team on one calendar and one booking page."
+        subtitle="Invite self-employed people who rent a chair or room. Their bookings appear on your calendar."
         action={
           <Button
             onClick={() => setInviteOpen(true)}
@@ -162,7 +162,7 @@ function ProfessionalsPage() {
         <EmptyState
           icon={Armchair}
           title="No independent professionals yet"
-          description="Invite a self-employed pro by email. They'll create their own Bookzenvo account and business, then show up on your shared calendar and booking page."
+          description="Invite someone by email. Once they join, customers can book them from your booking page."
           action={
             <Button onClick={() => setInviteOpen(true)} disabled={atFreeTeamLimit}>
               <Plus className="h-4 w-4 mr-1" /> Invite first professional
@@ -207,8 +207,8 @@ function ProfessionalsPage() {
                         <ConfirmDialog
                           trigger={
                             <button
-                              className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive shrink-0"
-                              aria-label="Unlink"
+                              className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary shrink-0"
+                              aria-label={`Remove ${name} from your salon`}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>

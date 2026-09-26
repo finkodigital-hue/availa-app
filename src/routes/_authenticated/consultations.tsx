@@ -248,7 +248,7 @@ function ConsultationsPage() {
   if ((business?.plan ?? "free") !== "studio") {
     return (
       <div className="page-wrap mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
-        <PageHeader eyebrow="Client safety" title="Consultations" subtitle="Replace paper consultation and patch-test files with secure, signed online records." />
+        <PageHeader eyebrow="Client safety" title="Consultations" subtitle="Send a form, check the answers and see who still needs a patch test." />
         <StudioUpgradePanel
           title="Consultations and patch tests are a Studio feature"
           description="Upgrade to create digital forms, collect signatures and keep client safety records together."
@@ -280,7 +280,7 @@ function ConsultationsPage() {
         <PageHeader
           eyebrow="Client safety"
           title="Consultations"
-          subtitle="Replace paper consultation and patch-test files with secure, signed online records."
+          subtitle="Send a form, check the answers and see who still needs a patch test."
         />
         <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-6 dark:bg-amber-950/20">
           <div className="flex gap-3">
@@ -471,9 +471,9 @@ function ConsultationsPage() {
       )}
       <Tabs key={`${search.customerId ?? ""}:${search.bookingId ?? ""}:${search.tab ?? ""}`} defaultValue={search.tab || search.customerId || search.bookingId ? "records" : "templates"}>
         <TabsList>
-          <TabsTrigger value="templates">Form templates</TabsTrigger>
+          <TabsTrigger value="templates">Forms to send</TabsTrigger>
           <TabsTrigger value="records">
-            Client records{" "}
+            Customer forms{" "}
             {records.length > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {records.length}

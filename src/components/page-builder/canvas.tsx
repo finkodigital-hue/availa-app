@@ -127,7 +127,7 @@ function CanvasBlockShell({
         onClickCapture={(e) => e.stopPropagation()}
         className={cn(
           "absolute right-2 top-2 z-10 h-7 w-7 grid place-items-center rounded-md border bg-card shadow-soft text-muted-foreground cursor-grab active:cursor-grabbing transition-opacity",
-          selected ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+          selected ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100",
         )}
         aria-label="Drag to reorder"
       >

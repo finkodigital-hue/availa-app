@@ -301,7 +301,11 @@ function PageBuilderPage() {
     }
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(
+        layoutRes.error && themeRes.error
+          ? "Could not save your page. Your edits are still here; try again."
+          : "Only part of your page saved. Keep this editor open and try Save again before publishing.",
+      );
       return false;
     }
     qc.invalidateQueries({ queryKey: ["page-layout", biz.id] });
@@ -403,7 +407,7 @@ function PageBuilderPage() {
       <PageHeader
         eyebrow="Your creative space"
         title="Make it yours."
-        subtitle="A beautiful first impression, built by you."
+        subtitle="Change your booking page and see the result as you go."
         action={
           <div className="flex flex-wrap items-center gap-1.5">
             <Button

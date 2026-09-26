@@ -80,7 +80,7 @@ function Onboarding() {
       if (err.code === "23505" && !workspace && !createdBusiness) {
         toast.error("That booking page URL is already taken — try another.");
       } else {
-        toast.error(err.message ?? "Could not finish workspace setup. Try again.");
+        toast.error("Could not finish setup. Check your connection and try again.");
       }
     } finally {
       setBusy(false);
@@ -95,12 +95,12 @@ function Onboarding() {
           <Sparkles className="h-3 w-3 text-primary" /> Step 1 of 1
         </div>
         <h1 className="font-display text-4xl md:text-5xl tracking-tight text-balance">
-          Name your <span className="italic text-primary">workspace</span>.
+          Name your business.
         </h1>
         <p className="text-sm text-muted-foreground mt-3 text-pretty">
           {workspace
-            ? "Your workspace has been created. Finish checking its opening hours to continue."
-            : "This is what customers will see on your booking page. Don't sweat it — you can change everything later."}
+            ? "Your business is ready. Check your opening hours to finish setup."
+            : "Customers will see this name when they book. You can change it later."}
         </p>
         <form onSubmit={submit} className="mt-8 space-y-5">
           <div>
@@ -123,7 +123,7 @@ function Onboarding() {
           </div>
           <div>
             <Label htmlFor="slug" className="text-xs uppercase tracking-wide text-muted-foreground">
-              Booking page URL
+              Your booking link
             </Label>
             <div className="mt-1.5 flex items-center rounded-xl border bg-card overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background transition-shadow">
               <span className="px-3 text-sm text-muted-foreground border-r select-none">
@@ -140,7 +140,7 @@ function Onboarding() {
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Lowercase letters, numbers and hyphens only.
+              Customers will use this link to find your booking page. Use letters, numbers and hyphens.
             </p>
           </div>
           <Button type="submit" className="w-full h-11 shadow-glow" disabled={busy || !name}>
@@ -150,7 +150,7 @@ function Onboarding() {
               </>
             ) : (
               <>
-                {workspace ? "Finish setup" : "Create workspace"} <ArrowRight className="h-4 w-4 ml-1" />
+                {workspace ? "Finish setup" : "Create booking page"} <ArrowRight className="h-4 w-4 ml-1" />
               </>
             )}
           </Button>

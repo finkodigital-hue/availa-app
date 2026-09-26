@@ -164,7 +164,7 @@ function PaymentsPage() {
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
-      <PageHeader eyebrow="Money" title="Payments" subtitle="All transactions in one place." />
+      <PageHeader eyebrow="Money" title="Payments" subtitle="See what has been paid and what is still owed." />
       {refundReviews.isError && <p role="alert" className="mb-4 rounded-xl border p-4 text-sm">Refund review status could not be loaded. Check Stripe before retrying a refund.</p>}
       {(refundReviews.data ?? 0) > 0 && <p role="alert" className="mb-4 rounded-xl border border-amber-500 p-4 text-sm">{refundReviews.data} refund(s) need review. Stripe reported a failure, cancellation or required action. Check their current status and reconcile the payment with support before refunding again or restoring gift credit.</p>}
 
@@ -178,7 +178,7 @@ function PaymentsPage() {
           {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
         </div>
       ) : isError ? (
-        <EmptyState icon={CreditCard} title="Could not load payments" description="Please refresh and try again." />
+        <EmptyState icon={CreditCard} title="Payments did not load" description="We couldn't show this list right now. Try again before taking any payment action." action={<Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["payments", bid] })}>Try again</Button>} />
       ) : (data?.rows.length ?? 0) === 0 ? (
         <EmptyState
           icon={CreditCard}
@@ -192,9 +192,10 @@ function PaymentsPage() {
               key={p.id}
               role="button"
               tabIndex={0}
+              aria-label={`Open payment details for ${p.customer_name}`}
               onClick={() => { setSelected(p); setRefundConfirming(false); setRefundResults(null); }}
-              onKeyDown={(e) => e.key === "Enter" && (setSelected(p), setRefundConfirming(false), setRefundResults(null))}
-              className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/40 cursor-pointer"
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(p); setRefundConfirming(false); setRefundResults(null); } }}
+              className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary cursor-pointer"
             >
               <div className="min-w-0">
                 <div className="font-medium truncate">{p.customer_name}</div>

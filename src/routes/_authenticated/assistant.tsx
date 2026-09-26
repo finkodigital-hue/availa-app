@@ -61,12 +61,12 @@ function AssistantUpsell() {
     <div className="p-6 md:p-10 max-w-4xl mx-auto">
       <PageHeader
         eyebrow="AI Assistant"
-        title="Your business co-pilot"
-        subtitle="Ask anything about your bookings, customers and growth. Answers use your live workspace data."
+        title="Ask Bookzenvo"
+        subtitle="Ask a question about your bookings, customers or business."
       />
       <StudioUpgradePanel
         title="The AI assistant is a Studio feature"
-        description="Upgrade to Studio (£22/month) to chat with your business co-pilot — booking summaries, growth ideas, drafted emails, and more."
+        description="Upgrade to Studio (£22/month) to ask about bookings, get ideas and draft customer emails."
       />
     </div>
   );
@@ -106,8 +106,8 @@ function AssistantInner({ endpoint, token }: { endpoint: string; token: string }
     <div className="p-6 md:p-10 max-w-4xl mx-auto">
       <PageHeader
           eyebrow="AI Assistant"
-          title="Your business co-pilot"
-          subtitle="Ask anything about your bookings, customers and growth. Answers use your live workspace data."
+          title="Ask Bookzenvo"
+          subtitle="Ask a question about your bookings, customers or business."
           action={
             messages.length > 0 ? (
               <Button variant="ghost" size="sm" onClick={() => setMessages([])}>

@@ -245,7 +245,7 @@ function SortablePhoto({ media, onRemove }: { media: Media; onRemove: () => Prom
       <button
         {...attributes}
         {...listeners}
-        className="absolute top-1 left-1 h-7 w-7 grid place-items-center rounded bg-background/80 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
+        className="absolute top-1 left-1 h-8 w-8 grid place-items-center rounded bg-background/90 cursor-grab active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
         aria-label="Reorder"
       >
         <GripVertical className="h-3.5 w-3.5" />
@@ -253,7 +253,7 @@ function SortablePhoto({ media, onRemove }: { media: Media; onRemove: () => Prom
       <ConfirmDialog
         trigger={
           <button
-            className="absolute top-1 right-1 h-7 w-7 grid place-items-center rounded bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+            className="absolute top-1 right-1 h-8 w-8 grid place-items-center rounded bg-background/90 text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
             aria-label="Delete"
           >
             <Trash2 className="h-3.5 w-3.5" />

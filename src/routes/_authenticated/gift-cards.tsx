@@ -175,7 +175,7 @@ function GiftCardsPage() {
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
-      <PageHeader eyebrow="Revenue" title="Gift cards" subtitle="Sell experiences now and let customers book later." />
+      <PageHeader eyebrow="Revenue" title="Gift cards" subtitle="See gift cards, their balances and recent use." />
       {refundReviews.isError && <p role="alert" className="mb-4 rounded-xl border p-4 text-sm">Refund review status could not be loaded. Check Stripe before issuing replacement credit.</p>}
       {(refundReviews.data ?? 0) > 0 && <p role="alert" className="mb-4 rounded-xl border border-amber-500 p-4 text-sm">{refundReviews.data} gift-card refund(s) need review because some refunded credit had already been spent. Remaining credit has been removed. Check the original purchase and bookings with support before issuing replacement credit.</p>}
 
@@ -190,7 +190,7 @@ function GiftCardsPage() {
 
       <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
         <section>
-          <div className="flex items-center justify-between gap-3 mb-3"><h2 className="font-display text-2xl">Issued cards</h2><Button size="sm" onClick={() => { setShowIssue((value) => !value); setNewCode(null); }}><Plus className="h-4 w-4 mr-1.5" />Issue card</Button></div>
+          <div className="flex items-center justify-between gap-3 mb-3"><h2 className="font-display text-2xl">Gift cards</h2><Button size="sm" onClick={() => { setShowIssue((value) => !value); setNewCode(null); }}><Plus className="h-4 w-4 mr-1.5" />Give a gift card</Button></div>
           {showIssue && (
             <form onSubmit={submitIssue} className="rounded-2xl border bg-card p-5 mb-4 space-y-4">
               {newCode ? (
@@ -201,20 +201,23 @@ function GiftCardsPage() {
                 </div>
               ) : (
                 <>
+                  <p className="text-sm text-muted-foreground">This creates a gift card without taking a payment. Use the purchase link above if someone is buying one online.</p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div><Label htmlFor="issue-amount">Value in pounds</Label><Input id="issue-amount" className="mt-1.5" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div>
                     <div><Label htmlFor="issue-name">Recipient</Label><Input id="issue-name" className="mt-1.5" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} required maxLength={120} /></div>
                     <div className="sm:col-span-2"><Label htmlFor="issue-email">Email <span className="text-muted-foreground">(optional)</span></Label><Input id="issue-email" className="mt-1.5" type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} maxLength={254} /></div>
                   </div>
                   <div><Label htmlFor="issue-message">Message <span className="text-muted-foreground">(optional)</span></Label><Textarea id="issue-message" className="mt-1.5" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={300} rows={2} /></div>
-                  <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setShowIssue(false)}>Cancel</Button><Button type="submit" disabled={issuing}>{issuing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Issue gift card</Button></div>
+                  <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setShowIssue(false)}>Cancel</Button><Button type="submit" disabled={issuing}>{issuing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Create gift card</Button></div>
                 </>
               )}
             </form>
           )}
 
-          {cards.isLoading ? <div className="h-36 rounded-2xl border bg-card animate-pulse" /> : (cards.data?.length ?? 0) === 0 ? (
-            <EmptyState icon={Gift} title="No gift cards yet" description="Share your purchase link or issue a complimentary card for a customer." />
+          {cards.isLoading ? <div className="h-36 rounded-2xl border bg-card animate-pulse" /> : cards.isError ? (
+            <EmptyState icon={Gift} title="Gift cards did not load" description="Try again before creating or redeeming a card." action={<Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["gift-cards", businessId] })}>Try again</Button>} />
+          ) : (cards.data?.length ?? 0) === 0 ? (
+            <EmptyState icon={Gift} title="No gift cards yet" description="Copy the purchase link above to sell one, or give a card without taking payment." />
           ) : (
             <div className="rounded-2xl border bg-card overflow-hidden divide-y">
               {cards.data!.map((card) => (
@@ -248,7 +251,7 @@ function GiftCardsPage() {
           <section>
             <h2 className="font-display text-xl mb-3">Recent activity</h2>
             <div className="rounded-2xl border bg-card divide-y">
-              {(transactions.data?.length ?? 0) === 0 ? <p className="p-5 text-sm text-muted-foreground">No activity yet.</p> : transactions.data!.map((item: any) => (
+              {transactions.isError ? <p role="alert" className="p-5 text-sm">Activity did not load. Try again before checking a balance.</p> : (transactions.data?.length ?? 0) === 0 ? <p className="p-5 text-sm text-muted-foreground">No activity yet.</p> : transactions.data!.map((item: any) => (
                 <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm"><div><div className="font-medium capitalize">{item.type}</div><div className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</div></div><div className={`font-medium tabular-nums ${item.amount_cents < 0 ? "text-muted-foreground" : ""}`}>{item.amount_cents > 0 ? "+" : ""}{fmtMoney(item.amount_cents, currency)}</div></div>
               ))}
             </div>

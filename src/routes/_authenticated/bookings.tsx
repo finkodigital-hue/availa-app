@@ -225,7 +225,7 @@ function BookingsPage() {
       <PageHeader
         eyebrow="Bookings"
         title="All bookings"
-        subtitle="Search, filter and review every appointment."
+        subtitle="Find an appointment, check its details or make a change."
       />
 
       <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border bg-card p-4 shadow-soft">
@@ -277,7 +277,7 @@ function BookingsPage() {
           ))}
         </div>
       ) : isError ? (
-        <EmptyState icon={CalendarCheck} title="Could not load bookings" description="Please refresh and try again." />
+        <EmptyState icon={CalendarCheck} title="Bookings did not load" description="Your bookings are still safe. Try loading this list again." action={<Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["bookings-list", bid] })}>Try again</Button>} />
       ) : rows.length === 0 ? (
         <EmptyState
           icon={CalendarCheck}
@@ -295,8 +295,9 @@ function BookingsPage() {
                 onClick={() => setSelected(b)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && setSelected(b)}
-                className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/40 transition-colors cursor-pointer"
+                aria-label={`Open booking for ${b.customer_name}`}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(b); } }}
+                className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary transition-colors cursor-pointer"
               >
                 <div
                   className="w-1 h-10 rounded-full"
