@@ -895,6 +895,7 @@ export type Database = {
       }
       payments: {
         Row: {
+          payment_method: string
           amount_cents: number
           booking_id: string | null
           business_id: string
@@ -926,6 +927,7 @@ export type Database = {
           id?: string
           initiated_by_user_id?: string | null
           status: string
+          payment_method?: string
           stripe_charge_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_refund_id?: string | null
@@ -945,6 +947,7 @@ export type Database = {
           id?: string
           initiated_by_user_id?: string | null
           status?: string
+          payment_method?: string
           stripe_charge_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_refund_id?: string | null
@@ -1947,6 +1950,17 @@ export type Database = {
       }
     }
     Functions: {
+      record_cash_payment: {
+        Args: {
+          p_business_id: string
+          p_booking_id: string
+          p_amount_cents: number
+          p_currency: string
+          p_request_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       accept_professional_invitation: {
         Args: { _pro_business_id: string; _token: string }
         Returns: string

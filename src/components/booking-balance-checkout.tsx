@@ -1,21 +1,35 @@
 import { useRef, useState } from "react";
-import { Copy, CreditCard, ExternalLink, Gift, RefreshCw } from "lucide-react";
+import {
+  Banknote,
+  Copy,
+  CreditCard,
+  ExternalLink,
+  Gift,
+  RefreshCw,
+} from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { startBalanceCheckout } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { useWorkspaceAccess } from "@/lib/business";
+import { recordCashPayment } from "@/lib/cash-payment.functions";
+import { fmtMoney } from "@/lib/format";
+import { useQueryClient } from "@tanstack/react-query";
 
 /** Keep the appointment open. Only the database can confirm payment. */
 export function BookingBalanceCheckout({
   bookingId,
   businessId,
+  amountDueCents,
+  currency,
   disabled,
   onUpdated,
 }: {
   bookingId: string;
   businessId: string;
+  amountDueCents: number;
+  currency: string;
   disabled?: boolean;
   onUpdated: (booking: Record<string, unknown>) => void;
 }) {
@@ -25,6 +39,54 @@ export function BookingBalanceCheckout({
   const [message, setMessage] = useState("");
   const lock = useRef(false);
   const { isOwner } = useWorkspaceAccess();
+  const qc = useQueryClient();
+  const [cashConfirming, setCashConfirming] = useState(false);
+  const cashRequest = useRef<string | null>(null);
+
+  async function receiveCash() {
+    if (lock.current || disabled || !isOwner) return;
+    lock.current = true;
+    setBusy(true);
+    setMessage("");
+    cashRequest.current ??= crypto.randomUUID();
+    try {
+      const headers = await getServerFnAuthHeaders();
+      const booking = await recordCashPayment({
+        data: {
+          bookingId,
+          businessId,
+          amountCents: amountDueCents,
+          currency,
+          requestId: cashRequest.current,
+        },
+        headers,
+      });
+      setCashConfirming(false);
+      setCheckoutUrl(null);
+      setMessage("Cash payment recorded. This visit is paid.");
+      for (const key of [
+        "payments",
+        "payments-totals",
+        "booking-payment-history",
+        "calendar",
+        "bookings-list",
+        "dashboard-overview",
+        "report-bookings",
+      ]) {
+        void qc.invalidateQueries({ queryKey: [key] });
+      }
+      onUpdated(booking);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not confirm the cash payment. Retry to check the same payment.",
+      );
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
 
   async function refresh() {
     const { data, error } = await supabase
@@ -82,19 +144,51 @@ export function BookingBalanceCheckout({
 
   return (
     <div className="w-full space-y-3 rounded-xl border bg-secondary/30 p-3">
-      <p className="text-sm font-medium">Remaining payment</p>
+      <p className="text-sm font-medium">
+        Remaining payment · {fmtMoney(amountDueCents, currency)}
+      </p>
       <p className="text-xs text-muted-foreground">
-        The customer approves payment in secure Stripe Checkout. Opening the
-        link does not mark this visit as paid.
+        Choose how the customer is paying. For card payments, the customer
+        approves payment in secure Stripe Checkout.
       </p>
       <div className="flex flex-wrap gap-2">
-        {isOwner && <Button asChild variant="outline" disabled={disabled}>
-          <Link to="/gift-cards" search={{ bookingId }} aria-disabled={disabled} tabIndex={disabled ? -1 : undefined} onClick={(event) => { if (disabled) event.preventDefault(); }}>
-            <Gift className="mr-1.5 h-4 w-4" /> Apply gift card
-          </Link>
-        </Button>}
+        {isOwner && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy || disabled || amountDueCents <= 0}
+            onClick={() => {
+              setCashConfirming(true);
+              setMessage("");
+            }}
+          >
+            <Banknote className="mr-1.5 h-4 w-4" /> Cash
+          </Button>
+        )}
+        {isOwner && (
+          <Button
+            asChild
+            variant="outline"
+            disabled={disabled || busy || cashConfirming}
+          >
+            <Link
+              to="/gift-cards"
+              search={{ bookingId }}
+              aria-disabled={disabled || busy || cashConfirming}
+              tabIndex={disabled || busy || cashConfirming ? -1 : undefined}
+              onClick={(event) => {
+                if (disabled || busy || cashConfirming) event.preventDefault();
+              }}
+            >
+              <Gift className="mr-1.5 h-4 w-4" /> Apply gift card
+            </Link>
+          </Button>
+        )}
         {!checkoutUrl ? (
-          <Button disabled={busy || disabled} onClick={() => void run(true)}>
+          <Button
+            disabled={busy || disabled || cashConfirming}
+            onClick={() => void run(true)}
+          >
             <CreditCard className="mr-1.5 h-4 w-4" />
             {busy ? "Preparing payment…" : "Prepare payment"}
           </Button>
@@ -138,6 +232,33 @@ export function BookingBalanceCheckout({
           {busy ? "Please wait…" : "Check payment status"}
         </Button>
       </div>
+      {cashConfirming && (
+        <div className="space-y-2 rounded-lg border bg-background p-3">
+          <p className="text-sm">
+            Confirm you have received {fmtMoney(amountDueCents, currency)} in
+            cash. This will mark the remaining balance as paid.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={busy || disabled}
+              onClick={() => void receiveCash()}
+            >
+              {busy
+                ? "Recording…"
+                : `Confirm ${fmtMoney(amountDueCents, currency)} cash received`}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setCashConfirming(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
       {message && (
         <p role="status" className="text-sm">
           {message}

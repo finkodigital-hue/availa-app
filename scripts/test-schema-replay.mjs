@@ -8,6 +8,7 @@ import { checkGiftRefunds } from './schema-gift-refund-checks.mjs';
 import { checkGiftPurchases } from './schema-gift-purchase-checks.mjs';
 import { checkRefundReviews } from './schema-refund-review-checks.mjs';
 import { checkFunctionAccess } from './schema-function-access-checks.mjs';
+import { checkCashPayments } from './schema-cash-payment-checks.mjs';
 
 // Replay ALL application migrations. Supabase-owned Auth/Storage objects and
 // external cron/HTTP/Vault services are local fixtures, not a full Supabase stack.
@@ -42,6 +43,7 @@ alter default privileges in schema public grant all on sequences to anon,authent
 `);
 const dir=new URL('../supabase/migrations/',import.meta.url);
 const migrations=fs.readdirSync(dir).filter(n=>n.endsWith('.sql')).sort();
+assert.equal(new Set(migrations.map(name=>name.split('_')[0])).size,migrations.length,'Migration version numbers must be unique');
 let replayed=0,fixtures=0;
 try {
  for(const name of migrations){
@@ -106,5 +108,6 @@ try {
  await checkGiftPurchases(db);
  await checkRefundReviews(db);
  await checkFunctionAccess(db);
+ await checkCashPayments(db);
 } catch(error) {console.error(error);process.exitCode=1;}
 finally {await db.close();}
