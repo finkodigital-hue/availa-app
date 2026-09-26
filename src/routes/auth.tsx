@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { z } from "zod";
 import { AlertCircle, Loader2, Eye, EyeOff, X } from "lucide-react";
 import { Wordmark } from "@/components/wordmark";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,11 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-const search = z
-  .object({ mode: z.enum(["signin", "signup", "reset", "update"]).optional() })
-  .optional();
-
 type AuthMode = "signin" | "signup" | "reset" | "update";
+
+const AUTH_MODES = new Set<AuthMode>(["signin", "signup", "reset", "update"]);
+
+function validateAuthSearch(search: Record<string, unknown>): { mode?: AuthMode } {
+  const mode = search.mode;
+  return typeof mode === "string" && AUTH_MODES.has(mode as AuthMode)
+    ? { mode: mode as AuthMode }
+    : {};
+}
 
 function friendlyAuthError(error: unknown, mode: AuthMode) {
   const message =
@@ -75,7 +79,7 @@ function friendlyAuthError(error: unknown, mode: AuthMode) {
 }
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s) => search.parse(s) ?? {},
+  validateSearch: validateAuthSearch,
   head: () => ({
     meta: [
       { title: "Sign in · Bookzenvo" },

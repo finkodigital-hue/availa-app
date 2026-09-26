@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarCheck,
@@ -47,9 +46,15 @@ import { BookingConsultationStatus } from "@/components/booking-consultation-sta
 import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { BookingCustomerNotes } from "@/components/booking-customer-notes";
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export const Route = createFileRoute("/_authenticated/bookings")({
-  validateSearch: z.object({
-    bookingId: z.string().uuid().optional().catch(undefined),
+  validateSearch: (search: Record<string, unknown>): { bookingId?: string } => ({
+    bookingId:
+      typeof search.bookingId === "string" && UUID_PATTERN.test(search.bookingId)
+        ? search.bookingId
+        : undefined,
   }),
   component: BookingsPage,
 });
