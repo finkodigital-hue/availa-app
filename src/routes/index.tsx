@@ -9,7 +9,6 @@ import {
   MessageCircleMore,
   ShieldCheck,
   Sparkles,
-  TrendingUp,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -25,21 +24,21 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       {
-        title: "Bookzenvo · Your salon. All in one place.",
+        title: "Bookzenvo · Be ready for every salon visit",
       },
       {
         name: "description",
         content:
-          "Explore Bookzenvo, a salon platform in development for bookings, payments and client care. Join the waitlist for launch updates.",
+          "A colour booking is only the start. Keep consultations, patch-test records, payments and rebooking connected in Bookzenvo. Join the waitlist.",
       },
       {
         property: "og:title",
-        content: "Bookzenvo · Your salon. All in one place.",
+        content: "Bookzenvo · Be ready for every salon visit",
       },
       {
         property: "og:description",
         content:
-          "Explore the planned Bookzenvo salon platform and join the waitlist for launch updates.",
+          "See how Bookzenvo helps a salon prepare for a colour appointment, look after the visit and welcome the client back.",
       },
       {
         property: "og:image",
@@ -53,67 +52,20 @@ export const Route = createFileRoute("/")({
 
 const steps = [
   [
-    "01",
-    "Set up your salon",
-    "Add your services, prices, hours and team, or bring them across from your old system.",
+    "Before the visit",
+    "Prepare with the booking",
+    "Check the consultation and patch-test record before a new colour client arrives.",
   ],
   [
-    "02",
-    "Share one link",
-    "Clients choose a time, pay a deposit and get every detail without downloading an app.",
+    "In the salon",
+    "Keep the visit moving",
+    "Open the client details your team needs, then take payment without losing track of the appointment.",
   ],
   [
-    "03",
-    "Let the day flow",
-    "Bookings arrive without clashes, reminders go out and each visit builds the client record.",
+    "After the visit",
+    "Make the next one easier",
+    "Keep the visit on the client record and help them book their next appointment.",
   ],
-];
-
-const stories = [
-  {
-    label: "Get booked",
-    title: "Your next booking.\nAlready taken care of.",
-    description:
-      "A booking page that feels like your salon. Clients choose their service, find a time and pay their deposit.",
-    icon: CalendarCheck,
-    items: [
-      "Your own booking link",
-      "Deposits at checkout",
-      "Automatic confirmations",
-    ],
-    foot: "A smoother first impression, before they walk in.",
-  },
-  {
-    label: "Care for clients",
-    title: "Know the client.\nSkip the paperwork.",
-    description:
-      "Keep consultation forms, signatures, patch-test records and visit history together, ready when you need them.",
-    icon: ShieldCheck,
-    items: [
-      "Digital consultation forms",
-      "Patch-test records",
-      "Client notes and history",
-    ],
-    foot: "More personal care. Less searching for the details.",
-  },
-  {
-    label: "Get paid",
-    title: "From deposit\nto the final balance.",
-    description:
-      "Manage online payments and refunds through Stripe, with a clear record of each charge.",
-    icon: CreditCard,
-    items: ["Deposit or full payment", "Remaining balances", "Tracked refunds"],
-    foot: "Keep the appointment and the payment connected.",
-  },
-  {
-    label: "Keep growing",
-    title: "A little less admin.\nA little more possibility.",
-    description:
-      "Use practical AI to edit your page, scan stock from a photo and explore what your salon data is telling you.",
-    icon: TrendingUp,
-    items: ["AI page editing", "Stock photo scanning", "Business insights"],
-    foot: "Useful help with the jobs that take you away from clients.",
-  },
 ];
 
 const studioFeatures = [
@@ -134,20 +86,113 @@ function StartLink({
   light?: boolean;
 }) {
   return (
-    <Link
-      to="/auth"
-      search={{ mode: "signup" }}
+    <a
+      href="#waitlist"
       className={`lp-button ${light ? "lp-button-light" : "lp-button-primary"}`}
     >
       <span>{children}</span>
       <ArrowRight aria-hidden="true" />
-    </Link>
+    </a>
+  );
+}
+
+function WaitlistForm() {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(
+          result.message === "Too many requests"
+            ? "Please wait a moment and try again."
+            : "We couldn't add you just now. Please try again.",
+        );
+      }
+      setDone(true);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "We couldn't add you just now. Please try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      id="waitlist"
+      className="lp-waitlist"
+      aria-label="Join the Bookzenvo waitlist"
+    >
+      {done ? (
+        <p className="lp-waitlist-success" role="status">
+          <Check aria-hidden="true" /> You're on the list. We'll email you when
+          Bookzenvo launches.
+        </p>
+      ) : (
+        <form onSubmit={submit}>
+          <label htmlFor="landing-waitlist-email">Get launch updates</label>
+          <div className="lp-waitlist-controls">
+            <input
+              id="landing-waitlist-email"
+              type="email"
+              name="email"
+              autoComplete="email"
+              required
+              maxLength={254}
+              placeholder="you@salon.com"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setError("");
+              }}
+              aria-describedby={
+                error ? "landing-waitlist-error" : "landing-waitlist-note"
+              }
+              aria-invalid={Boolean(error)}
+            />
+            <button type="submit" disabled={busy}>
+              {busy ? "Joining…" : "Join the waitlist"}
+              {!busy && <ArrowRight aria-hidden="true" />}
+            </button>
+          </div>
+          {error && (
+            <p
+              id="landing-waitlist-error"
+              className="lp-waitlist-error"
+              role="alert"
+            >
+              {error}
+            </p>
+          )}
+          <p id="landing-waitlist-note" className="lp-waitlist-note">
+            By joining, you ask us to contact you about Bookzenvo and
+            acknowledge our <Link to="/privacy">Privacy Policy</Link>. This is
+            not consent to unrelated marketing.
+          </p>
+        </form>
+      )}
+    </div>
   );
 }
 
 function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeStory, setActiveStory] = useState(0);
   const [activeLook, setActiveLook] = useState(0);
   const looks = [
     {
@@ -229,6 +274,9 @@ function Landing() {
               <Link to="/auth" onClick={closeMenu}>
                 Sign in
               </Link>
+              <a href="#waitlist" onClick={closeMenu}>
+                Join the waitlist
+              </a>
             </nav>
           )}
         </header>
@@ -237,79 +285,46 @@ function Landing() {
           <section className="lp-hero">
             <div className="lp-hero-copy">
               <p className="lp-kicker lp-hero-label">
-                Salon software, made simple
+                For appointments that need more than a time slot
               </p>
               <h1>
-                Your salon.
+                The colour client
                 <br />
-                <span>All in one place.</span>
+                <span>is booked. Now what?</span>
               </h1>
               <p className="lp-hero-lede">
-                Bookings, payments and client care, beautifully together. Make
-                more room for the work you love.
+                Check the consultation and patch-test record before they arrive.
+                Keep the visit connected through payment and rebooking.
               </p>
               <div className="lp-hero-actions">
-                <StartLink />
-                <a className="lp-text-link" href="#features">
-                  Explore Bookzenvo <ArrowRight aria-hidden="true" />
+                <a className="lp-text-link" href="#how">
+                  Follow the appointment <ArrowRight aria-hidden="true" />
                 </a>
               </div>
-              <div className="lp-hero-assurance">
-                <span>
-                  <Check aria-hidden="true" /> Launching soon
-                </span>
-                <span>
-                  <Check aria-hidden="true" /> No commission
-                </span>
-              </div>
+              <WaitlistForm />
             </div>
-            <div className="lp-story">
-              <div className="lp-story-heading">
-                <Wordmark />
-                <span>One salon. One place.</span>
+            <figure className="lp-hero-product">
+              <div className="lp-hero-product-image">
+                <img
+                  src="/landing/consultation-workflow.png"
+                  alt="Bookzenvo's consultation form editor with questions about allergies and previous reactions"
+                  width="1536"
+                  height="1840"
+                  fetchPriority="high"
+                />
               </div>
-              <div
-                className="lp-story-options"
-                aria-label="Explore what Bookzenvo does"
-              >
-                {stories.map((story, index) => (
-                  <button
-                    type="button"
-                    key={story.label}
-                    aria-pressed={activeStory === index}
-                    onClick={() => setActiveStory(index)}
-                  >
-                    {story.label}
-                  </button>
-                ))}
-              </div>
-              <div
-                className="lp-story-body"
-                key={activeStory}
-                aria-live="polite"
-              >
-                <div className="lp-story-icon">
-                  {(() => {
-                    const Icon = stories[activeStory].icon;
-                    return <Icon aria-hidden="true" />;
-                  })()}
-                </div>
-                <h2>{stories[activeStory].title}</h2>
-                <p>{stories[activeStory].description}</p>
-                <ul>
-                  {stories[activeStory].items.map((item) => (
-                    <li key={item}>
-                      <Check aria-hidden="true" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="lp-story-footer">
-                <span>{stories[activeStory].foot}</span>
-                <span aria-hidden="true">0{activeStory + 1} / 04</span>
-              </div>
-            </div>
+              <figcaption>
+                <span>Inside Bookzenvo</span>
+                <strong>Build the consultation your team needs.</strong>
+                <a
+                  href="/landing/consultation-workflow.png"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View full screenshot <ArrowRight aria-hidden="true" />
+                </a>
+              </figcaption>
+            </figure>
           </section>
 
           <section
@@ -329,17 +344,16 @@ function Landing() {
 
           <section id="how" className="lp-section lp-how" data-reveal>
             <div className="lp-section-heading">
-              <p className="lp-kicker">Simple from day one</p>
-              <h2>Ready for your next chapter.</h2>
+              <h2>One appointment. No scattered details.</h2>
               <p>
-                Bookzenvo feels familiar quickly, whether you are starting fresh
-                or moving an established salon.
+                A new colour client is a good example. The booking is only the
+                beginning of the work.
               </p>
             </div>
             <ol className="lp-steps">
-              {steps.map(([number, title, body]) => (
-                <li key={number}>
-                  <span className="lp-step-number">{number}</span>
+              {steps.map(([moment, title, body]) => (
+                <li key={moment}>
+                  <span className="lp-step-number">{moment}</span>
                   <div>
                     <h3>{title}</h3>
                     <p>{body}</p>
@@ -479,13 +493,13 @@ function Landing() {
             <div className="lp-switch-copy">
               <p className="lp-switch-label">Make your next move</p>
               <h2>
-                A fresh start.
+                Keep your salon's history.
                 <br />
-                <span>Same salon. Less admin.</span>
+                <span>Change the software.</span>
               </h2>
               <p>
-                Bring your clients, team, services and booking history into
-                Bookzenvo. Keep what matters, and make the everyday easier.
+                Bring over clients, team, services and booking history. Review
+                your import before you start taking bookings in Bookzenvo.
               </p>
               <StartLink light>Join the waitlist</StartLink>
             </div>
@@ -614,9 +628,7 @@ function Landing() {
                 Your salon deserves
                 <br />a better working day.
               </h2>
-              <p>
-                Be first to hear when Bookzenvo launches.
-              </p>
+              <p>Be first to hear when Bookzenvo launches.</p>
             </div>
             <StartLink light />
           </section>
