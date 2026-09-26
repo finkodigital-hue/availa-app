@@ -962,6 +962,8 @@ export function PublicBookingPage({
                         <img
                           src={safeImageSrc(heroPhotos[0].url) ?? undefined}
                           alt=""
+                          fetchPriority="high"
+                          decoding="async"
                           className="absolute inset-0 h-full w-full object-cover opacity-65"
                         />
                       )}
@@ -1019,6 +1021,8 @@ export function PublicBookingPage({
                                 key={photo.id}
                                 src={safeImageSrc(photo.url) ?? undefined}
                                 alt=""
+                                loading="lazy"
+                                decoding="async"
                                 className="h-full min-h-0 w-full rounded-2xl object-cover ring-1 ring-white/25"
                               />
                             ))}
