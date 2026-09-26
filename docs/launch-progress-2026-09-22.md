@@ -97,6 +97,12 @@ First batch deployed and verified at revision af7de6756499eec73777cdb12406be03f7
 - Added 18 full-schema assertions and four signed-handler assertions. All 127 migrations replay, with 61 public tables checked. Provider delivery, late failures and spent-credit operator reconciliation remain open.
 - The preceding booking-refund release is live at 57af0c1a7c504f075cd0de23f8a9618b8dfa00e1, with all checks and marker verified. Its sandbox webhook now includes refund.created. See [payment ledger verification](payment-ledger-verification.md).
 
+## Refund failure safeguards — 26 September
+
+- Added persistent review records for signed failed/cancelled/action-required Stripe refunds, surfaced on Payments and the protected monitor. Identity and tenant checks are enforced by a service-only function. No customer is charged and no gift value/booking ledger is automatically reversed by these alerts.
+- Integrated remote main through b163d65, preserving the new payment pagination, booking-change email monitoring, consultation restrictions and public workflow improvements. Resolved conflicts by keeping both sets of checks.
+- Combined production build passed, including all 132 migrations and security-boundary checks across 63 public tables; the new review cases add 12 full-schema and nine signed-handler assertions. Actual Stripe event delivery and operator reconciliation remain separate evidence.
+
 ## Security-advisor triage — 25 September
 
 - The production Supabase Security Advisor shows four security-definer-view errors. These are the deliberately narrow public business, staff, blocked-time and booking-slot projections used for storefront discovery and availability. Do not change them to invoker mode without redesigning public access; that would break public booking. A full-schema regression now checks the exact exposed columns of all four views so future additions cannot silently publish private fields. This does **not** clear the advisor errors or replace a live permission review.
