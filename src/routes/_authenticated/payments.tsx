@@ -40,6 +40,17 @@ function PaymentsPage() {
   const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [refundResults, setRefundResults] = useState<Array<{ paymentIntentId: string; amountCents: number; ok: boolean; error?: string }> | null>(null);
 
+  const refundReviews = useQuery({
+    queryKey: ["stripe-refund-reviews", bid],
+    enabled: !!bid,
+    queryFn: async () => {
+      const { count, error } = await (supabase as any).from("stripe_refund_reviews")
+        .select("stripe_refund_id", { count: "exact", head: true }).eq("business_id", bid).eq("manual_review", true);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ["payments", bid],
     enabled: !!bid,
@@ -104,6 +115,8 @@ function PaymentsPage() {
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
       <PageHeader eyebrow="Money" title="Payments" subtitle="All transactions in one place." />
+      {refundReviews.isError && <p role="alert" className="mb-4 rounded-xl border p-4 text-sm">Refund review status could not be loaded. Check Stripe before retrying a refund.</p>}
+      {(refundReviews.data ?? 0) > 0 && <p role="alert" className="mb-4 rounded-xl border border-amber-500 p-4 text-sm">{refundReviews.data} refund(s) need review. Stripe reported a failure, cancellation or required action. Check their current status and reconcile the payment with support before refunding again or restoring gift credit.</p>}
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
         <StatCard accent loading={isLoading} icon={CreditCard} label="Collected this month" value={fmtMoney(data?.collected ?? 0)} />

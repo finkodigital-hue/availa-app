@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { checkSchemaRoles } from './schema-role-checks.mjs';
 import { checkSchemaPaymentLedger } from './schema-payment-ledger-checks.mjs';
 import { checkGiftRefunds } from './schema-gift-refund-checks.mjs';
+import { checkRefundReviews } from './schema-refund-review-checks.mjs';
 
 // Replay ALL application migrations. Supabase-owned Auth/Storage objects and
 // external cron/HTTP/Vault services are local fixtures, not a full Supabase stack.
@@ -68,5 +69,6 @@ try {
  await checkSchemaRoles(db);
  await checkSchemaPaymentLedger(db);
  await checkGiftRefunds(db);
+ await checkRefundReviews(db);
 } catch(error) {console.error(error.message);process.exitCode=1;}
 finally {await db.close();}

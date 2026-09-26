@@ -53,5 +53,12 @@ try {
 } finally {console.error=originalError;}
 same(expectedErrors.length,2);
 same(rpcCalls.length,3);
+lookupFailure=false;
+for(const status of ['failed','canceled','requires_action']) {
+ const adverse=event('refund.failed');adverse.data.object.status=status;
+ same((await send(adverse)).status,200);
+ same(rpcCalls.at(-1).name,'record_stripe_refund_review');
+ same(rpcCalls.at(-1).args.p_status,status);
+}
 delete globalThis.__refundTestDatabase;
 console.log(`Refund webhook: ${checks} assertions passed with fictional signed events; no provider requests.`);

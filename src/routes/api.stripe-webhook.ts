@@ -46,9 +46,10 @@ export const Route = createFileRoute("/api/stripe-webhook")({
           }
         }
 
-        if (event.type === "refund.created" || event.type === "refund.updated") {
+        if (["refund.created", "refund.updated", "refund.failed"].includes(event.type)) {
           const refund = event.data?.object;
-          if (refund?.status !== "succeeded")
+          const needsReview = ["failed", "canceled", "requires_action"].includes(refund?.status);
+          if (refund?.status !== "succeeded" && !needsReview)
             return Response.json({ received: true });
           const metadata = refund.metadata ?? {};
           // These refunds have no booking ledger row; the durable recovery
@@ -76,6 +77,19 @@ export const Route = createFileRoute("/api/stripe-webhook")({
               return new Response("Connected account mismatch", {
                 status: 400,
               });
+            }
+            if (needsReview) {
+              if (metadata.business_id && metadata.business_id !== business.id) {
+                return new Response("Refund identity mismatch", { status: 400 });
+              }
+              const { error: reviewError } = await (supabaseAdmin as any).rpc("record_stripe_refund_review", {
+                p_business_id: business.id,
+                p_stripe_payment_intent_id: refund.payment_intent,
+                p_stripe_refund_id: refund.id,
+                p_status: refund.status,
+              });
+              if (reviewError) throw reviewError;
+              return Response.json({ received: true });
             }
             // Dashboard refunds need not carry our metadata. Resolve the
             // booking from its recorded charge inside the signed account.

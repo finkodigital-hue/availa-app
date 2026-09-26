@@ -513,7 +513,8 @@ export const refundBooking = createServerFn({ method: "POST" })
           results.push({
             paymentIntentId,
             amountCents: refund.amount,
-            ok: true,
+            ok: refund.status !== "requires_action",
+            ...(refund.status === "requires_action" ? { error: "Stripe requires further action. Review this refund in Stripe before retrying." } : {}),
           });
         } catch (error) {
           const message =
