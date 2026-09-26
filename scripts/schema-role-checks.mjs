@@ -70,6 +70,22 @@ export async function checkSchemaRoles(db) {
  await login(6);await fail(`select accept_staff_account_invitation('${invitation.token}')`,/invited email/);
  await login(9);same((await rows(`select accept_staff_account_invitation('${invitation.token}') as business`))[0].business,id(101),'Intended invite accepted');
  await fail(`select accept_staff_account_invitation('${invitation.token}')`,/invalid or expired/);
+ await login(6);
+ await db.exec(`insert into businesses(id,owner_id,name,slug,timezone)
+  values('${id(103)}','${id(6)}','Fictional C','fictional-c','Europe/London')`);
+ await login(1);
+ const professionalInvitation=(await rows(`insert into professional_invitations(salon_business_id,invited_by,email,token)
+  values('${id(101)}','${id(1)}','fixture2@example.invalid','professional-security-audit-token') returning id`))[0];
+ await login(6);
+ await fail(`select accept_professional_invitation('professional-security-audit-token','${id(103)}')`,/invited email/);
+ await login(2);
+ same((await rows(`select accept_professional_invitation('professional-security-audit-token','${id(102)}') as invitation`))[0].invitation,professionalInvitation.id,'Professional invite is accepted only by the addressed owner');
+ await fail(`select accept_professional_invitation('professional-security-audit-token','${id(102)}')`,/no longer valid/);
+ same((await rows(`select count(*)::int as n from salon_professionals where salon_business_id='${id(101)}' and pro_business_id='${id(102)}'`))[0].n,1,'Professional invite creates one link');
+ await db.exec('reset role');
+ await db.exec(`delete from salon_professionals where salon_business_id='${id(101)}' and pro_business_id='${id(102)}';
+  delete from professional_invitations where id='${professionalInvitation.id}';
+  delete from businesses where id='${id(103)}'`);
  await login(1);await db.exec(`update staff_memberships set active=false where user_id='${id(9)}'`);
  await login(9);same(await rows('select id from bookings'),[],'Revocation applies to existing identity');
  await db.exec('reset role');await db.exec(`insert into auth.mfa_factors values('${id(601)}','${id(1)}','verified')`);
