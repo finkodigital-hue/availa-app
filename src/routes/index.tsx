@@ -24,7 +24,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       {
-        title: "Bookzenvo · A simpler day at the salon",
+        title: "Bookzenvo · Less time sorting. More time styling.",
       },
       {
         name: "description",
@@ -33,12 +33,12 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:title",
-        content: "Bookzenvo · A simpler day at the salon",
+        content: "Bookzenvo · Less time sorting. More time styling.",
       },
       {
         property: "og:description",
         content:
-          "Bookings, client care and payments in one place. Less time on admin, more time with your clients.",
+          "Keep salon bookings, client care and payments together, so you can focus on the person in your chair.",
       },
       {
         property: "og:image",
@@ -285,13 +285,13 @@ function Landing() {
           <section className="lp-hero">
             <div className="lp-hero-copy">
               <h1>
-                A simpler day
+                Less time sorting.
                 <br />
-                <span>at the salon.</span>
+                <span>More time styling.</span>
               </h1>
               <p className="lp-hero-lede">
-                Bookings, client care and payments in one place. Less time on
-                admin, more time with your clients.
+                Keep bookings, client care and payments together, so you can
+                focus on the person in your chair.
               </p>
               <WaitlistForm />
             </div>
