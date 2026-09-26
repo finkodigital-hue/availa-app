@@ -53,6 +53,7 @@ const emailProvider = await read("src/lib/resend.server.ts");
 const emailWebhook = await read("src/routes/api.resend-webhook.ts");
 const smsProvider = await read("src/lib/sms.server.ts");
 const smsWebhook = await read("src/routes/api.twilio-sms-webhook.ts");
+const devSeed = await read("src/lib/dev-seed.functions.ts");
 
 assert(
   runtimeEnv.includes("${window.location.origin}/api/supabase"),
@@ -176,6 +177,14 @@ assert(
     smsWebhook.includes('p_provider_id: messageId') &&
     smsWebhook.includes('form.get("AccountSid") !== process.env.TWILIO_ACCOUNT_SID'),
   "Twilio delivery callbacks must be authenticated before updating delivery state.",
+);
+assert(
+  devSeed.includes('process.env.DEV_SEED_ENABLED !== "true"') &&
+    devSeed.includes('process.env.APP_ENV === "production"') &&
+    !devSeed.includes("DEMO_PASSWORD") &&
+    !devSeed.includes("updateUserById") &&
+    devSeed.includes("randomDemoPassword()"),
+  "The development seeder must require an explicit local gate and must not contain or reset a reusable password.",
 );
 
 const sourceFiles = (await walk("src")).filter((file) =>

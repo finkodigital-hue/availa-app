@@ -46,16 +46,13 @@ function DevUserSwitcherInner({
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
   const [busy, setBusy] = useState<null | "seed" | "pro" | "owner">(null);
-  const [creds, setCreds] = useState<{
-    email: string;
-    password: string;
-  } | null>(null);
+  const [demoEmail, setDemoEmail] = useState<string | null>(null);
 
   const doSeed = async () => {
     setBusy("seed");
     try {
       const res = await seed({ data: undefined as any });
-      setCreds({ email: res.email, password: res.password });
+      setDemoEmail(res.email);
       toast.success("Demo professional ready");
     } catch (e: any) {
       toast.error(e?.message ?? "Seed failed");
@@ -67,7 +64,7 @@ function DevUserSwitcherInner({
   // Auto-seed the demo pro account the first time the dialog opens so the
   // credentials shown are guaranteed to work immediately.
   useEffect(() => {
-    if (open && !creds && busy === null) {
+    if (open && !demoEmail && busy === null) {
       doSeed();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,12 +74,14 @@ function DevUserSwitcherInner({
     setBusy(which);
     try {
       // Make sure the pro exists before we try to sign in
+      let targetEmail = email;
       if (which === "pro") {
         const res = await seed({ data: undefined as any });
-        setCreds({ email: res.email, password: res.password });
+        setDemoEmail(res.email);
+        targetEmail = res.email;
       }
       // Use a magic-link OTP so we don't need the current session's password.
-      const { token_hash } = await magic({ data: { email } });
+      const { token_hash } = await magic({ data: { email: targetEmail } });
       if (!token_hash) throw new Error("Could not generate sign-in token");
       await supabase.auth.signOut();
       const { error } = await supabase.auth.verifyOtp({
@@ -90,7 +89,7 @@ function DevUserSwitcherInner({
         token_hash,
       });
       if (error) throw error;
-      toast.success(`Signed in as ${email}`);
+      toast.success(`Signed in as ${targetEmail}`);
       setOpen(false);
       router.navigate({ to: "/dashboard", replace: true });
       // Hard refresh to reset all cached business/queries
@@ -166,26 +165,14 @@ function DevUserSwitcherInner({
                 customers
               </div>
 
-              {creds && (
+              {demoEmail && (
                 <div className="mt-2 space-y-1 rounded-md bg-muted/60 p-2 text-xs">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-muted-foreground">Email</span>
                     <div className="flex items-center gap-1">
-                      <code className="text-[11px]">{creds.email}</code>
+                      <code className="text-[11px]">{demoEmail}</code>
                       <button
-                        onClick={() => copy(creds.email)}
-                        className="p-1 hover:bg-background rounded"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground">Password</span>
-                    <div className="flex items-center gap-1">
-                      <code className="text-[11px]">{creds.password}</code>
-                      <button
-                        onClick={() => copy(creds.password)}
+                        onClick={() => copy(demoEmail)}
                         className="p-1 hover:bg-background rounded"
                       >
                         <Copy className="h-3 w-3" />
@@ -205,13 +192,13 @@ function DevUserSwitcherInner({
                   {busy === "seed" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    "Show credentials"
+                    "Prepare demo account"
                   )}
                 </Button>
                 <Button
                   size="sm"
                   disabled={busy !== null}
-                  onClick={() => signInAs("finko@au.com", "pro")}
+                  onClick={() => signInAs(demoEmail ?? "", "pro")}
                 >
                   {busy === "pro" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

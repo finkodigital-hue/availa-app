@@ -1,13 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const DEMO_EMAIL = "finko@au.com";
-const DEMO_PASSWORD = "Money123!";
-
 function assertDev() {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Dev-only endpoint");
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.APP_ENV === "production" ||
+    process.env.DEV_SEED_ENABLED !== "true"
+  ) {
+    throw new Error("Dev-only endpoint is disabled");
   }
+}
+
+function demoEmail(ownerId: string) {
+  return `demo-pro-${ownerId}@example.invalid`;
+}
+
+function randomDemoPassword() {
+  return `${crypto.randomUUID()}${crypto.randomUUID()}Aa1!`;
 }
 
 export const devSeedProfessional = createServerFn({ method: "POST" })
@@ -15,6 +24,7 @@ export const devSeedProfessional = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     assertDev();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const email = demoEmail(context.userId);
 
     const { data: salon, error: salonErr } = await context.supabase
       .from("businesses")
@@ -28,17 +38,13 @@ export const devSeedProfessional = createServerFn({ method: "POST" })
     let userId: string | null = null;
     // listUsers is paginated; scan first page (200) — good enough for dev
     const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
-    const existing = list.users.find((u) => u.email?.toLowerCase() === DEMO_EMAIL);
+    const existing = list.users.find((u) => u.email?.toLowerCase() === email);
     if (existing) {
       userId = existing.id;
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password: DEMO_PASSWORD,
-        email_confirm: true,
-      });
     } else {
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
-        email: DEMO_EMAIL,
-        password: DEMO_PASSWORD,
+        email,
+        password: randomDemoPassword(),
         email_confirm: true,
         user_metadata: { full_name: "Alex Rivera (Demo Pro)" },
       });
@@ -66,7 +72,7 @@ export const devSeedProfessional = createServerFn({ method: "POST" })
           owner_id: userId,
           name: "Alex Rivera",
           slug,
-          email: DEMO_EMAIL,
+          email,
           industry: "hair_salon",
           currency: "USD",
         } as any)
@@ -107,7 +113,7 @@ export const devSeedProfessional = createServerFn({ method: "POST" })
       await supabaseAdmin.from("staff").insert({
         business_id: proBiz.id,
         name: "Alex Rivera",
-        email: DEMO_EMAIL,
+        email,
       } as any);
     }
 
@@ -139,22 +145,33 @@ export const devSeedProfessional = createServerFn({ method: "POST" })
       ] as any);
     }
 
-    return { email: DEMO_EMAIL, password: DEMO_PASSWORD, salon: salon.name };
+    return { email, salon: salon.name };
   });
 
 export const devMagicLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { email: string }) => data)
-  .handler(async ({ data }) => {
+  .validator((data: { email: string }) => data)
+  .handler(async ({ data, context }) => {
     assertDev();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: current, error: currentError } =
+      await supabaseAdmin.auth.admin.getUserById(context.userId);
+    if (currentError) throw currentError;
+    const requested = data.email.trim().toLowerCase();
+    const allowed = new Set([
+      current.user?.email?.toLowerCase(),
+      demoEmail(context.userId),
+    ]);
+    if (!requested || !allowed.has(requested)) {
+      throw new Error("Dev account switch is limited to the current owner and their demo professional");
+    }
     const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
-      email: data.email,
+      email: requested,
     });
     if (error) throw error;
     return {
-      email: data.email,
+      email: requested,
       token_hash: link.properties?.hashed_token ?? "",
     };
   });
