@@ -301,7 +301,11 @@ function PageBuilderPage() {
     }
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(
+        layoutRes.error && themeRes.error
+          ? "Could not save your page. Your edits are still here; try again."
+          : "Only part of your page saved. Keep this editor open and try Save again before publishing.",
+      );
       return false;
     }
     qc.invalidateQueries({ queryKey: ["page-layout", biz.id] });

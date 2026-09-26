@@ -505,14 +505,20 @@ function ServicesPage() {
             .select("id")
             .single()
         : await supabase.from("services").insert(payload).select("id").single();
-      if (error) return toast.error("Service details did not save. Check the fields and try again.");
+      if (error)
+        return toast.error(
+          "Service details did not save. Check the fields and try again.",
+        );
       const sid = data!.id;
       // sync staff
       const { error: clearStaffError } = await supabase
         .from("service_staff")
         .delete()
         .eq("service_id", sid);
-      if (clearStaffError) return toast.error("Service details saved, but staff assignments did not. Try saving again.");
+      if (clearStaffError)
+        return toast.error(
+          "Service details saved, but staff assignments did not. Try saving again.",
+        );
       if (linked.size > 0) {
         const { error: staffError } = await supabase
           .from("service_staff")
@@ -523,7 +529,10 @@ function ServicesPage() {
               business_id: bid,
             })),
           );
-        if (staffError) return toast.error("Service details saved, but staff assignments did not. Try saving again.");
+        if (staffError)
+          return toast.error(
+            "Service details saved, but staff assignments did not. Try saving again.",
+          );
       }
       // Preserve existing recipe data on downgrade. Studio businesses may edit it.
       if (biz?.plan === "studio") {
@@ -531,7 +540,10 @@ function ServicesPage() {
           .from("service_recipe_items")
           .delete()
           .eq("service_id", sid);
-        if (clearRecipeError) return toast.error("Service saved, but products used could not be updated. Try saving again.");
+        if (clearRecipeError)
+          return toast.error(
+            "Service saved, but products used could not be updated. Try saving again.",
+          );
         if (recipe.length > 0) {
           const { error: recipeError } = await supabase
             .from("service_recipe_items")
@@ -543,7 +555,10 @@ function ServicesPage() {
                 quantity: r.quantity,
               })),
             );
-          if (recipeError) return toast.error("Service saved, but products used could not be updated. Try saving again.");
+          if (recipeError)
+            return toast.error(
+              "Service saved, but products used could not be updated. Try saving again.",
+            );
         }
       }
       toast.success(edit.id ? "Service updated" : "Service created");
@@ -800,7 +815,7 @@ function ServicesPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-[minmax(0,1fr)_82px_84px_18px] gap-3 border-b px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <div className="hidden grid-cols-[minmax(0,1fr)_82px_84px_18px] gap-3 border-b px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:grid">
               <span>Service</span>
               <span>Duration</span>
               <span>Price</span>
@@ -828,19 +843,26 @@ function ServicesPage() {
                           key={service.id}
                           type="button"
                           onClick={() => setEdit(service)}
-                          className={`grid w-full grid-cols-[minmax(0,1fr)_82px_84px_18px] items-center gap-3 border-b px-5 py-3 text-left text-sm transition-colors ${selected ? "bg-accent text-accent-foreground" : "hover:bg-secondary/40"}`}
+                          className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 border-b px-4 py-3 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary sm:grid-cols-[minmax(0,1fr)_82px_84px_18px] sm:px-5 ${selected ? "bg-accent text-accent-foreground" : "hover:bg-secondary/40"}`}
                         >
                           <span className="min-w-0 truncate font-medium">
                             {service.name}
                           </span>
-                          <span className="tabular-nums text-muted-foreground">
+                          <span className="col-start-1 row-start-2 tabular-nums text-muted-foreground sm:col-auto sm:row-auto">
                             {service.duration_minutes} min
                           </span>
-                          <span className="tabular-nums text-muted-foreground">
+                          <span className="col-start-2 row-start-2 tabular-nums text-muted-foreground sm:col-auto sm:row-auto">
                             {fmtMoney(service.price_cents)}
                           </span>
                           <span
-                            className={`h-2 w-2 rounded-full ${service.archived_at ? "bg-muted-foreground/40" : service.active ? "bg-emerald-600" : "bg-amber-500"}`}
+                            className={`col-start-2 row-start-1 h-2 w-2 justify-self-end rounded-full sm:col-auto sm:row-auto ${service.archived_at ? "bg-muted-foreground/40" : service.active ? "bg-emerald-600" : "bg-amber-500"}`}
+                            aria-label={
+                              service.archived_at
+                                ? "Archived"
+                                : service.active
+                                  ? "Visible"
+                                  : "Hidden"
+                            }
                             title={
                               service.archived_at
                                 ? "Archived"
@@ -1081,7 +1103,7 @@ function ServicesPage() {
 
                       {recipe.length > 0 && (
                         <div className="mt-5 overflow-hidden rounded-xl border bg-card">
-                          <div className="grid grid-cols-[minmax(0,1fr)_120px_150px_32px] gap-3 border-b px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          <div className="hidden grid-cols-[minmax(0,1fr)_120px_150px_32px] gap-3 border-b px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:grid">
                             <span>Stock item</span>
                             <span>Amount used</span>
                             <span>Stock left</span>
@@ -1103,12 +1125,12 @@ function ServicesPage() {
                             return (
                               <div
                                 key={line.inventory_item_id}
-                                className="grid grid-cols-[minmax(0,1fr)_120px_150px_32px] items-center gap-3 border-b px-4 py-3 text-sm last:border-b-0"
+                                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-4 py-3 text-sm last:border-b-0 sm:grid-cols-[minmax(0,1fr)_120px_150px_32px]"
                               >
-                                <span className="min-w-0 truncate font-medium">
+                                <span className="col-start-1 min-w-0 truncate font-medium sm:col-auto">
                                   {item?.name ?? "Unknown item"}
                                 </span>
-                                <div className="relative">
+                                <div className="relative col-start-1 row-start-2 sm:col-auto sm:row-auto">
                                   <Input
                                     type="number"
                                     min={0}
@@ -1139,7 +1161,7 @@ function ServicesPage() {
                                   )}
                                 </div>
                                 <span
-                                  className={`text-xs ${isLow ? "text-amber-600" : "text-emerald-700"}`}
+                                  className={`col-start-1 row-start-3 text-xs sm:col-auto sm:row-auto ${isLow ? "text-amber-600" : "text-emerald-700"}`}
                                 >
                                   {item
                                     ? `${appointmentsLeft} appointment${appointmentsLeft === 1 ? "" : "s"} left`
@@ -1155,7 +1177,7 @@ function ServicesPage() {
                                       ),
                                     )
                                   }
-                                  className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                  className="col-start-2 row-start-1 grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:col-auto sm:row-auto"
                                   aria-label={`Remove ${item?.name ?? "stock item"}`}
                                 >
                                   <X className="h-4 w-4" />

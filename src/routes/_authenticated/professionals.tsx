@@ -109,14 +109,14 @@ function ProfessionalsPage() {
       .from("professional_invitations")
       .update({ status: "revoked" })
       .eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Could not revoke the invitation. It may still be active; try again.");
     toast.success("Invitation revoked");
     qc.invalidateQueries({ queryKey: ["professional-invitations", biz?.id] });
   };
 
   const removeLink = async (id: string) => {
     const { error } = await supabase.from("salon_professionals").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Could not unlink this professional. The link is still in place; try again.");
     toast.success("Professional unlinked");
     qc.invalidateQueries({ queryKey: ["salon-professionals", biz?.id] });
   };

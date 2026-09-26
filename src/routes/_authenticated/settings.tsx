@@ -513,9 +513,9 @@ function CalendarSyncSettings({ businessId }: { businessId: string }) {
       if (!response.ok)
         throw new Error(result.error || "Could not start connection");
       window.location.assign(result.url);
-    } catch (error) {
+    } catch {
       toast.error(
-        error instanceof Error ? error.message : "Could not connect calendar",
+        "Could not start the calendar connection. Check the provider setup and try again.",
       );
       setConnecting(null);
     }
@@ -524,7 +524,10 @@ function CalendarSyncSettings({ businessId }: { businessId: string }) {
     const { error } = await (supabase as any).rpc("disconnect_calendar", {
       p_connection_id: id,
     });
-    if (error) return toast.error(error.message);
+    if (error)
+      return toast.error(
+        "Could not disconnect this calendar. It is still connected; try again.",
+      );
     await qc.invalidateQueries({
       queryKey: ["calendar-connections", businessId],
     });
@@ -644,8 +647,10 @@ function AccountEditor({ user }: { user: { id: string; email?: string } }) {
       if (authResult.error) throw authResult.error;
       qc.invalidateQueries({ queryKey: ["my-profile", user.id] });
       toast.success("Account details saved");
-    } catch (error: any) {
-      toast.error(error.message ?? "Could not save account details");
+    } catch {
+      toast.error(
+        "Could not finish saving your account details. Some details may have changed; refresh before trying again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -658,7 +663,10 @@ function AccountEditor({ user }: { user: { id: string; email?: string } }) {
       redirectTo: `${window.location.origin}/auth?mode=update`,
     });
     setSendingReset(false);
-    if (error) return toast.error(error.message);
+    if (error)
+      return toast.error(
+        "Could not send the reset email. Check your connection and try again shortly.",
+      );
     toast.success("Password reset email sent");
   };
 
@@ -1634,12 +1642,22 @@ function HolidayClosures({ businessId }: { businessId: string }) {
     const { error } = await supabase
       .from("holiday_closures")
       .insert({ business_id: businessId, ...draft });
-    if (error) return toast.error(error.message);
+    if (error)
+      return toast.error(
+        "Could not add this closure. Check the dates and try again.",
+      );
     setDraft({ label: "", starts_on: "", ends_on: "" });
     qc.invalidateQueries({ queryKey: ["holiday-closures"] });
   };
   const remove = async (id: string) => {
-    await supabase.from("holiday_closures").delete().eq("id", id);
+    const { error } = await supabase
+      .from("holiday_closures")
+      .delete()
+      .eq("id", id);
+    if (error)
+      return toast.error(
+        "Could not remove this closure. It has not been removed; try again.",
+      );
     qc.invalidateQueries({ queryKey: ["holiday-closures"] });
   };
 
