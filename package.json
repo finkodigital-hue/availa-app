@@ -18,7 +18,7 @@
     "recovery:restore-local": "node scripts/restore-local.mjs",
     "deploy:cloudflare": "npm run build && npx wrangler deploy --keep-vars",
     "deploy:cloudflare:dry-run": "npm run build && npx wrangler deploy --dry-run --keep-vars",
-    "preview": "vite preview",
+    "preview": "npx -y wrangler@4.141.0 dev --config .output/server/wrangler.json --env-file scripts/preview.env --local",
     "test": "playwright test",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
