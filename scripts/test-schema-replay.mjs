@@ -43,6 +43,7 @@ alter default privileges in schema public grant all on sequences to anon,authent
 `);
 const dir=new URL('../supabase/migrations/',import.meta.url);
 const migrations=fs.readdirSync(dir).filter(n=>n.endsWith('.sql')).sort();
+assert.equal(new Set(migrations.map(name=>name.split('_')[0])).size,migrations.length,'Migration version numbers must be unique');
 let replayed=0,fixtures=0;
 try {
  for(const name of migrations){

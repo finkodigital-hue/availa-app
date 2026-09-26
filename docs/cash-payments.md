@@ -8,7 +8,7 @@ The server requires the business owner, matching the existing balance-collection
 
 ## Release
 
-Apply `supabase/migrations/20260926001000_cash_booking_payments.sql` before deploying this branch. Cloudflare code deployment does not apply database migrations. Existing payment rows default to `card`; the migration preserves existing balances and ledger rows. Then deploy the application and check an unpaid booking and a booking with a deposit in a test workspace.
+Apply `supabase/migrations/20260926009000_cash_booking_payments.sql` before deploying this branch. Cloudflare code deployment does not apply database migrations. Existing payment rows default to `card`; the migration preserves existing balances and ledger rows. Then deploy the application and check an unpaid booking and a booking with a deposit in a test workspace.
 
 ## Verification
 
