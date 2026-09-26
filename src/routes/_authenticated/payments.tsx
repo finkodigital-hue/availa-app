@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { fmtMoney as formatMoney } from "@/lib/format";
 import { refundBooking } from "@/lib/stripe-connect.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
+import { BookingBalanceCheckout } from "@/components/booking-balance-checkout";
 
 export const Route = createFileRoute("/_authenticated/payments")({
   component: PaymentsPage,
@@ -119,7 +120,22 @@ function PaymentsPage() {
     setRefundResults(null);
   };
 
-  const refundableFor = (b: any) => Math.max(0, (b?.amount_paid_cents ?? 0) - (b?.amount_refunded_cents ?? 0));
+  const history = useQuery({
+    queryKey: ["booking-payment-history", bid, selected?.id],
+    enabled: !!bid && !!selected,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("payments")
+        .select("id, payment_method, type, status, amount_cents, currency, created_at, stripe_payment_intent_id")
+        .eq("business_id", bid!).eq("booking_id", selected.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+  const refundableAmount = Math.max(0, (history.data ?? []).reduce((sum, payment) =>
+    payment.status === "succeeded" && payment.stripe_payment_intent_id
+      ? sum + (payment.type === "charge" ? payment.amount_cents : payment.type === "refund" ? -payment.amount_cents : 0)
+      : sum, 0));
 
   const submitRefund = async () => {
     if (!selected) return;
@@ -129,6 +145,7 @@ function PaymentsPage() {
       const { results } = await refundBooking({ data: { bookingId: selected.id }, headers });
       qc.invalidateQueries({ queryKey: ["payments", bid] });
       qc.invalidateQueries({ queryKey: ["payments-totals", bid] });
+      qc.invalidateQueries({ queryKey: ["booking-payment-history", bid] });
       if (results.every((r) => r.ok)) {
         toast.success(`Refund submitted for ${fmtMoney(results.reduce((a, r) => a + r.amountCents, 0))}.`);
         closeDetail();
@@ -209,7 +226,7 @@ function PaymentsPage() {
       )}
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && closeDetail()}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="truncate">{selected?.customer_name}</DialogTitle>
           </DialogHeader>
@@ -247,6 +264,21 @@ function PaymentsPage() {
                 <span className="font-medium tabular-nums">{fmtMoney(Math.max(0, (selected.price_cents ?? 0) - (selected.collected ?? 0)))}</span>
               </div>
 
+              <div className="space-y-2 border-t pt-3">
+                <p className="font-medium">Payment history</p>
+                {history.isLoading && <p className="text-muted-foreground">Loading payments…</p>}
+                {history.isError && <p role="alert">Could not load payment history. Refresh before refunding.</p>}
+                {history.data?.map((payment) => <div key={payment.id} className="flex justify-between gap-3">
+                  <span>{payment.payment_method === "cash" ? "Cash" : "Card"} · {payment.type === "refund" ? "Refund" : payment.type === "failure" ? "Failed" : "Payment"}<span className="block text-xs text-muted-foreground">{new Date(payment.created_at).toLocaleString("en-GB")} · {payment.status}</span></span>
+                  <span className="tabular-nums">{formatMoney(payment.amount_cents, payment.currency)}</span>
+                </div>)}
+                {history.data?.some((payment) => payment.payment_method === "cash") && <p className="text-xs text-muted-foreground">Cash payments are recorded here. Online refunds return card payments only.</p>}
+              </div>
+              {selected.payment_status !== "paid" && selected.price_cents > (selected.amount_paid_cents ?? 0) && !refundConfirming && !refundResults && (
+                <BookingBalanceCheckout key={selected.id} bookingId={selected.id} businessId={bid!} amountDueCents={selected.price_cents - (selected.amount_paid_cents ?? 0)} currency={biz?.currency ?? "GBP"} onUpdated={(updated) => {
+                  setSelected((current: any) => current?.id === updated.id ? { ...current, ...updated, collected: updated.amount_paid_cents } : current);
+                }} />
+              )}
               {refundResults ? (
                 <div className="pt-3 border-t space-y-2">
                   <div className="text-sm font-medium">
@@ -276,9 +308,9 @@ function PaymentsPage() {
               ) : refundConfirming ? (
                 <div className="pt-3 border-t space-y-3">
                   <p className="text-sm">
-                    Refund <span className="font-medium tabular-nums">{fmtMoney(refundableFor(selected))}</span> to{" "}
+                    Refund <span className="font-medium tabular-nums">{fmtMoney(refundableAmount)}</span> to{" "}
                     <span className="font-medium">{selected.customer_name}</span>? It goes back to their original payment
-                    method. This does not cancel the booking.
+                    card. This does not cancel the booking or refund cash payments.
                   </p>
                 </div>
               ) : null}
@@ -297,12 +329,12 @@ function PaymentsPage() {
                 <>
                   <Button variant="ghost" onClick={() => setRefundConfirming(false)} disabled={refundSubmitting}>Cancel</Button>
                   <Button onClick={submitRefund} disabled={refundSubmitting}>
-                    {refundSubmitting ? "Refunding…" : `Refund ${fmtMoney(refundableFor(selected))}`}
+                    {refundSubmitting ? "Refunding…" : `Refund ${fmtMoney(refundableAmount)}`}
                   </Button>
                 </>
               ) : (
                 <>
-                  {refundableFor(selected) > 0 && (
+                  {!history.isError && refundableAmount > 0 && (
                     <Button variant="outline" onClick={() => setRefundConfirming(true)}>
                       <Undo2 className="h-4 w-4 mr-1.5" /> Refund
                     </Button>
