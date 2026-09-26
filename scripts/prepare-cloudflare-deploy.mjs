@@ -88,3 +88,26 @@ await writeFile(
   fileURLToPath(new URL("../.output/public/deployment.json", import.meta.url)),
   `${JSON.stringify({ revision })}\n`,
 );
+
+// Cloudflare serves files such as robots.txt, sitemap.xml and deployment.json
+// directly from its static-asset binding, so they do not pass through the
+// TanStack middleware in src/start.ts. Give those responses the same browser
+// security baseline as dynamic routes. Narrower rules add cache behaviour
+// without removing the headers from this catch-all rule.
+await writeFile(
+  fileURLToPath(new URL("../.output/public/_headers", import.meta.url)),
+  `/*
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' https: data: blob:; connect-src 'self'; frame-src 'self'; worker-src 'self' blob:; manifest-src 'self'
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), geolocation=(), microphone=()
+  Strict-Transport-Security: max-age=31536000
+
+/deployment.json
+  Cache-Control: no-store
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+`,
+);

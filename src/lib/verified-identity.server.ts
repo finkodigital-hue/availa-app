@@ -22,3 +22,18 @@ export async function requireVerifiedIdentity(
   }
   return { user, claims: data.claims };
 }
+
+/** Require a fresh, phishing-resistant step-up for destructive or sensitive work. */
+export function requireRecentSensitiveSession(
+  claims: Record<string, unknown>,
+  maxAgeSeconds = 10 * 60,
+) {
+  const authTime = Number(claims.auth_time);
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(authTime) || authTime <= 0 || now - authTime > maxAgeSeconds) {
+    throw new Error("Recent sign-in required. Sign out and sign in again before continuing.");
+  }
+  if (claims.aal !== "aal2") {
+    throw new Error("Two-factor verification is required for this sensitive action.");
+  }
+}

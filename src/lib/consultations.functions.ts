@@ -366,10 +366,11 @@ export const deleteConsultationTemplate = createServerFn({ method: "POST" })
 
 export const signConsultationSubmission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data: { id: string; answers: Record<string, unknown>; signerName: string; signatureData: string; explicitHealthConsent: boolean }) => {
+  .validator((data: { id: string; answers: Record<string, unknown>; signerName: string; signatureData: string; explicitHealthConsent: boolean; adultConfirmed: boolean }) => {
     if (!validUuid(data.id) || !data.id) throw new Error("That form could not be found.");
     const signerName = text(data.signerName, 150, true);
     if (!data.explicitHealthConsent) throw new Error("Explicit consent is required before this form can be signed.");
+    if (!data.adultConfirmed) throw new Error("Digital consultation signing is currently available only to clients aged 18 or over.");
     if (typeof data.signatureData !== "string" || !data.signatureData.startsWith("data:image/png;base64,") || data.signatureData.length > 180000) {
       throw new Error("Please add a valid signature.");
     }
@@ -420,6 +421,7 @@ export const signConsultationSubmission = createServerFn({ method: "POST" })
       questions,
       consent_text: template.consent_text,
       version: template.version,
+      adult_confirmation: "The signer confirmed they are aged 18 or over.",
     };
     const expiresAt = new Date(signedAt.getTime() + template.validity_days * 86400000);
     const evidence = JSON.stringify({
@@ -437,6 +439,7 @@ export const signConsultationSubmission = createServerFn({ method: "POST" })
       staffNotes: submission.staff_notes,
       signedAt: signedAt.toISOString(),
       explicitHealthConsent: true,
+      adultConfirmed: true,
     });
     const evidenceHash = createHash("sha256").update(evidence).digest("hex");
     const { data: updated, error: updateError } = await admin.rpc("sign_consultation_submission_server", {

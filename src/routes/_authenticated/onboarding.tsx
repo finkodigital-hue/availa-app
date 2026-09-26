@@ -58,18 +58,16 @@ function Onboarding() {
         current = found;
       }
       if (!current) {
-        const { data, error } = await supabase
-          .from("businesses")
-          .insert({
-            owner_id: user.id,
-            name,
-            slug: slugify(slug || name),
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        const { data, error } = await (supabase as any)
+          .rpc("claim_approved_business_signup", {
+            p_name: name,
+            p_slug: slugify(slug || name),
+            p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           })
-          .select("id, name, slug")
           .single();
         if (error) throw error;
-        current = data;
+        if (!data) throw new Error("Workspace could not be created. Try again.");
+        current = data as { id: string; name: string; slug: string };
       }
       setCreatedBusiness(current);
       await ensureHours(current.id);
@@ -77,7 +75,9 @@ function Onboarding() {
       toast.success("Workspace is ready");
       navigate({ to: "/dashboard" });
     } catch (err: any) {
-      if (err.code === "23505" && !workspace && !createdBusiness) {
+      if (String(err?.message).includes("INVITE_REQUIRED")) {
+        toast.error("Business access is currently invite-only. Join the waitlist and we’ll contact you when your workspace is approved.");
+      } else if (err.code === "23505" && !workspace && !createdBusiness) {
         toast.error("That booking page URL is already taken — try another.");
       } else {
         toast.error("Could not finish setup. Check your connection and try again.");

@@ -14,7 +14,7 @@ export function LegalPage({
   title,
   intro,
   sections,
-  lastUpdated = "8 September 2026",
+  lastUpdated = "26 September 2026",
 }: {
   eyebrow: string;
   title: string;

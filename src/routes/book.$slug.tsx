@@ -4,7 +4,7 @@ import { SearchX } from "lucide-react";
 import { Wordmark } from "@/components/wordmark";
 import "../marketing.css";
 import { supabase } from "@/integrations/supabase/client";
-import { googleFontsHref, parseTheme } from "@/lib/theme";
+import { parseTheme } from "@/lib/theme";
 import { PublicBookingPage } from "@/components/public-booking-page";
 import {
   CookieConsentBanner,
@@ -96,10 +96,6 @@ export const Route = createFileRoute("/book/$slug")({
           {
             rel: "canonical",
             href: `https://bookzenvo.com/book/${loaderData.slug}`,
-          },
-          {
-            rel: "stylesheet",
-            href: googleFontsHref(parseTheme(loaderData.page_theme)),
           },
         ]
       : [],

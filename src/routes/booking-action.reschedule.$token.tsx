@@ -12,7 +12,6 @@ import {
   applyThemeVars,
   themedButtonStyle,
   defaultTheme,
-  googleFontsHref,
 } from "@/lib/theme";
 import { useAvailableSlots, buildDateStrip } from "@/lib/slots";
 
@@ -86,7 +85,6 @@ function ReschedulePage() {
       style={applyThemeVars(theme) as React.CSSProperties}
       className="min-h-screen bg-[var(--brand-bg)] text-[var(--brand-text)] flex items-center justify-center p-6"
     >
-      <link rel="stylesheet" href={googleFontsHref(theme)} />
       <div
         className="w-full max-w-md rounded-2xl border p-6 sm:p-8"
         style={{

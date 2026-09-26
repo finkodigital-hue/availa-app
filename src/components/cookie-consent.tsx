@@ -167,8 +167,8 @@ function CookiePreferencesDialog() {
           <div>
             <div className="text-sm font-medium">Strictly necessary</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Keeps you signed in, prevents double-booking a slot, and remembers this choice. The site can't work
-              without these.
+              Keeps you signed in, remembers this choice and supports the dashboard layout. The site can't work
+              correctly without these.
             </p>
           </div>
           <Switch checked disabled aria-label="Strictly necessary cookies (always on)" />

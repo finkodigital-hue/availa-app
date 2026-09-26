@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
+import { requireRecentSensitiveSession } from "@/lib/verified-identity.server";
 
 // Recoverable workspace closure for a business owner. Separate from
 // customer-portal.functions.ts (customers requesting a business delete
@@ -29,6 +30,7 @@ async function stripeRequest<T>(
 ): Promise<T> {
   const response = await fetch(`https://api.stripe.com${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${stripeSecretKey()}`,
       ...init.headers,
@@ -74,6 +76,7 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data, context }): Promise<{ scheduledFor: string }> => {
+    requireRecentSensitiveSession(context.claims as Record<string, unknown>);
     const { data: business, error } = await context.supabase
       .from("businesses")
       .select("id, name, stripe_subscription_id, deletion_scheduled_for")
@@ -111,7 +114,9 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
     const scheduledFor = new Date(
       requestedAt.getTime() + 30 * 86400000,
     ).toISOString();
-    const { error: closeError } = await context.supabase
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { error: closeError } = await supabaseAdmin
       .from("businesses")
       .update({
         deletion_requested_at: requestedAt.toISOString(),
@@ -126,7 +131,9 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
 export const cancelAccountDeletion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ restored: true }> => {
-    const { error } = await context.supabase
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
       .from("businesses")
       .update({
         deletion_requested_at: null,
@@ -140,6 +147,7 @@ export const cancelAccountDeletion = createServerFn({ method: "POST" })
 export const exportMyWorkspace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<Record<string, Json>> => {
+    requireRecentSensitiveSession(context.claims as Record<string, unknown>);
     const { data: business, error } = await context.supabase
       .from("businesses")
       .select("id")
@@ -147,13 +155,13 @@ export const exportMyWorkspace = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw error;
     if (!business) throw new Error("Workspace not found.");
-    const { data, error: exportError } = await (context.supabase as any).rpc(
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { data, error: exportError } = await (supabaseAdmin as any).rpc(
       "export_owner_workspace",
       { p_business_id: business.id },
     );
     if (exportError) throw exportError;
-    const { supabaseAdmin } =
-      await import("@/integrations/supabase/client.server");
     const storage: Record<string, string[]> = {};
     for (const bucket of STORAGE_BUCKETS) {
       storage[bucket] = await listStorageFolder(

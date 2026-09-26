@@ -49,6 +49,10 @@ const PROTECTED_REST_FIELDS: Record<string, ReadonlySet<string>> = {
     "billing_synced_at",
     "hide_powered_by",
     "reminder_hours_before",
+    "email_suppressed",
+    "sms_suppressed",
+    "deletion_requested_at",
+    "deletion_scheduled_for",
   ]),
   bookings: new Set(["stripe_payment_intent_id", "stripe_charge_id", "amount_refunded_cents"]),
   customers: new Set(["stripe_customer_id"]),
@@ -142,13 +146,13 @@ async function proxySupabaseRequest(request: Request) {
 
   const unsafeWrite = await rejectUnsafeRestWrite(
     body ?? new Uint8Array(),
-    upstreamPath,
+    decodedPath,
     request.method,
   );
   if (unsafeWrite) return unsafeWrite;
 
   const upstreamBase = new URL(supabaseUrl);
-  const upstreamUrl = new URL(`/${upstreamPath}${incomingUrl.search}`, upstreamBase);
+  const upstreamUrl = new URL(`/${decodedPath}${incomingUrl.search}`, upstreamBase);
   const headers = new Headers();
   for (const name of FORWARDED_REQUEST_HEADERS) {
     const value = request.headers.get(name);

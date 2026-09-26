@@ -4,13 +4,11 @@ export const PRESET_LABELS: Record<Exclude<DatePreset, "custom">, string> = {
   this_month: "This month",
   last_month: "Last month",
   this_quarter: "This quarter",
-  tax_year: "Tax year",
+  tax_year: "Calendar year to date",
 };
 
-// "Tax year" has no single universal definition — this uses calendar
-// year-to-date (Jan 1 → today), which is the correct tax year for a
-// calendar-year filer. Labeled explicitly in the UI so it's never a silent
-// assumption.
+// This preset is calendar year-to-date (Jan 1 → today). It deliberately makes
+// no claim about a business, company or individual tax/accounting period.
 export function presetRange(preset: Exclude<DatePreset, "custom">): { from: Date; to: Date } {
   const now = new Date();
   if (preset === "this_month") {
