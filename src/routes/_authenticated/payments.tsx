@@ -161,7 +161,7 @@ function PaymentsPage() {
           {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
         </div>
       ) : isError ? (
-        <EmptyState icon={CreditCard} title="Could not load payments" description="Please refresh and try again." />
+        <EmptyState icon={CreditCard} title="Payments did not load" description="We couldn't show this list right now. Try again before taking any payment action." action={<Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["payments", bid] })}>Try again</Button>} />
       ) : (data?.rows.length ?? 0) === 0 ? (
         <EmptyState
           icon={CreditCard}
@@ -175,9 +175,10 @@ function PaymentsPage() {
               key={p.id}
               role="button"
               tabIndex={0}
+              aria-label={`Open payment details for ${p.customer_name}`}
               onClick={() => { setSelected(p); setRefundConfirming(false); setRefundResults(null); }}
-              onKeyDown={(e) => e.key === "Enter" && (setSelected(p), setRefundConfirming(false), setRefundResults(null))}
-              className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/40 cursor-pointer"
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(p); setRefundConfirming(false); setRefundResults(null); } }}
+              className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary cursor-pointer"
             >
               <div className="min-w-0">
                 <div className="font-medium truncate">{p.customer_name}</div>

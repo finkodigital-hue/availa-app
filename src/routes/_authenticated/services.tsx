@@ -299,7 +299,7 @@ function ServicesPage() {
       .update({ service_categories: clean })
       .eq("id", bid);
     if (error) {
-      toast.error(error.message);
+      toast.error("Categories did not save. Try again.");
       return false;
     }
     await qc.invalidateQueries({ queryKey: ["my-business"] });
@@ -353,7 +353,7 @@ function ServicesPage() {
         .eq("category", original);
       if (error) {
         await saveCategoryNames(managedCategories);
-        toast.error(error.message);
+        toast.error("Category name did not change. Try again.");
         return;
       }
       if (edit?.category === original) setEdit({ ...edit, category: name });
@@ -380,7 +380,7 @@ function ServicesPage() {
         .eq("category", category);
       if (error) {
         await saveCategoryNames(managedCategories);
-        toast.error(error.message);
+        toast.error("Category was not removed. Try again.");
         return;
       }
       if (edit?.category === category) setEdit({ ...edit, category: null });
@@ -422,7 +422,7 @@ function ServicesPage() {
           "id, name, unit, cost_cents, current_stock, low_stock_threshold",
         )
         .single();
-      if (error) return toast.error(error.message);
+      if (error) return toast.error("Stock item was not added. Try again.");
       const item = data as InventoryItem;
       setRecipe([
         ...recipe,
@@ -505,14 +505,14 @@ function ServicesPage() {
             .select("id")
             .single()
         : await supabase.from("services").insert(payload).select("id").single();
-      if (error) return toast.error(error.message);
+      if (error) return toast.error("Service details did not save. Check the fields and try again.");
       const sid = data!.id;
       // sync staff
       const { error: clearStaffError } = await supabase
         .from("service_staff")
         .delete()
         .eq("service_id", sid);
-      if (clearStaffError) return toast.error(clearStaffError.message);
+      if (clearStaffError) return toast.error("Service details saved, but staff assignments did not. Try saving again.");
       if (linked.size > 0) {
         const { error: staffError } = await supabase
           .from("service_staff")
@@ -523,7 +523,7 @@ function ServicesPage() {
               business_id: bid,
             })),
           );
-        if (staffError) return toast.error(staffError.message);
+        if (staffError) return toast.error("Service details saved, but staff assignments did not. Try saving again.");
       }
       // Preserve existing recipe data on downgrade. Studio businesses may edit it.
       if (biz?.plan === "studio") {
@@ -531,7 +531,7 @@ function ServicesPage() {
           .from("service_recipe_items")
           .delete()
           .eq("service_id", sid);
-        if (clearRecipeError) return toast.error(clearRecipeError.message);
+        if (clearRecipeError) return toast.error("Service saved, but products used could not be updated. Try saving again.");
         if (recipe.length > 0) {
           const { error: recipeError } = await supabase
             .from("service_recipe_items")
@@ -543,7 +543,7 @@ function ServicesPage() {
                 quantity: r.quantity,
               })),
             );
-          if (recipeError) return toast.error(recipeError.message);
+          if (recipeError) return toast.error("Service saved, but products used could not be updated. Try saving again.");
         }
       }
       toast.success(edit.id ? "Service updated" : "Service created");

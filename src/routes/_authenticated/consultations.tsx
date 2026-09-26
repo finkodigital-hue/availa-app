@@ -471,9 +471,9 @@ function ConsultationsPage() {
       )}
       <Tabs key={`${search.customerId ?? ""}:${search.bookingId ?? ""}:${search.tab ?? ""}`} defaultValue={search.tab || search.customerId || search.bookingId ? "records" : "templates"}>
         <TabsList>
-          <TabsTrigger value="templates">Form templates</TabsTrigger>
+          <TabsTrigger value="templates">Forms to send</TabsTrigger>
           <TabsTrigger value="records">
-            Client records{" "}
+            Customer forms{" "}
             {records.length > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {records.length}

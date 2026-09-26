@@ -294,8 +294,8 @@ function SettingsPage() {
           />
           <SettingsRow
             icon={Crown}
-            title="White-label"
-            description="Manage how Bookzenvo appears to your clients."
+            title="Bookzenvo branding"
+            description="Choose where customers see the Bookzenvo name and add your own logo."
             summary={
               biz.hide_powered_by
                 ? "Bookzenvo branding hidden"
@@ -453,7 +453,7 @@ function SettingsPage() {
       {tab === "whitelabel" && (
         <Section
           icon={Crown}
-          title="White-label"
+          title="Bookzenvo branding"
           description="Remove Bookzenvo branding for your customers."
         >
           <WhiteLabelEditor business={biz} />

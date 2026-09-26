@@ -106,14 +106,20 @@ export function GlobalSearch() {
           <CommandEmpty>No matches found.</CommandEmpty>
           {query.trim().length < 2 && (
             <CommandGroup heading="Quick links">
-              {QUICK_LINKS.filter(({ to }) => to !== "/consultations" || access.isOwner).map(({ label, to, icon: Icon }) => (
+              {QUICK_LINKS.filter(({ to }) =>
+                to === "/consultations" ? access.isOwner
+                  : to === "/customers" ? access.can("customers.manage")
+                  : to === "/staff" ? access.can("staff.manage")
+                  : to === "/services" ? access.can("services.manage")
+                  : true,
+              ).map(({ label, to, icon: Icon }) => (
                 <CommandItem key={to} value={label} onSelect={() => go(to)}>
                   <Icon /> {label}
                 </CommandItem>
               ))}
             </CommandGroup>
           )}
-          {results.customers.length > 0 && (
+          {access.can("customers.manage") && results.customers.length > 0 && (
             <CommandGroup heading="Customers">
               {results.customers.map((customer) => (
                 <CommandItem key={customer.id} value={`${customer.name} ${customer.email ?? ""} ${customer.phone ?? ""}`} onSelect={() => goToCustomer(customer.id)}>
@@ -123,8 +129,8 @@ export function GlobalSearch() {
               ))}
             </CommandGroup>
           )}
-          {results.customers.length > 0 && results.services.length > 0 && <CommandSeparator />}
-          {results.services.length > 0 && (
+          {access.can("customers.manage") && access.can("services.manage") && results.customers.length > 0 && results.services.length > 0 && <CommandSeparator />}
+          {access.can("services.manage") && results.services.length > 0 && (
             <CommandGroup heading="Services">
               {results.services.map((service) => (
                 <CommandItem key={service.id} value={service.name} onSelect={() => go("/services")}>

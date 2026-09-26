@@ -1,8 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Calendar,
+  CalendarCheck,
   CreditCard,
-  Inbox,
   Plus,
   MoreHorizontal,
 } from "lucide-react";
@@ -17,8 +17,8 @@ type Props = {
 
 const TABS = [
   { to: "/calendar", icon: Calendar, label: "Calendar" },
-  { to: "/payments", icon: CreditCard, label: "Sales" },
-  { to: "/bookings", icon: Inbox, label: "Inbox" },
+  { to: "/payments", icon: CreditCard, label: "Payments" },
+  { to: "/bookings", icon: CalendarCheck, label: "Bookings" },
 ] as const;
 
 export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
@@ -53,7 +53,7 @@ export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
               type="button"
               onClick={onMore}
               aria-label="More menu"
-              className="flex flex-col items-center justify-center gap-0.5 h-full min-h-11 min-w-11 text-[10px] text-muted-foreground active:scale-95 transition-transform"
+              className="flex flex-col items-center justify-center gap-0.5 h-full min-h-11 min-w-11 text-xs text-muted-foreground active:scale-95 transition-transform"
             >
               <MoreHorizontal className="h-5 w-5" />
               <span>More</span>
@@ -95,7 +95,7 @@ function NavItem({
       aria-label={item.label}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex flex-col items-center justify-center gap-0.5 h-full min-h-11 min-w-11 text-[10px] transition-colors active:scale-95",
+        "flex flex-col items-center justify-center gap-0.5 h-full min-h-11 min-w-11 text-xs transition-colors active:scale-95",
         active ? "text-primary" : "text-muted-foreground",
       )}
     >

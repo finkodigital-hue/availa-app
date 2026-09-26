@@ -361,7 +361,7 @@ function StockPage() {
       error = caught as Error;
     }
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Stock item was not saved. Check your connection and try again.");
     toast.success(edit.id ? "Stock item updated" : "Stock item added");
     setEdit(null);
     invalidate();
@@ -386,7 +386,7 @@ function StockPage() {
       error = caught as Error;
     }
     if (error) {
-      toast.error(error.message);
+      toast.error("Quantity did not update. The previous amount is shown again.");
       invalidate();
     }
   };
@@ -415,7 +415,7 @@ function StockPage() {
       error = caught as Error;
     }
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Quantity did not update. Try again.");
     toast.success(`Quantity updated to ${next} ${adjust.unit || "units"}`);
     setAdjust(null);
     setAdjustDelta("");

@@ -139,8 +139,8 @@ function StaffPage() {
         .select("id", { count: "exact", head: true })
         .eq("staff_id", s.id),
     ]);
-    if (futureResult.error) return toast.error(futureResult.error.message);
-    if (allResult.error) return toast.error(allResult.error.message);
+    if (futureResult.error) return toast.error("Could not check this person's upcoming bookings. Try again before removing them.");
+    if (allResult.error) return toast.error("Could not check this person's booking history. Try again before removing them.");
     if ((futureResult.count ?? 0) > 0) {
       // Show reassign flow instead of failing
       setReassign({ staff: s, futureCount: futureResult.count ?? 0, disableAfter: true });
@@ -153,13 +153,13 @@ function StaffPage() {
         .from("staff")
         .update({ archived_at: now, active: false, bookable: false })
         .eq("id", s.id);
-      if (error) return toast.error(error.message);
+      if (error) return toast.error("Could not remove this person. Their booking history is unchanged.");
       toast.success("Staff removed · booking history preserved");
       qc.invalidateQueries({ queryKey: ["staff"] });
       return;
     }
     const { error } = await supabase.from("staff").delete().eq("id", s.id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Could not remove this person. Try again.");
     toast.success("Staff removed");
     qc.invalidateQueries({ queryKey: ["staff"] });
   };
@@ -181,7 +181,7 @@ function StaffPage() {
       }
     }
     const { error } = await supabase.from("staff").update({ active: v }).eq("id", s.id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Could not change this person's availability. Try again.");
     toast.success(v ? "Staff enabled" : "Staff disabled");
     qc.invalidateQueries({ queryKey: ["staff"] });
   };
@@ -266,7 +266,7 @@ function StaffPage() {
                       role="button"
                       tabIndex={0}
                       onClick={() => openEditor(s)}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") openEditor(s); }}
+                      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openEditor(s); } }}
                       className={`grid min-h-[72px] cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 outline-none transition-colors hover:bg-secondary/25 focus-visible:bg-secondary/40 md:grid-cols-[minmax(180px,1.35fr)_minmax(105px,.8fr)_92px_120px_68px_36px] ${edit?.id === s.id ? "bg-[color:var(--cream)]" : ""}`}
                     >
                       <div className="flex min-w-0 items-center gap-3">
@@ -400,22 +400,22 @@ function StaffAccountAccess({ staff, businessId }: { staff: Staff; businessId: s
       await navigator.clipboard.writeText(url);
       toast.success("Secure invitation link copied");
       qc.invalidateQueries({ queryKey: ["staff-account-invitation", staff.id] });
-    } catch (e: any) { toast.error(e.message ?? "Could not create invitation"); } finally { setBusy(false); }
+    } catch { toast.error("Could not create the invitation. Check the email address and try again."); } finally { setBusy(false); }
   };
   const saveRole = async () => {
     const { error } = await (supabase.from("staff_memberships" as any).update({ access_role: role }).eq("staff_id", staff.id) as any);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Access level did not save. Try again.");
     toast.success("Account access updated"); qc.invalidateQueries({ queryKey: ["staff-membership", staff.id] });
   };
   const toggleAccount = async () => {
     const { error } = await (supabase.from("staff_memberships" as any).update({ active: !membership.active }).eq("id", membership.id) as any);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Account access did not change. Try again.");
     toast.success(membership.active ? "Account access suspended" : "Account access restored");
     qc.invalidateQueries({ queryKey: ["staff-membership", staff.id] });
   };
   const revoke = async () => {
     const { error } = await (supabase.rpc as any)("revoke_staff_account_invitation", { _invitation_id: invitation.id });
-    if (error) return toast.error(error.message); setInviteUrl(null); qc.invalidateQueries({ queryKey: ["staff-account-invitation", staff.id] }); toast.success("Invitation revoked");
+    if (error) return toast.error("Invitation was not cancelled. Try again."); setInviteUrl(null); qc.invalidateQueries({ queryKey: ["staff-account-invitation", staff.id] }); toast.success("Invitation revoked");
   };
 
   return <div className="space-y-5">

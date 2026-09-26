@@ -80,7 +80,7 @@ function Onboarding() {
       if (err.code === "23505" && !workspace && !createdBusiness) {
         toast.error("That booking page URL is already taken — try another.");
       } else {
-        toast.error(err.message ?? "Could not finish workspace setup. Try again.");
+        toast.error("Could not finish setup. Check your connection and try again.");
       }
     } finally {
       setBusy(false);

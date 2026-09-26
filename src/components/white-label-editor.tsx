@@ -71,10 +71,10 @@ export function WhiteLabelEditor({ business }: { business: any }) {
         },
         headers,
       });
-      toast.success("White-label saved");
+      toast.success("Branding saved");
       qc.invalidateQueries({ queryKey: ["my-business"] });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save white-label settings");
+      toast.error("Could not save branding. Check your details and try again.");
     } finally {
       setSaving(false);
     }
@@ -85,25 +85,27 @@ export function WhiteLabelEditor({ business }: { business: any }) {
       <div className="rounded-xl border bg-background p-4">
         <div className="flex items-center gap-2 mb-3">
           <Globe className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Custom domain</span>
+          <span className="text-sm font-medium">Your own booking website address</span>
         </div>
         <Input
+          aria-label="Your own booking website address"
           placeholder="book.yourdomain.com"
           value={f.custom_domain ?? ""}
           onChange={(e) => setF({ ...f, custom_domain: e.target.value })}
           className="h-10"
         />
-        <p className="text-[11px] text-muted-foreground mt-2">
-          Point a CNAME from{" "}
-          <span className="font-mono">{f.custom_domain || "book.yourdomain.com"}</span> to{" "}
-          <span className="font-mono">cname.bookzenvo.com</span>. SSL is provisioned automatically.
-        </p>
+        <details className="mt-2 text-sm text-muted-foreground">
+          <summary className="cursor-pointer">How to connect this address</summary>
+          <p className="mt-2">In your domain settings, point a CNAME from{" "}
+            <span className="font-mono">{f.custom_domain || "book.yourdomain.com"}</span> to{" "}
+            <span className="font-mono">cname.bookzenvo.com</span>. A secure connection is set up automatically.</p>
+        </details>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="rounded-xl border bg-background p-4">
           <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Favicon
+            Small browser icon
           </Label>
           <div className="mt-2 flex items-center gap-3">
             <div className="h-12 w-12 rounded-lg border bg-muted grid place-items-center overflow-hidden">
@@ -126,7 +128,7 @@ export function WhiteLabelEditor({ business }: { business: any }) {
         </div>
         <div className="rounded-xl border bg-background p-4">
           <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Browser title
+            Name shown in browser tab
           </Label>
           <Input
             value={f.browser_title ?? ""}
@@ -163,7 +165,7 @@ export function WhiteLabelEditor({ business }: { business: any }) {
         </div>
         <div className="rounded-xl border bg-background p-4">
           <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Email footer
+            Text at the bottom of emails
           </Label>
           <Textarea
             value={f.email_footer ?? ""}
@@ -202,7 +204,7 @@ export function WhiteLabelEditor({ business }: { business: any }) {
       <div className="flex justify-end">
         <Button onClick={save} disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Save white-label
+          Save branding
         </Button>
       </div>
     </div>
