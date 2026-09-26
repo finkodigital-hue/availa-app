@@ -60,6 +60,11 @@ const calendarConnect = await read(
 const calendarCallback = await read(
   "src/routes/api/calendar/$provider/callback.ts",
 );
+const confirmationRoute = await read(
+  "src/routes/api/bookings/send-confirmation.ts",
+);
+const clientErrorRoute = await read("src/routes/api/client-errors.ts");
+const waitlistRoute = await read("src/routes/api/waitlist.ts");
 
 assert(
   runtimeEnv.includes("${window.location.origin}/api/supabase"),
@@ -201,6 +206,14 @@ assert(
     calendarCallback.includes("callbackUrl(provider, appOrigin)") &&
     !calendarCallback.includes("process.env.APP_URL || url.origin"),
   "Calendar OAuth redirects must use the configured trusted application origin, never the incoming Host header.",
+);
+assert(
+  confirmationRoute.includes('consumePublicRequest("confirmation"') &&
+    confirmationRoute.includes("UUID_PATTERN") &&
+    clientErrorRoute.includes('consumePublicRequest("telemetry"') &&
+    waitlistRoute.includes("trustedAppOrigin()") &&
+    !waitlistRoute.includes("new URL(request.url).origin"),
+  "Public confirmation, telemetry and waitlist endpoints must be source-limited and use the trusted application origin.",
 );
 
 const sourceFiles = (await walk("src")).filter((file) =>

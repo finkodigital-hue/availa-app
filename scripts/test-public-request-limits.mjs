@@ -5,10 +5,12 @@ import { publicSourceKey, consumePublicRequest, PublicRequestLimitError, publicR
 const db=new PGlite();
 await db.exec('create role anon;create role authenticated;create role service_role;');
 await db.exec(fs.readFileSync(new URL('../supabase/migrations/20260924001000_public_request_limits.sql',import.meta.url),'utf8'));
+await db.exec(fs.readFileSync(new URL('../supabase/migrations/20260926003000_extend_public_request_limits.sql',import.meta.url),'utf8'));
 let n=0;const eq=(a,b)=>{assert.deepEqual(a,b);n++;};
 const consume=async(key='a'.repeat(64),scope='waitlist')=>(await db.query('select consume_public_request($1,$2) as result',[key,scope])).rows[0].result;
 eq((await consume()).allowed,true);eq((await consume()).allowed,true);eq((await consume()).allowed,true);
 eq((await consume()).allowed,false);eq((await consume('b'.repeat(64))).allowed,true);eq((await consume('a'.repeat(64),'booking')).allowed,true);
+eq((await consume('e'.repeat(64),'confirmation')).allowed,true);eq((await consume('f'.repeat(64),'telemetry')).allowed,true);
 await db.exec("update public_request_counters set requests=20 where scope='waitlist' and period='day';delete from public_request_counters where scope='waitlist' and period='minute'");
 eq((await consume()).allowed,false);
 eq((await db.query("select count(*)::int as n from public_request_counters where scope='waitlist' and period='minute'")).rows[0].n,0);

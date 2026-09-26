@@ -3,12 +3,13 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
 import { notifyWaitlistSignup } from "@/lib/resend.server";
 import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
+import { trustedAppOrigin } from "@/lib/app-origin.server";
 
 export const Route = createFileRoute("/api/waitlist")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (request.headers.get("origin") !== new URL(request.url).origin) {
+        if (request.headers.get("origin") !== trustedAppOrigin()) {
           return new Response(null, { status: 403 });
         }
         const parsed = await readJsonWithLimit<{ email?: unknown }>(

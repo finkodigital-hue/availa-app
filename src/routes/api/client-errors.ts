@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
+import { consumePublicRequest } from "@/lib/public-request-limit.server";
 
 // Minimal error intake replacing the visibility lost when the Lovable
 // integration (and its error reporting) was removed. The browser-side
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/api/client-errors")({
           const body = parsed.value;
           const message = (body.message ?? "").toString().slice(0, 500).trim();
           if (!message) return new Response(null, { status: 204 });
+          await consumePublicRequest("telemetry", { headers: request.headers });
 
           const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
           const { count } = await (supabaseAdmin as any)

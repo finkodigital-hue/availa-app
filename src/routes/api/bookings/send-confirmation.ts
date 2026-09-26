@@ -5,6 +5,7 @@ import { buildConfirmationEmail } from "@/lib/emails/confirmation-email.server";
 import { sendEmail, EmailSendError } from "@/lib/resend.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
 import { markBookingNotification } from "@/lib/notification-delivery.server";
+import { consumePublicRequest } from "@/lib/public-request-limit.server";
 
 // Called immediately after a booking is created (both the public booking
 // page and the owner's walk-in dialog) so the confirmation email goes out
@@ -22,6 +23,7 @@ import { markBookingNotification } from "@/lib/notification-delivery.server";
 // the last few minutes, and always returns the same minimal response
 // regardless of outcome (no booking details leak to the caller).
 const RECENCY_MS = 10 * 60 * 1000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const Route = createFileRoute("/api/bookings/send-confirmation")({
   server: {
@@ -33,7 +35,13 @@ export const Route = createFileRoute("/api/bookings/send-confirmation")({
         }
         const body = parsed.value;
         const bookingId = body.booking_id;
-        if (!bookingId) return new Response(null, { status: 204 });
+        if (!bookingId || !UUID_PATTERN.test(bookingId)) return new Response(null, { status: 204 });
+        try { await consumePublicRequest("confirmation", { headers: request.headers }); }
+        catch {
+          // Keep this endpoint non-enumerable. The protected scheduler remains
+          // the delivery backstop when an abusive source exhausts its quota.
+          return new Response(null, { status: 204 });
+        }
 
         const { data: booking } = await (supabaseAdmin as any)
           .from("bookings")

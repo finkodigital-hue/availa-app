@@ -1,4 +1,4 @@
-type Scope = "booking" | "gift" | "waitlist" | "auth";
+type Scope = "booking" | "gift" | "waitlist" | "auth" | "confirmation" | "telemetry";
 export class PublicRequestLimitError extends Error {
   status: number;
   retryAfter: number;
