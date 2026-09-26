@@ -58,11 +58,20 @@ jobs:
             throw new Error(`Client bundle check failed: HTTP ${asset.status}`);
           }
 
-          const health = await fetchChecked(new URL("/api/health", response.url));
-          const details = await health.json().catch(() => null);
-          if (!health.ok || details?.status !== "ok") {
-            throw new Error(`Dependency health check failed: HTTP ${health.status}`);
+          async function requireSustainedHealth() {
+            let lastStatus = 0;
+            for (let attempt = 1; attempt <= 3; attempt += 1) {
+              try {
+                const health = await fetchChecked(new URL(`/api/health?t=${Date.now()}`, response.url));
+                const details = await health.json().catch(() => null);
+                lastStatus = health.status;
+                if (health.ok && details?.status === "ok") return;
+              } catch {}
+              if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 5_000));
+            }
+            throw new Error(`Dependency health check failed three times; last HTTP ${lastStatus || "unavailable"}`);
           }
+          await requireSustainedHealth();
 
           console.log(`Bookzenvo is healthy: ${response.url}`);
           EOF
