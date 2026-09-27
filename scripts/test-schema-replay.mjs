@@ -67,8 +67,29 @@ try {
   }
   catch(error){throw new Error(`Migration ${name}: ${error.message}`);}
  }
+ await db.exec(fs.readFileSync(new URL('../supabase/tests/permissive_policy_consolidation.sql',import.meta.url),'utf8'));
  const tables=(await db.query(`select count(*)::int as n from pg_tables where schemaname='public'`)).rows[0].n;
  assert.ok(tables>=59);
+ const rlsWithoutPolicies=(await db.query(`
+  select c.relname
+  from pg_class c
+  join pg_namespace n on n.oid=c.relnamespace
+  where n.nspname='public'
+    and c.relkind='r'
+    and c.relrowsecurity
+    and not exists(select 1 from pg_policy p where p.polrelid=c.oid)
+  order by c.relname
+ `)).rows;
+ assert.deepEqual(rlsWithoutPolicies,[],'Every RLS table has an explicit policy, including server-managed deny policies');
+ const anonymousTableWrites=(await db.query(`
+  select table_name,privilege_type
+  from information_schema.table_privileges
+  where table_schema='public'
+    and grantee='anon'
+    and privilege_type in ('INSERT','UPDATE','DELETE')
+  order by table_name,privilege_type
+ `)).rows;
+ assert.deepEqual(anonymousTableWrites,[],'Anonymous users have no direct public-schema table write grants');
  await db.exec(`create temp table reminder_reset_fixture (
   starts_at timestamptz, reminder_sent_at timestamptz,
   sms_reminder_sent_at timestamptz, client_confirmed_at timestamptz
