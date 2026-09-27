@@ -170,7 +170,11 @@ export function AppointmentsStep({
                 upcoming confirmed appointments in this file match Bookzenvo on
                 time, client, service and team member.
               </p>
-              {reconciliation.issues.length > 0 ? (
+              {reconciliation.sourceCount === 0 ? (
+                <p className="text-xs text-destructive font-medium">
+                  No upcoming confirmed appointments were found in this file. Check whether your old system exported future bookings separately before switching.
+                </p>
+              ) : reconciliation.issues.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-xs text-destructive font-medium">
                     {reconciliation.issues.length} need a closer look before
