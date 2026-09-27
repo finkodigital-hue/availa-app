@@ -1116,10 +1116,27 @@ function CustomerEditDialog({
         .from("business-assets")
         .upload(path, blob, { contentType: "image/jpeg", upsert: true });
       if (error) throw error;
-      await supabase
+      const previousPath = form.avatar_url;
+      const { error: updateError } = await supabase
         .from("customers")
         .update({ avatar_url: path } as any)
         .eq("id", form.id);
+      if (updateError) {
+        await supabase.storage.from("business-assets").remove([path]);
+        throw updateError;
+      }
+      if (
+        previousPath &&
+        previousPath !== path &&
+        previousPath.startsWith(`${businessId}/customers/${form.id}-`)
+      ) {
+        const { error: cleanupError } = await supabase.storage
+          .from("business-assets")
+          .remove([previousPath]);
+        if (cleanupError) {
+          console.warn("Could not remove the replaced customer photo", cleanupError);
+        }
+      }
       setForm((f) => ({ ...f, avatar_url: path }));
       const u = await signedUrl(path).catch(() => null);
       setPreview(u);

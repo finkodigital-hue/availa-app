@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { fmtMoney as formatMoney } from "@/lib/format";
 import { refundBooking } from "@/lib/stripe-connect.functions";
+import { displayedBookingCollection } from "@/lib/report-values";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { BookingBalanceCheckout } from "@/components/booking-balance-checkout";
 
@@ -33,10 +34,7 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
 const PAGE_SIZE = 50;
 const TOTALS_BATCH_SIZE = 500;
 
-const collectedFor = (booking: { payment_status?: string | null; amount_paid_cents?: number | null; price_cents?: number | null }) =>
-  booking.payment_status === "paid"
-    ? Math.max(booking.amount_paid_cents ?? 0, booking.price_cents ?? 0)
-    : (booking.amount_paid_cents ?? 0);
+const collectedFor = displayedBookingCollection;
 
 function PaymentsPage() {
   const { data: biz } = useMyBusiness();
@@ -93,7 +91,7 @@ function PaymentsPage() {
       for (let offset = 0; ; offset += TOTALS_BATCH_SIZE) {
         const { data: batch, error } = await supabase
           .from("bookings")
-          .select("id, starts_at, price_cents, payment_status, amount_paid_cents")
+          .select("id, starts_at, price_cents, payment_status, amount_paid_cents, amount_refunded_cents")
           .eq("business_id", bid!)
           .neq("status", "cancelled")
           .order("id", { ascending: true })
@@ -275,7 +273,14 @@ function PaymentsPage() {
                 </div>)}
                 {history.data?.some((payment) => payment.payment_method === "cash") && <p className="text-xs text-muted-foreground">Cash payments are recorded here. Online refunds return card payments only.</p>}
               </div>
-              {selected.payment_status !== "paid" && selected.price_cents > (selected.amount_paid_cents ?? 0) && !refundConfirming && !refundResults && (
+              {![
+                "paid",
+                "refunded",
+                "partially_refunded",
+              ].includes(selected.payment_status) &&
+                selected.price_cents > (selected.amount_paid_cents ?? 0) &&
+                !refundConfirming &&
+                !refundResults && (
                 <BookingBalanceCheckout key={selected.id} bookingId={selected.id} businessId={bid!} amountDueCents={selected.price_cents - (selected.amount_paid_cents ?? 0)} currency={biz?.currency ?? "GBP"} onUpdated={(updated) => {
                   setSelected((current: any) => current?.id === updated.id ? { ...current, ...updated, collected: updated.amount_paid_cents } : current);
                 }} />

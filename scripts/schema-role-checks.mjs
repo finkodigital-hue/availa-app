@@ -32,6 +32,7 @@ export async function checkSchemaRoles(db) {
  await login(1);
  same((await rows('select id from bookings order by id')).map(x=>x.id),[id(501),id(503)],'Owner sees own appointments only');
  same((await rows('select id from customers')).map(x=>x.id),[id(401)],'Owner sees own customers only');
+ await fail(`update customers set auth_user_id='${id(6)}' where id='${id(401)}'`,/server-managed/);
  same((await rows("select name from storage.objects where bucket_id='business-assets'")).map(x=>x.name),[`${id(101)}/private.txt`],'Private storage owner scope');
  same((await rows("select name from storage.objects where bucket_id='business-public-assets'")).map(x=>x.name),[`${id(101)}/logo/public.jpg`],'Owner can manage own public asset metadata');
  await fail(`insert into storage.objects(bucket_id,name,owner) values('business-public-assets','${id(102)}/overwrite.png','${id(1)}')`,/row-level security/);
@@ -59,11 +60,13 @@ export async function checkSchemaRoles(db) {
  await login(3);
  same((await rows('select id from bookings')).length,2,'Manager own workspace');
  same((await rows(`select has_business_permission('${id(101)}','services.manage') as ok`))[0].ok,true,'Manager services');
+ same((await rows(`select has_business_permission('${id(101)}','reports.read') as ok`))[0].ok,true,'Manager reports');
  same(await rows(`update businesses set name='Escalation' where id='${id(101)}' returning id`),[],'Manager cannot change owner settings');
  await fail(`select * from consultation_submissions`,/permission denied/);
  await login(4);
  same((await rows('select id from bookings')).length,2,'Front desk calendar');
  same((await rows(`select has_business_permission('${id(101)}','services.manage') as ok`))[0].ok,false,'Front desk cannot manage services');
+ same((await rows(`select has_business_permission('${id(101)}','reports.read') as ok`))[0].ok,false,'Front desk cannot read reports');
  await fail(`select * from consultation_submissions`,/permission denied/);
  await login(5);
  same((await rows('select id from bookings')).map(x=>x.id),[id(503)],'Practitioner only assigned calendar');
@@ -166,7 +169,24 @@ export async function checkSchemaRoles(db) {
  const publicBooking=(await rows(`select create_public_booking('${id(101)}','${id(301)}','${id(201)}','Public fictional customer','public-fixture@example.invalid','',date_trunc('week',now())+interval '14 days 13 hours',date_trunc('week',now())+interval '14 days 23 hours','',null,null) as id`))[0].id;
  same((await rows(`select price_cents from bookings where id='${publicBooking}'`))[0].price_cents,1000,'Server booking preserves authoritative price');
  same((await rows(`select extract(epoch from ends_at-starts_at)::integer as seconds from bookings where id='${publicBooking}'`))[0].seconds,1800,'Server booking ignores forged duration');
+ const erasureCustomer=id(405),otherErasureCustomer=id(406),erasureRequest=id(605);
+ await db.exec(`insert into customers(id,business_id,name,email) values
+  ('${erasureCustomer}','${id(101)}','Erasure fixture','erase-fixture@example.invalid'),
+  ('${otherErasureCustomer}','${id(101)}','Other fixture','other-erase-fixture@example.invalid');
+ insert into customer_data_requests(id,business_id,customer_id,email,kind) values('${erasureRequest}','${id(101)}','${erasureCustomer}','erase-fixture@example.invalid','deletion');
+ insert into notifications(business_id,type,title,body) values('${id(101)}','payment_failed','Payment failed: Erasure fixture','Review the booking')`);
+ await fail(`select erase_customer('${id(101)}','${erasureCustomer}','${erasureRequest}','${id(1)}')`,/permission denied/);
+ await fail(`select erase_customer_with_storage_job('${id(101)}','${otherErasureCustomer}','${erasureRequest}','${id(1)}','{}')`,/not pending for this customer/);
+ const erased=(await rows(`select erase_customer_with_storage_job('${id(101)}','${erasureCustomer}','${erasureRequest}','${id(1)}','{}') as result`))[0].result;
+ same(erased.notifications_deleted,1,'Erasure removes named payment-failure notifications');
+ same((await rows(`select name,email from customers where id='${erasureCustomer}'`))[0],{name:'Deleted customer',email:null},'Bound deletion request anonymises its exact customer');
  await db.exec('reset role');
+ await db.exec(`delete from auth.users where id='${id(7)}';
+  insert into auth.users(id,email,email_confirmed_at) values('${id(10)}','fixture7@example.invalid',now())`);
+ same((await rows(`select auth_user_id from customers where id='${id(401)}'`))[0].auth_user_id,id(7),'Deleted Auth identity leaves immutable historical customer binding');
+ await login(10);
+ same((await rows('select claim_current_customer_records() as claimed'))[0].claimed,0,'Re-registered email cannot claim historical UID-bound records');
+ same(await rows('select id from bookings'),[],'Re-registered email cannot read historical bookings');
  console.log(`${checks} full-application-schema role, invitation, export, MFA and storage-policy assertions passed (local Auth/Storage fixtures).`);
  return checks;
 }

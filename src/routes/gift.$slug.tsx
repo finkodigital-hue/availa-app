@@ -27,7 +27,8 @@ export const Route = createFileRoute("/gift/$slug")({
   head: ({ loaderData }) => ({
     meta: [
       { title: loaderData ? `Gift cards · ${loaderData.name}` : "Gift cards" },
-      { name: "description", content: loaderData ? `Buy a gift card for ${loaderData.name}.` : "Buy a salon gift card." },
+      { name: "description", content: loaderData ? `Online gift card sales for ${loaderData.name} are not available yet.` : "Online salon gift card sales are not available yet." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: GiftCardPage,

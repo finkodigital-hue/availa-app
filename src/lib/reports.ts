@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { netCollected } from "@/lib/report-values";
 
 // Shared booking-aggregation logic used by both the Dashboard's "Performance"
 // section and the Reports page's date-range reports — kept in one place so
@@ -11,6 +12,8 @@ export type ReportBooking = {
   id: string;
   starts_at: string;
   price_cents: number | null;
+  amount_paid_cents: number | null;
+  amount_refunded_cents: number | null;
   status: string;
   staff_id: string | null;
   service_id: string | null;
@@ -40,13 +43,12 @@ export const getBookingsInRange = createServerFn({ method: "GET" })
     return { start: start.toISOString(), end: end.toISOString() };
   })
   .handler(async ({ data: range, context }): Promise<ReportBooking[]> => {
-    const { data: business, error: businessError } = await context.supabase
-      .from("businesses")
-      .select("id")
-      .eq("owner_id", context.userId)
-      .maybeSingle();
-    if (businessError) throw businessError;
-    if (!business) throw new Error("No business is connected to this account.");
+    const { requireWorkspacePermission } =
+      await import("@/lib/workspace-permission.server");
+    const businessId = await requireWorkspacePermission(
+      context,
+      "reports.read",
+    );
 
     // Reporting rows are read only after the signed-in owner's business has
     // been resolved above. Use the server-only client so browser-facing RLS
@@ -56,9 +58,9 @@ export const getBookingsInRange = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("bookings")
       .select(
-        "id, starts_at, price_cents, status, staff_id, service_id, customer_id, customer_name, services(name, color, duration_minutes, price_cents), staff(name)",
+        "id, starts_at, price_cents, amount_paid_cents, amount_refunded_cents, status, staff_id, service_id, customer_id, customer_name, services(name, color, duration_minutes, price_cents), staff(name)",
       )
-      .eq("business_id", business.id)
+      .eq("business_id", businessId)
       .gte("starts_at", range.start)
       .lte("starts_at", range.end)
       .neq("status", "cancelled")
@@ -110,7 +112,7 @@ export function aggregateStaffPerformance(
       durationMin: 0,
       customers: new Set<string>(),
     };
-    cur.revenue += b.price_cents ?? 0;
+    cur.revenue += netCollected(b);
     cur.bookings += 1;
     cur.durationMin += b.services?.duration_minutes ?? 0;
     if (b.customer_id) cur.customers.add(b.customer_id);
@@ -160,7 +162,7 @@ export function aggregateServicePerformance(
       price: b.services?.price_cents ?? 0,
       duration: b.services?.duration_minutes ?? 0,
     };
-    cur.revenue += b.price_cents ?? 0;
+    cur.revenue += netCollected(b);
     cur.bookings += 1;
     map.set(b.service_id, cur);
   });
@@ -172,7 +174,7 @@ export function aggregateServicePerformance(
 export type PeriodTotals = { revenue: number; bookings: number; avg: number };
 
 export function computeTotals(bookings: ReportBooking[]): PeriodTotals {
-  const revenue = bookings.reduce((a, b) => a + (b.price_cents ?? 0), 0);
+  const revenue = bookings.reduce((a, b) => a + netCollected(b), 0);
   const count = bookings.length;
   return {
     revenue,

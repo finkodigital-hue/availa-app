@@ -201,7 +201,7 @@ function GiftCardsPage() {
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-muted-foreground">This creates a gift card without taking a payment. Use the purchase link above if someone is buying one online.</p>
+                  <p className="text-sm text-muted-foreground">This creates a gift card without taking a payment. Online gift-card sales are not live yet.</p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div><Label htmlFor="issue-amount">Value in pounds</Label><Input id="issue-amount" className="mt-1.5" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div>
                     <div><Label htmlFor="issue-name">Recipient</Label><Input id="issue-name" className="mt-1.5" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} required maxLength={120} /></div>
@@ -217,7 +217,7 @@ function GiftCardsPage() {
           {cards.isLoading ? <div className="h-36 rounded-2xl border bg-card animate-pulse" /> : cards.isError ? (
             <EmptyState icon={Gift} title="Gift cards did not load" description="Try again before creating or redeeming a card." action={<Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["gift-cards", businessId] })}>Try again</Button>} />
           ) : (cards.data?.length ?? 0) === 0 ? (
-            <EmptyState icon={Gift} title="No gift cards yet" description="Copy the purchase link above to sell one, or give a card without taking payment." />
+            <EmptyState icon={Gift} title="No gift cards yet" description="You can give a card without taking an online payment. Public gift-card sales are not live yet." />
           ) : (
             <div className="rounded-2xl border bg-card overflow-hidden divide-y">
               {cards.data!.map((card) => (

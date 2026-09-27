@@ -5,6 +5,10 @@ import {
   preparationBalance,
   preparationFormSummary,
 } from "@/lib/dashboard-preparation";
+import {
+  hasWorkspacePermission,
+  requireWorkspacePermission,
+} from "@/lib/workspace-permission.server";
 
 export type DashboardBooking = {
   id: string;
@@ -73,11 +77,18 @@ function firstRelationName(value: unknown) {
   return String(firstRelation(value)?.name ?? "");
 }
 
-async function ownedBusiness(context: any) {
+async function workspaceBusiness(
+  context: any,
+  permission:
+    | "workspace.read"
+    | "calendar.manage"
+    | "customers.manage" = "workspace.read",
+) {
+  const businessId = await requireWorkspacePermission(context, permission);
   const { data, error } = await context.supabase
     .from("businesses")
     .select("id, name, slug, currency, address, phone, email, timezone")
-    .eq("owner_id", context.userId)
+    .eq("id", businessId)
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("No business is connected to this account.");
@@ -87,7 +98,12 @@ async function ownedBusiness(context: any) {
 export const getDashboardOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const business = await ownedBusiness(context);
+    const business = await workspaceBusiness(context);
+    const canManageCustomers = await hasWorkspacePermission(
+      context,
+      business.id,
+      "customers.manage",
+    );
     // Keep dashboard reads scoped to the signed-in owner and enforced by RLS.
     // The authenticated client is created on the server by requireSupabaseAuth.
     const db = context.supabase as any;
@@ -104,7 +120,7 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
       data: null,
       error: null,
     });
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY && canManageCustomers) {
       const { supabaseAdmin } =
         await import("@/integrations/supabase/client.server");
       consultationPromise = (supabaseAdmin as any)
@@ -271,7 +287,11 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
           withdrawn_at: string | null;
         }[]
       | null = null;
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY && preparationBookings.length) {
+    if (
+      process.env.SUPABASE_SERVICE_ROLE_KEY &&
+      canManageCustomers &&
+      preparationBookings.length
+    ) {
       const { supabaseAdmin } =
         await import("@/integrations/supabase/client.server");
       const result = await (supabaseAdmin as any)
@@ -396,7 +416,7 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
         (a, b) => Number(a.kind === "stock") - Number(b.kind === "stock"),
       ),
       consultationAttentionAvailable: Boolean(
-        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        process.env.SUPABASE_SERVICE_ROLE_KEY && canManageCustomers,
       ),
       setup,
     } satisfies DashboardOverview;
@@ -410,7 +430,7 @@ export const getDashboardCustomerNotes = createServerFn({ method: "GET" })
     return data;
   })
   .handler(async ({ data, context }) => {
-    const business = await ownedBusiness(context);
+    const business = await workspaceBusiness(context, "customers.manage");
     const result = await context.supabase
       .from("customers")
       .select("notes")
@@ -435,7 +455,7 @@ export const checkInDashboardBooking = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data, context }) => {
-    const business = await ownedBusiness(context);
+    const business = await workspaceBusiness(context, "calendar.manage");
     const { data: booking, error } = await context.supabase
       .from("bookings")
       .update({ status: "checked_in" })

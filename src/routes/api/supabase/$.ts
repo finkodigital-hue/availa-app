@@ -55,7 +55,7 @@ const PROTECTED_REST_FIELDS: Record<string, ReadonlySet<string>> = {
     "deletion_scheduled_for",
   ]),
   bookings: new Set(["stripe_payment_intent_id", "stripe_charge_id", "amount_refunded_cents"]),
-  customers: new Set(["stripe_customer_id"]),
+  customers: new Set(["stripe_customer_id", "auth_user_id"]),
 };
 
 function isOpaqueSupabaseKey(value: string) {

@@ -236,7 +236,8 @@ function PrivacyPage() {
                 operate Bookzenvo, including Supabase for database, storage and
                 authentication; Cloudflare for hosting and network security;
                 Stripe for subscription and appointment payments; Resend for
-                booking emails; Twilio for enabled appointment SMS; Anthropic for optional
+                enabled transactional and operational emails, including booking,
+                account and waitlist messages; Twilio for enabled appointment SMS; Anthropic for optional
                 AI features; and ScreenshotOne for public-page screenshots used by the
                 optional AI page editor. Connected Google or Microsoft calendars receive
                 appointment details when a business enables calendar synchronisation.
