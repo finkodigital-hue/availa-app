@@ -27,7 +27,10 @@ export function LegalPage({
       <header className="border-b border-border">
         <div className="max-w-[860px] mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/">
-            <Wordmark className="text-[1.5rem]" dotClassName="text-[color:var(--gold-deep)]" />
+            <Wordmark
+              className="text-[1.5rem]"
+              dotClassName="text-[color:var(--gold-deep)]"
+            />
           </Link>
           <Link
             to="/"
@@ -116,7 +119,10 @@ export function LegalPage({
           <h2 className="text-[1.45rem]">Need help?</h2>
           <p className="mt-2 text-[.92rem] leading-6 text-muted-foreground">
             Email{" "}
-            <a className="underline underline-offset-4" href={`mailto:${legalOperator.contactEmail}`}>
+            <a
+              className="underline underline-offset-4"
+              href={`mailto:${legalOperator.contactEmail}`}
+            >
               {legalOperator.contactEmail}
             </a>{" "}
             or visit the Help Centre. We will get back to you as soon as we can.
@@ -147,6 +153,9 @@ export function LegalPage({
           <Link to="/review-policy" className="hover:text-foreground">
             Review policy
           </Link>
+          <a href="/third-party-notices.txt" className="hover:text-foreground">
+            Software notices
+          </a>
           <Link to="/help" className="hover:text-foreground">
             Contact
           </Link>
