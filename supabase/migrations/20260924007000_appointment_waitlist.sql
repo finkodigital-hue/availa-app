@@ -49,6 +49,7 @@ begin
   end if;
   return new;
 end;$$;
+revoke all on function public.validate_appointment_waitlist_request() from public, anon, authenticated;
 create trigger validate_appointment_waitlist_request
   before insert or update of business_id,service_id,preferred_staff_id
   on public.appointment_waitlist_requests
