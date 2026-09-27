@@ -55,6 +55,7 @@ export function AppointmentsStep({
   const [committing, setCommitting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ApptCommitResult | null>(null);
+  const [showUpcoming, setShowUpcoming] = useState(false);
 
   useEffect(() => {
     if (upload.rows.length === 0) {
@@ -92,6 +93,13 @@ export function AppointmentsStep({
   const unparsedDates = upload.rows.filter(
     (r) => !r.startsAt || !r.endsAt,
   ).length;
+  const upcomingRows = upload.rows.filter(
+    (r) =>
+      r.startsAt &&
+      r.startsAt.getTime() > Date.now() &&
+      r.status === "confirmed",
+  );
+  const visibleRows = showUpcoming ? upcomingRows : upload.rows;
 
   const commit = async () => {
     setCommitting(true);
@@ -123,7 +131,7 @@ export function AppointmentsStep({
       index={4}
       icon={<CalendarClock className="h-4 w-4" />}
       title="Appointments"
-      subtitle="Your appointment history export"
+      subtitle="Past and upcoming appointments from your old diary"
       done={!!result}
     >
       {result ? (
@@ -149,8 +157,8 @@ export function AppointmentsStep({
           onFile={upload.load}
           onRemove={upload.reset}
           icon={<UploadIcon />}
-          label="Drop your appointment history export here"
-          hint="or click to browse — a CSV of your appointment history, from any booking system. This can be a large file — that's fine."
+          label="Drop your appointment export here"
+          hint="Include future bookings as well as history. Check your old system's export settings before uploading."
         />
       ) : (
         <div className="space-y-4">
@@ -211,6 +219,10 @@ export function AppointmentsStep({
                 <Badge variant="secondary">
                   {upload.rows.length.toLocaleString()} appointments found
                 </Badge>
+                <Badge variant="secondary">
+                  {upcomingRows.length.toLocaleString()} upcoming confirmed in
+                  this file
+                </Badge>
                 {upload.skipped > 0 && (
                   <Badge variant="secondary">
                     {upload.skipped.toLocaleString()} skipped (incomplete row)
@@ -223,6 +235,19 @@ export function AppointmentsStep({
                   </Badge>
                 )}
               </div>
+
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs leading-relaxed">
+                  <strong>Before you switch:</strong> compare the{" "}
+                  {upcomingRows.length.toLocaleString()} upcoming confirmed
+                  appointments in this file with your old diary. If any are
+                  missing, export them again before relying on this calendar.
+                  After import, spot-check dates, times, services and team
+                  members in Bookzenvo. Importing does not cancel bookings or
+                  reminders in your old system.
+                </AlertDescription>
+              </Alert>
 
               {statsLoading ? (
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -270,6 +295,20 @@ export function AppointmentsStep({
                 </div>
               ) : null}
 
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Preview the appointments before importing.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={showUpcoming ? "secondary" : "outline"}
+                  aria-pressed={showUpcoming}
+                  onClick={() => setShowUpcoming((value) => !value)}
+                >
+                  {showUpcoming ? "Show all" : "Show upcoming only"}
+                </Button>
+              </div>
               <div className="rounded-lg border overflow-hidden max-h-72 overflow-y-auto">
                 <Table>
                   <TableHeader>
@@ -282,7 +321,7 @@ export function AppointmentsStep({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {upload.rows.slice(0, 10).map((r, i) => (
+                    {visibleRows.slice(0, 10).map((r, i) => (
                       <TableRow key={i}>
                         <TableCell className="font-medium">
                           {r.clientName}
@@ -304,7 +343,9 @@ export function AppointmentsStep({
                   </TableBody>
                 </Table>
                 <div className="px-3 py-2 text-xs text-muted-foreground border-t bg-muted/30">
-                  Showing 10 of {upload.rows.length.toLocaleString()}
+                  Showing {Math.min(10, visibleRows.length).toLocaleString()} of{" "}
+                  {visibleRows.length.toLocaleString()}
+                  {showUpcoming ? " upcoming confirmed" : ""}
                 </div>
               </div>
 
