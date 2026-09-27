@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { netCollected } from "@/lib/report-values";
+import {
+  aggregateDailyTakings,
+  type DailyTakingsCurrency,
+  type PaymentLedgerRow,
+} from "@/lib/report-values";
+import { businessDayRange } from "@/lib/business-day";
 
 // Shared booking-aggregation logic used by both the Dashboard's "Performance"
 // section and the Reports page's date-range reports — kept in one place so
@@ -77,6 +83,51 @@ export async function fetchBookingsInRange(
     data: { start: start.toISOString(), end: end.toISOString() },
   });
 }
+
+export type DailyTakingsReport = {
+  start: string;
+  end: string;
+  timeZone: string;
+  currencies: DailyTakingsCurrency[];
+};
+
+export const getDailyTakings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<DailyTakingsReport> => {
+    const { requireWorkspacePermission } =
+      await import("@/lib/workspace-permission.server");
+    const businessId = await requireWorkspacePermission(
+      context,
+      "reports.read",
+    );
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { data: business, error: businessError } = await supabaseAdmin
+      .from("businesses")
+      .select("timezone,currency")
+      .eq("id", businessId)
+      .single();
+    if (businessError) throw businessError;
+    const timeZone = business.timezone || "Europe/London";
+    const { start, end } = businessDayRange(new Date(), timeZone);
+    const { data, error } = await supabaseAdmin
+      .from("payments")
+      .select("type,status,amount_cents,currency,payment_method")
+      .eq("business_id", businessId)
+      .gte("created_at", start.toISOString())
+      .lt("created_at", end.toISOString())
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return {
+      start: start.toISOString(),
+      end: end.toISOString(),
+      timeZone,
+      currencies: aggregateDailyTakings(
+        (data ?? []) as PaymentLedgerRow[],
+        business.currency || "GBP",
+      ),
+    };
+  });
 
 export type StaffPerformance = {
   staffId: string;

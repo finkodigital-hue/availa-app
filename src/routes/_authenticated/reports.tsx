@@ -24,6 +24,7 @@ import { ReportDateRangePicker } from "@/components/reports/date-range-picker";
 import { StaffEarningsTable } from "@/components/reports/staff-earnings-table";
 import { ServicesBreakdownTable } from "@/components/reports/services-breakdown-table";
 import { PeriodSummary } from "@/components/reports/period-summary";
+import { DailyTakings } from "@/components/reports/daily-takings";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   component: ReportsPage,
@@ -194,6 +195,8 @@ function ReportsPage() {
           )}
         </div>
       )}
+
+      <DailyTakings businessId={bid} />
 
       {/* Staff earnings */}
       <div className="mt-6 print:hidden">

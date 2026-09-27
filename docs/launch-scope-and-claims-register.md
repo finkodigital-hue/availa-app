@@ -1,0 +1,41 @@
+# Launch scope and public claims register
+
+Status: working decision record, 27 September 2026. This file does not approve launch. It turns the existing code and test evidence into a list the founders can accept, narrow or postpone. A feature is **enabled** only when the exact production configuration and a controlled journey have been proved.
+
+## Proposed minimum conference scope
+
+The safest defensible first release is the website with:
+
+- public salon pages and appointment requests;
+- owner/staff diary, services, customers and basic reporting;
+- email account and booking messages after controlled delivery evidence;
+- online Stripe payments only after the sandbox matrix and one authorised live charge/refund; and
+- support, legal pages, export/deletion intake, monitoring and a fallback diary.
+
+The founders must explicitly decide whether SMS, health/consultation records, reviews, AI, gift cards, calendar sync and waitlists are included. Until each has its own provider, legal and operational evidence, describe it as planned or keep it out of launch copy.
+
+## Claims matrix
+
+| Capability or claim | Current evidence | Remaining proof or decision | Permitted public wording before closure | Owner | Decision |
+| --- | --- | --- | --- | --- | --- |
+| Public online booking | Code, isolated booking tests and one controlled fictional production journey exist. | Physical-device completion, correct live salon configuration and pilot-day evidence. | “Online booking website available for the approved pilot.” | Product + pilot salon | `[include / defer]` |
+| Clash prevention and staff availability | Schedule/concurrency tests exist. | Observe a busy salon day, time off, gaps, simultaneous requests and fallback handling. | “Helps manage availability”; do not claim impossibility of clashes. | Product + pilot salon | `pending founder decision` |
+| Deposits and online payments | Stripe test-mode history and code regression evidence exist. | Current GBP sandbox matrix, SCA/failure/expiry/refund reconciliation, then an authorised low-value live test. | “Online payments planned” until the payment gate is signed. | Founder + payments owner | `pending founder decision` |
+| Subscriptions at £22/month | Product supports plans; public pages describe planned pricing. | VAT decision, live Stripe price/product, portal, renewal/cancellation and invoice/email evidence. | “Planned Studio price: £22/month”, if still commercially approved. | Founder + accountant | `pending founder decision` |
+| Email confirmations/reminders | Controlled booking/change emails reached an approved inbox; DNS has SPF/DKIM and monitoring-mode DMARC. | Complete message set, help-inbox reply, bounce/complaint handling, DMARC report ownership and evidence before stronger enforcement. | Limit claims to message types actually proved. | Operations | `pending founder decision` |
+| SMS reminders | Consent/suppression controls exist; controlled production attempt failed before Twilio supplied an ID. | Account upgrade/sender, authorised handset delivery, callback, cost, STOP/suppression and legal review. | Do not advertise SMS as live. | Founder + operations | `[include / defer]` |
+| Consultation and patch-test records | Product controls and fictional regression evidence exist. | Controller lawful basis, Article 9 condition, DPIA, retention, guardian/child policy and controlled staff/client journey. | Do not market health-data features until signed legal decision. | Privacy owner + salon | `[include / defer]` |
+| Verified reviews | Completed-booking provenance and moderation controls exist. | Controlled request/submit/remove journey and marketing/review-law review. | “Verified booking reviews” only after the production journey is proved. | Product + legal reviewer | `[include / defer]` |
+| AI assistant/page/stock tools | Code and plan gates exist. | Provider account, DPA/transfer/data-retention review, spend limit and real-model tests with safe inputs. | “Optional AI tools planned”; never promise accuracy or automated decisions. | Founder + privacy owner | `[include / defer]` |
+| Customer portal and privacy requests | Portal and request functions exist. | Disposable cross-salon isolation, secure delivery, identity verification and operator response rehearsal. | “Customers can request access or deletion”; do not promise automatic completion. | Product + privacy owner | `pending founder decision` |
+| Import/migration service | General importer exists. | Fictional dry run, duplicate checks, signed salon instruction, rollback/parallel-running process and secure deletion of transfer files. | “Assisted migration available after an assessed trial.” | Migration lead | `[include / defer]` |
+| Calendar sync | Code exists but provider credentials and live OAuth/outbox evidence are outstanding. | Provider setup, privacy/subprocessor review and controlled connect/sync/revoke tests. | Do not advertise as live. | Product | `[defer]` |
+| Card machines/tap to pay | Not part of the current website payment implementation. | Separate Stripe Terminal project and hardware/device approval. | “Card-reader integration is not currently available.” | Product | `defer` |
+| Backup/recovery | Local safety controls exist. Production Supabase was observed on a plan without provider backups. | Paid backup capability, Storage copy and isolated restore rehearsal with measured RPO/RTO. | Do not claim proven disaster recovery. | Infrastructure | `pending founder decision` |
+| Security | Layered controls and automated checks exist. | Independent review, provider/access review and incident drill. | “We use access controls, encryption in transit and monitoring”; never claim unhackable or completely secure. | Technical owner | `pending founder decision` |
+
+## Claim approval rule
+
+For each enabled feature, keep: exact wording, page/placement, evidence link, production release, provider configuration date, decision owner, reviewer and next review date. A change to price, provider, data type, recipient, plan entitlement or customer journey reopens that row.
+
+Before conference material is printed or published, compare the final website, slides, handouts, social posts and spoken demo script against this register. Remove absolutes such as “fully secure”, “guaranteed”, “never double-books” and “fully compliant”.
