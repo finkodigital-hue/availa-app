@@ -69,16 +69,30 @@ export async function checkSchemaRoles(db) {
  same((await rows(`select has_business_permission('${id(101)}','reports.read') as ok`))[0].ok,false,'Front desk cannot read reports');
  await fail(`select * from consultation_submissions`,/permission denied/);
  await login(5);
- same((await rows('select id from bookings')).map(x=>x.id),[id(503)],'Practitioner only assigned calendar');
+ same(await rows('select id from bookings'),[],'Practitioner cannot read whole booking rows');
  same(await rows(`update bookings set notes='Forbidden edit' where id='${id(503)}' returning id`),[],'Practitioner calendar read only');
  await login(7);
- same((await rows('select id from bookings order by id')).map(x=>x.id),[id(501),id(503)],'Customer own email only');
+ same(await rows('select id from bookings'),[],'Portal customer cannot read whole booking rows');
+ const portalBookings=await rows('select * from get_portal_bookings()');
+ same(portalBookings.map(x=>x.id),[id(503),id(501)],'Portal customer receives only narrow booking records');
+ same(Object.hasOwn(portalBookings[0],'notes'),false,'Portal booking records exclude internal notes');
+ same(await rows('select id from customers'),[],'Portal customer cannot read whole customer rows');
+ same((await rows('select * from get_portal_customer_records()')).map(x=>x.id),[id(401)],'Portal customer receives only narrow profile records');
  await db.exec('reset role');
  await db.exec(`insert into customers(id,business_id,name,email,auth_user_id) values ('${id(403)}','${id(102)}','Unlinked customer','fixture7@example.invalid',null)`);
  await login(7);
  same((await rows('select claim_current_customer_records() as claimed'))[0].claimed,1,'Verified portal user claims an unbound matching customer record');
+ await db.exec('reset role');
  same((await rows(`select auth_user_id from customers where id='${id(403)}'`))[0].auth_user_id,id(7),'Portal claim binds immutable Auth UID');
- await fail(`update bookings set price_cents=1 where id='${id(501)}'`,/only change booking status/);
+ await login(7);
+ same(await rows(`update bookings set price_cents=1 where id='${id(501)}' returning id`),[],'Portal cannot alter booking base rows');
+ await db.exec('reset role');
+ await db.exec(`insert into bookings(id,business_id,service_id,staff_id,customer_id,customer_name,customer_email,starts_at,ends_at)
+  values('${id(599)}','${id(101)}','${id(301)}','${id(201)}','${id(401)}','Portal cancellation fixture','fixture7@example.invalid',now()+interval '30 days',now()+interval '30 days 30 minutes')`);
+ await login(7);await rows(`select cancel_portal_booking('${id(599)}')`);
+ same((await rows(`select status from get_portal_bookings() where id='${id(599)}'`))[0].status,'cancelled','Portal cancellation uses the narrow RPC');
+ await db.exec('reset role');await db.exec(`delete from bookings where id='${id(599)}'`);await login(7);
+ same((await rows(`select update_portal_customer_profile('Updated customer','07123456789') as changed`))[0].changed,2,'Portal profile update uses the narrow RPC');
  await db.exec('reset role');
  await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({role:'authenticated',sub:id(6),email:'fixture7@example.invalid',aal:'aal1'})]);
  await db.exec('set role authenticated');
@@ -97,6 +111,7 @@ export async function checkSchemaRoles(db) {
  same(claimedBusiness.name,'Fictional C','Approved verified identity claims one workspace');
  await fail(`select * from claim_approved_business_signup('Fictional duplicate','fictional-duplicate','Europe/London')`,/WORKSPACE_EXISTS/);
  await login(1);
+ await fail(`insert into salon_professionals(salon_business_id,pro_business_id) values('${id(101)}','${id(102)}')`,/permission denied/);
  const professionalInvitation=(await rows(`insert into professional_invitations(salon_business_id,invited_by,email,token)
   values('${id(101)}','${id(1)}','fixture2@example.invalid','professional-security-audit-token') returning id`))[0];
  await login(6);
@@ -105,6 +120,11 @@ export async function checkSchemaRoles(db) {
  same((await rows(`select accept_professional_invitation_with_workspace('professional-security-audit-token','Existing business','existing-business','Europe/London','2026-09-26') as business`))[0].business,id(102),'Professional invite is accepted only by the addressed owner with versioned terms');
  await fail(`select accept_professional_invitation_with_workspace('professional-security-audit-token','Existing business','existing-business','Europe/London','2026-09-26')`,/no longer valid/);
  same((await rows(`select count(*)::int as n from salon_professionals where salon_business_id='${id(101)}' and pro_business_id='${id(102)}'`))[0].n,1,'Professional invite creates one link');
+ await login(1);
+ await fail(`update salon_professionals set pro_business_id='${claimedBusiness.id}' where salon_business_id='${id(101)}' and pro_business_id='${id(102)}'`,/immutable|permission/i);
+ same((await rows(`update salon_professionals set chair_label='Chair A' where salon_business_id='${id(101)}' and pro_business_id='${id(102)}' returning chair_label`))[0].chair_label,'Chair A','Salon can edit existing professional terms without retargeting it');
+ await login(2);
+ same((await rows(`update salon_professionals set permissions=jsonb_set(permissions,'{salon_can_view_calendar}','false') where salon_business_id='${id(101)}' and pro_business_id='${id(102)}' returning permissions->>'salon_can_view_calendar' as allowed`))[0].allowed,'false','Professional can restrict permissions without editing salon terms');
  await db.exec('reset role');
  await db.exec(`delete from salon_professionals where salon_business_id='${id(101)}' and pro_business_id='${id(102)}';
   delete from professional_invitations where id='${professionalInvitation.id}';
@@ -129,6 +149,11 @@ export async function checkSchemaRoles(db) {
  same(await rows("select name from storage.objects where bucket_id='business-assets'"),[],'MFA AAL1 private storage denied');
  await login(1,'aal2');await db.query('select check_request_assurance()');checks++;
  same((await rows('select id from bookings')).length,2,'MFA AAL2 legitimate access');
+ await db.exec('reset role');await db.exec(`update auth.users set banned_until=now()+interval '1 day' where id='${id(1)}'`);
+ await login(1,'aal2');
+ same(await rows('select id from bookings'),[],'Banned owner JWT loses database access immediately');
+ same(await rows("select name from storage.objects where bucket_id='business-assets'"),[],'Banned owner JWT loses storage access immediately');
+ await db.exec('reset role');await db.exec(`update auth.users set banned_until=null where id='${id(1)}'`);
  await login(8);await fail('select check_request_assurance()',/verification required/);
  same(await rows('select id from bookings'),[],'Unverified identity denied');
  await login(null);same((await rows('select id from public_businesses')).length,2,'Anonymous discovery');
@@ -176,7 +201,7 @@ export async function checkSchemaRoles(db) {
  await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({role:'service_role'})]);
  await db.exec(`insert into bookings(id,business_id,service_id,staff_id,customer_id,customer_name,customer_email,starts_at,ends_at)
   values('${id(504)}','${id(101)}','${id(301)}','${id(201)}','${id(401)}','Customer A','fixture7@example.invalid',now()-interval '1 hour',now()-interval '30 minutes')`);
- await login(7);await fail(`update bookings set status='cancelled' where id='${id(504)}'`,/cancellation window/);
+ await login(7);await fail(`select cancel_portal_booking('${id(504)}')`,/cancellation window/);
  await login(4);
  same((await rows(`update bookings set status='completed' where id='${id(504)}' returning status`))[0].status,'completed','Reception can complete current appointment');
  same((await rows(`update bookings set status='cancelled' where id='${id(504)}' returning status`))[0].status,'cancelled','Reception can cancel on customer behalf');

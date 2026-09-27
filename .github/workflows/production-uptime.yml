@@ -11,7 +11,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: production-uptime
+  # A scheduled probe must never cancel the post-deployment revision check.
+  group: production-uptime-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:

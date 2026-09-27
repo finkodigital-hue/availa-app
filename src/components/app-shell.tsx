@@ -9,7 +9,6 @@ import {
   Settings,
   LogOut,
   ExternalLink,
-  X,
   Plus,
   Sparkles,
   CalendarCheck,
@@ -52,6 +51,13 @@ import { GlobalSearch } from "@/components/global-search";
 import { FeedbackDialog } from "@/components/feedback-dialog";
 import { ContactSupportDialog } from "@/components/contact-support-dialog";
 import { NotificationsBell } from "@/components/notifications-bell";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 type SidebarNavItem = {
   to: string;
@@ -233,7 +239,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <div className="px-4 pb-4 pt-5">
         <Link to="/dashboard" className="inline-block px-1">
-          <Wordmark className="text-xl" dotClassName="text-[color:var(--gold-deep)]" />
+          <Wordmark
+            className="text-xl"
+            dotClassName="text-[color:var(--gold-deep)]"
+          />
         </Link>
         {biz?.slug && (
           <a
@@ -448,7 +457,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       {!calendarFocusMode && (
         <div className="workspace-theme xl:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/85 backdrop-blur-xl flex items-center justify-between px-4 print:hidden">
           <Link to="/dashboard">
-            <Wordmark className="text-lg" dotClassName="text-[color:var(--gold-deep)]" />
+            <Wordmark
+              className="text-lg"
+              dotClassName="text-[color:var(--gold-deep)]"
+            />
           </Link>
           <div className="flex items-center gap-1">
             <NotificationsBell variant="icon" closeOn={mobileOpen} />
@@ -456,25 +468,22 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="xl:hidden fixed inset-0 z-50 animate-in fade-in duration-200">
-          <div
-            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="workspace-theme absolute bottom-0 left-0 top-0 flex w-72 flex-col border-r border-border/50 bg-sidebar/95 shadow-2xl backdrop-blur-2xl animate-in slide-in-from-left duration-200">
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-lg hover:bg-card"
-              aria-label="Close menu"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            {SidebarContent}
-          </div>
-        </div>
-      )}
+      {/* Radix supplies focus trapping, Escape handling, background inerting and
+          focus restoration for the compact workspace menu. */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent
+          side="left"
+          className="workspace-theme w-72 border-r border-border/50 bg-sidebar/95 p-0 shadow-2xl backdrop-blur-2xl xl:hidden [&>button]:right-3 [&>button]:top-3 [&>button]:grid [&>button]:h-11 [&>button]:w-11 [&>button]:place-items-center"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Workspace menu</SheetTitle>
+            <SheetDescription>
+              Navigate Bookzenvo and manage your workspace.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex h-full flex-col">{SidebarContent}</div>
+        </SheetContent>
+      </Sheet>
 
       <main
         data-workspace-content={!path.startsWith("/calendar") ? "" : undefined}

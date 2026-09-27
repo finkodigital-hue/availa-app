@@ -8,7 +8,9 @@ const requiredGuards = [
   'const execute = args.includes("--execute")',
   "if (!localHosts.has(target.hostname))",
   '["postgres", "template0", "template1"].includes(database)',
+  'database.startsWith("bookzenvo_restore_")',
   "if (confirmation !== database)",
+  'spawnSync("pg_restore", ["--version"]',
   '"--no-owner"',
   '"--no-privileges"',
 ];

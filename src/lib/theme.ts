@@ -7,7 +7,11 @@
 import { safeImageSrc } from "@/lib/safe-url";
 
 export type ButtonStyle = "solid" | "outline" | "soft";
-export type PresetId = "clean_minimal" | "bold_modern" | "soft_elegant" | "fresh_playful";
+export type PresetId =
+  | "clean_minimal"
+  | "bold_modern"
+  | "soft_elegant"
+  | "fresh_playful";
 
 export interface Theme {
   version: 1;
@@ -60,7 +64,9 @@ export const FONT_CHOICES: { id: string; label: string; stack: string }[] = [
 function fontStack(name: string): string {
   // Theme data is persisted JSON and can be edited outside the UI. Never
   // interpolate an arbitrary value into the raw scoped stylesheet.
-  return FONT_CHOICES.find((f) => f.id === name)?.stack ?? FONT_CHOICES[0].stack;
+  return (
+    FONT_CHOICES.find((f) => f.id === name)?.stack ?? FONT_CHOICES[0].stack
+  );
 }
 
 // Tailwind v4's `@theme inline` bakes --font-display/--font-sans into the
@@ -82,8 +88,101 @@ ${scopeSelector} h1, ${scopeSelector} h2, ${scopeSelector} h3, ${scopeSelector} 
 export const BUTTON_RADIUS_MIN = 0;
 export const BUTTON_RADIUS_MAX = 24;
 
+type Rgb = { r: number; g: number; b: number };
+
+function hexToRgb(hex: string): Rgb {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  };
+}
+
+function rgbToHex({ r, g, b }: Rgb): string {
+  return `#${[r, g, b]
+    .map((channel) => Math.round(channel).toString(16).padStart(2, "0"))
+    .join("")}`.toUpperCase();
+}
+
+function relativeLuminance(hex: string): number {
+  const channels = Object.values(hexToRgb(hex)).map((channel) => {
+    const value = channel / 255;
+    return value <= 0.04045
+      ? value / 12.92
+      : Math.pow((value + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+export function contrastRatio(first: string, second: string): number {
+  const light = Math.max(relativeLuminance(first), relativeLuminance(second));
+  const dark = Math.min(relativeLuminance(first), relativeLuminance(second));
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function mixHex(from: string, to: string, amount: number): string {
+  const start = hexToRgb(from);
+  const end = hexToRgb(to);
+  return rgbToHex({
+    r: start.r + (end.r - start.r) * amount,
+    g: start.g + (end.g - start.g) * amount,
+    b: start.b + (end.b - start.b) * amount,
+  });
+}
+
+function minimumContrast(foreground: string, backgrounds: string[]): number {
+  return Math.min(
+    ...backgrounds.map((background) => contrastRatio(foreground, background)),
+  );
+}
+
+/**
+ * Preserve a chosen theme colour when it is readable, otherwise move it
+ * towards whichever of black or white works best on every supplied surface.
+ */
+export function accessibleForeground(
+  foreground: string,
+  backgrounds: string[],
+  minimum = 4.5,
+): string {
+  if (minimumContrast(foreground, backgrounds) >= minimum) return foreground;
+
+  const targets = ["#000000", "#FFFFFF"];
+  const target = targets.reduce((best, candidate) =>
+    minimumContrast(candidate, backgrounds) > minimumContrast(best, backgrounds)
+      ? candidate
+      : best,
+  );
+
+  if (minimumContrast(target, backgrounds) < minimum) return target;
+
+  let low = 0;
+  let high = 1;
+  for (let iteration = 0; iteration < 16; iteration += 1) {
+    const midpoint = (low + high) / 2;
+    const candidate = mixHex(foreground, target, midpoint);
+    if (minimumContrast(candidate, backgrounds) >= minimum) high = midpoint;
+    else low = midpoint;
+  }
+  return mixHex(foreground, target, high);
+}
+
+export function solidButtonForeground(background: string): string {
+  return contrastRatio("#000000", background) >=
+    contrastRatio("#FFFFFF", background)
+    ? "#000000"
+    : "#FFFFFF";
+}
+
 export function applyThemeVars(theme: Theme): React.CSSProperties {
   const safeTheme = parseTheme(theme);
+  const surfaces = [safeTheme.colors.background, safeTheme.colors.surface];
+  const readableText = accessibleForeground(safeTheme.colors.text, surfaces);
+  const readableMutedText = accessibleForeground(
+    safeTheme.colors.textMuted,
+    surfaces,
+  );
   return {
     // Override the app's semantic colour tokens inside the public page so
     // Tailwind utilities such as bg-background, bg-card and text-muted-
@@ -91,17 +190,20 @@ export function applyThemeVars(theme: Theme): React.CSSProperties {
     // palette. Keeping these scoped on the page root prevents the storefront
     // theme from leaking into the surrounding page-builder UI.
     ["--background" as any]: safeTheme.colors.background,
-    ["--foreground" as any]: safeTheme.colors.text,
+    ["--foreground" as any]: readableText,
     ["--card" as any]: safeTheme.colors.surface,
-    ["--card-foreground" as any]: safeTheme.colors.text,
+    ["--card-foreground" as any]: readableText,
     ["--popover" as any]: safeTheme.colors.surface,
-    ["--popover-foreground" as any]: safeTheme.colors.text,
+    ["--popover-foreground" as any]: readableText,
     ["--primary" as any]: safeTheme.colors.primary,
+    ["--primary-foreground" as any]: solidButtonForeground(
+      safeTheme.colors.primary,
+    ),
     ["--accent" as any]: safeTheme.colors.accent,
     ["--secondary" as any]: `color-mix(in srgb, ${safeTheme.colors.accent} 10%, ${safeTheme.colors.background})`,
-    ["--secondary-foreground" as any]: safeTheme.colors.text,
+    ["--secondary-foreground" as any]: readableText,
     ["--muted" as any]: safeTheme.colors.surface,
-    ["--muted-foreground" as any]: safeTheme.colors.textMuted,
+    ["--muted-foreground" as any]: readableMutedText,
     ["--border" as any]: `color-mix(in srgb, ${safeTheme.colors.text} 14%, transparent)`,
     ["--input" as any]: `color-mix(in srgb, ${safeTheme.colors.text} 18%, transparent)`,
     ["--ring" as any]: safeTheme.colors.primary,
@@ -109,8 +211,14 @@ export function applyThemeVars(theme: Theme): React.CSSProperties {
     ["--brand-accent" as any]: safeTheme.colors.accent,
     ["--brand-bg" as any]: safeTheme.colors.background,
     ["--brand-surface" as any]: safeTheme.colors.surface,
-    ["--brand-text" as any]: safeTheme.colors.text,
-    ["--brand-text-muted" as any]: safeTheme.colors.textMuted,
+    ["--brand-text" as any]: readableText,
+    ["--brand-text-muted" as any]: readableMutedText,
+    ["--brand-contrast" as any]: solidButtonForeground(
+      safeTheme.colors.primary,
+    ),
+    ["--brand-accent-contrast" as any]: solidButtonForeground(
+      safeTheme.colors.accent,
+    ),
     ["--font-display" as any]: fontStack(safeTheme.typography.displayFont),
     ["--font-sans" as any]: fontStack(safeTheme.typography.bodyFont),
     ["--brand-radius" as any]: `${safeTheme.buttons.cornerRadius}px`,
@@ -125,26 +233,36 @@ export function themedButtonStyle(
   variant: "primary" | "accent" = "primary",
 ): React.CSSProperties {
   const safeTheme = parseTheme(theme);
-  const color = variant === "accent" ? safeTheme.colors.accent : safeTheme.colors.primary;
+  const color =
+    variant === "accent" ? safeTheme.colors.accent : safeTheme.colors.primary;
+  const readableColor = accessibleForeground(color, [
+    safeTheme.colors.background,
+    safeTheme.colors.surface,
+  ]);
   const radius = `${safeTheme.buttons.cornerRadius}px`;
   switch (safeTheme.buttons.style) {
     case "outline":
       return {
         background: "transparent",
-        color,
-        border: `1.5px solid ${color}`,
+        color: readableColor,
+        border: `1.5px solid ${readableColor}`,
         borderRadius: radius,
       };
     case "soft":
       return {
         background: `color-mix(in oklab, ${color} 16%, transparent)`,
-        color,
+        color: readableColor,
         border: "none",
         borderRadius: radius,
       };
     case "solid":
     default:
-      return { background: color, color: "#FFFFFF", border: "none", borderRadius: radius };
+      return {
+        background: color,
+        color: solidButtonForeground(color),
+        border: "none",
+        borderRadius: radius,
+      };
   }
 }
 
@@ -179,7 +297,9 @@ export function applyDesignSuggestion(
     buttons: {
       ...theme.buttons,
       ...(design.buttonStyle ? { style: design.buttonStyle } : {}),
-      ...(design.cornerRadius !== undefined ? { cornerRadius: design.cornerRadius } : {}),
+      ...(design.cornerRadius !== undefined
+        ? { cornerRadius: design.cornerRadius }
+        : {}),
     },
   };
 }
@@ -214,7 +334,8 @@ export function parseTheme(raw: unknown): Theme {
   const hex = (value: unknown, defaultValue: string) =>
     typeof value === "string" && HEX_COLOR.test(value) ? value : defaultValue;
   const font = (value: unknown, defaultValue: string) =>
-    typeof value === "string" && FONT_CHOICES.some((choice) => choice.id === value)
+    typeof value === "string" &&
+    FONT_CHOICES.some((choice) => choice.id === value)
       ? value
       : defaultValue;
   const preset = PRESET_IDS.includes(input.preset as PresetId)
@@ -224,8 +345,12 @@ export function parseTheme(raw: unknown): Theme {
     ? (inputButtons.style as ButtonStyle)
     : fallback.buttons.style;
   const radius =
-    typeof inputButtons.cornerRadius === "number" && Number.isFinite(inputButtons.cornerRadius)
-      ? Math.min(BUTTON_RADIUS_MAX, Math.max(BUTTON_RADIUS_MIN, inputButtons.cornerRadius))
+    typeof inputButtons.cornerRadius === "number" &&
+    Number.isFinite(inputButtons.cornerRadius)
+      ? Math.min(
+          BUTTON_RADIUS_MAX,
+          Math.max(BUTTON_RADIUS_MIN, inputButtons.cornerRadius),
+        )
       : fallback.buttons.cornerRadius;
   const logoUrl = safeImageSrc(input.logoUrl);
   const updatedAt =
@@ -245,7 +370,10 @@ export function parseTheme(raw: unknown): Theme {
       textMuted: hex(inputColors.textMuted, fallback.colors.textMuted),
     },
     typography: {
-      displayFont: font(inputTypography.displayFont, fallback.typography.displayFont),
+      displayFont: font(
+        inputTypography.displayFont,
+        fallback.typography.displayFont,
+      ),
       bodyFont: font(inputTypography.bodyFont, fallback.typography.bodyFont),
     },
     buttons: { style, cornerRadius: radius },

@@ -22,6 +22,12 @@ async function reachCustomerDetails(page: import("@playwright/test").Page) {
   ).toBeVisible();
   await staff.click();
   await expect(page.getByText(/Step 3 of 4\s*Time/)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Choose a date and time" }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Previous day" }),
+  ).toHaveAttribute("class", /h-11 w-11/);
 
   let slot = page
     .locator("main button")
@@ -45,6 +51,9 @@ async function reachCustomerDetails(page: import("@playwright/test").Page) {
   ).toBeVisible();
   await slot.click();
   await expect(page.getByText(/Step 4 of 4\s*Details/)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Your booking details" }),
+  ).toBeFocused();
 }
 
 test.beforeEach(() => {
@@ -78,8 +87,15 @@ test("customer can review the booking page and reach staff selection", async ({
     firstService,
     "The pilot workspace needs at least one active service",
   ).toBeVisible();
+  const selectedCategory = page.locator(
+    '[aria-label="Service categories"] button[aria-pressed="true"]',
+  );
+  await expect(selectedCategory).toHaveCount(1);
   await firstService.click();
   await expect(page.getByText(/Step 2 of 4\s*Staff/)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Choose a professional" }),
+  ).toBeFocused();
   await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
 
   safety.expectNothingBlocked();
@@ -98,7 +114,9 @@ test("customer can reach details without creating a booking", async ({
     page.getByRole("textbox", { name: "Email", exact: true }),
   ).toBeVisible();
   await expect(page.getByLabel("Phone")).toBeVisible();
-  await expect(page.getByText(/may text you a reminder about this appointment/)).toBeVisible();
+  await expect(
+    page.getByText(/may text you a reminder about this appointment/),
+  ).toBeVisible();
   await expect(page.getByLabel(/Send me an SMS reminder/)).toHaveCount(0);
   await expect(
     page.getByText(
@@ -131,10 +149,14 @@ test("booking journey remains usable on a salon customer's phone", async ({
   const assertNoPageErrors = collectPageErrors(page);
   await reachCustomerDetails(page);
   await expect(page.getByLabel("Your name")).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Email", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Email", exact: true }),
+  ).toBeVisible();
   await expect(page.getByLabel("Phone")).toBeVisible();
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
     "The booking journey must fit a 390px viewport",
   ).toBe(false);
   safety.expectNothingBlocked();
