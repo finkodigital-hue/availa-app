@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { layoutOverlaps } from "@/lib/calendar-layout";
 import { useHours, HOUR_PX, SLOT_PX, SLOT_MIN } from "./hours-context";
 import { useNow } from "./use-now";
-import { BookingCard, OverflowChip, MIN_DURATION_MS } from "./booking-card";
+import { BookingCard, OverflowChip } from "./booking-card";
 
 function WeekDayColumn({
   date,
@@ -28,8 +28,7 @@ function WeekDayColumn({
         bookings.map((b: any) => {
           const startMs = new Date(b.starts_at).getTime();
           const endMs = new Date(b.ends_at).getTime();
-          // Effective end, not real end — see MIN_DURATION_MS.
-          return { id: b.id, startMs, endMs: Math.max(endMs, startMs + MIN_DURATION_MS) };
+          return { id: b.id, startMs, endMs };
         }),
         // A week-day column pools every staff member into one narrower
         // column (unlike Day view's per-staff columns), so 3 real slots

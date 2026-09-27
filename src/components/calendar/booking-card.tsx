@@ -13,22 +13,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-// Shared minimums so a real 15-minute (or tightly packed) booking never
-// renders too short to read — tuned against the real imported dataset,
-// where back-to-back (<5min gap) bookings, not deep overlap, are the
-// dominant crowding case.
-export const MIN_BASE_HEIGHT = 38;
-const MIN_DISPLAY_HEIGHT = 34;
+// Cards occupy their actual duration. Short appointments use a compact
+// label instead of extending into the next appointment's time.
 const INSET = 4;
-
-// The real-time duration MIN_BASE_HEIGHT implies at this pixel scale.
-// staff-column.tsx / week-view.tsx feed this into layoutOverlaps as each
-// booking's *effective* end time, so overlap/packing decisions match what's
-// actually rendered. Without it, a short booking's height-padded box can
-// visually bleed past its real end time into whatever renders right after
-// it — the packing algorithm, working only from real timestamps, has no
-// way to know a "20-minute" box is actually ~36 minutes tall on screen.
-export const MIN_DURATION_MS = (MIN_BASE_HEIGHT / HOUR_PX) * 3_600_000;
 
 /* ===== BookingCard — Day (draggable/resizable) & Week (static) ===== */
 
@@ -64,7 +51,7 @@ export function BookingCard({
   const dayStart = new Date(date);
   dayStart.setHours(START_HOUR, 0, 0, 0);
   const baseTop = ((s.getTime() - dayStart.getTime()) / 60000 / 60) * HOUR_PX;
-  const baseHeight = Math.max(MIN_BASE_HEIGHT, ((e.getTime() - s.getTime()) / 60000 / 60) * HOUR_PX);
+  const baseHeight = Math.max(1, ((e.getTime() - s.getTime()) / 60000 / 60) * HOUR_PX);
 
   // Gap bookings render as one card spanning the whole appointment (so drag/
   // resize/click keep working on it as a unit) with an internal strip marking
@@ -87,7 +74,8 @@ export function BookingCard({
   // overlapping) still show a hairline of breathing room instead of
   // reading as one merged block. Skipped while actively dragging/resizing
   // so the box always tracks the real occupied time precisely.
-  const displayHeight = isActive ? height : Math.max(MIN_DISPLAY_HEIGHT, height - INSET);
+  const displayHeight = isActive ? height : Math.max(1, height - Math.min(INSET, height / 8));
+  const compact = displayHeight < 42;
   // Widen to the full column while actively being dragged/resized, so it's
   // easy to see and drop; otherwise sit in its packed side-by-side slot.
   const { left, width } = packedStyle(isActive ? undefined : slot);
@@ -153,6 +141,8 @@ export function BookingCard({
       <button
         type="button"
         data-calendar-booking
+        title={`${title} · ${fmtTime(b.starts_at)}–${fmtTime(b.ends_at)}${b.services?.name ? ` · ${b.services.name}` : ""}`}
+        aria-label={`${title}, ${fmtTime(b.starts_at)} to ${fmtTime(b.ends_at)}`}
         onPointerDown={startPending("move")}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -205,23 +195,24 @@ export function BookingCard({
             }}
           />
         )}
-        <div className="relative px-2.5 py-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
+        <div className={`relative px-2.5 ${compact ? "h-full flex items-center" : "py-1.5"}`}>
+          <div className={`flex items-center gap-1.5 min-w-0 ${compact ? "w-full" : ""}`}>
             {variant === "week" && !colors.isCustom && (
               <StaffAvatarChip staffId={b.staff_id} name={b.staff?.name} />
             )}
             {colors.isCustom && (
               <span className="shrink-0 text-[9px] uppercase tracking-wider bg-black/10 rounded px-1">Custom</span>
             )}
-            <div className="text-[12px] font-semibold truncate flex-1" style={{ color: colors.ink }}>
+            <div className={`text-[12px] font-semibold truncate flex-1 ${compact ? "leading-none" : ""}`} style={{ color: colors.ink }}>
               {title}
             </div>
             {isVip && <Sparkle className="h-3 w-3 shrink-0" style={{ color: colors.ink }} />}
+            {compact && <span className="text-[10px] leading-none tabular-nums opacity-75 shrink-0">{fmtTime(b.starts_at)}</span>}
           </div>
-          {!colors.isCustom && height >= 44 && (
+          {!compact && !colors.isCustom && displayHeight >= 60 && (
             <div className="text-[11px] truncate opacity-80">{b.services?.name}</div>
           )}
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className={`${compact ? "hidden" : "flex"} items-center gap-1.5 mt-0.5`}>
             <span className="text-[10px] tabular-nums opacity-75">{fmtTime(b.starts_at)}</span>
             {b.price_cents > 0 && height >= 56 && (
               <span className="text-[10px] tabular-nums opacity-60">· {fmtMoney(b.price_cents)}</span>
@@ -245,14 +236,14 @@ export function BookingCard({
         {interactive && !isElsewhere && !hasGap && (
           <>
             <span
-              className="absolute left-1/2 -translate-x-1/2 -top-0.5 h-2.5 w-10 rounded-full cursor-ns-resize resize-handle bg-foreground/30 group-hover:opacity-60 hover:!opacity-100 touch-none z-10"
+              className={`absolute left-1/2 -translate-x-1/2 -top-0.5 ${compact ? "h-1" : "h-2.5"} w-10 rounded-full cursor-ns-resize resize-handle bg-foreground/30 group-hover:opacity-60 hover:!opacity-100 touch-none z-10`}
               onPointerDown={startPending("resize-start")}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
             />
             <span
-              className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 h-2.5 w-10 rounded-full cursor-ns-resize resize-handle bg-foreground/30 group-hover:opacity-60 hover:!opacity-100 touch-none z-10"
+              className={`absolute left-1/2 -translate-x-1/2 -bottom-0.5 ${compact ? "h-1" : "h-2.5"} w-10 rounded-full cursor-ns-resize resize-handle bg-foreground/30 group-hover:opacity-60 hover:!opacity-100 touch-none z-10`}
               onPointerDown={startPending("resize-end")}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
@@ -298,7 +289,8 @@ export function OverflowChip({
   const dayStart = new Date(date);
   dayStart.setHours(START_HOUR, 0, 0, 0);
   const top = ((group.startMs - dayStart.getTime()) / 60000 / 60) * HOUR_PX;
-  const height = Math.max(MIN_DISPLAY_HEIGHT, ((group.endMs - group.startMs) / 60000 / 60) * HOUR_PX - INSET);
+  const durationHeight = ((group.endMs - group.startMs) / 60000 / 60) * HOUR_PX;
+  const height = Math.max(1, durationHeight - Math.min(INSET, durationHeight / 8));
   const { left, width } = packedStyle(group);
   const items = group.ids.map((id) => bookings.find((b) => b.id === id)).filter(Boolean);
 
