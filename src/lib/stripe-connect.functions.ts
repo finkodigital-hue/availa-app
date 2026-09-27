@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { normalizeBookingSource } from "@/lib/booking-attribution";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { trustedAppOrigin } from "@/lib/app-origin.server";
 import { refundableCharges } from "@/lib/refund-balances";
@@ -11,6 +12,7 @@ type StripeAccount = {
 };
 
 type CheckoutInput = {
+  bookingSource?: string | null;
   businessId: string;
   serviceId: string;
   staffId: string;
@@ -277,7 +279,7 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
       Number.isNaN(Date.parse(data.endsAt))
     )
       throw new Error("Invalid booking time.");
-    return data;
+    return { ...data, bookingSource: normalizeBookingSource(data.bookingSource) };
   })
   .handler(async ({ data }): Promise<{ checkoutUrl: string | null }> => {
     const { normalizeSmsPhone } = await import("@/lib/sms-phone");
@@ -358,7 +360,7 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
           customer_creation: "always",
           customer_email: data.customerEmail.trim(),
           success_url: `${origin}${data.returnPath}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${origin}${data.returnPath}?payment=cancelled`,
+          cancel_url: `${origin}${data.returnPath}?payment=cancelled${data.bookingSource ? `&utm_source=${data.bookingSource}` : ""}`,
           "line_items[0][price_data][currency]":
             hold.currency,
           "line_items[0][price_data][product_data][name]": paymentLabel,
@@ -366,6 +368,7 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
           "line_items[0][quantity]": "1",
           "metadata[business_id]": business.id,
           "metadata[hold_id]": hold.id,
+          "metadata[booking_source]": normalizeBookingSource(data.bookingSource) ?? "",
           "metadata[service_id]": data.serviceId,
           "metadata[staff_id]": data.staffId,
           "metadata[customer_name]": data.customerName.trim(),
