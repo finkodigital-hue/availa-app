@@ -273,8 +273,12 @@ export const startTerminalPayment = createServerFn({ method: "POST" })
 
     let intentId: string | null = null;
     try {
-      const { createTerminalPaymentIntent, processTerminalPaymentIntent } =
-        await import("@/lib/stripe-terminal.server");
+      const {
+        createTerminalPaymentIntent,
+        isStripeTestMode,
+        presentSimulatedTerminalPayment,
+        processTerminalPaymentIntent,
+      } = await import("@/lib/stripe-terminal.server");
       const intent = await createTerminalPaymentIntent(
         business.stripe_account_id,
         {
@@ -297,6 +301,15 @@ export const startTerminalPayment = createServerFn({ method: "POST" })
         attempt.stripe_reader_id,
         intent.id,
       );
+      if (isStripeTestMode()) {
+        // Stripe's simulator waits for this test-helper call after the reader
+        // action starts. Real readers reject it, so a failed helper call is
+        // deliberately ignored and the physical reader remains in control.
+        await presentSimulatedTerminalPayment(
+          business.stripe_account_id,
+          attempt.stripe_reader_id,
+        ).catch(() => undefined);
+      }
       return {
         attemptId: attempt.id,
         state: "processing",

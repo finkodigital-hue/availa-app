@@ -29,6 +29,22 @@ const terminalServerSource = fs.readFileSync(
 same(terminalServerSource.includes('"address[line1]"'), true);
 same(terminalServerSource.includes('"address[city]"'), true);
 same(terminalServerSource.includes('"address[postal_code]"'), true);
+same(
+  terminalServerSource.includes(
+    "/v1/test_helpers/terminal/readers/${encodeURIComponent(readerId)}/present_payment_method",
+  ),
+  true,
+);
+const terminalFunctionsSource = fs.readFileSync(
+  new URL("../src/lib/terminal.functions.ts", import.meta.url),
+  "utf8",
+);
+same(
+  /if \(isStripeTestMode\(\)\)[\s\S]*presentSimulatedTerminalPayment/.test(
+    terminalFunctionsSource,
+  ),
+  true,
+);
 
 await db.exec(`
   create role anon; create role authenticated; create role service_role;
