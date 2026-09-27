@@ -28,7 +28,7 @@ The grant and London event records can be indexed with [`grant-conference-eviden
 - Confirm the privacy notice reflects the actual production hosts, regions, subprocessors, email flows, payment setup and AI features.
 - Choose and document retention periods by record type. Configure provider backup expiry consistently; do not keep data merely because storage is available.
 - Establish a secure identity-check and delivery method for access requests. Record extensions, refusals, restrictions and legal holds outside the product until dedicated workflow support exists.
-- Maintain evidence of licences/permissions for every bundled photograph, font, icon and marketing asset, plus a notice-and-takedown channel.
+- Preserve the completed bundled-asset inventory and generator evidence, record every future public asset before publishing it, and maintain a notice-and-takedown channel for user uploads.
 - Complete the contributor/IP ownership chain for founder, collaborator, contractor and pre-incorporation work before asserting that BOOKZENVO LTD owns the code and brand assets.
 - Activate and prove each enabled production provider with end-to-end evidence, including Stripe, Twilio, Resend/domain email, Supabase backups and Storage, Cloudflare deployment controls and any enabled AI or calendar provider.
 - Complete a physical salon pilot on real mobile devices and retain a signed go/no-go record for the exact release.

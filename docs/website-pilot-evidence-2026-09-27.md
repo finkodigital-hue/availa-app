@@ -4,10 +4,11 @@ Scope: production website only. Native mobile-app work and phone-based Tap to Pa
 
 ## Release and public-route checks
 
-- Production main release `c41a9de7536ae483d9922f43a0557f86bdf4379b` passed the GitHub website check, Cloudflare Workers build and live-domain check.
-- `npm run audit:launch -- https://bookzenvo.com` passed 120 public pages and assets after the card-reader copy release.
+- Production main release `3ae5de7ed01dc58a50a574cd03871a342e5ea468` passed the GitHub website check, Cloudflare Workers build and live-domain check.
+- `npm run audit:launch -- https://bookzenvo.com` passed 119 public pages and assets after the final unverified icon was removed. The lower count is expected because the redundant `.ico` file no longer exists.
 - The public Playwright suite passed 12 active tests. Three booking tests were then run separately against `/book/pasha-hair` with one worker and all passed.
 - The Pasha journey reached service, professional, available-time and customer-detail stages without creating a booking. Its 390-by-844 layout had no horizontal overflow.
+- After the final asset deployment, all five focused public browser tests passed again against production, including legal navigation, the card-reader FAQ, narrow-phone layouts and the new PNG favicon reference.
 
 ## Signed-in phone-width checks
 
@@ -48,6 +49,13 @@ The homepage, sign-in page and Pasha booking page returned HTTP 200 with the sam
 
 The certificate presented for `bookzenvo.com` was valid through 16 December 2026. Cloudflare is expected to renew it; production monitoring must still alert on future TLS or availability failures.
 
+## Dependency, credential and asset checks
+
+- `npm audit` reported zero known vulnerabilities across 521 production, development, optional and peer dependencies on 27 September 2026. This is a point-in-time registry result and must be rerun as packages and advisories change.
+- A filename-only credential scan found no high-confidence Stripe live secret, Stripe webhook secret, GitHub token, Anthropic key, Google OAuth secret, private key or Supabase service JWT pattern in the working tree or Git history. This supplements provider-side secret rotation and access review; pattern scanning cannot prove that no secret exists.
+- Six unused Pasha portraits, four unused or superseded landing files, three Pasha fallback premises images and three Testshop fallback images with unrecorded provenance were removed.
+- The remaining bundled photograph has its Pexels creator, source and licence recorded. The favicon and social-share image are generated from `scripts/generate-brand-assets.mjs`, which is kept with the source. Their deployed SHA-256 hashes matched the release files after deployment.
+
 ## Boundaries still open
 
 This evidence does not replace:
@@ -57,6 +65,6 @@ This evidence does not replace:
 - an authorised real customer booking and reminder observation;
 - a low-value live Stripe payment/refund;
 - a supported physical-reader payment/cancellation/refund pilot; or
-- qualified legal, ICO, grant-condition and asset-rights review.
+- qualified legal, ICO, grant-condition and contributor/IP ownership review.
 
 No live charge, customer message, booking mutation or privacy request was created during this pass.
