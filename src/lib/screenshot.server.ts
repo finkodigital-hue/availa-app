@@ -5,6 +5,10 @@
 const SCREENSHOTONE_ENDPOINT = "https://api.screenshotone.com/take";
 
 export async function captureScreenshot(pageUrl: string): Promise<{ base64: string } | null> {
+  // This provider is deliberately opt-in rather than key-driven. Its current
+  // privacy position and DPA must be approved before any production page URL
+  // is sent, even if a legacy access key remains in the environment.
+  if (process.env.ENABLE_SCREENSHOTONE !== "true") return null;
   const accessKey = process.env.SCREENSHOTONE_ACCESS_KEY;
   if (!accessKey) return null;
 
