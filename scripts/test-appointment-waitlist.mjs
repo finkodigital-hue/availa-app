@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   formatRequestedSalonDates,
   requestMatchesCancelledSlot,
   salonDateWindow,
 } from "../src/lib/appointment-waitlist.ts";
+
+const routeTree = readFileSync(new URL("../src/routeTree.gen.ts", import.meta.url), "utf8");
+assert.match(
+  routeTree,
+  /const BookSlugWaitlistRoute = BookSlugWaitlistRouteImport\.update\(\{[\s\S]*?getParentRoute: \(\) => rootRouteImport/,
+  "the public request page must not render inside the booking page",
+);
 
 assert.deepEqual(salonDateWindow("2026-03-29", "2026-03-29", "Europe/London"), {
   after: "2026-03-29T00:00:00.000Z",

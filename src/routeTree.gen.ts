@@ -66,7 +66,7 @@ import { Route as AuthenticatedAssistantRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAppointmentWaitlistRouteImport } from './routes/_authenticated/appointment-waitlist'
 import { Route as BookingActionRescheduleTokenRouteImport } from './routes/booking-action.reschedule.$token'
 import { Route as BookingActionActionTokenRouteImport } from './routes/booking-action.$action.$token'
-import { Route as BookSlugWaitlistRouteImport } from './routes/book.$slug.waitlist'
+import { Route as BookSlugWaitlistRouteImport } from './routes/book.$slug_.waitlist'
 import { Route as ApiSupabaseSplatRouteImport } from './routes/api/supabase/$'
 import { Route as ApiReviewsSubmitRouteImport } from './routes/api/reviews/submit'
 import { Route as ApiReviewsPeekRouteImport } from './routes/api/reviews/peek'
@@ -373,9 +373,9 @@ const BookingActionActionTokenRoute =
     getParentRoute: () => rootRouteImport,
   } as any)
 const BookSlugWaitlistRoute = BookSlugWaitlistRouteImport.update({
-  id: '/waitlist',
-  path: '/waitlist',
-  getParentRoute: () => BookSlugRoute,
+  id: '/book/$slug_/waitlist',
+  path: '/book/$slug/waitlist',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSupabaseSplatRoute = ApiSupabaseSplatRouteImport.update({
   id: '/api/supabase/$',
@@ -495,7 +495,7 @@ export interface FileRoutesByFullPath {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/api/waitlist': typeof ApiWaitlistRoute
-  '/book/$slug': typeof BookSlugRouteWithChildren
+  '/book/$slug': typeof BookSlugRoute
   '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -565,7 +565,7 @@ export interface FileRoutesByTo {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/api/waitlist': typeof ApiWaitlistRoute
-  '/book/$slug': typeof BookSlugRouteWithChildren
+  '/book/$slug': typeof BookSlugRoute
   '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -639,7 +639,7 @@ export interface FileRoutesById {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/api/waitlist': typeof ApiWaitlistRoute
-  '/book/$slug': typeof BookSlugRouteWithChildren
+  '/book/$slug': typeof BookSlugRoute
   '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -660,7 +660,7 @@ export interface FileRoutesById {
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
-  '/book/$slug/waitlist': typeof BookSlugWaitlistRoute
+  '/book/$slug_/waitlist': typeof BookSlugWaitlistRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
   '/api/calendar/$provider/callback': typeof ApiCalendarProviderCallbackRoute
@@ -877,7 +877,7 @@ export interface FileRouteTypes {
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
-    | '/book/$slug/waitlist'
+    | '/book/$slug_/waitlist'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
     | '/api/calendar/$provider/callback'
@@ -910,7 +910,7 @@ export interface RootRouteChildren {
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiTwilioSmsWebhookRoute: typeof ApiTwilioSmsWebhookRoute
   ApiWaitlistRoute: typeof ApiWaitlistRoute
-  BookSlugRoute: typeof BookSlugRouteWithChildren
+  BookSlugRoute: typeof BookSlugRoute
   GiftSlugRoute: typeof GiftSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ReviewTokenRoute: typeof ReviewTokenRoute
@@ -926,6 +926,7 @@ export interface RootRouteChildren {
   ApiReviewsPeekRoute: typeof ApiReviewsPeekRoute
   ApiReviewsSubmitRoute: typeof ApiReviewsSubmitRoute
   ApiSupabaseSplatRoute: typeof ApiSupabaseSplatRoute
+  BookSlugWaitlistRoute: typeof BookSlugWaitlistRoute
   BookingActionActionTokenRoute: typeof BookingActionActionTokenRoute
   BookingActionRescheduleTokenRoute: typeof BookingActionRescheduleTokenRoute
   ApiCalendarProviderCallbackRoute: typeof ApiCalendarProviderCallbackRoute
@@ -1333,12 +1334,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BookingActionActionTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/book/$slug/waitlist': {
-      id: '/book/$slug/waitlist'
-      path: '/waitlist'
+    '/book/$slug_/waitlist': {
+      id: '/book/$slug_/waitlist'
+      path: '/book/$slug/waitlist'
       fullPath: '/book/$slug/waitlist'
       preLoaderRoute: typeof BookSlugWaitlistRouteImport
-      parentRoute: typeof BookSlugRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/supabase/$': {
       id: '/api/supabase/$'
@@ -1510,18 +1511,6 @@ const PortalRouteChildren: PortalRouteChildren = {
 const PortalRouteWithChildren =
   PortalRoute._addFileChildren(PortalRouteChildren)
 
-interface BookSlugRouteChildren {
-  BookSlugWaitlistRoute: typeof BookSlugWaitlistRoute
-}
-
-const BookSlugRouteChildren: BookSlugRouteChildren = {
-  BookSlugWaitlistRoute: BookSlugWaitlistRoute,
-}
-
-const BookSlugRouteWithChildren = BookSlugRoute._addFileChildren(
-  BookSlugRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -1548,7 +1537,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiTwilioSmsWebhookRoute: ApiTwilioSmsWebhookRoute,
   ApiWaitlistRoute: ApiWaitlistRoute,
-  BookSlugRoute: BookSlugRouteWithChildren,
+  BookSlugRoute: BookSlugRoute,
   GiftSlugRoute: GiftSlugRoute,
   InviteTokenRoute: InviteTokenRoute,
   ReviewTokenRoute: ReviewTokenRoute,
@@ -1565,6 +1554,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiReviewsPeekRoute: ApiReviewsPeekRoute,
   ApiReviewsSubmitRoute: ApiReviewsSubmitRoute,
   ApiSupabaseSplatRoute: ApiSupabaseSplatRoute,
+  BookSlugWaitlistRoute: BookSlugWaitlistRoute,
   BookingActionActionTokenRoute: BookingActionActionTokenRoute,
   BookingActionRescheduleTokenRoute: BookingActionRescheduleTokenRoute,
   ApiCalendarProviderCallbackRoute: ApiCalendarProviderCallbackRoute,
