@@ -916,8 +916,9 @@ function ServicesPage() {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <Label>Name</Label>
+                      <Label htmlFor="service-name">Name</Label>
                       <Input
+                        id="service-name"
                         value={edit.name ?? ""}
                         onChange={(event) =>
                           setEdit({ ...edit, name: event.target.value })
@@ -928,8 +929,9 @@ function ServicesPage() {
                       />
                     </div>
                     <div>
-                      <Label>Category</Label>
+                      <Label htmlFor="service-category">Category</Label>
                       <select
+                        id="service-category"
                         value={edit.category ?? ""}
                         onChange={(event) =>
                           setEdit({
@@ -950,18 +952,19 @@ function ServicesPage() {
                       <button
                         type="button"
                         onClick={() => setCategoryManagerOpen(true)}
-                        className="mt-1.5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                        className="mt-1.5 inline-flex min-h-9 items-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                       >
                         Add, rename or delete categories
                       </button>
                     </div>
                     <div>
-                      <Label>
+                      <Label htmlFor="service-duration">
                         {edit.gap_min
                           ? "First segment (min)"
                           : "Duration (min)"}
                       </Label>
                       <Input
+                        id="service-duration"
                         type="number"
                         min={5}
                         step={5}
@@ -976,8 +979,11 @@ function ServicesPage() {
                       />
                     </div>
                     <div>
-                      <Label>Price ({biz?.currency ?? "GBP"})</Label>
+                      <Label htmlFor="service-price">
+                        Price ({biz?.currency ?? "GBP"})
+                      </Label>
                       <Input
+                        id="service-price"
                         type="number"
                         min={0}
                         step="0.01"
@@ -994,8 +1000,9 @@ function ServicesPage() {
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <Label>Description</Label>
+                      <Label htmlFor="service-description">Description</Label>
                       <Textarea
+                        id="service-description"
                         value={edit.description ?? ""}
                         onChange={(event) =>
                           setEdit({ ...edit, description: event.target.value })
@@ -1014,6 +1021,7 @@ function ServicesPage() {
                       </p>
                     </div>
                     <Switch
+                      aria-label="Visible on booking page"
                       checked={edit.active ?? true}
                       onCheckedChange={(value) =>
                         setEdit({ ...edit, active: value })
@@ -1034,8 +1042,11 @@ function ServicesPage() {
                       </div>
                       <div className="mt-4 space-y-4">
                         <div>
-                          <Label>Aftercare instructions</Label>
+                          <Label htmlFor="service-aftercare">
+                            Aftercare instructions
+                          </Label>
                           <Textarea
+                            id="service-aftercare"
                             value={edit.aftercare_message ?? ""}
                             onChange={(event) =>
                               setEdit({
@@ -1053,9 +1064,12 @@ function ServicesPage() {
                           </p>
                         </div>
                         <div>
-                          <Label>Suggest rebooking after</Label>
+                          <Label htmlFor="service-rebooking-days">
+                            Suggest rebooking after
+                          </Label>
                           <div className="mt-1.5 flex items-center gap-2">
                             <Input
+                              id="service-rebooking-days"
                               type="number"
                               min={7}
                               max={365}
@@ -1247,6 +1261,7 @@ function ServicesPage() {
                           </p>
                         </div>
                         <Switch
+                          aria-label="Use gap or processing time"
                           checked={!!edit.gap_min}
                           onCheckedChange={(value) =>
                             setEdit({
@@ -1260,8 +1275,11 @@ function ServicesPage() {
                       {!!edit.gap_min && (
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <Label>Gap (min)</Label>
+                            <Label htmlFor="service-gap-minutes">
+                              Gap (min)
+                            </Label>
                             <Input
+                              id="service-gap-minutes"
                               type="number"
                               min={5}
                               step={5}
@@ -1276,8 +1294,11 @@ function ServicesPage() {
                             />
                           </div>
                           <div>
-                            <Label>Second segment (min)</Label>
+                            <Label htmlFor="service-second-segment-minutes">
+                              Second segment (min)
+                            </Label>
                             <Input
+                              id="service-second-segment-minutes"
                               type="number"
                               min={5}
                               step={5}
@@ -1295,8 +1316,11 @@ function ServicesPage() {
                       )}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label>Buffer before (min)</Label>
+                          <Label htmlFor="service-buffer-before">
+                            Buffer before (min)
+                          </Label>
                           <Input
+                            id="service-buffer-before"
                             type="number"
                             min={0}
                             step={5}
@@ -1311,8 +1335,11 @@ function ServicesPage() {
                           />
                         </div>
                         <div>
-                          <Label>Buffer after (min)</Label>
+                          <Label htmlFor="service-buffer-after">
+                            Buffer after (min)
+                          </Label>
                           <Input
+                            id="service-buffer-after"
                             type="number"
                             min={0}
                             step={5}
