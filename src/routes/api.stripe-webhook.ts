@@ -338,16 +338,18 @@ export const Route = createFileRoute("/api/stripe-webhook")({
           }
           return Response.json({ received: true });
         }
-        const required = [
-          "business_id",
-          "service_id",
-          "staff_id",
-          "customer_name",
-          "customer_email",
-          "starts_at",
-          "ends_at",
-          "payment_mode",
-        ];
+        const required = metadata.hold_id
+          ? ["business_id", "hold_id"]
+          : [
+              "business_id",
+              "service_id",
+              "staff_id",
+              "customer_name",
+              "customer_email",
+              "starts_at",
+              "ends_at",
+              "payment_mode",
+            ];
         if (
           required.some((key) => !metadata[key]) ||
           !session.payment_intent ||
@@ -372,77 +374,133 @@ export const Route = createFileRoute("/api/stripe-webhook")({
             return new Response("Connected account mismatch", { status: 400 });
           }
 
+          let privateHold: any = null;
           if (metadata.hold_id) {
-            const { data: hold, error: holdError } = await (supabaseAdmin as any).from("booking_checkout_holds")
-              .select("business_id").eq("id", metadata.hold_id).eq("business_id", metadata.business_id).maybeSingle();
+            const { data: hold, error: holdError } = await (
+              supabaseAdmin as any
+            )
+              .from("booking_checkout_holds")
+              .select(
+                "id, business_id, customer_name, customer_email, customer_phone, notes, sms_reminder_notice, email_marketing_consent, booking_source",
+              )
+              .eq("id", metadata.hold_id)
+              .eq("business_id", metadata.business_id)
+              .maybeSingle();
             if (holdError) throw holdError;
-            if (!hold) return new Response("Checkout reservation workspace mismatch", { status: 400 });
+            if (!hold)
+              return new Response("Checkout reservation workspace mismatch", {
+                status: 400,
+              });
+            privateHold = hold;
           }
-          const { data: issue, error: issueError } = await (supabaseAdmin as any).from("booking_payment_issues")
-            .select("status").eq("payment_intent_id", session.payment_intent).maybeSingle();
+          const { data: issue, error: issueError } = await (
+            supabaseAdmin as any
+          )
+            .from("booking_payment_issues")
+            .select("status")
+            .eq("payment_intent_id", session.payment_intent)
+            .maybeSingle();
           if (issueError) throw issueError;
-          if (issue?.status === "refunded") return Response.json({ received: true });
+          if (issue?.status === "refunded")
+            return Response.json({ received: true });
           const { data: bookingId, error } = metadata.hold_id
             ? await (supabaseAdmin as any).rpc("fulfill_held_booking", {
-              p_hold_id: metadata.hold_id, p_amount_cents: session.amount_total,
-              p_currency: session.currency, p_payment_intent_id: session.payment_intent,
-              p_customer_name: metadata.customer_name, p_customer_email: metadata.customer_email,
-              p_customer_phone: metadata.customer_phone ?? "", p_notes: metadata.notes ?? "",
-              p_stripe_customer_id: typeof session.customer === "string" ? session.customer : "",
-            })
-            : await (supabaseAdmin as any).rpc(
-            "fulfill_stripe_checkout",
-            {
-              p_business_id: metadata.business_id,
-              p_service_id: metadata.service_id,
-              p_staff_id: metadata.staff_id,
-              p_customer_name: metadata.customer_name,
-              p_customer_email: metadata.customer_email,
-              p_customer_phone: metadata.customer_phone ?? "",
-              p_starts_at: metadata.starts_at,
-              p_ends_at: metadata.ends_at,
-              p_notes: metadata.notes ?? "",
-              p_payment_mode: metadata.payment_mode,
-              p_amount_cents: session.amount_total,
-              p_currency: session.currency,
-              p_stripe_payment_intent_id: session.payment_intent,
-              p_stripe_charge_id: null,
-              p_stripe_customer_id:
-                typeof session.customer === "string" ? session.customer : "",
-              p_gap_min: metadata.gap_min ? Number(metadata.gap_min) : null,
-              p_active_after_min: metadata.active_after_min
-                ? Number(metadata.active_after_min)
-                : null,
-            },
-          );
+                p_hold_id: metadata.hold_id,
+                p_amount_cents: session.amount_total,
+                p_currency: session.currency,
+                p_payment_intent_id: session.payment_intent,
+                p_customer_name: privateHold.customer_name ?? "",
+                p_customer_email: privateHold.customer_email ?? "",
+                p_customer_phone: privateHold.customer_phone ?? "",
+                p_notes: privateHold.notes ?? "",
+                p_stripe_customer_id:
+                  typeof session.customer === "string" ? session.customer : "",
+              })
+            : await (supabaseAdmin as any).rpc("fulfill_stripe_checkout", {
+                p_business_id: metadata.business_id,
+                p_service_id: metadata.service_id,
+                p_staff_id: metadata.staff_id,
+                p_customer_name: metadata.customer_name,
+                p_customer_email: metadata.customer_email,
+                p_customer_phone: metadata.customer_phone ?? "",
+                p_starts_at: metadata.starts_at,
+                p_ends_at: metadata.ends_at,
+                p_notes: metadata.notes ?? "",
+                p_payment_mode: metadata.payment_mode,
+                p_amount_cents: session.amount_total,
+                p_currency: session.currency,
+                p_stripe_payment_intent_id: session.payment_intent,
+                p_stripe_charge_id: null,
+                p_stripe_customer_id:
+                  typeof session.customer === "string" ? session.customer : "",
+                p_gap_min: metadata.gap_min ? Number(metadata.gap_min) : null,
+                p_active_after_min: metadata.active_after_min
+                  ? Number(metadata.active_after_min)
+                  : null,
+              });
           if (error) {
-            const { error: recordError } = await (supabaseAdmin as any).from("booking_payment_issues").upsert({
-              payment_intent_id: session.payment_intent, business_id: metadata.business_id,
-              stripe_account_id: event.account, hold_id: metadata.hold_id ?? null,
-              reason: "Booking fulfilment failed; payment requires reconciliation",
-            }, { onConflict: "payment_intent_id", ignoreDuplicates: true });
-            if (recordError) console.error("Could not record payment issue", recordError);
+            const { error: recordError } = await (supabaseAdmin as any)
+              .from("booking_payment_issues")
+              .upsert(
+                {
+                  payment_intent_id: session.payment_intent,
+                  business_id: metadata.business_id,
+                  stripe_account_id: event.account,
+                  hold_id: metadata.hold_id ?? null,
+                  reason:
+                    "Booking fulfilment failed; payment requires reconciliation",
+                },
+                { onConflict: "payment_intent_id", ignoreDuplicates: true },
+              );
+            if (recordError)
+              console.error("Could not record payment issue", recordError);
             throw error;
           }
-          const { error: resolutionError } = await (supabaseAdmin as any).from("booking_payment_issues")
-            .update({ status: "resolved", resolved_at: new Date().toISOString() })
-            .eq("payment_intent_id", session.payment_intent).eq("status", "open");
+          const { error: resolutionError } = await (supabaseAdmin as any)
+            .from("booking_payment_issues")
+            .update({
+              status: "resolved",
+              resolved_at: new Date().toISOString(),
+            })
+            .eq("payment_intent_id", session.payment_intent)
+            .eq("status", "open");
           if (resolutionError) throw resolutionError;
-          if (bookingId && metadata.customer_phone &&
-              (metadata.sms_reminder_notice === "true" || metadata.sms_reminder_consent === "true")) {
+          const customerPhone =
+            privateHold?.customer_phone ?? metadata.customer_phone;
+          const smsReminderNotice = privateHold
+            ? privateHold.sms_reminder_notice === true
+            : metadata.sms_reminder_notice === "true";
+          const smsReminderConsent = privateHold
+            ? false
+            : metadata.sms_reminder_consent === "true";
+          if (
+            bookingId &&
+            customerPhone &&
+            (smsReminderNotice || smsReminderConsent)
+          ) {
             const { error: noticeError } = await (supabaseAdmin as any)
               .from("bookings")
-              .update(metadata.sms_reminder_notice === "true"
-                ? { sms_reminder_notice_at: new Date().toISOString(), sms_reminder_notice_version: "appointment-service-sms-v1" }
-                : { sms_reminder_consent_at: new Date().toISOString(), sms_reminder_consent_version: "appointment-sms-v1" })
+              .update(
+                smsReminderNotice
+                  ? {
+                      sms_reminder_notice_at: new Date().toISOString(),
+                      sms_reminder_notice_version: "appointment-service-sms-v1",
+                    }
+                  : {
+                      sms_reminder_consent_at: new Date().toISOString(),
+                      sms_reminder_consent_version: "appointment-sms-v1",
+                    },
+              )
               .eq("id", bookingId)
               .eq("business_id", metadata.business_id);
             if (noticeError) throw noticeError;
           }
           if (
             bookingId &&
-            metadata.email_marketing_consent === "true" &&
-            metadata.customer_email
+            (privateHold
+              ? privateHold.email_marketing_consent === true
+              : metadata.email_marketing_consent === "true") &&
+            (privateHold?.customer_email ?? metadata.customer_email)
           ) {
             const { recordBookingEmailMarketingConsent } =
               await import("@/lib/marketing-consent.server");
@@ -451,13 +509,23 @@ export const Route = createFileRoute("/api/stripe-webhook")({
               businessId: metadata.business_id,
             });
           }
-          if (bookingId && metadata.booking_source) {
+          const bookingSource =
+            privateHold?.booking_source ?? metadata.booking_source;
+          if (bookingId && bookingSource) {
             try {
-              const { recordBookingSource } = await import("@/lib/booking-attribution.server");
-              await recordBookingSource(bookingId, metadata.business_id, metadata.booking_source);
+              const { recordBookingSource } =
+                await import("@/lib/booking-attribution.server");
+              await recordBookingSource(
+                bookingId,
+                metadata.business_id,
+                bookingSource,
+              );
             } catch (attributionError) {
               // Reporting is optional: never fail a fulfilled, paid booking for a missing label.
-              console.error("Could not record booking source", attributionError);
+              console.error(
+                "Could not record booking source",
+                attributionError,
+              );
             }
           }
         } catch (error) {
