@@ -19,6 +19,7 @@ import { Route as HelpRouteImport } from './routes/help'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AssistantDemoRouteImport } from './routes/assistant-demo'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
@@ -126,6 +127,11 @@ const CookiePolicyRoute = CookiePolicyRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssistantDemoRoute = AssistantDemoRouteImport.update({
+  id: '/assistant-demo',
+  path: '/assistant-demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -433,6 +439,7 @@ const ApiCalendarProviderCallbackRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/assistant-demo': typeof AssistantDemoRoute
   '/auth': typeof AuthRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/faq': typeof FaqRoute
@@ -502,6 +509,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assistant-demo': typeof AssistantDemoRoute
   '/auth': typeof AuthRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/faq': typeof FaqRoute
@@ -571,6 +579,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/assistant-demo': typeof AssistantDemoRoute
   '/auth': typeof AuthRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/faq': typeof FaqRoute
@@ -642,6 +651,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/assistant-demo'
     | '/auth'
     | '/cookie-policy'
     | '/faq'
@@ -711,6 +721,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/assistant-demo'
     | '/auth'
     | '/cookie-policy'
     | '/faq'
@@ -779,6 +790,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/assistant-demo'
     | '/auth'
     | '/cookie-policy'
     | '/faq'
@@ -850,6 +862,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AssistantDemoRoute: typeof AssistantDemoRoute
   AuthRoute: typeof AuthRoute
   CookiePolicyRoute: typeof CookiePolicyRoute
   FaqRoute: typeof FaqRoute
@@ -964,6 +977,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assistant-demo': {
+      id: '/assistant-demo'
+      path: '/assistant-demo'
+      fullPath: '/assistant-demo'
+      preLoaderRoute: typeof AssistantDemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -1452,6 +1472,7 @@ const PortalRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AssistantDemoRoute: AssistantDemoRoute,
   AuthRoute: AuthRoute,
   CookiePolicyRoute: CookiePolicyRoute,
   FaqRoute: FaqRoute,

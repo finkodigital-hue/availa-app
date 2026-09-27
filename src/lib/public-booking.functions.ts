@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { normalizeBookingSource } from "@/lib/booking-attribution";
 
 type PublicBookingInput = {
   businessId: string;
@@ -13,6 +14,7 @@ type PublicBookingInput = {
   gapMin?: number | null;
   activeAfterMin?: number | null;
   emailMarketingConsent?: boolean;
+  bookingSource?: string | null;
 };
 
 const UUID =
@@ -51,6 +53,7 @@ export const createPublicBooking = createServerFn({ method: "POST" })
     if (!customerName) throw new Error("Enter your name.");
     return {
       ...data,
+      bookingSource: normalizeBookingSource(data.bookingSource),
       customerName,
       customerEmail: text(data.customerEmail, 254),
       customerPhone: text(data.customerPhone, 50),
@@ -80,6 +83,15 @@ export const createPublicBooking = createServerFn({ method: "POST" })
       },
     );
     if (error) throw error;
+    if (bookingId && data.bookingSource) {
+      try {
+        const { recordBookingSource } = await import("@/lib/booking-attribution.server");
+        await recordBookingSource(bookingId, data.businessId, data.bookingSource);
+      } catch {
+        // Attribution must never turn a successful booking into a retry/double booking.
+        console.error("Could not record booking source", bookingId);
+      }
+    }
     if (bookingId && data.customerPhone) {
       const { normalizeSmsPhone } = await import("@/lib/sms-phone");
       if (normalizeSmsPhone(data.customerPhone)) {
