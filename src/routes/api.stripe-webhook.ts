@@ -151,6 +151,69 @@ export const Route = createFileRoute("/api/stripe-webhook")({
         }
 
         if (
+          event.account &&
+          ["payment_intent.succeeded", "payment_intent.payment_failed", "payment_intent.canceled"].includes(event.type) &&
+          event.data?.object?.metadata?.checkout_flow === "terminal_balance_payment"
+        ) {
+          const intent = event.data.object;
+          const metadata = intent.metadata ?? {};
+          if (!intent.id || !metadata.terminal_attempt_id || !metadata.business_id ||
+            !metadata.booking_id || !Number.isInteger(intent.amount) || !intent.currency) {
+            return new Response("Missing Terminal payment details", { status: 400 });
+          }
+          try {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { data: business, error: businessError } = await supabaseAdmin
+              .from("businesses").select("id,stripe_account_id")
+              .eq("id", metadata.business_id).maybeSingle();
+            if (businessError) throw businessError;
+            if (!business?.stripe_account_id || business.stripe_account_id !== event.account) {
+              return new Response("Connected account mismatch", { status: 400 });
+            }
+            const { data: attempt, error: attemptError } = await (supabaseAdmin as any)
+              .from("terminal_payment_attempts")
+              .select("id,business_id,booking_id,amount_cents,currency,stripe_account_id,stripe_payment_intent_id,state")
+              .eq("id", metadata.terminal_attempt_id).eq("business_id", business.id)
+              .eq("booking_id", metadata.booking_id).eq("stripe_account_id", event.account)
+              .eq("stripe_payment_intent_id", intent.id).maybeSingle();
+            if (attemptError) throw attemptError;
+            if (!attempt || attempt.amount_cents !== intent.amount ||
+              String(attempt.currency).toLowerCase() !== String(intent.currency).toLowerCase()) {
+              return new Response("Terminal payment identity mismatch", { status: 400 });
+            }
+
+            if (event.type === "payment_intent.succeeded") {
+              const latestCharge = typeof intent.latest_charge === "string"
+                ? intent.latest_charge : intent.latest_charge?.id ?? "";
+              const { error } = await (supabaseAdmin as any).rpc("fulfill_terminal_payment", {
+                p_attempt_id: attempt.id, p_payment_intent_id: intent.id,
+                p_charge_id: latestCharge, p_amount_cents: intent.amount,
+                p_currency: intent.currency,
+              });
+              if (error) throw error;
+            } else {
+              if (["succeeded", "failed", "canceled"].includes(attempt.state))
+                return Response.json({ received: true });
+              const canceled = event.type === "payment_intent.canceled";
+              const failure = intent.last_payment_error ?? {};
+              const { error } = await (supabaseAdmin as any).rpc("close_terminal_payment", {
+                p_attempt_id: attempt.id, p_payment_intent_id: intent.id,
+                p_state: canceled ? "canceled" : "failed",
+                p_failure_code: failure.decline_code ?? failure.code ??
+                  (canceled ? "stripe_canceled" : "payment_failed"),
+                p_failure_message: failure.message ??
+                  (canceled ? "The reader payment was canceled." : "The card was not accepted."),
+              });
+              if (error) throw error;
+            }
+          } catch (error) {
+            console.error("Stripe Terminal reconciliation failed", error);
+            return new Response("Could not reconcile Terminal payment", { status: 500 });
+          }
+          return Response.json({ received: true });
+        }
+
+        if (
           event.type !== "checkout.session.completed" ||
           event.data?.object?.payment_status !== "paid"
         ) {
