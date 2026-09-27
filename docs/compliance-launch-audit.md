@@ -27,7 +27,7 @@ This is an engineering risk review, not a substitute for advice from a qualified
 
 1. The published operator identity matched the official Companies House overview when rechecked on 27 September 2026. Recheck after any filing change or material launch delay. Add VAT and ICO numbers only if applicable and separately verified.
 2. Have UK counsel review the final customer contract, subscription cancellation/refund wording, marketplace role split, liability terms, and salon-facing template wording.
-3. Complete an ICO fee/self-assessment, records of processing, processor agreements, international-transfer assessment, breach procedure, retention schedule, and data-subject-request procedure.
+3. The ICO fee assessment returned Tier 1 at £52 on 27 September 2026; complete registration/payment and retain the private receipt and registration number. Complete the records of processing, processor agreements, international-transfer assessment, breach procedure, retention schedule, and data-subject-request procedure.
 4. Preserve the bundled-asset source records and generator, maintain contributor/IP assignments, and record provenance for every future photo, font, icon, logo or marketing asset before publishing it.
 5. Run manual keyboard-only, zoom, screen-reader, and colour-contrast tests on the production deployment. Treat WCAG 2.2 AA as the engineering target, while obtaining advice on the Equality Act reasonable-adjustment duty.
 6. Confirm each salon displays accurate pre-contract identity, price, cancellation, deposit, refund, complaint, and contact information. The platform cannot truthfully manufacture these business-specific facts.

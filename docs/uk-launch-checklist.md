@@ -37,7 +37,7 @@ The grant and London event records can be indexed with [`grant-conference-eviden
 
 ## ICO / data-protection actions
 
-- Complete the ICO fee self-assessment and pay/register if required.
+- The official ICO fee self-assessment was completed on 27 September 2026 and returned Tier 1 at £52 (£47 with the stated direct-debit discount). Registration and payment remain outstanding; see [`ico-fee-assessment-2026-09-27.md`](./ico-fee-assessment-2026-09-27.md).
 - Maintain records of processing, controller/processor instructions, subprocessor contracts, international-transfer safeguards, a breach plan and a data-protection impact assessment for special-category processing where required.
 - Confirm each salon understands that it normally controls its client, booking and health data and must identify both an Article 6 basis and an Article 9 condition.
 
