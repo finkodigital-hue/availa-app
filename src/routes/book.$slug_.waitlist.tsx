@@ -3,7 +3,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/book/$slug/waitlist")({
+export const Route = createFileRoute("/book/$slug_/waitlist")({
   loader: async ({ params }) => {
     const { data: business, error } = await (supabase as any)
       .from("public_businesses")
