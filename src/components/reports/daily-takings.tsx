@@ -2,12 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Banknote, CreditCard, RefreshCcw } from "lucide-react";
 import { fmtMoney } from "@/lib/format";
 import { getDailyTakings } from "@/lib/reports";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
 export function DailyTakings({ businessId }: { businessId?: string }) {
   const report = useQuery({
     queryKey: ["daily-takings", businessId],
     enabled: !!businessId,
-    queryFn: () => getDailyTakings(),
+    queryFn: async () =>
+      getDailyTakings({ headers: await getServerFnAuthHeaders() }),
   });
 
   return (
