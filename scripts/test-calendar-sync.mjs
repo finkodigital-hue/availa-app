@@ -52,8 +52,10 @@ try {
     userId: "user-fixture",
   });
   equal(readOauthState(state).businessId, "business-fixture");
+  const [stateBody, stateSignature] = state.split(".");
+  const tamperedSignature = `${stateSignature[0] === "A" ? "B" : "A"}${stateSignature.slice(1)}`;
   assert.throws(
-    () => readOauthState(`${state.slice(0, -1)}x`),
+    () => readOauthState(`${stateBody}.${tamperedSignature}`),
     /Invalid OAuth state/,
   );
   checks += 1;
