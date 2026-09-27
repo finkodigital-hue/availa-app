@@ -1,6 +1,27 @@
 import assert from "node:assert/strict";
 
 export async function checkDailyTakings(db) {
+  // Gift-refund fixtures are created by the preceding full-schema suite.
+  const giftRefunds = (
+    await db.query(
+      "select r.stripe_refund_id,r.business_id,r.amount_cents,(r.created_at at time zone coalesce(b.timezone,'Europe/London'))::date::text as day from gift_card_refunds r join businesses b on b.id=r.business_id",
+    )
+  ).rows;
+  assert.ok(giftRefunds.length > 0);
+  for (const refund of giftRefunds) {
+    const daily = (
+      await db.query("select get_daily_takings($1,$2) as report", [
+        refund.business_id,
+        refund.day,
+      ])
+    ).rows[0].report;
+    const row = daily.rows.find(
+      (row) => row.id === "gift-refund:" + refund.stripe_refund_id,
+    );
+    assert.equal(row?.type, "refund");
+    assert.equal(row?.method, "card");
+    assert.equal(row?.amountCents, refund.amount_cents);
+  }
   const id = (n) => `61000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
   await db.exec("reset role");
   await db.query("select set_config('request.jwt.claims',$1,false)", [
