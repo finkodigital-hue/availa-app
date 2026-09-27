@@ -25,7 +25,11 @@ import {
 export function useEntityUpload<T>(
   entity: ImportEntity,
   businessId: string | undefined,
-  mapRow: (raw: Record<string, string>) => T | null,
+  mapRow: (
+    raw: Record<string, string>,
+    rowIndex: number,
+    fileHash: string | null,
+  ) => T | null,
 ) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileHash, setFileHash] = useState<string | null>(null);
@@ -78,7 +82,11 @@ export function useEntityUpload<T>(
           setParsing(false);
           if (businessId) {
             try {
-              const existing = await findExistingBatchByHash(businessId, hash);
+              const existing = await findExistingBatchByHash(
+                businessId,
+                hash,
+                entity,
+              );
               setExistingBatch(existing);
             } catch {
               // Non-fatal — duplicate-file detection is a courtesy, not a hard gate.
@@ -110,14 +118,14 @@ export function useEntityUpload<T>(
   const { rows, skipped } = useMemo(() => {
     const mapped: T[] = [];
     let skippedCount = 0;
-    for (const raw of rawRows) {
+    for (const [rowIndex, raw] of rawRows.entries()) {
       const normalized = applyMapping(raw, mapping);
-      const m = mapRow(normalized);
+      const m = mapRow(normalized, rowIndex, fileHash);
       if (m) mapped.push(m);
       else skippedCount++;
     }
     return { rows: mapped, skipped: skippedCount };
-  }, [rawRows, mapping, mapRow]);
+  }, [rawRows, mapping, mapRow, fileHash]);
 
   const missingRequired = useMemo(
     () => missingRequiredFields(entity, mapping),

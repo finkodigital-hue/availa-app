@@ -161,9 +161,9 @@ function CutoverGuide() {
         </li>
         <li>
           <span className="font-medium">2. Check what stayed behind.</span>{" "}
-          Saved cards, gift balances, memberships, consultation answers, photos
-          and reviews are not moved by these CSV steps. Plan to handle any of
-          those separately.
+          Saved cards, gift balances, memberships, outstanding payment
+          balances, consultation answers, photos and reviews are not moved by
+          these CSV steps. Plan to handle any of those separately.
         </li>
         <li>
           <span className="font-medium">3. Choose a switch date.</span> Only

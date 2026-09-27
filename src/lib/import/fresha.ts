@@ -27,7 +27,8 @@ export const ENTITY_LABELS: Record<ImportEntity, string> = {
 // leaving the name blank when the owner never got around to naming a
 // walk-in/guest client (Fresha does this with "Change client name"). If we
 // import that verbatim it shows up as if it were a real customer's name.
-const PLACEHOLDER_NAME_RE = /^(change (client|customer) name|unnamed (client|customer))$/i;
+const PLACEHOLDER_NAME_RE =
+  /^(change (client|customer) name|unnamed (client|customer))$/i;
 
 function fullNameOf(r: Record<string, string>): string {
   const raw = r.fullName || `${r.firstName ?? ""} ${r.lastName ?? ""}`.trim();
@@ -62,13 +63,18 @@ export type ParsedCustomerRow = {
   notes: string | null;
 };
 
-export function mapCustomerRow(r: Record<string, string>): ParsedCustomerRow | null {
+export function mapCustomerRow(
+  r: Record<string, string>,
+): ParsedCustomerRow | null {
   const name = fullNameOf(r);
   if (!name) return null;
   const phone = cleanPhoneDisplay(r.phone);
   const referral = cleanText(r.referralSource);
   const note = cleanText(r.notes);
-  const notes = [note, referral ? `Referral source: ${referral}` : null].filter(Boolean).join("\n") || null;
+  const notes =
+    [note, referral ? `Referral source: ${referral}` : null]
+      .filter(Boolean)
+      .join("\n") || null;
   // Not every system exports a client ID. Dedup keys off external_id further
   // down the pipeline, so a missing one is synthesized per-row rather than
   // left blank — otherwise every no-ID row would collide as "duplicates" of
@@ -87,7 +93,9 @@ export type ParsedServiceRow = {
   description: string | null;
 };
 
-export function mapServiceRow(r: Record<string, string>): ParsedServiceRow | null {
+export function mapServiceRow(
+  r: Record<string, string>,
+): ParsedServiceRow | null {
   const name = cleanText(r.name);
   if (!name) return null;
   const dur = parseDuration(r.duration);
@@ -103,22 +111,36 @@ export function mapServiceRow(r: Record<string, string>): ParsedServiceRow | nul
   };
 }
 
-// Booking statuses were trimmed to the four a salon actually sets
-// (confirmed / completed / cancelled / no-show), so "new" and anything
-// unrecognised now land on `confirmed` rather than the retired `pending`
-// — an imported future appointment IS a booking in the diary, and leaving
-// it on a status the owner can no longer change was a dead end.
+// Bookzenvo uses four appointment states. Unknown values still map to
+// confirmed for compatibility, but the import UI must warn before saving.
 const STATUS_MAP: Record<string, BookingStatus> = {
   completed: "completed",
+  complete: "completed",
+  finished: "completed",
   cancelled: "cancelled",
+  canceled: "cancelled",
   "no show": "no_show",
+  "no showed": "no_show",
   confirmed: "confirmed",
+  booked: "confirmed",
+  scheduled: "confirmed",
   new: "confirmed",
 };
 
+function statusKey(raw: string | null): string {
+  return (raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+export function isRecognizedApptStatus(raw: string | null): boolean {
+  return Object.hasOwn(STATUS_MAP, statusKey(raw));
+}
+
 export function mapApptStatus(raw: string | null): BookingStatus {
-  const key = (raw ?? "").trim().toLowerCase();
-  return STATUS_MAP[key] ?? "confirmed";
+  return STATUS_MAP[statusKey(raw)] ?? "confirmed";
 }
 
 export type ParsedApptRow = {
@@ -126,6 +148,8 @@ export type ParsedApptRow = {
   clientName: string;
   staffName: string;
   status: BookingStatus;
+  sourceStatus: string | null;
+  statusRecognized: boolean;
   serviceName: string;
   startsAt: Date | null;
   endsAt: Date | null;
@@ -133,7 +157,11 @@ export type ParsedApptRow = {
   createdAt: Date | null;
 };
 
-export function mapApptRow(r: Record<string, string>): ParsedApptRow | null {
+export function mapApptRow(
+  r: Record<string, string>,
+  rowIndex = 0,
+  fileHash: string | null = null,
+): ParsedApptRow | null {
   const clientName = r.clientName ?? "";
   const staffName = r.staffName ?? "";
   const serviceName = r.serviceName ?? "";
@@ -145,15 +173,19 @@ export function mapApptRow(r: Record<string, string>): ParsedApptRow | null {
   const dur = parseDuration(r.duration);
   const times = resolveApptTimes(scheduled, slot, explicitEnd, dur.minutes);
   const price = parsePrice(r.price);
-  // Not every system exports a booking reference — synthesized per-row like
-  // the customer external_id above, for the same duplicate-collision reason.
-  const externalId = cleanText(r.externalId) ?? `row:${crypto.randomUUID()}`;
+  // Keep no-ID bookings distinct within a file and stable across re-uploads,
+  // so the owner can verify the same export later without a false "missing".
+  const externalId =
+    cleanText(r.externalId) ??
+    (fileHash ? `file:${fileHash}:${rowIndex}` : `row:${crypto.randomUUID()}`);
 
   return {
     externalId,
     clientName,
     staffName,
     status: mapApptStatus(r.status),
+    sourceStatus: cleanText(r.status),
+    statusRecognized: isRecognizedApptStatus(r.status),
     serviceName,
     startsAt: times?.startsAt ?? null,
     endsAt: times?.endsAt ?? null,
