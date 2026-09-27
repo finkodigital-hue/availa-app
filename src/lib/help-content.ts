@@ -342,7 +342,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         items: [
           "Change vibe — switch to one of four presets (Clean & minimal, Bold & modern, Soft & elegant, Fresh & playful). This resets your colors, fonts and button style to that preset's defaults; your logo is kept.",
           "Primary and accent color — set as hex values.",
-          "Display font — choose from ten fonts including Cormorant Garamond, Playfair Display, Inter, Poppins and DM Sans.",
+          "Display font — choose from the bundled Cormorant Garamond, Fraunces, Inter and DM Sans fonts.",
           "Button style — Solid, Outline or Soft.",
           "Corner radius — a slider from square to fully rounded corners.",
         ],
@@ -960,7 +960,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     blocks: [
       {
         type: "p",
-        text: "Reports gives you deep-dive numbers for your accountant, payroll, or your own records. Pick a date range — This month, Last month, This quarter, Tax year (the calendar year from January 1st to today, not a fiscal year), or a custom range — and compare it against the previous period or the same period last year.",
+        text: "Reports gives you figures for internal review or to share with your accountant. Pick a date range — This month, Last month, This quarter, Calendar year to date, or a custom range — and compare it against the previous period or the same period last year. Confirm tax and accounting treatment with your accountant.",
       },
       {
         type: "list",
@@ -1061,18 +1061,18 @@ export const HELP_ARTICLES: HelpArticle[] = [
     blocks: [
       {
         type: "p",
-        text: "Settings → White-label lets you point your own domain at your booking page — add a CNAME record to cname.bookzenvo.com and Bookzenvo handles SSL automatically.",
+        text: "Custom-domain and email-branding controls are being prepared but are not yet live. Keep using your Bookzenvo booking link until support confirms that your domain and certificate have been provisioned.",
       },
       {
         type: "list",
         items: [
-          "A custom favicon and browser tab title",
-          "A logo and footer text for booking-related emails",
+          "Planned: a custom favicon and browser tab title",
+          "Planned: a logo and footer text for booking-related emails",
         ],
       },
       {
         type: "note",
-        text: '"Hide powered by Bookzenvo" is a premium option within this tab.',
+        text: 'The planned "Hide powered by Bookzenvo" option is not active yet.',
       },
     ],
     keywords: ["custom domain", "cname", "favicon", "white label"],

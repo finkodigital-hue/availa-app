@@ -104,10 +104,19 @@ function AuthPage() {
   // form instead of creating a real account (see submit() below). Existing
   // accounts are unaffected; signin/reset/update all still work as normal.
   const [waitlistDone, setWaitlistDone] = useState(false);
+  const [recoveryReady, setRecoveryReady] = useState(false);
+
+  const rememberRecovery = () => {
+    const now = Date.now();
+    sessionStorage.setItem("bookzenvo-password-recovery-at", String(now));
+    setRecoveryReady(true);
+  };
 
   useEffect(() => {
     setWaitlistDone(false);
     setFormError("");
+    const recoveredAt = Number(sessionStorage.getItem("bookzenvo-password-recovery-at") ?? 0);
+    setRecoveryReady(Date.now() - recoveredAt < 10 * 60 * 1000);
   }, [mode]);
 
   useEffect(() => {
@@ -118,6 +127,7 @@ function AuthPage() {
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
+        rememberRecovery();
         navigate({ to: "/auth", search: { mode: "update" } });
       }
     });
@@ -155,8 +165,13 @@ function AuthPage() {
         if (error) throw error;
         toast.success("Password reset email sent.");
       } else if (mode === "update") {
+        if (!recoveryReady) {
+          throw new Error("PASSWORD_RECOVERY_REQUIRED");
+        }
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
+        sessionStorage.removeItem("bookzenvo-password-recovery-at");
+        setRecoveryReady(false);
         toast.success("Password updated.");
         navigate({ to: "/dashboard", replace: true });
       } else {
@@ -198,7 +213,9 @@ function AuthPage() {
       : mode === "reset"
         ? "We'll email you a secure link."
         : mode === "update"
-          ? "Choose a new password for your account."
+          ? recoveryReady
+            ? "Choose a new password for your account."
+            : "Open the secure link from your password reset email before choosing a new password."
           : "Sign in to your dashboard.";
   const cta =
     mode === "signup"

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
-import { parseTheme, applyThemeVars, themedButtonStyle, defaultTheme, googleFontsHref } from "@/lib/theme";
+import { parseTheme, applyThemeVars, themedButtonStyle, defaultTheme } from "@/lib/theme";
 import { fmtMoney } from "@/lib/format";
 
 type ActResult =
@@ -49,7 +49,6 @@ function BookingActionPage() {
 
   return (
     <div style={applyThemeVars(theme) as React.CSSProperties} className="min-h-screen bg-[var(--brand-bg)] text-[var(--brand-text)] flex items-center justify-center p-6">
-      <link rel="stylesheet" href={googleFontsHref(theme)} />
       <div className="w-full max-w-sm rounded-2xl border p-8 text-center" style={{ background: "var(--brand-surface)", borderColor: "color-mix(in oklab, var(--brand-text) 12%, transparent)" }}>
         {state === "loading" && (
           <>

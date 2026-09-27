@@ -28,7 +28,51 @@ import { hasExpectedBearer } from "@/lib/internal-auth.server";
 //    creation; this is only the safety net for when that call never arrives,
 //    e.g. the tab closed before it fired, or Resend had a transient outage).
 
-const CONFIRMATION_BACKSTOP_WINDOW_MS = 6 * 60 * 60 * 1000;
+const CONFIRMATION_BACKSTOP_BATCH_SIZE = 100;
+const REMINDER_CRON_JOB_NAME = "send-reminders";
+
+async function processCustomerErasureStorageJobs() {
+  const { data: jobs, error } = await (supabaseAdmin as any)
+    .from("customer_erasure_storage_jobs")
+    .select("id,bucket,paths,attempts")
+    .eq("status", "pending")
+    .lt("attempts", 12)
+    .order("created_at", { ascending: true })
+    .limit(20);
+  if (error) throw error;
+  let completed = 0;
+  let failed = 0;
+  for (const job of jobs ?? []) {
+    const paths = Array.isArray(job.paths) ? job.paths : [];
+    const { error: removeError } = paths.length
+      ? await supabaseAdmin.storage.from(job.bucket).remove(paths)
+      : { error: null };
+    if (removeError) {
+      failed++;
+      const attempts = Number(job.attempts ?? 0) + 1;
+      await (supabaseAdmin as any)
+        .from("customer_erasure_storage_jobs")
+        .update({
+          attempts,
+          status: attempts >= 12 ? "failed" : "pending",
+          last_error: String(removeError.message ?? "Storage removal failed").slice(0, 500),
+        })
+        .eq("id", job.id);
+    } else {
+      completed++;
+      await (supabaseAdmin as any)
+        .from("customer_erasure_storage_jobs")
+        .update({
+          status: "completed",
+          attempts: Number(job.attempts ?? 0) + 1,
+          last_error: null,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", job.id);
+    }
+  }
+  return { completed, failed };
+}
 
 export const Route = createFileRoute("/api/cron/send-reminders")({
   server: {
@@ -43,6 +87,21 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           return new Response("Unauthorized", { status: 401 });
         }
 
+        const cronStartedAt = new Date().toISOString();
+        const { error: heartbeatStartError } = await (supabaseAdmin as any)
+          .from("operational_job_heartbeats")
+          .upsert(
+            {
+              job_name: REMINDER_CRON_JOB_NAME,
+              last_started_at: cronStartedAt,
+              updated_at: cronStartedAt,
+            },
+            { onConflict: "job_name" },
+          );
+        if (heartbeatStartError) {
+          console.error("[send-reminders] Could not record cron start");
+        }
+
         const { reconcileFailedBookingPayments } = await import("@/lib/payment-reconciliation.server");
         const { error: leaseSweepError } = await (supabaseAdmin as any).rpc("sweep_notification_delivery_leases");
         if (leaseSweepError) console.error("[notification-recovery] Delivery lease sweep failed");
@@ -53,6 +112,10 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         const bookingPaymentRecovery = await reconcileFailedBookingPayments().catch(() => {
           console.error("[booking-payment-recovery] Reconciliation unavailable; notification processing continues");
           return { checked: 0, refunded: 0, failed: 1 };
+        });
+        const erasureStorageCleanup = await processCustomerErasureStorageJobs().catch(() => {
+          console.error("[customer-erasure] Storage cleanup retry unavailable");
+          return { completed: 0, failed: 1 };
         });
 
         const { data: businesses, error: bizErr } = await (supabaseAdmin as any)
@@ -248,9 +311,6 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         let confirmationsSent = 0;
         let confirmationsFailed = 0;
 
-        const cutoff = new Date(
-          Date.now() - CONFIRMATION_BACKSTOP_WINDOW_MS,
-        ).toISOString();
         const { data: unconfirmed, error: unconfirmedErr } = await (
           supabaseAdmin as any
         )
@@ -260,11 +320,14 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           )
           .is("confirmation_sent_at", null)
           .neq("status", "cancelled")
-          .gte("created_at", cutoff)
-          // Second line of defence beyond the created_at window: never
-          // confirm a booking whose appointment has already happened
-          // (covers historical/imported data regardless of its created_at).
-          .gt("starts_at", new Date().toISOString());
+          .eq("notify_customer", true)
+          // Imported bookings explicitly set notify_customer=false. Keeping
+          // that durable intent check lets transient provider outages retry
+          // for as long as the appointment is still in the future, without
+          // unexpectedly mailing historical imports.
+          .gt("starts_at", new Date().toISOString())
+          .order("created_at", { ascending: true })
+          .limit(CONFIRMATION_BACKSTOP_BATCH_SIZE);
 
         if (unconfirmedErr) {
           console.error(
@@ -476,7 +539,10 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
               try {
                 const res = await fetch(
                   `https://api.stripe.com/v1/subscriptions/${encodeURIComponent(biz.stripe_subscription_id)}`,
-                  { headers: { Authorization: `Bearer ${stripeKey}` } },
+                  {
+                    headers: { Authorization: `Bearer ${stripeKey}` },
+                    signal: AbortSignal.timeout(15_000),
+                  },
                 );
                 const sub = (await res.json()) as {
                   status?: string;
@@ -493,6 +559,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                   "canceled",
                   "unpaid",
                   "incomplete_expired",
+                  "paused",
                 ].includes(status);
                 await (supabaseAdmin as any)
                   .from("businesses")
@@ -516,8 +583,9 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           }
         }
 
-        return Response.json({
+        const summary = {
           bookingPaymentRecovery,
+          erasureStorageCleanup,
           claimed,
           sent,
           failed,
@@ -533,7 +601,22 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           bookingChangeEmails,
           subscriptionsChecked,
           subscriptionsDowngraded,
-        });
+        };
+        const completedAt = new Date().toISOString();
+        const { error: heartbeatFinishError } = await (supabaseAdmin as any)
+          .from("operational_job_heartbeats")
+          .update({
+            last_success_at: completedAt,
+            last_completed_at: completedAt,
+            last_summary: summary,
+            updated_at: completedAt,
+          })
+          .eq("job_name", REMINDER_CRON_JOB_NAME);
+        if (heartbeatFinishError) {
+          console.error("[send-reminders] Could not record successful cron completion");
+          return new Response("Cron heartbeat could not be recorded", { status: 500 });
+        }
+        return Response.json(summary);
       },
     },
   },

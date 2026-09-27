@@ -47,8 +47,8 @@ const securityHeadersMiddleware = createMiddleware().server(
         // recovery script. Keep the allowed origins narrow while retaining
         // those existing features; user content is still escaped by React.
         "script-src 'self' 'unsafe-inline'",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com data:",
+        "style-src 'self' 'unsafe-inline'",
+        "font-src 'self' data:",
         "img-src 'self' https: data: blob:",
         "connect-src 'self'",
         "frame-src 'self'",

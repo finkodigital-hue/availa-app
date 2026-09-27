@@ -1,0 +1,4 @@
+Contact: mailto:help@bookzenvo.com
+Expires: 2027-03-31T23:59:59Z
+Preferred-Languages: en
+Canonical: https://bookzenvo.com/.well-known/security.txt

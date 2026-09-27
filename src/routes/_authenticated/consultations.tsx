@@ -1037,6 +1037,7 @@ function RecordDialog({
   const [signerName, setSignerName] = useState("");
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [consented, setConsented] = useState(false);
+  const [adultConfirmed, setAdultConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     setOutcome(record?.patch_test_outcome ?? "passed");
@@ -1053,6 +1054,7 @@ function RecordDialog({
     );
     setSignatureData(null);
     setConsented(false);
+    setAdultConfirmed(false);
   }, [
     record?.id,
     record?.status,
@@ -1124,6 +1126,7 @@ function RecordDialog({
           signerName,
           signatureData: signatureData ?? "",
           explicitHealthConsent: consented,
+          adultConfirmed,
         },
         headers,
       });
@@ -1294,6 +1297,19 @@ function RecordDialog({
                     />
                     I explicitly consent to the processing described above.
                   </label>
+                  <label className="mt-3 flex items-start gap-2 text-sm font-medium">
+                    <Checkbox
+                      checked={adultConfirmed}
+                      onCheckedChange={(checked) =>
+                        setAdultConfirmed(checked === true)
+                      }
+                      className="mt-0.5"
+                    />
+                    I confirm that I am aged 18 or over.
+                  </label>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Online consultation signing is not currently available for clients under 18. Do not collect a minor’s health information here; use the salon’s reviewed guardian process instead.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1335,7 +1351,8 @@ function RecordDialog({
                 !requiredComplete ||
                 !signerName.trim() ||
                 !signatureData ||
-                !consented
+                !consented ||
+                !adultConfirmed
               }
             >
               {saving ? "Saving signed record…" : "Sign and lock record"}

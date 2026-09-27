@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireRecentSensitiveSession } from "@/lib/verified-identity.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -97,6 +98,7 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data, context }): Promise<CustomerDataExport> => {
+    requireRecentSensitiveSession(context.claims as Record<string, unknown>);
     const { data: business, error: businessError } = await context.supabase
       .from("businesses")
       .select("id, name")
@@ -238,7 +240,7 @@ export type EraseCustomerResult = {
   photosDeleted: number;
   consultationsDeleted: number;
   authAccountStatus:
-    | "removed"
+    | "portal_access_removed"
     | "preserved_shared"
     | "not_found"
     | "not_applicable";
@@ -248,9 +250,9 @@ export type EraseCustomerResult = {
 // Anonymises a customer in place rather than deleting rows — bookings and
 // payments are kept (UK financial record retention) with identity fields
 // stripped, so reports keep working. Never touches upcoming bookings; the
-// owner has to cancel/reassign those first. See the migration for why the
-// portal auth account is only removed when no other business still needs
-// it, and why testimonials/notifications aren't claimed as fully scrubbed.
+// owner has to cancel/reassign those first. The shared platform auth identity
+// is always preserved; erasing the salon-specific email removes that salon's
+// portal join without risking another workspace or staff membership.
 export const eraseCustomer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data: RequestInput) => {
@@ -258,6 +260,7 @@ export const eraseCustomer = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data, context }): Promise<EraseCustomerResult> => {
+    requireRecentSensitiveSession(context.claims as Record<string, unknown>);
     const { data: business, error: businessError } = await context.supabase
       .from("businesses")
       .select("id")
@@ -296,11 +299,6 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       throw new Error(
         "This customer's record could not be found. It may have already been merged or removed.",
       );
-    // erase_customer nulls customers.email as part of anonymising the row,
-    // so this is the only chance to capture it — needed afterward to decide
-    // whether the shared portal auth account is safe to remove.
-    const customerEmail = customer.email;
-
     // Cheap pre-flight read before anything irreversible happens. The RPC
     // below re-checks this itself (authoritative, race-safe) — this first
     // check exists so a blocked erasure never gets as far as deleting a
@@ -327,23 +325,18 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       .from("business-assets")
       .list(photoPrefix, { search: customer.id });
     if (listError) throw listError;
-    let photosDeleted = 0;
-    if (photoFiles && photoFiles.length > 0) {
-      const paths = photoFiles.map((f) => `${photoPrefix}/${f.name}`);
-      const { error: removeError } = await supabaseAdmin.storage
-        .from("business-assets")
-        .remove(paths);
-      if (removeError) throw removeError;
-      photosDeleted = paths.length;
-    }
+    const photoPaths = (photoFiles ?? []).map(
+      (f) => `${photoPrefix}/${f.name}`,
+    );
 
     const { data: result, error: eraseError } = await (
       supabaseAdmin as any
-    ).rpc("erase_customer", {
+    ).rpc("erase_customer_with_storage_job", {
       p_business_id: business.id,
       p_customer_id: customer.id,
       p_request_id: request.id,
       p_resolved_by: context.userId,
+      p_paths: photoPaths,
     });
     if (eraseError) {
       const match = /^UPCOMING_BOOKINGS:(\d+)/.exec(eraseError.message ?? "");
@@ -356,36 +349,38 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       throw eraseError;
     }
 
-    let authAccountStatus: EraseCustomerResult["authAccountStatus"] =
+    let photosDeleted = 0;
+    if (photoPaths.length > 0) {
+      const { error: removeError } = await supabaseAdmin.storage
+        .from("business-assets")
+        .remove(photoPaths);
+      if (removeError) {
+        await (supabaseAdmin as any)
+          .from("customer_erasure_storage_jobs")
+          .update({
+            attempts: 1,
+            last_error: String(removeError.message ?? "Storage removal failed").slice(0, 500),
+          })
+          .eq("request_id", request.id);
+      } else {
+        photosDeleted = photoPaths.length;
+        await (supabaseAdmin as any)
+          .from("customer_erasure_storage_jobs")
+          .update({ status: "completed", attempts: 1, last_error: null, completed_at: new Date().toISOString() })
+          .eq("request_id", request.id);
+      }
+    }
+
+    // Per-salon erasure must never delete the shared platform identity. That
+    // user may own or staff an unrelated business, and auth.users deletion
+    // cascades into owned workspaces. Nulling this salon's customer email is
+    // sufficient to remove its portal join and access.
+    const authAccountStatus: EraseCustomerResult["authAccountStatus"] =
       result.had_email
         ? result.other_business_has_live_email
           ? "preserved_shared"
-          : "not_found"
+          : "portal_access_removed"
         : "not_applicable";
-    if (
-      result.had_email &&
-      !result.other_business_has_live_email &&
-      customerEmail
-    ) {
-      // No other business still has a live customers row for this email —
-      // safe to remove the shared portal auth account. If some other
-      // business still needs it, we deliberately leave it alone: deleting
-      // it would sign that person out of an unrelated salon that never
-      // asked for their data to be erased. Nulling this business's
-      // customers.email (already done above) is enough on its own — it's
-      // the join key get_portal_customer_records() matches on, so this
-      // business's history simply stops appearing to them.
-      const { data: authUserId, error: lookupError } = await (
-        supabaseAdmin as any
-      ).rpc("find_auth_user_id_by_email", { p_email: customerEmail });
-      if (lookupError) throw lookupError;
-      if (authUserId) {
-        const { error: deleteError } =
-          await supabaseAdmin.auth.admin.deleteUser(authUserId);
-        if (deleteError) throw deleteError;
-        authAccountStatus = "removed";
-      }
-    }
 
     return {
       bookingsScrubbed: result.bookings_scrubbed ?? 0,
@@ -394,6 +389,8 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       photosDeleted,
       consultationsDeleted: result.consultations_deleted ?? 0,
       authAccountStatus,
-      manualCheckNotice: NOT_COVERED_NOTICE,
+      manualCheckNotice: photosDeleted < photoPaths.length
+        ? [...NOT_COVERED_NOTICE, "Customer photo removal is queued for an automatic retry."]
+        : NOT_COVERED_NOTICE,
     };
   });

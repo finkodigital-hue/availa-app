@@ -27,7 +27,15 @@ function PortalSignIn() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/portal/bookings", replace: true });
+    if (!loading && user) {
+      void (async () => {
+        try {
+          await (supabase as any).rpc("claim_current_customer_records");
+        } finally {
+          navigate({ to: "/portal/bookings", replace: true });
+        }
+      })();
+    }
   }, [loading, user, navigate]);
 
   const sendCode = async (e: React.FormEvent) => {
@@ -60,6 +68,8 @@ function PortalSignIn() {
         type: "email",
       });
       if (error) throw error;
+      const { error: claimError } = await (supabase as any).rpc("claim_current_customer_records");
+      if (claimError) throw claimError;
       toast.success("Welcome");
       navigate({ to: "/portal/bookings", replace: true });
     } catch (err: any) {

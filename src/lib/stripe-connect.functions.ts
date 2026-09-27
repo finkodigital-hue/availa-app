@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { trustedAppOrigin } from "@/lib/app-origin.server";
 import { refundableCharges } from "@/lib/refund-balances";
+import { requireRecentSensitiveSession } from "@/lib/verified-identity.server";
 
 type StripeAccount = {
   id: string;
@@ -67,6 +68,7 @@ async function stripeRequest<T>(
 ): Promise<T> {
   const response = await fetch(`https://api.stripe.com${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${stripeSecretKey()}`,
       ...init.headers,
@@ -182,7 +184,10 @@ export const startStripeOnboarding = createServerFn({ method: "POST" })
     if (!accountId) {
       const account = await stripeRequest<StripeAccount>("/v1/accounts", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Idempotency-Key": `bookzenvo-connect-account-${business.id}`,
+        },
         body: formBody({
           country: "GB",
           "capabilities[card_payments][requested]": "true",
@@ -190,6 +195,7 @@ export const startStripeOnboarding = createServerFn({ method: "POST" })
           "controller[fees][payer]": "application",
           "controller[losses][payments]": "application",
           "controller[stripe_dashboard][type]": "express",
+          "metadata[business_id]": business.id,
         }),
       });
       accountId = account.id;
@@ -438,6 +444,7 @@ export const refundBooking = createServerFn({ method: "POST" })
   })
   .handler(
     async ({ data, context }): Promise<{ results: RefundChargeResult[] }> => {
+      requireRecentSensitiveSession(context.claims as Record<string, unknown>);
       const { data: business, error: businessError } = await context.supabase
         .from("businesses")
         .select("id, currency, stripe_account_id, stripe_charges_enabled")

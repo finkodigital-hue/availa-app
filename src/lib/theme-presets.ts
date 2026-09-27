@@ -30,7 +30,7 @@ export const THEME_PRESETS: Record<PresetId, Omit<Theme, "logoUrl" | "updatedAt"
       text: "#FAF6F0",
       textMuted: "#B9B1A6",
     },
-    typography: { displayFont: "Space Grotesk", bodyFont: "Inter" },
+    typography: { displayFont: "DM Sans", bodyFont: "Inter" },
     buttons: { style: "solid", cornerRadius: 4 },
   },
   soft_elegant: {
@@ -44,7 +44,7 @@ export const THEME_PRESETS: Record<PresetId, Omit<Theme, "logoUrl" | "updatedAt"
       text: "#39292D",
       textMuted: "#796168",
     },
-    typography: { displayFont: "Playfair Display", bodyFont: "Lato" },
+    typography: { displayFont: "Cormorant Garamond", bodyFont: "DM Sans" },
     buttons: { style: "soft", cornerRadius: 16 },
   },
   fresh_playful: {
@@ -58,7 +58,7 @@ export const THEME_PRESETS: Record<PresetId, Omit<Theme, "logoUrl" | "updatedAt"
       text: "#26372D",
       textMuted: "#62705F",
     },
-    typography: { displayFont: "Poppins", bodyFont: "Poppins" },
+    typography: { displayFont: "Fraunces", bodyFont: "DM Sans" },
     buttons: { style: "soft", cornerRadius: 24 },
   },
 };

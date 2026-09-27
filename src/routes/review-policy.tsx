@@ -45,8 +45,10 @@ function ReviewPolicyPage() {
                 Customers may leave positive, neutral or negative feedback.
                 Reviews should be honest, based on the reviewer&apos;s own
                 appointment and useful to future customers. Businesses must not
-                pressure customers to leave a particular rating or offer an
-                undisclosed reward for a favourable review.
+                pressure customers to leave a particular rating. Incentivised
+                reviews are not allowed on Bookzenvo, whether the incentive is
+                disclosed or undisclosed and whether the requested review is
+                positive, neutral or negative.
               </p>
               <p>
                 A business cannot edit a customer&apos;s rating or words and

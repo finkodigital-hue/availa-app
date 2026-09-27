@@ -116,6 +116,10 @@ export const Route = createFileRoute("/api/stripe-webhook")({
                 p_currency: refund.currency,
               });
               if (giftError) throw giftError;
+              const { error: resolveError } = await (supabaseAdmin as any).rpc("resolve_stripe_refund_review", {
+                p_stripe_refund_id: refund.id,
+              });
+              if (resolveError) throw resolveError;
               return Response.json({ received: true });
             }
             if ((metadata.business_id && metadata.business_id !== business.id) ||
@@ -135,6 +139,10 @@ export const Route = createFileRoute("/api/stripe-webhook")({
               },
             );
             if (error) throw error;
+            const { error: resolveError } = await (supabaseAdmin as any).rpc("resolve_stripe_refund_review", {
+              p_stripe_refund_id: refund.id,
+            });
+            if (resolveError) throw resolveError;
           } catch (error) {
             console.error("Stripe refund fulfilment failed", error);
             return new Response("Could not fulfil refund", { status: 500 });

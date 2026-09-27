@@ -183,8 +183,8 @@ function GiftCardsPage() {
         <div className="rounded-2xl border bg-card p-5"><div className="text-sm text-muted-foreground">Active cards</div><div className="font-display text-3xl mt-1">{(cards.data ?? []).filter((c) => c.status === "active").length}</div></div>
         <div className="rounded-2xl border bg-card p-5"><div className="text-sm text-muted-foreground">Value remaining</div><div className="font-display text-3xl mt-1">{fmtMoney(activeValue, currency)}</div></div>
         <div className="rounded-2xl border bg-card p-5 flex flex-col justify-between gap-4">
-          <div><div className="text-sm text-muted-foreground">Public purchase page</div><div className="text-sm font-medium truncate mt-1">/gift/{business?.slug}</div></div>
-          <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/gift/${business?.slug}`); toast.success("Gift card link copied."); }} disabled={!business?.slug}><Copy className="h-4 w-4 mr-2" />Copy link</Button>
+          <div><div className="text-sm text-muted-foreground">Public purchase page</div><div className="text-sm font-medium mt-1">Coming soon after buyer terms and live-payment checks</div></div>
+          <Button variant="outline" size="sm" disabled><Copy className="h-4 w-4 mr-2" />Not live yet</Button>
         </div>
       </div>
 

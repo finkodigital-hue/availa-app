@@ -36,13 +36,18 @@ function CookiePolicyPage() {
           ),
         },
         {
-          title: "Why they are needed",
+          title: "Browser storage we use",
           content: (
-            <p>
-              Necessary storage helps protect accounts, maintain a logged-in session, prevent misuse
-              of booking forms and remember whether you have made a cookie choice. Without it,
-              important parts of Bookzenvo may not work correctly.
-            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[34rem] text-left text-sm">
+                <thead><tr className="border-b"><th className="py-2 pr-4">Name</th><th className="py-2 pr-4">Type and duration</th><th className="py-2">Purpose</th></tr></thead>
+                <tbody>
+                  <tr className="border-b"><td className="py-3 pr-4 font-mono text-xs">bookzenvo-auth</td><td className="py-3 pr-4">Local storage; until sign-out or browser removal</td><td className="py-3">Keeps a signed-in account session on this device.</td></tr>
+                  <tr className="border-b"><td className="py-3 pr-4 font-mono text-xs">bz_cookie_consent</td><td className="py-3 pr-4">Local storage; until browser removal or policy reset</td><td className="py-3">Remembers that the cookie notice was acknowledged.</td></tr>
+                  <tr><td className="py-3 pr-4 font-mono text-xs">sidebar_state</td><td className="py-3 pr-4">Cookie; 7 days</td><td className="py-3">Remembers whether the signed-in dashboard sidebar is open or collapsed.</td></tr>
+                </tbody>
+              </table>
+            </div>
           ),
         },
         {
