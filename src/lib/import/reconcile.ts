@@ -14,7 +14,8 @@ export type SavedAppointment = {
 export type ReconciliationIssue = {
   clientName: string;
   startsAt: Date;
-  reason: "missing" | "different";
+  reason: "missing" | "different" | "duplicate";
+  differences: string[];
 };
 
 export type ReconciliationResult = {
@@ -34,22 +35,27 @@ export function reconcileUpcomingAppointments(
     (row) => row.startsAt && row.startsAt > now && row.status === "confirmed",
   );
   const byExternalId = new Map<string, SavedAppointment>();
+  const savedCounts = new Map<string, number>();
   for (const row of saved) {
-    if (row.external_id) byExternalId.set(row.external_id, row);
+    if (row.external_id) {
+      byExternalId.set(row.external_id, row);
+      savedCounts.set(
+        row.external_id,
+        (savedCounts.get(row.external_id) ?? 0) + 1,
+      );
+    }
   }
 
   const issues: ReconciliationIssue[] = [];
   let matched = 0;
   const seenSourceIds = new Set<string>();
   for (const row of upcoming) {
-    // One saved booking cannot prove two source rows with the same identity.
-    // The importer deliberately keeps only the first external ID, so surface
-    // the later row for manual review instead of counting both as matched.
     if (seenSourceIds.has(row.externalId)) {
       issues.push({
         clientName: row.clientName,
         startsAt: row.startsAt!,
-        reason: "different",
+        reason: "duplicate",
+        differences: ["booking reference appears more than once in the file"],
       });
       continue;
     }
@@ -60,22 +66,39 @@ export function reconcileUpcomingAppointments(
         clientName: row.clientName,
         startsAt: row.startsAt!,
         reason: "missing",
+        differences: [],
       });
       continue;
     }
-    const same =
-      actual.status === row.status &&
-      actual.starts_at === row.startsAt!.toISOString() &&
-      actual.ends_at === row.endsAt?.toISOString() &&
-      normalizeName(actual.customer_name) === normalizeName(row.clientName) &&
-      normalizeName(actual.staff?.name) === normalizeName(row.staffName) &&
-      normalizeName(actual.services?.name) === normalizeName(row.serviceName);
-    if (same) matched++;
+    if ((savedCounts.get(row.externalId) ?? 0) > 1) {
+      issues.push({
+        clientName: row.clientName,
+        startsAt: row.startsAt!,
+        reason: "duplicate",
+        differences: ["booking reference appears more than once in Bookzenvo"],
+      });
+      continue;
+    }
+    const differences: string[] = [];
+    if (actual.status !== row.status) differences.push("status");
+    if (
+      new Date(actual.starts_at).getTime() !== row.startsAt!.getTime() ||
+      new Date(actual.ends_at).getTime() !== row.endsAt?.getTime()
+    )
+      differences.push("date or time");
+    if (normalizeName(actual.customer_name) !== normalizeName(row.clientName))
+      differences.push("client");
+    if (normalizeName(actual.staff?.name) !== normalizeName(row.staffName))
+      differences.push("team member");
+    if (normalizeName(actual.services?.name) !== normalizeName(row.serviceName))
+      differences.push("service");
+    if (differences.length === 0) matched++;
     else
       issues.push({
         clientName: row.clientName,
         startsAt: row.startsAt!,
         reason: "different",
+        differences,
       });
   }
   return { sourceCount: upcoming.length, matched, issues };

@@ -4,10 +4,12 @@ import {
   CheckCircle2,
   Loader2,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableHeader,
@@ -56,13 +58,22 @@ export function AppointmentsStep({
   );
   const [stats, setStats] = useState<ApptPreviewStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ApptCommitResult | null>(null);
   const [reconciliation, setReconciliation] =
     useState<ReconciliationResult | null>(null);
   const [verificationError, setVerificationError] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [showUpcoming, setShowUpcoming] = useState(false);
+  const [acknowledgedStatuses, setAcknowledgedStatuses] = useState(false);
+
+  useEffect(() => {
+    setReconciliation(null);
+    setVerificationError(false);
+    setAcknowledgedStatuses(false);
+  }, [upload.rows]);
 
   useEffect(() => {
     if (upload.rows.length === 0) {
@@ -71,6 +82,7 @@ export function AppointmentsStep({
     }
     let cancelled = false;
     setStatsLoading(true);
+    setStatsError(false);
     Promise.all([
       fetchAllRows<{ id: string; name: string }>(
         "staff",
@@ -87,11 +99,20 @@ export function AppointmentsStep({
         "id, name",
         businessId,
       ),
-    ]).then(([s, c, sv]) => {
-      if (cancelled) return;
-      setStats(computeApptPreview(upload.rows, s, c, sv));
-      setStatsLoading(false);
-    });
+    ])
+      .then(([s, c, sv]) => {
+        if (cancelled) return;
+        setStats(computeApptPreview(upload.rows, s, c, sv));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStats(null);
+          setStatsError(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setStatsLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -106,8 +127,55 @@ export function AppointmentsStep({
       r.startsAt.getTime() > Date.now() &&
       r.status === "confirmed",
   );
-  const prepaidRows = upload.rows.filter((r) => r.prepaymentCents > 0);
+  const prepaidRows = upload.rows.filter((row) => row.prepaymentCents > 0);
   const visibleRows = showUpcoming ? upcomingRows : upload.rows;
+  const unknownStatuses = upload.rows.filter((row) => !row.statusRecognized);
+  const unknownStatusLabels = [
+    ...new Set(unknownStatuses.map((row) => row.sourceStatus ?? "blank")),
+  ];
+
+  const runVerification = async () => {
+    setVerifying(true);
+    setVerificationError(false);
+    setReconciliation(null);
+    try {
+      setReconciliation(await verifyUpcomingImport(businessId, upload.rows));
+    } catch {
+      setVerificationError(true);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const downloadIssues = () => {
+    if (!reconciliation) return;
+    const cell = (value: string) => {
+      const safe = /^\s*[=+\-@]/.test(value) ? `'${value}` : value;
+      return `"${safe.replaceAll('"', '""')}"`;
+    };
+    const csv = [
+      "Client,Appointment time,Issue",
+      ...reconciliation.issues.map((issue) =>
+        [
+          cell(issue.clientName),
+          cell(issue.startsAt.toISOString()),
+          cell(
+            issue.reason === "missing"
+              ? "Not found in Bookzenvo"
+              : `${issue.reason === "duplicate" ? "Duplicate" : "Different"}: ${issue.differences.join(", ")}`,
+          ),
+        ].join(","),
+      ),
+    ].join("\r\n");
+    const url = URL.createObjectURL(
+      new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "bookzenvo-import-check.csv";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
 
   const commit = async () => {
     setCommitting(true);
@@ -128,11 +196,7 @@ export function AppointmentsStep({
       setResult(res);
       onCommitted?.();
       toast.success(`Imported ${res.imported} appointments`);
-      try {
-        setReconciliation(await verifyUpcomingImport(businessId, upload.rows));
-      } catch {
-        setVerificationError(true);
-      }
+      await runVerification();
     } catch (e) {
       onCommitted?.(); // Refresh history after a partial or failed import.
       toast.error(describeImportError(e));
@@ -164,6 +228,15 @@ export function AppointmentsStep({
             (inactive) · {result.duplicate.toLocaleString()} already imported,
             skipped
           </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={runVerification}
+            disabled={verifying}
+          >
+            {verifying ? "Checking…" : "Check again"}
+          </Button>
           {reconciliation ? (
             <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
               <p className="font-medium">Upcoming booking check</p>
@@ -190,7 +263,9 @@ export function AppointmentsStep({
                         {issue.clientName} · {issue.startsAt.toLocaleString()} —{" "}
                         {issue.reason === "missing"
                           ? "not found in Bookzenvo"
-                          : "details differ in Bookzenvo"}
+                          : issue.reason === "duplicate"
+                            ? issue.differences.join(", ")
+                            : `different ${issue.differences.join(", ")}`}
                       </li>
                     ))}
                   </ul>
@@ -200,6 +275,18 @@ export function AppointmentsStep({
                       issues.
                     </p>
                   )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={downloadIssues}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1" /> Download all
+                    issues (CSV)
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    The download contains client names. Keep it private.
+                  </p>
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">
@@ -276,16 +363,74 @@ export function AppointmentsStep({
                   ).toLocaleDateString()}
                   .
                 </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => upload.setOverrideDuplicate(true)}
-                >
-                  Import anyway
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={runVerification}
+                    disabled={verifying}
+                  >
+                    {verifying ? "Checking…" : "Check saved bookings"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => upload.setOverrideDuplicate(true)}
+                  >
+                    Import anyway
+                  </Button>
+                </div>
               </AlertDescription>
             </Alert>
           )}
+          {upload.existingBatch &&
+            (reconciliation || verificationError || verifying) && (
+              <div className="rounded-lg border bg-muted/20 p-3 text-xs space-y-2">
+                <p className="font-medium">Saved booking check</p>
+                {verifying ? (
+                  <p>Checking upcoming bookings…</p>
+                ) : verificationError ? (
+                  <p className="text-destructive">
+                    The check could not finish. Try again or compare both
+                    diaries manually.
+                  </p>
+                ) : reconciliation ? (
+                  <>
+                    <p>
+                      {reconciliation.matched} of {reconciliation.sourceCount}{" "}
+                      upcoming confirmed bookings in this file match Bookzenvo.
+                    </p>
+                    {reconciliation.sourceCount === 0 ? (
+                      <p className="text-destructive">
+                        No upcoming confirmed bookings were found in this
+                        export.
+                      </p>
+                    ) : null}
+                    {reconciliation.issues.length > 0 && (
+                      <>
+                        <p className="text-destructive">
+                          {reconciliation.issues.length} need attention. Check
+                          the saved diary before switching.
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={downloadIssues}
+                        >
+                          <Download className="h-3.5 w-3.5 mr-1" /> Download all
+                          issues (CSV)
+                        </Button>
+                        <p className="text-muted-foreground">
+                          The download contains client names. Keep it private.
+                        </p>
+                      </>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            )}
 
           {!upload.parsing && upload.rows.length > 0 && (
             <>
@@ -315,6 +460,38 @@ export function AppointmentsStep({
                 )}
               </div>
 
+              {unknownStatuses.length > 0 && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="space-y-2 text-xs">
+                    <p>
+                      {unknownStatuses.length.toLocaleString()} appointment
+                      status{unknownStatuses.length === 1 ? "" : "es"} could not
+                      be recognised. They will be treated as confirmed:{" "}
+                      {unknownStatusLabels.slice(0, 5).join(", ")}
+                      {unknownStatusLabels.length > 5 ? "…" : ""}. Check the
+                      Status column mapping or your export before importing,
+                      especially if these could be cancelled bookings.
+                    </p>
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="import-status-ack"
+                        checked={acknowledgedStatuses}
+                        onCheckedChange={(checked) =>
+                          setAcknowledgedStatuses(checked === true)
+                        }
+                      />
+                      <label
+                        htmlFor="import-status-ack"
+                        className="cursor-pointer"
+                      >
+                        I checked these statuses and want to import them as
+                        confirmed.
+                      </label>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="text-xs leading-relaxed">
@@ -335,6 +512,13 @@ export function AppointmentsStep({
                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching
                   against your team, clients and services…
                 </div>
+              ) : statsError ? (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    Bookzenvo couldn't check your team, clients and services
+                    against this file. Try uploading it again before importing.
+                  </AlertDescription>
+                </Alert>
               ) : stats ? (
                 <div className="rounded-lg border bg-muted/20 p-3 space-y-2 text-sm">
                   <div className="flex flex-wrap gap-1.5">
@@ -452,8 +636,13 @@ export function AppointmentsStep({
                   onClick={commit}
                   disabled={
                     committing ||
+                    statsLoading ||
+                    statsError ||
+                    !stats ||
+                    !upload.fileHash ||
                     !!upload.parseError ||
                     upload.missingRequired.length > 0 ||
+                    (unknownStatuses.length > 0 && !acknowledgedStatuses) ||
                     (!!upload.existingBatch && !upload.overrideDuplicate)
                   }
                 >
