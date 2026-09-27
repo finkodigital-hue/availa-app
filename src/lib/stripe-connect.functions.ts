@@ -366,6 +366,30 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
     if (!hold?.id || !hold?.ends_at)
       throw new Error("Could not reserve this appointment.");
 
+    const bookingSource = normalizeBookingSource(data.bookingSource);
+    const { data: privateHold, error: privateHoldError } = await (
+      supabaseAdmin as any
+    )
+      .from("booking_checkout_holds")
+      .update({
+        customer_name: data.customerName.trim(),
+        customer_email: data.customerEmail.trim(),
+        customer_phone: data.customerPhone.trim() || null,
+        notes: data.notes.trim() || null,
+        sms_reminder_notice: Boolean(normalizeSmsPhone(data.customerPhone)),
+        email_marketing_consent: data.emailMarketingConsent,
+        booking_source: bookingSource,
+      })
+      .eq("id", hold.id)
+      .eq("business_id", business.id)
+      .is("fulfilled_booking_id", null)
+      .gt("expires_at", new Date().toISOString())
+      .select("id")
+      .maybeSingle();
+    if (privateHoldError) throw privateHoldError;
+    if (!privateHold)
+      throw new Error("Could not securely store this booking request.");
+
     const origin = appOrigin();
     const paymentLabel =
       business.payment_mode === "deposit"
@@ -396,29 +420,8 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
           "line_items[0][quantity]": "1",
           "metadata[business_id]": business.id,
           "metadata[hold_id]": hold.id,
-          "metadata[booking_source]":
-            normalizeBookingSource(data.bookingSource) ?? "",
-          "metadata[service_id]": data.serviceId,
-          "metadata[staff_id]": data.staffId,
-          "metadata[customer_name]": data.customerName.trim(),
-          "metadata[customer_email]": data.customerEmail.trim(),
-          "metadata[customer_phone]": data.customerPhone.trim(),
-          "metadata[sms_reminder_notice]": normalizeSmsPhone(data.customerPhone)
-            ? "true"
-            : "false",
-          "metadata[email_marketing_consent]": data.emailMarketingConsent
-            ? "true"
-            : "false",
-          "metadata[starts_at]": data.startsAt,
-          "metadata[ends_at]": hold.ends_at,
-          "metadata[notes]": data.notes.trim(),
-          "metadata[payment_mode]": hold.payment_mode,
-          "metadata[gap_min]": hold.gap_min != null ? String(hold.gap_min) : "",
-          "metadata[active_after_min]":
-            hold.active_after_min != null ? String(hold.active_after_min) : "",
           "payment_intent_data[metadata][business_id]": business.id,
-          "payment_intent_data[metadata][service_id]": data.serviceId,
-          "payment_intent_data[metadata][staff_id]": data.staffId,
+          "payment_intent_data[metadata][hold_id]": hold.id,
         }),
       },
     );
@@ -451,7 +454,9 @@ export const finalizeBookingCheckout = createServerFn({ method: "POST" })
         await import("@/integrations/supabase/client.server");
       const { data: hold, error: holdError } = await (supabaseAdmin as any)
         .from("booking_checkout_holds")
-        .select("id, business_id, amount_cents, currency, fulfilled_booking_id")
+        .select(
+          "id, business_id, amount_cents, currency, fulfilled_booking_id, customer_name, customer_email, customer_phone, notes, sms_reminder_notice, email_marketing_consent, booking_source",
+        )
         .eq("id", data.holdId)
         .maybeSingle();
       if (holdError) throw holdError;
@@ -488,7 +493,6 @@ export const finalizeBookingCheckout = createServerFn({ method: "POST" })
         return { confirmed: false };
       }
 
-      const metadata = session.metadata ?? {};
       let bookingId = hold.fulfilled_booking_id as string | null;
       if (!bookingId) {
         const { data: fulfilledId, error: fulfilError } = await (
@@ -498,10 +502,10 @@ export const finalizeBookingCheckout = createServerFn({ method: "POST" })
           p_amount_cents: session.amount_total,
           p_currency: session.currency,
           p_payment_intent_id: session.payment_intent,
-          p_customer_name: metadata.customer_name ?? "",
-          p_customer_email: metadata.customer_email ?? "",
-          p_customer_phone: metadata.customer_phone ?? "",
-          p_notes: metadata.notes ?? "",
+          p_customer_name: hold.customer_name ?? "",
+          p_customer_email: hold.customer_email ?? "",
+          p_customer_phone: hold.customer_phone ?? "",
+          p_notes: hold.notes ?? "",
           p_stripe_customer_id: session.customer ?? "",
         });
         if (fulfilError) throw fulfilError;
@@ -509,40 +513,37 @@ export const finalizeBookingCheckout = createServerFn({ method: "POST" })
       }
       if (!bookingId) throw new Error("Booking confirmation did not complete.");
 
-      if (
-        bookingId &&
-        metadata.customer_phone &&
-        (metadata.sms_reminder_notice === "true" ||
-          metadata.sms_reminder_consent === "true")
-      ) {
+      if (bookingId && hold.customer_phone && hold.sms_reminder_notice) {
         const { error: noticeError } = await (supabaseAdmin as any)
           .from("bookings")
-          .update(
-            metadata.sms_reminder_notice === "true"
-              ? {
-                  sms_reminder_notice_at: new Date().toISOString(),
-                  sms_reminder_notice_version: "appointment-service-sms-v1",
-                }
-              : {
-                  sms_reminder_consent_at: new Date().toISOString(),
-                  sms_reminder_consent_version: "appointment-sms-v1",
-                },
-          )
+          .update({
+            sms_reminder_notice_at: new Date().toISOString(),
+            sms_reminder_notice_version: "appointment-service-sms-v1",
+          })
           .eq("id", bookingId)
           .eq("business_id", hold.business_id);
         if (noticeError) throw noticeError;
       }
-      if (
-        bookingId &&
-        metadata.email_marketing_consent === "true" &&
-        metadata.customer_email
-      ) {
+      if (bookingId && hold.email_marketing_consent && hold.customer_email) {
         const { recordBookingEmailMarketingConsent } =
           await import("@/lib/marketing-consent.server");
         await recordBookingEmailMarketingConsent({
           bookingId,
           businessId: hold.business_id,
         });
+      }
+      if (bookingId && hold.booking_source) {
+        try {
+          const { recordBookingSource } =
+            await import("@/lib/booking-attribution.server");
+          await recordBookingSource(
+            bookingId,
+            hold.business_id,
+            hold.booking_source,
+          );
+        } catch (attributionError) {
+          console.error("Could not record booking source", attributionError);
+        }
       }
       const { error: resolutionError } = await (supabaseAdmin as any)
         .from("booking_payment_issues")
