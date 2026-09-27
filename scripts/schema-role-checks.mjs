@@ -149,6 +149,24 @@ export async function checkSchemaRoles(db) {
  same(await viewColumns('public_staff'),['id','business_id','name','role','photo_url','bio','bookable','active'],'Public staff expose no contact or account fields');
  same(await viewColumns('public_businesses'),['id','name','slug','logo_url','description','address','phone','email','website','timezone','instagram','facebook','twitter','tiktok','cover_image_url','welcome_message','booking_instructions','cancellation_policy','terms','faq','show_prices','show_staff','show_durations','emergency_message','emergency_active','custom_domain','favicon_url','browser_title','currency','hide_powered_by','deposit_percent','payment_mode','cancellation_window_hours','page_theme','reminder_hours_before'],'Public business view exposes only published storefront fields');
  same(await viewColumns('public_booking_slots'),['business_id','staff_id','starts_at','ends_at','gap_min','active_after_min','buffer_before_min','buffer_after_min','occupied_starts_at','occupied_ends_at'],'Public booking slots expose no customer or payment fields');
+ await db.exec('reset role');
+ const publicViewPrivileges=await rows(`select table_name,grantee,privilege_type
+  from information_schema.table_privileges
+  where grantee in ('anon','authenticated')
+    and table_schema='public'
+    and table_name in ('blocked_dates_public','public_businesses','public_staff','public_booking_slots')
+  order by table_name,grantee,privilege_type`);
+ same(publicViewPrivileges,[
+  {table_name:'blocked_dates_public',grantee:'anon',privilege_type:'SELECT'},
+  {table_name:'blocked_dates_public',grantee:'authenticated',privilege_type:'SELECT'},
+  {table_name:'public_booking_slots',grantee:'anon',privilege_type:'SELECT'},
+  {table_name:'public_booking_slots',grantee:'authenticated',privilege_type:'SELECT'},
+  {table_name:'public_businesses',grantee:'anon',privilege_type:'SELECT'},
+  {table_name:'public_businesses',grantee:'authenticated',privilege_type:'SELECT'},
+  {table_name:'public_staff',grantee:'anon',privilege_type:'SELECT'},
+  {table_name:'public_staff',grantee:'authenticated',privilege_type:'SELECT'},
+ ],'Public projections are read-only for anonymous and signed-in clients');
+ await login(null);
  await fail(`select join_waitlist('fixture@example.invalid',null)`,/permission denied/);
  await fail(`select create_public_booking('${id(101)}','${id(301)}','${id(201)}','Fixture','','',now()+interval '7 days',now()+interval '7 days 1 hour','',null,null)`,/permission denied/);
  await fail(`select assert_no_booking_conflict('${id(201)}',now()+interval '7 days',now()+interval '7 days 1 hour',null,null,null)`,/permission denied/);
