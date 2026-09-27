@@ -24,9 +24,22 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function exportedFunction(source, name) {
+  const marker = `export const ${name}`;
+  const start = source.indexOf(marker);
+  assert(start >= 0, `Missing exported server function: ${name}`);
+  const next = source.indexOf("export const ", start + marker.length);
+  return source.slice(start, next < 0 ? source.length : next);
+}
+
 const runtimeEnv = await read("src/lib/public-runtime-env.ts");
 const gateway = await read("src/routes/api/supabase/$.ts");
 const browserClient = await read("src/integrations/supabase/client.ts");
+const authMiddleware = await read(
+  "src/integrations/supabase/auth-middleware.ts",
+);
+const verifiedIdentity = await read("src/lib/verified-identity.server.ts");
+const accountFunctions = await read("src/lib/account.functions.ts");
 const securityMigration = await read(
   "supabase/migrations/20260902120000_server_api_security_boundary.sql",
 );
@@ -88,6 +101,24 @@ const reminderRoute = await read("src/routes/api/cron/send-reminders.ts");
 const marketingUnsubscribeRoute = await read(
   "src/routes/api.marketing-unsubscribe.$token.ts",
 );
+const appointmentWaitlistRoute = await read(
+  "src/routes/api/appointment-waitlist.ts",
+);
+const professionalIdentityMigration = await read(
+  "supabase/migrations/20260927006000_lock_professional_link_identity.sql",
+);
+const staffArchiveMigration = await read(
+  "supabase/migrations/20260927007000_archive_staff_and_revoke_access.sql",
+);
+const publicImagePathMigration = await read(
+  "supabase/migrations/20260927008000_bind_public_image_paths_to_folders.sql",
+);
+const bannedSessionMigration = await read(
+  "supabase/migrations/20260927009000_block_banned_sessions_at_database.sql",
+);
+const narrowPortalMigration = await read(
+  "supabase/migrations/20260927010000_narrow_portal_and_shared_calendar_access.sql",
+);
 const staticHeaders = await read(".output/public/_headers");
 
 assert(
@@ -119,6 +150,30 @@ assert(
 assert(
   /storageKey:\s*["']bookzenvo-auth["']/.test(browserClient),
   "The browser auth session must use the stable Bookzenvo storage key.",
+);
+assert(
+  authMiddleware.includes("requireVerifiedIdentity(supabase, token)") &&
+    verifiedIdentity.includes("client.auth.getUser(token)") &&
+    verifiedIdentity.includes("client.auth.getClaims(token)") &&
+    verifiedIdentity.includes("!user.email_confirmed_at") &&
+    verifiedIdentity.includes('data.claims.aal !== "aal2"'),
+  "Authenticated server functions must validate the current account, email and MFA state instead of trusting JWT claims alone.",
+);
+assert(
+  exportedFunction(accountFunctions, "deleteMyAccount").includes(
+    "requireRecentSensitiveSession",
+  ) &&
+    exportedFunction(accountFunctions, "exportMyWorkspace").includes(
+      "requireRecentSensitiveSession",
+    ) &&
+    exportedFunction(
+      dataRightsFunctions,
+      "generateCustomerDataExport",
+    ).includes("requireRecentSensitiveSession") &&
+    exportedFunction(dataRightsFunctions, "eraseCustomer").includes(
+      "requireRecentSensitiveSession",
+    ),
+  "Account closure, workspace/customer exports and customer erasure must require a recent AAL2 session.",
 );
 assert(
   securityMigration.includes("protect_business_system_fields"),
@@ -260,6 +315,15 @@ assert(
   "Anonymous public-data and one-time-link endpoints must have privacy-preserving source quotas.",
 );
 assert(
+  publicStaffRoute.includes(
+    'isTenantAssetPathInFolder(safeValue, businessId, "staff")',
+  ) &&
+    publicGalleryRoute.includes(
+      'isTenantAssetPathInFolder(row.path, businessId, "gallery")',
+    ),
+  "Public image signers must restrict private paths to their tenant and feature folder.",
+);
+assert(
   internalAuth.includes("timingSafeTextEqual") &&
     [calendarSyncRoute, monitoringRoute, reminderRoute].every((route) =>
       route.includes("hasExpectedBearer"),
@@ -269,10 +333,10 @@ assert(
   "Internal bearer secrets must use the shared timing-resistant comparison.",
 );
 assert(
-  monitoringRoute.includes('stalledErasureStorageJobs') &&
+  monitoringRoute.includes("stalledErasureStorageJobs") &&
     monitoringRoute.includes('.eq("status", "pending")') &&
-    monitoringRoute.includes('ERASURE_STORAGE_JOB_MAX_AGE_MS') &&
-    monitoringRoute.includes('!stalledErasureStorageJobCount'),
+    monitoringRoute.includes("ERASURE_STORAGE_JOB_MAX_AGE_MS") &&
+    monitoringRoute.includes("!stalledErasureStorageJobCount"),
   "Production monitoring must alert on customer-photo erasure jobs that remain pending too long.",
 );
 assert(
@@ -284,6 +348,55 @@ assert(
       "GET: async ({ params }) => {\n        try {\n          const changed",
     ),
   "Email link scanners must not unsubscribe customers with an unauthenticated GET request.",
+);
+assert(
+  appointmentWaitlistRoute.includes("trustedAppOrigin()") &&
+    !appointmentWaitlistRoute.includes("new URL(request.url).origin"),
+  "Appointment-waitlist submissions must validate against the configured application origin, never a caller-controlled Host header.",
+);
+assert(
+  professionalIdentityMigration.includes(
+    "revoke insert on table public.salon_professionals from authenticated",
+  ) &&
+    professionalIdentityMigration.includes(
+      "Professional link business identities are immutable",
+    ),
+  "Professional links must only be created through email-bound invitations and must not be retargetable.",
+);
+assert(
+  staffArchiveMigration.includes("update public.staff_memberships") &&
+    staffArchiveMigration.includes("set active = false") &&
+    staffArchiveMigration.includes("update public.staff_account_invitations") &&
+    staffArchiveMigration.includes("set revoked_at = now()"),
+  "Archiving staff must revoke memberships and pending invitations in the same database transaction.",
+);
+assert(
+  publicImagePathMigration.includes("business_media_path_business_gallery") &&
+    publicImagePathMigration.includes(
+      "staff_photo_url_business_staff_folder",
+    ) &&
+    publicImagePathMigration.includes("position('..' in path) = 0") &&
+    publicImagePathMigration.includes("position(chr(92) in photo_url) = 0"),
+  "Database rows used by public image signers must stay inside the tenant's gallery or staff folder.",
+);
+assert(
+  bannedSessionMigration.includes("from auth.users u") &&
+    bannedSessionMigration.includes("u.deleted_at is null") &&
+    bannedSessionMigration.includes(
+      "u.banned_until is null or u.banned_until <= now()",
+    ),
+  "Database access must reject deleted or currently banned accounts even when an old JWT remains valid.",
+);
+assert(
+  narrowPortalMigration.includes("get_portal_bookings()") &&
+    narrowPortalMigration.includes("jsonb_build_object('id',biz.id") &&
+    narrowPortalMigration.includes(
+      "perform public.check_request_assurance()",
+    ) &&
+    !narrowPortalMigration.includes(
+      'create policy "authenticated read permitted bookings"\n  on public.bookings for select to authenticated\n  using (\n    public.is_current_customer',
+    ),
+  "Customer portal access must use narrow RPC projections instead of exposing complete booking and customer rows.",
 );
 
 assert(

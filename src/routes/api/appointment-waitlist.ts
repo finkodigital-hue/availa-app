@@ -7,6 +7,7 @@ import {
 } from "@/lib/public-request-limit.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
 import { salonDateWindow } from "@/lib/appointment-waitlist";
+import { trustedAppOrigin } from "@/lib/app-origin.server";
 
 type Submission = Record<string, unknown>;
 const UUID =
@@ -18,7 +19,10 @@ export const Route = createFileRoute("/api/appointment-waitlist")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (request.headers.get("origin") !== new URL(request.url).origin)
+        // Never trust the incoming Host header as the CSRF origin. Proxies can
+        // forward a caller-controlled Host; the configured public app origin
+        // is the only origin allowed to submit customer contact details.
+        if (request.headers.get("origin") !== trustedAppOrigin())
           return new Response(null, { status: 403 });
         const parsed = await readJsonWithLimit<Submission>(request, 4096);
         if ("error" in parsed) return parsed.error;

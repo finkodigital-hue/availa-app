@@ -36,6 +36,8 @@ The public Companies House record was rechecked on 27 September 2026 and showed 
 
 Copyright normally arises automatically, but that does not prove that BOOKZENVO LTD owns every contribution. Do not add a copyright notice or software licence that claims company ownership until the ownership chain has been reviewed.
 
+Use [`ip-code-and-asset-evidence-register.md`](./ip-code-and-asset-evidence-register.md) for the contributor, asset, open-source, brand and takedown evidence. It extends the tracked-file inventory without treating repository history as proof of ownership.
+
 ## 3. Data protection and solicitor review
 
 | Evidence required | Who must supply or review it | Launch decision |
@@ -52,6 +54,14 @@ Copyright normally arises automatically, but that does not prove that BOOKZENVO 
 | Versioned evidence that owners, staff and invited users accepted the terms and DPA that applied when their account was created or changed. | Product and legal owners. | Acceptance text, version and timestamp can be produced without relying on an email inbox. |
 
 Primary official references: [ICO data protection fee](https://ico.org.uk/for-organisations/data-protection-fee/data-protection-fee/), [ICO privacy information checklist](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/the-right-to-be-informed/checklists/), [ICO controller-processor contract requirements](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/accountability-and-governance/contracts-and-liabilities-between-controllers-and-processors-multi/what-needs-to-be-included-in-the-contract/), [ICO special-category conditions](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/special-category-data/what-are-the-conditions-for-processing/), and [ICO Children's Code introduction](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/childrens-information/childrens-code-guidance-and-resources/introduction-to-the-childrens-code).
+
+Prepared workbooks for completion and adviser review:
+
+- [`controller-processor-and-dpa-workbook.md`](./controller-processor-and-dpa-workbook.md)
+- [`data-protection-records-workbook.md`](./data-protection-records-workbook.md)
+- [`dpia-workbook.md`](./dpia-workbook.md)
+- [`privacy-rights-and-breach-runbook.md`](./privacy-rights-and-breach-runbook.md)
+- [`subprocessor-register-template.md`](./subprocessor-register-template.md)
 
 ## 4. Provider activation evidence
 
@@ -78,6 +88,8 @@ Use fictional or specifically authorised data for rehearsal. Do not copy real cu
 - keyboard-only, 200% and 400% zoom, screen-reader, colour-contrast and mobile orientation checks have been completed;
 - support, incident escalation, fallback diary, status communication, deployment rollback and provider recovery contacts work; and
 - the salon owner, Bookzenvo launch owner and technical reviewer sign the go/no-go record, including any disabled features and expiry date for temporary exceptions.
+
+Use [`support-on-call-and-pilot-operations.md`](./support-on-call-and-pilot-operations.md) for coverage, severity, conference-day handling and drill evidence. Use [`assisted-salon-migration-runbook.md`](./assisted-salon-migration-runbook.md) before offering a done-for-you import. Reconcile all published and spoken promises with [`launch-scope-and-claims-register.md`](./launch-scope-and-claims-register.md).
 
 ## 6. External launch gates
 

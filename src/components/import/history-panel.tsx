@@ -1,5 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users, UserRound, Scissors, CalendarClock, History, Undo2 } from "lucide-react";
+import {
+  Users,
+  UserRound,
+  Scissors,
+  CalendarClock,
+  History,
+  Undo2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -44,17 +51,27 @@ export function ImportHistoryPanel({ businessId }: { businessId: string }) {
       </div>
       <div className="divide-y">
         {batches.map((b) => (
-          <div key={b.id} className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+          <div
+            key={b.id}
+            className="p-3.5 sm:p-4 flex items-center justify-between gap-3"
+          >
             <div className="flex items-center gap-2.5 min-w-0">
               {ENTITY_ICONS[b.entity_type as ImportEntity]}
               <div className="min-w-0">
                 <div className="text-sm font-medium truncate">
-                  {ENTITY_LABELS[b.entity_type as ImportEntity] ?? b.entity_type} ·{" "}
-                  {b.source_filename}
+                  {ENTITY_LABELS[b.entity_type as ImportEntity] ??
+                    b.entity_type}{" "}
+                  · {b.source_filename}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {new Date(b.created_at).toLocaleString()} · {b.imported_count} imported
-                  {b.duplicate_count > 0 ? `, ${b.duplicate_count} duplicates skipped` : ""}
+                  {new Date(b.created_at).toLocaleString()} · {b.imported_count}{" "}
+                  imported
+                  {b.status === "failed" &&
+                    " · Import failed — saved rows kept"}
+                  {b.status === "processing" && " · Not finished"}
+                  {b.duplicate_count > 0
+                    ? `, ${b.duplicate_count} duplicates skipped`
+                    : ""}
                 </div>
               </div>
             </div>

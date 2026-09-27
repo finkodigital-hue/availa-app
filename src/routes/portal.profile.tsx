@@ -66,11 +66,10 @@ function Profile() {
   const update = useMutation({
     mutationFn: async () => {
       if (!rows || rows.length === 0) return;
-      // Update every customer record this email owns across businesses
-      const { error } = await supabase
-        .from("customers")
-        .update({ name: name.trim(), phone: phone.trim() || null })
-        .in("id", rows.map((r) => r.id));
+      const { error } = await (supabase.rpc as any)(
+        "update_portal_customer_profile",
+        { _name: name.trim(), _phone: phone.trim() },
+      );
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Details updated"); qc.invalidateQueries({ queryKey: ["portal-customer-records"] }); },

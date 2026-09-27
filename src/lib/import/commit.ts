@@ -32,7 +32,11 @@ export async function fetchAllRows<T>(
 ): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
-    let q = supabase.from(table).select(columns).eq("business_id", businessId);
+    let q = supabase
+      .from(table)
+      .select(columns)
+      .eq("business_id", businessId)
+      .order("id");
     if (extra) q = extra(q);
     const { data, error } = await q.range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
@@ -104,6 +108,7 @@ async function createBatch(params: {
       file_hash: params.fileHash,
       row_count: params.rowCount,
       created_by: params.createdBy,
+      status: "processing",
     })
     .select()
     .single();
@@ -118,12 +123,36 @@ async function finishBatch(
   const { error } = await supabase
     .from("import_batches")
     .update({
+      status: "completed",
       imported_count: counts.imported,
       skipped_count: counts.skipped,
       duplicate_count: counts.duplicate,
     })
     .eq("id", batchId);
   if (error) throw error;
+}
+
+async function recordFailedBatch(
+  batchId: string,
+  table: "staff" | "customers" | "services" | "bookings",
+) {
+  // Earlier chunks can commit before a later request fails. Keep their count.
+  try {
+    const { count, error: countError } = await supabase
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .eq("import_batch_id", batchId);
+    const { error } = await supabase
+      .from("import_batches")
+      .update({
+        status: "failed",
+        ...(countError ? {} : { imported_count: count ?? 0 }),
+      })
+      .eq("id", batchId);
+    if (error) console.error("Could not record failed import", error.code);
+  } catch {
+    // A lost connection leaves processing, never a false completed result.
+  }
 }
 
 export type CommitResult = {
@@ -153,43 +182,48 @@ export async function commitStaff(params: {
     createdBy: params.createdBy,
   });
 
-  const existing = await fetchAllRows<{ name: string }>(
-    "staff",
-    "name",
-    params.businessId,
-  );
-  const existingNames = new Set(existing.map((s) => normalizeName(s.name)));
+  try {
+    const existing = await fetchAllRows<{ name: string }>(
+      "staff",
+      "name",
+      params.businessId,
+    );
+    const existingNames = new Set(existing.map((s) => normalizeName(s.name)));
 
-  const seen = new Set<string>();
-  let duplicate = 0;
-  const toInsert: Record<string, unknown>[] = [];
-  for (const r of params.rows) {
-    const key = normalizeName(r.name);
-    if (existingNames.has(key) || seen.has(key)) {
-      duplicate++;
-      continue;
+    const seen = new Set<string>();
+    let duplicate = 0;
+    const toInsert: Record<string, unknown>[] = [];
+    for (const r of params.rows) {
+      const key = normalizeName(r.name);
+      if (existingNames.has(key) || seen.has(key)) {
+        duplicate++;
+        continue;
+      }
+      seen.add(key);
+      toInsert.push({
+        business_id: params.businessId,
+        name: r.name,
+        email: r.email,
+        phone: r.phone,
+        role: r.role,
+        active: r.active,
+        bookable: r.active,
+        import_batch_id: batch.id,
+      });
     }
-    seen.add(key);
-    toInsert.push({
-      business_id: params.businessId,
-      name: r.name,
-      email: r.email,
-      phone: r.phone,
-      role: r.role,
-      active: r.active,
-      bookable: r.active,
-      import_batch_id: batch.id,
-    });
-  }
 
-  await insertChunked("staff", toInsert);
-  const result = {
-    imported: toInsert.length,
-    skipped: params.skippedNoName,
-    duplicate,
-  };
-  await finishBatch(batch.id, result);
-  return { batchId: batch.id, ...result };
+    await insertChunked("staff", toInsert);
+    const result = {
+      imported: toInsert.length,
+      skipped: params.skippedNoName,
+      duplicate,
+    };
+    await finishBatch(batch.id, result);
+    return { batchId: batch.id, ...result };
+  } catch (error) {
+    await recordFailedBatch(batch.id, "staff");
+    throw error;
+  }
 }
 
 export async function commitCustomers(params: {
@@ -214,67 +248,72 @@ export async function commitCustomers(params: {
     createdBy: params.createdBy,
   });
 
-  const existing = await fetchAllRows<{
-    email: string | null;
-    phone_normalized: string | null;
-    external_id: string | null;
-  }>("customers", "email, phone_normalized, external_id", params.businessId);
-  const existingEmails = new Set(
-    existing.map((c) => (c.email ?? "").trim().toLowerCase()).filter(Boolean),
-  );
-  const existingPhones = new Set(
-    existing.map((c) => c.phone_normalized).filter(Boolean),
-  );
-  const existingExternalIds = new Set(
-    existing.map((c) => c.external_id).filter(Boolean),
-  );
+  try {
+    const existing = await fetchAllRows<{
+      email: string | null;
+      phone_normalized: string | null;
+      external_id: string | null;
+    }>("customers", "email, phone_normalized, external_id", params.businessId);
+    const existingEmails = new Set(
+      existing.map((c) => (c.email ?? "").trim().toLowerCase()).filter(Boolean),
+    );
+    const existingPhones = new Set(
+      existing.map((c) => c.phone_normalized).filter(Boolean),
+    );
+    const existingExternalIds = new Set(
+      existing.map((c) => c.external_id).filter(Boolean),
+    );
 
-  const seenEmails = new Set<string>();
-  const seenPhones = new Set<string>();
-  const seenExternalIds = new Set<string>();
-  let duplicate = params.mergedWithinFile;
-  const toInsert: Record<string, unknown>[] = [];
-  for (const r of params.rows) {
-    if (
-      existingExternalIds.has(r.externalId) ||
-      seenExternalIds.has(r.externalId)
-    ) {
-      duplicate++;
-      continue;
+    const seenEmails = new Set<string>();
+    const seenPhones = new Set<string>();
+    const seenExternalIds = new Set<string>();
+    let duplicate = params.mergedWithinFile;
+    const toInsert: Record<string, unknown>[] = [];
+    for (const r of params.rows) {
+      if (
+        existingExternalIds.has(r.externalId) ||
+        seenExternalIds.has(r.externalId)
+      ) {
+        duplicate++;
+        continue;
+      }
+      seenExternalIds.add(r.externalId);
+      const emailLower = r.email ? r.email.toLowerCase() : "";
+      const phoneNorm = phoneDigits(r.phone) ?? "";
+      const isDupe =
+        (emailLower &&
+          (existingEmails.has(emailLower) || seenEmails.has(emailLower))) ||
+        (phoneNorm &&
+          (existingPhones.has(phoneNorm) || seenPhones.has(phoneNorm)));
+      if (isDupe) {
+        duplicate++;
+        continue;
+      }
+      if (emailLower) seenEmails.add(emailLower);
+      if (phoneNorm) seenPhones.add(phoneNorm);
+      toInsert.push({
+        business_id: params.businessId,
+        external_id: r.externalId,
+        name: r.name,
+        email: r.email,
+        phone: r.phone,
+        notes: r.notes,
+        import_batch_id: batch.id,
+      });
     }
-    seenExternalIds.add(r.externalId);
-    const emailLower = r.email ? r.email.toLowerCase() : "";
-    const phoneNorm = phoneDigits(r.phone) ?? "";
-    const isDupe =
-      (emailLower &&
-        (existingEmails.has(emailLower) || seenEmails.has(emailLower))) ||
-      (phoneNorm &&
-        (existingPhones.has(phoneNorm) || seenPhones.has(phoneNorm)));
-    if (isDupe) {
-      duplicate++;
-      continue;
-    }
-    if (emailLower) seenEmails.add(emailLower);
-    if (phoneNorm) seenPhones.add(phoneNorm);
-    toInsert.push({
-      business_id: params.businessId,
-      external_id: r.externalId,
-      name: r.name,
-      email: r.email,
-      phone: r.phone,
-      notes: r.notes,
-      import_batch_id: batch.id,
-    });
+
+    await insertChunked("customers", toInsert, params.onProgress);
+    const result = {
+      imported: toInsert.length,
+      skipped: params.skippedNoName,
+      duplicate,
+    };
+    await finishBatch(batch.id, result);
+    return { batchId: batch.id, ...result };
+  } catch (error) {
+    await recordFailedBatch(batch.id, "customers");
+    throw error;
   }
-
-  await insertChunked("customers", toInsert, params.onProgress);
-  const result = {
-    imported: toInsert.length,
-    skipped: params.skippedNoName,
-    duplicate,
-  };
-  await finishBatch(batch.id, result);
-  return { batchId: batch.id, ...result };
 }
 
 export async function commitServices(params: {
@@ -297,59 +336,66 @@ export async function commitServices(params: {
     createdBy: params.createdBy,
   });
 
-  const existing = await fetchAllRows<{
-    name: string;
-    external_id: string | null;
-  }>("services", "name, external_id", params.businessId);
-  const existingNames = new Set(existing.map((s) => normalizeName(s.name)));
-  const existingExternalIds = new Set(
-    existing.map((s) => s.external_id).filter(Boolean),
-  );
+  try {
+    const existing = await fetchAllRows<{
+      name: string;
+      external_id: string | null;
+    }>("services", "name, external_id", params.businessId);
+    const existingNames = new Set(existing.map((s) => normalizeName(s.name)));
+    const existingExternalIds = new Set(
+      existing.map((s) => s.external_id).filter(Boolean),
+    );
 
-  const seen = new Set<string>();
-  const seenExternalIds = new Set<string>();
-  let duplicate = 0;
-  const toInsert: Record<string, unknown>[] = [];
-  for (const r of params.rows) {
-    if (r.externalId && existingExternalIds.has(r.externalId)) {
-      duplicate++;
-      continue;
+    const seen = new Set<string>();
+    const seenExternalIds = new Set<string>();
+    let duplicate = 0;
+    const toInsert: Record<string, unknown>[] = [];
+    for (const r of params.rows) {
+      if (r.externalId && existingExternalIds.has(r.externalId)) {
+        duplicate++;
+        continue;
+      }
+      const key = normalizeName(r.name);
+      if (existingNames.has(key) || seen.has(key)) {
+        duplicate++;
+        continue;
+      }
+      seen.add(key);
+      // Fresha reuses one Service ID across size/pack variants of a service
+      // (e.g. "Hair extensions - 1 pack" / "- 2 packs" / ...) — these are
+      // genuinely distinct services with different names, so keep the row but
+      // only credit the ID to whichever one we saw first, since it can't
+      // uniquely identify either after that.
+      const externalId =
+        r.externalId && !seenExternalIds.has(r.externalId)
+          ? r.externalId
+          : null;
+      if (r.externalId) seenExternalIds.add(r.externalId);
+      toInsert.push({
+        business_id: params.businessId,
+        external_id: externalId,
+        name: r.name,
+        duration_minutes: r.durationMinutes,
+        price_cents: r.priceCents,
+        category: r.category,
+        description: r.description,
+        active: true,
+        import_batch_id: batch.id,
+      });
     }
-    const key = normalizeName(r.name);
-    if (existingNames.has(key) || seen.has(key)) {
-      duplicate++;
-      continue;
-    }
-    seen.add(key);
-    // Fresha reuses one Service ID across size/pack variants of a service
-    // (e.g. "Hair extensions - 1 pack" / "- 2 packs" / ...) — these are
-    // genuinely distinct services with different names, so keep the row but
-    // only credit the ID to whichever one we saw first, since it can't
-    // uniquely identify either after that.
-    const externalId =
-      r.externalId && !seenExternalIds.has(r.externalId) ? r.externalId : null;
-    if (r.externalId) seenExternalIds.add(r.externalId);
-    toInsert.push({
-      business_id: params.businessId,
-      external_id: externalId,
-      name: r.name,
-      duration_minutes: r.durationMinutes,
-      price_cents: r.priceCents,
-      category: r.category,
-      description: r.description,
-      active: true,
-      import_batch_id: batch.id,
-    });
+
+    await insertChunked("services", toInsert);
+    const result = {
+      imported: toInsert.length,
+      skipped: params.skippedNoName,
+      duplicate,
+    };
+    await finishBatch(batch.id, result);
+    return { batchId: batch.id, ...result };
+  } catch (error) {
+    await recordFailedBatch(batch.id, "services");
+    throw error;
   }
-
-  await insertChunked("services", toInsert);
-  const result = {
-    imported: toInsert.length,
-    skipped: params.skippedNoName,
-    duplicate,
-  };
-  await finishBatch(batch.id, result);
-  return { batchId: batch.id, ...result };
 }
 
 export type ApptCommitResult = CommitResult & {
@@ -409,195 +455,215 @@ export async function commitAppointments(params: {
     createdBy: params.createdBy,
   });
 
-  const [staffRows, custRows, svcRows, bookingRows] = await Promise.all([
-    fetchAllRows<{ id: string; name: string }>(
-      "staff",
-      "id, name",
-      params.businessId,
-    ),
-    fetchAllRows<{ id: string; name: string }>(
-      "customers",
-      "id, name",
-      params.businessId,
-    ),
-    fetchAllRows<{ id: string; name: string }>(
-      "services",
-      "id, name",
-      params.businessId,
-    ),
-    fetchAllRows<{ external_id: string | null }>(
-      "bookings",
-      "external_id",
-      params.businessId,
-      (q) => q.not("external_id", "is", null),
-    ),
-  ]);
+  try {
+    const [staffRows, custRows, svcRows, bookingRows] = await Promise.all([
+      fetchAllRows<{ id: string; name: string }>(
+        "staff",
+        "id, name",
+        params.businessId,
+      ),
+      fetchAllRows<{ id: string; name: string }>(
+        "customers",
+        "id, name",
+        params.businessId,
+      ),
+      fetchAllRows<{ id: string; name: string }>(
+        "services",
+        "id, name",
+        params.businessId,
+      ),
+      fetchAllRows<{ external_id: string | null }>(
+        "bookings",
+        "external_id",
+        params.businessId,
+        (q) => q.not("external_id", "is", null),
+      ),
+    ]);
 
-  const staffIndex = new NameIndex(staffRows);
-  const custIndex = new NameIndex(custRows);
-  const serviceByName = new Map<string, { id: string; name: string }>();
-  for (const s of svcRows) {
-    const key = normalizeName(s.name);
-    if (!serviceByName.has(key)) serviceByName.set(key, s);
-  }
-  const existingExternalIds = new Set(
-    bookingRows.map((b) => b.external_id).filter(Boolean),
-  );
-
-  // Placeholder staff for team members mentioned in appointment history but
-  // absent from the staff file — inactive by default so they never appear as
-  // bookable for new appointments; the owner can review/rename them later.
-  const newPlaceholderStaff: {
-    name: string;
-    import_batch_id: string;
-    business_id: string;
-    active: boolean;
-    bookable: boolean;
-    role: string;
-  }[] = [];
-  const placeholderNamesSeen = new Set<string>();
-  for (const r of params.rows) {
-    const key = normalizeName(r.staffName);
-    if (staffIndex.lookupFirst(r.staffName)) continue;
-    if (placeholderNamesSeen.has(key)) continue;
-    placeholderNamesSeen.add(key);
-    newPlaceholderStaff.push({
-      business_id: params.businessId,
-      name: r.staffName,
-      role: "Imported from Fresha",
-      active: false,
-      bookable: false,
-      import_batch_id: batch.id,
-    });
-  }
-  if (newPlaceholderStaff.length > 0) {
-    const { data: created, error: createErr } = await supabase
-      .from("staff")
-      .insert(newPlaceholderStaff)
-      .select("id, name");
-    if (createErr) throw createErr;
-    for (const s of created ?? []) staffIndex.add(s);
-  }
-
-  // Every non-custom booking requires a service_id (DB constraint) — a
-  // service name that's since been renamed or retired in Fresha still needs
-  // a real row to point to. Auto-create one (inactive, so it never appears
-  // as choosable for new bookings) the first time each such name is seen,
-  // using that occurrence's price and duration as a best guess.
-  const newPlaceholderServices: {
-    business_id: string;
-    name: string;
-    duration_minutes: number;
-    price_cents: number;
-    active: boolean;
-    import_batch_id: string;
-  }[] = [];
-  const placeholderServiceNamesSeen = new Set<string>();
-  for (const r of params.rows) {
-    const key = normalizeName(r.serviceName);
-    if (serviceByName.has(key) || placeholderServiceNamesSeen.has(key))
-      continue;
-    placeholderServiceNamesSeen.add(key);
-    const durationMinutes =
-      r.startsAt && r.endsAt
-        ? Math.max(
-            5,
-            Math.round((r.endsAt.getTime() - r.startsAt.getTime()) / 60000),
-          )
-        : 60;
-    newPlaceholderServices.push({
-      business_id: params.businessId,
-      name: r.serviceName,
-      duration_minutes: durationMinutes,
-      price_cents: r.priceCents,
-      active: false,
-      import_batch_id: batch.id,
-    });
-  }
-  if (newPlaceholderServices.length > 0) {
-    const { data: created, error: createErr } = await supabase
-      .from("services")
-      .insert(newPlaceholderServices)
-      .select("id, name");
-    if (createErr) throw createErr;
-    for (const s of created ?? []) serviceByName.set(normalizeName(s.name), s);
-  }
-
-  let duplicate = 0;
-  let unparsedDates = 0;
-  let linkedToCustomer = 0;
-  let linkedToService = 0;
-  const seenExternalIds = new Set<string>();
-  const toInsert: Record<string, unknown>[] = [];
-  for (const r of params.rows) {
-    if (
-      existingExternalIds.has(r.externalId) ||
-      seenExternalIds.has(r.externalId)
-    ) {
-      duplicate++;
-      continue;
+    const staffIndex = new NameIndex(staffRows);
+    const custIndex = new NameIndex(custRows);
+    const serviceByName = new Map<string, { id: string; name: string }>();
+    for (const s of svcRows) {
+      const key = normalizeName(s.name);
+      if (!serviceByName.has(key)) serviceByName.set(key, s);
     }
-    seenExternalIds.add(r.externalId);
-    if (!r.startsAt || !r.endsAt) {
-      unparsedDates++;
-      continue;
-    }
-    const staff = staffIndex.lookupFirst(r.staffName);
-    if (!staff) {
-      unparsedDates++;
-      continue; // should be unreachable — placeholders cover every name
-    }
-    const service = serviceByName.get(normalizeName(r.serviceName));
-    if (!service) {
-      unparsedDates++;
-      continue; // should be unreachable — placeholders cover every name
-    }
-    const customer = custIndex.lookupUnique(r.clientName);
-    if (customer) linkedToCustomer++;
-    linkedToService++;
+    const existingExternalIds = new Set(
+      bookingRows.map((b) => b.external_id).filter(Boolean),
+    );
 
-    const isPaid = r.status === "completed";
-    toInsert.push({
-      business_id: params.businessId,
-      external_id: r.externalId,
-      staff_id: staff.id,
-      service_id: service.id,
-      customer_id: customer?.id ?? null,
-      customer_name: r.clientName,
-      starts_at: r.startsAt.toISOString(),
-      ends_at: r.endsAt.toISOString(),
-      status: r.status,
-      price_cents: r.priceCents,
-      amount_due_cents: r.priceCents,
-      amount_paid_cents: isPaid ? r.priceCents : 0,
-      payment_status: isPaid ? "paid" : "unpaid",
-      source: "manual",
-      notify_customer: false,
-      // Pre-claimed so the confirmation-email sweep backstop can never pick
-      // these up — created_at isn't a reliable guard here (it reflects
-      // import time, not the historical appointment date), so we suppress
-      // the confirmation outright rather than relying on a time window.
-      confirmation_sent_at: new Date().toISOString(),
-      created_at: r.createdAt ? r.createdAt.toISOString() : undefined,
-      import_batch_id: batch.id,
-    });
+    // Placeholder staff for team members mentioned in appointment history but
+    // absent from the staff file — inactive by default so they never appear as
+    // bookable for new appointments; the owner can review/rename them later.
+    const newPlaceholderStaff: {
+      name: string;
+      import_batch_id: string;
+      business_id: string;
+      active: boolean;
+      bookable: boolean;
+      role: string;
+    }[] = [];
+    const placeholderNamesSeen = new Set<string>();
+    for (const r of params.rows) {
+      const key = normalizeName(r.staffName);
+      if (staffIndex.lookupFirst(r.staffName)) continue;
+      if (placeholderNamesSeen.has(key)) continue;
+      placeholderNamesSeen.add(key);
+      newPlaceholderStaff.push({
+        business_id: params.businessId,
+        name: r.staffName,
+        role: "Imported from Fresha",
+        active: false,
+        bookable: false,
+        import_batch_id: batch.id,
+      });
+    }
+    if (newPlaceholderStaff.length > 0) {
+      const { data: created, error: createErr } = await supabase
+        .from("staff")
+        .insert(newPlaceholderStaff)
+        .select("id, name");
+      if (createErr) throw createErr;
+      for (const s of created ?? []) staffIndex.add(s);
+    }
+
+    // Every non-custom booking requires a service_id (DB constraint) — a
+    // service name that's since been renamed or retired in Fresha still needs
+    // a real row to point to. Auto-create one (inactive, so it never appears
+    // as choosable for new bookings) the first time each such name is seen,
+    // using that occurrence's price and duration as a best guess.
+    const newPlaceholderServices: {
+      business_id: string;
+      name: string;
+      duration_minutes: number;
+      price_cents: number;
+      active: boolean;
+      import_batch_id: string;
+    }[] = [];
+    const placeholderServiceNamesSeen = new Set<string>();
+    for (const r of params.rows) {
+      const key = normalizeName(r.serviceName);
+      if (serviceByName.has(key) || placeholderServiceNamesSeen.has(key))
+        continue;
+      placeholderServiceNamesSeen.add(key);
+      const durationMinutes =
+        r.startsAt && r.endsAt
+          ? Math.max(
+              5,
+              Math.round((r.endsAt.getTime() - r.startsAt.getTime()) / 60000),
+            )
+          : 60;
+      newPlaceholderServices.push({
+        business_id: params.businessId,
+        name: r.serviceName,
+        duration_minutes: durationMinutes,
+        price_cents: r.priceCents,
+        active: false,
+        import_batch_id: batch.id,
+      });
+    }
+    if (newPlaceholderServices.length > 0) {
+      const { data: created, error: createErr } = await supabase
+        .from("services")
+        .insert(newPlaceholderServices)
+        .select("id, name");
+      if (createErr) throw createErr;
+      for (const s of created ?? [])
+        serviceByName.set(normalizeName(s.name), s);
+    }
+
+    let duplicate = 0;
+    let unparsedDates = 0;
+    let linkedToCustomer = 0;
+    let linkedToService = 0;
+    const seenExternalIds = new Set<string>();
+    const toInsert: Record<string, unknown>[] = [];
+    for (const r of params.rows) {
+      if (
+        existingExternalIds.has(r.externalId) ||
+        seenExternalIds.has(r.externalId)
+      ) {
+        duplicate++;
+        continue;
+      }
+      seenExternalIds.add(r.externalId);
+      if (!r.startsAt || !r.endsAt) {
+        unparsedDates++;
+        continue;
+      }
+      const staff = staffIndex.lookupFirst(r.staffName);
+      if (!staff) {
+        unparsedDates++;
+        continue; // should be unreachable — placeholders cover every name
+      }
+      const service = serviceByName.get(normalizeName(r.serviceName));
+      if (!service) {
+        unparsedDates++;
+        continue; // should be unreachable — placeholders cover every name
+      }
+      const customer = custIndex.lookupUnique(r.clientName);
+      if (customer) linkedToCustomer++;
+      linkedToService++;
+
+      const isPaid = r.status === "completed";
+      // Fresha exports the amount already collected as `Prepayments`. It can
+      // repeat a group payment on more than one service row, so never credit
+      // one appointment with more than its own price.
+      const importedPrepayment = Math.min(
+        r.priceCents,
+        Math.max(0, r.prepaymentCents ?? 0),
+      );
+      const amountPaid = isPaid ? r.priceCents : importedPrepayment;
+      const paymentStatus =
+        isPaid || (r.priceCents > 0 && amountPaid >= r.priceCents)
+          ? "paid"
+          : amountPaid > 0
+            ? "deposit_paid"
+            : "unpaid";
+      toInsert.push({
+        business_id: params.businessId,
+        external_id: r.externalId,
+        staff_id: staff.id,
+        service_id: service.id,
+        customer_id: customer?.id ?? null,
+        customer_name: r.clientName,
+        starts_at: r.startsAt.toISOString(),
+        ends_at: r.endsAt.toISOString(),
+        status: r.status,
+        price_cents: r.priceCents,
+        amount_due_cents: Math.max(0, r.priceCents - amountPaid),
+        amount_paid_cents: amountPaid,
+        payment_status: paymentStatus,
+        source: "manual",
+        notify_customer: false,
+        // Pre-claimed so the confirmation-email sweep backstop can never pick
+        // these up — created_at isn't a reliable guard here (it reflects
+        // import time, not the historical appointment date), so we suppress
+        // the confirmation outright rather than relying on a time window.
+        confirmation_sent_at: new Date().toISOString(),
+        created_at: r.createdAt ? r.createdAt.toISOString() : undefined,
+        import_batch_id: batch.id,
+      });
+    }
+
+    await insertChunked("bookings", toInsert, params.onProgress);
+    const result = {
+      imported: toInsert.length,
+      skipped: params.skippedInvalid + unparsedDates,
+      duplicate,
+    };
+    await finishBatch(batch.id, result);
+    return {
+      batchId: batch.id,
+      ...result,
+      placeholderStaffCreated: newPlaceholderStaff.length,
+      placeholderServicesCreated: newPlaceholderServices.length,
+      linkedToCustomer,
+      linkedToService,
+    };
+  } catch (error) {
+    await recordFailedBatch(batch.id, "bookings");
+    throw error;
   }
-
-  await insertChunked("bookings", toInsert, params.onProgress);
-  const result = {
-    imported: toInsert.length,
-    skipped: params.skippedInvalid + unparsedDates,
-    duplicate,
-  };
-  await finishBatch(batch.id, result);
-  return {
-    batchId: batch.id,
-    ...result,
-    placeholderStaffCreated: newPlaceholderStaff.length,
-    placeholderServicesCreated: newPlaceholderServices.length,
-    linkedToCustomer,
-    linkedToService,
-  };
 }
 
 export async function listImportBatches(businessId: string) {

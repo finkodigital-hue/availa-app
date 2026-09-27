@@ -113,6 +113,15 @@ const cancelled = exported.reconcileUpcomingAppointments(
 );
 assert.equal(cancelled.sourceCount, 0);
 
+const duplicatedIdentity = exported.reconcileUpcomingAppointments(
+  [sourceRow, { ...sourceRow, clientName: "Another client" }],
+  [savedRow],
+  now,
+);
+assert.equal(duplicatedIdentity.sourceCount, 2);
+assert.equal(duplicatedIdentity.matched, 1);
+assert.equal(duplicatedIdentity.issues[0].reason, "duplicate");
+
 console.log(
-  "Import reconciliation checks passed: matching, missing, changed, past and cancelled bookings.",
+  "Import reconciliation checks passed: matching, missing, changed, duplicate, past and cancelled bookings.",
 );

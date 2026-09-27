@@ -147,18 +147,19 @@ function StaffPage() {
       return;
     }
     if ((allResult.count ?? 0) > 0) {
-      // Keep the row for historical booking joins, but remove it from every
-      // owner/customer surface. This avoids the bookings_staff_id_fkey error.
-      const { error } = await supabase
-        .from("staff")
-        .update({ archived_at: now, active: false, bookable: false })
-        .eq("id", s.id);
+      const { error } = await (supabase.rpc as any)("archive_staff_member", {
+        _staff_id: s.id,
+        _reassign_future_to: null,
+      });
       if (error) return toast.error("Could not remove this person. Their booking history is unchanged.");
       toast.success("Staff removed · booking history preserved");
       qc.invalidateQueries({ queryKey: ["staff"] });
       return;
     }
-    const { error } = await supabase.from("staff").delete().eq("id", s.id);
+    const { error } = await (supabase.rpc as any)("archive_staff_member", {
+      _staff_id: s.id,
+      _reassign_future_to: null,
+    });
     if (error) return toast.error("Could not remove this person. Try again.");
     toast.success("Staff removed");
     qc.invalidateQueries({ queryKey: ["staff"] });
@@ -447,17 +448,18 @@ function ReassignDialog({ info, allStaff, onClose, onDone }: {
     if (!info) return;
     setBusy(true);
     try {
-      if (target) {
+      if (alsoDelete) {
+        const { error } = await (supabase.rpc as any)("archive_staff_member", {
+          _staff_id: info.staff.id,
+          _reassign_future_to: target || null,
+        });
+        if (error) throw error;
+        toast.success(target ? "Bookings reassigned · staff removed" : "Staff removed");
+      } else if (target) {
         const { error } = await supabase.rpc("reassign_staff_bookings", {
           _from_staff: info.staff.id, _to_staff: target, _only_future: true,
         });
         if (error) throw error;
-      }
-      if (alsoDelete) {
-        // Disable rather than hard-delete — preserves historic booking joins.
-        const { error } = await supabase.from("staff").update({ archived_at: new Date().toISOString(), active: false, bookable: false }).eq("id", info.staff.id);
-        if (error) throw error;
-        toast.success(target ? "Bookings reassigned · staff removed" : "Staff removed");
       } else {
         toast.success(`Reassigned ${info.futureCount} booking${info.futureCount === 1 ? "" : "s"}`);
       }

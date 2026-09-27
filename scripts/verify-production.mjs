@@ -1,6 +1,7 @@
 const productionUrl =
   process.env.BOOKZENVO_PRODUCTION_URL || "https://bookzenvo.com";
 const REQUEST_TIMEOUT_MS = 10_000;
+const expectedRevision = process.env.EXPECTED_REVISION?.trim();
 
 async function checkedFetch(url) {
   return fetch(url, {
@@ -8,6 +9,23 @@ async function checkedFetch(url) {
     headers: { "user-agent": "Bookzenvo-production-check" },
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
+}
+
+if (expectedRevision) {
+  const deploymentResponse = await checkedFetch(
+    new URL(`/deployment.json?t=${Date.now()}`, productionUrl),
+  );
+  const deployment = await deploymentResponse.json().catch(() => null);
+  if (
+    !deploymentResponse.ok ||
+    typeof deployment?.revision !== "string" ||
+    deployment.revision !== expectedRevision
+  ) {
+    console.error(
+      `Production revision mismatch: expected ${expectedRevision}, received ${deployment?.revision ?? "missing"}.`,
+    );
+    process.exit(1);
+  }
 }
 
 const response = await checkedFetch(productionUrl);

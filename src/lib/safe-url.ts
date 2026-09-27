@@ -33,7 +33,9 @@ function hasControlCharacter(value: string): boolean {
 
 function isRootRelative(value: string): boolean {
   // Protocol-relative URLs (`//host/path`) are external URLs in disguise.
-  return value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\");
+  return (
+    value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\")
+  );
 }
 
 /** Links for public CTAs and contact actions. */
@@ -47,7 +49,8 @@ export function safePublicHref(value: unknown): string | null {
 
   try {
     const parsed = new URL(result);
-    if (!["https:", "http:", "mailto:", "tel:"].includes(parsed.protocol)) return null;
+    if (!["https:", "http:", "mailto:", "tel:"].includes(parsed.protocol))
+      return null;
     return result;
   } catch {
     return null;
@@ -62,20 +65,40 @@ export function safeImageSrc(value: unknown): string | null {
 
   try {
     const parsed = new URL(result);
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? result : null;
+    return parsed.protocol === "https:" || parsed.protocol === "http:"
+      ? result
+      : null;
   } catch {
     return null;
   }
 }
 
 /** Relative private-storage paths must stay inside one business folder. */
-export function isTenantAssetPath(value: unknown, businessId: string): value is string {
-  if (typeof value !== "string" || !value.startsWith(`${businessId}/`)) return false;
+export function isTenantAssetPath(
+  value: unknown,
+  businessId: string,
+): value is string {
+  if (typeof value !== "string" || !value.startsWith(`${businessId}/`))
+    return false;
   const segments = value.split("/");
   return (
     segments.length >= 2 &&
-    segments.every((segment) => segment.length > 0 && segment !== "." && segment !== "..") &&
+    segments.every(
+      (segment) => segment.length > 0 && segment !== "." && segment !== "..",
+    ) &&
     !value.includes("\\") &&
     !hasControlCharacter(value)
+  );
+}
+
+/** Relative private-storage paths must also stay inside the expected feature folder. */
+export function isTenantAssetPathInFolder(
+  value: unknown,
+  businessId: string,
+  folder: "gallery" | "staff",
+): value is string {
+  return (
+    isTenantAssetPath(value, businessId) &&
+    value.startsWith(`${businessId}/${folder}/`)
   );
 }

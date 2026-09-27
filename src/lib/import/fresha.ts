@@ -154,6 +154,7 @@ export type ParsedApptRow = {
   startsAt: Date | null;
   endsAt: Date | null;
   priceCents: number;
+  prepaymentCents: number;
   createdAt: Date | null;
 };
 
@@ -173,6 +174,7 @@ export function mapApptRow(
   const dur = parseDuration(r.duration);
   const times = resolveApptTimes(scheduled, slot, explicitEnd, dur.minutes);
   const price = parsePrice(r.price);
+  const prepayment = parsePrice(r.prepayment);
   // Keep no-ID bookings distinct within a file and stable across re-uploads,
   // so the owner can verify the same export later without a false "missing".
   const externalId =
@@ -190,6 +192,7 @@ export function mapApptRow(
     startsAt: times?.startsAt ?? null,
     endsAt: times?.endsAt ?? null,
     priceCents: price.cents,
+    prepaymentCents: Math.max(0, prepayment.cents),
     createdAt: parseGenericDateTime(r.createdDate),
   };
 }

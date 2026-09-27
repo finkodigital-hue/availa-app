@@ -1,7 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { CreditCard, RefreshCcw, Undo2, CheckCircle2, XCircle } from "lucide-react";
+import {
+  CreditCard,
+  RefreshCcw,
+  Undo2,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
@@ -11,12 +17,21 @@ import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { fmtMoney as formatMoney } from "@/lib/format";
 import { refundBooking } from "@/lib/stripe-connect.functions";
 import { displayedBookingCollection } from "@/lib/report-values";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { BookingBalanceCheckout } from "@/components/booking-balance-checkout";
+import { DailyTakings } from "@/components/daily-takings";
+import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/takings";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_authenticated/payments")({
   component: PaymentsPage,
@@ -37,22 +52,66 @@ const TOTALS_BATCH_SIZE = 500;
 const collectedFor = displayedBookingCollection;
 
 function PaymentsPage() {
+  const { data: biz, isLoading, isError } = useMyBusiness();
+  return (
+    <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
+      <PageHeader
+        eyebrow="Money"
+        title="Payments"
+        subtitle="Daily takings, payment methods and booking balances."
+      />
+      {isLoading ? (
+        <Skeleton className="h-40 rounded-xl" />
+      ) : isError || !biz ? (
+        <p role="alert">Couldn’t load your business. Refresh to try again.</p>
+      ) : (
+        <Tabs defaultValue="takings">
+          <TabsList aria-label="Payment views">
+            <TabsTrigger value="takings">Daily takings</TabsTrigger>
+            <TabsTrigger value="bookings">Booking payments</TabsTrigger>
+          </TabsList>
+          <TabsContent value="takings">
+            <DailyTakings
+              businessId={biz.id}
+              currency={biz.currency ?? "GBP"}
+              timezone={biz.timezone || "Europe/London"}
+            />
+          </TabsContent>
+          <TabsContent value="bookings">
+            <BookingPayments />
+          </TabsContent>
+        </Tabs>
+      )}
+    </div>
+  );
+}
+
+function BookingPayments() {
   const { data: biz } = useMyBusiness();
-  const fmtMoney = (cents: number) => formatMoney(cents, biz?.currency ?? "GBP");
+  const fmtMoney = (cents: number) =>
+    formatMoney(cents, biz?.currency ?? "GBP");
   const bid = biz?.id;
   const qc = useQueryClient();
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<any | null>(null);
   const [refundConfirming, setRefundConfirming] = useState(false);
   const [refundSubmitting, setRefundSubmitting] = useState(false);
-  const [refundResults, setRefundResults] = useState<Array<{ paymentIntentId: string; amountCents: number; ok: boolean; error?: string }> | null>(null);
+  const [refundResults, setRefundResults] = useState<Array<{
+    paymentIntentId: string;
+    amountCents: number;
+    ok: boolean;
+    error?: string;
+  }> | null>(null);
 
   const refundReviews = useQuery({
     queryKey: ["stripe-refund-reviews", bid],
     enabled: !!bid,
     queryFn: async () => {
-      const { count, error } = await (supabase as any).from("stripe_refund_reviews")
-        .select("stripe_refund_id", { count: "exact", head: true }).eq("business_id", bid).eq("manual_review", true);
+      const { count, error } = await (supabase as any)
+        .from("stripe_refund_reviews")
+        .select("stripe_refund_id", { count: "exact", head: true })
+        .eq("business_id", bid)
+        .eq("manual_review", true);
       if (error) throw error;
       return count ?? 0;
     },
@@ -64,18 +123,28 @@ function PaymentsPage() {
     queryFn: async () => {
       const { data, count, error } = await supabase
         .from("bookings")
-        .select("id, customer_name, price_cents, payment_status, amount_paid_cents, amount_refunded_cents, starts_at, services(name)", { count: "exact" })
+        .select(
+          "id, customer_name, price_cents, payment_status, amount_paid_cents, amount_refunded_cents, starts_at, services(name)",
+          { count: "exact" },
+        )
         .eq("business_id", bid!)
         .neq("status", "cancelled")
         .order("starts_at", { ascending: false })
         .order("id", { ascending: true })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) throw error;
-      return { rows: (data ?? []).map((b) => ({ ...b, collected: collectedFor(b) })), count: count ?? 0 };
+      return {
+        rows: (data ?? []).map((b) => ({ ...b, collected: collectedFor(b) })),
+        count: count ?? 0,
+      };
     },
   });
 
-  const { data: totals, isLoading: totalsLoading, isError: totalsError } = useQuery({
+  const {
+    data: totals,
+    isLoading: totalsLoading,
+    isError: totalsError,
+  } = useQuery({
     queryKey: ["payments-totals", bid],
     enabled: !!bid,
     queryFn: async () => {
@@ -91,7 +160,9 @@ function PaymentsPage() {
       for (let offset = 0; ; offset += TOTALS_BATCH_SIZE) {
         const { data: batch, error } = await supabase
           .from("bookings")
-          .select("id, starts_at, price_cents, payment_status, amount_paid_cents, amount_refunded_cents")
+          .select(
+            "id, starts_at, price_cents, payment_status, amount_paid_cents, amount_refunded_cents",
+          )
           .eq("business_id", bid!)
           .neq("status", "cancelled")
           .order("id", { ascending: true })
@@ -99,8 +170,13 @@ function PaymentsPage() {
         if (error) throw error;
         for (const booking of batch ?? []) {
           const paid = collectedFor(booking);
-          if (booking.starts_at >= monthStart.toISOString() && booking.starts_at < nextMonth.toISOString()) collected += paid;
-          if (booking.payment_status !== "refunded") outstanding += Math.max(0, (booking.price_cents ?? 0) - paid);
+          if (
+            booking.starts_at >= monthStart.toISOString() &&
+            booking.starts_at < nextMonth.toISOString()
+          )
+            collected += paid;
+          if (booking.payment_status !== "refunded")
+            outstanding += Math.max(0, (booking.price_cents ?? 0) - paid);
         }
         if (!batch || batch.length < TOTALS_BATCH_SIZE) break;
       }
@@ -109,7 +185,8 @@ function PaymentsPage() {
   });
   const totalPages = Math.ceil((data?.count ?? 0) / PAGE_SIZE);
   useEffect(() => {
-    if (data && page > 0 && page >= totalPages) setPage(Math.max(0, totalPages - 1));
+    if (data && page > 0 && page >= totalPages)
+      setPage(Math.max(0, totalPages - 1));
   }, [data, page, totalPages]);
 
   const closeDetail = () => {
@@ -122,30 +199,50 @@ function PaymentsPage() {
     queryKey: ["booking-payment-history", bid, selected?.id],
     enabled: !!bid && !!selected,
     queryFn: async () => {
-      const { data, error } = await supabase.from("payments")
-        .select("id, payment_method, type, status, amount_cents, currency, created_at, stripe_payment_intent_id")
-        .eq("business_id", bid!).eq("booking_id", selected.id)
+      const { data, error } = await supabase
+        .from("payments")
+        .select(
+          "id, payment_method, type, status, amount_cents, currency, created_at, stripe_payment_intent_id",
+        )
+        .eq("business_id", bid!)
+        .eq("booking_id", selected.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data;
     },
   });
-  const refundableAmount = Math.max(0, (history.data ?? []).reduce((sum, payment) =>
-    payment.status === "succeeded" && payment.stripe_payment_intent_id
-      ? sum + (payment.type === "charge" ? payment.amount_cents : payment.type === "refund" ? -payment.amount_cents : 0)
-      : sum, 0));
+  const refundableAmount = Math.max(
+    0,
+    (history.data ?? []).reduce(
+      (sum, payment) =>
+        payment.status === "succeeded" && payment.stripe_payment_intent_id
+          ? sum +
+            (payment.type === "charge"
+              ? payment.amount_cents
+              : payment.type === "refund"
+                ? -payment.amount_cents
+                : 0)
+          : sum,
+      0,
+    ),
+  );
 
   const submitRefund = async () => {
     if (!selected) return;
     setRefundSubmitting(true);
     try {
       const headers = await getServerFnAuthHeaders();
-      const { results } = await refundBooking({ data: { bookingId: selected.id }, headers });
+      const { results } = await refundBooking({
+        data: { bookingId: selected.id },
+        headers,
+      });
       qc.invalidateQueries({ queryKey: ["payments", bid] });
       qc.invalidateQueries({ queryKey: ["payments-totals", bid] });
       qc.invalidateQueries({ queryKey: ["booking-payment-history", bid] });
       if (results.every((r) => r.ok)) {
-        toast.success(`Refund submitted for ${fmtMoney(results.reduce((a, r) => a + r.amountCents, 0))}.`);
+        toast.success(
+          `Refund submitted for ${fmtMoney(results.reduce((a, r) => a + r.amountCents, 0))}.`,
+        );
         closeDetail();
       } else {
         // Partial or full failure — keep the dialog open and show exactly what
@@ -161,22 +258,66 @@ function PaymentsPage() {
   };
 
   return (
-    <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
-      <PageHeader eyebrow="Money" title="Payments" subtitle="See what has been paid and what is still owed." />
-      {refundReviews.isError && <p role="alert" className="mb-4 rounded-xl border p-4 text-sm">Refund review status could not be loaded. Check Stripe before retrying a refund.</p>}
-      {(refundReviews.data ?? 0) > 0 && <p role="alert" className="mb-4 rounded-xl border border-amber-500 p-4 text-sm">{refundReviews.data} refund(s) need review. Stripe reported a failure, cancellation or required action. Check their current status and reconcile the payment with support before refunding again or restoring gift credit.</p>}
+    <div className="pt-4">
+      {refundReviews.isError && (
+        <p role="alert" className="mb-4 rounded-xl border p-4 text-sm">
+          Refund review status could not be loaded. Check Stripe before retrying
+          a refund.
+        </p>
+      )}
+      {(refundReviews.data ?? 0) > 0 && (
+        <p
+          role="alert"
+          className="mb-4 rounded-xl border border-amber-500 p-4 text-sm"
+        >
+          {refundReviews.data} refund(s) need review. Stripe reported a failure,
+          cancellation or required action. Check their current status and
+          reconcile the payment with support before refunding again or restoring
+          gift credit.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-        <StatCard accent loading={totalsLoading} icon={CreditCard} label="Paid value of this month's visits" hint="Based on appointment dates, not payment settlement dates." value={totalsError ? "Unavailable" : fmtMoney(totals?.collected ?? 0)} />
-        <StatCard loading={totalsLoading} icon={RefreshCcw} label="Outstanding" value={totalsError ? "Unavailable" : fmtMoney(totals?.outstanding ?? 0)} />
+        <StatCard
+          accent
+          loading={totalsLoading}
+          icon={CreditCard}
+          label="Paid value of this month's visits"
+          hint="Based on appointment dates, not payment settlement dates."
+          value={totalsError ? "Unavailable" : fmtMoney(totals?.collected ?? 0)}
+        />
+        <StatCard
+          loading={totalsLoading}
+          icon={RefreshCcw}
+          label="Outstanding"
+          value={
+            totalsError ? "Unavailable" : fmtMoney(totals?.outstanding ?? 0)
+          }
+        />
       </div>
 
       {isLoading ? (
         <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 rounded-xl" />
+          ))}
         </div>
       ) : isError ? (
-        <EmptyState icon={CreditCard} title="Payments did not load" description="We couldn't show this list right now. Try again before taking any payment action." action={<Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["payments", bid] })}>Try again</Button>} />
+        <EmptyState
+          icon={CreditCard}
+          title="Payments did not load"
+          description="We couldn't show this list right now. Try again before taking any payment action."
+          action={
+            <Button
+              variant="outline"
+              onClick={() =>
+                qc.invalidateQueries({ queryKey: ["payments", bid] })
+              }
+            >
+              Try again
+            </Button>
+          }
+        />
       ) : (data?.rows.length ?? 0) === 0 ? (
         <EmptyState
           icon={CreditCard}
@@ -191,20 +332,43 @@ function PaymentsPage() {
               role="button"
               tabIndex={0}
               aria-label={`Open payment details for ${p.customer_name}`}
-              onClick={() => { setSelected(p); setRefundConfirming(false); setRefundResults(null); }}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(p); setRefundConfirming(false); setRefundResults(null); } }}
+              onClick={() => {
+                setSelected(p);
+                setRefundConfirming(false);
+                setRefundResults(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelected(p);
+                  setRefundConfirming(false);
+                  setRefundResults(null);
+                }
+              }}
               className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary cursor-pointer"
             >
               <div className="min-w-0">
                 <div className="font-medium truncate">{p.customer_name}</div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {p.services?.name} · {new Date(p.starts_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                  {p.services?.name} ·{" "}
+                  {new Date(p.starts_at).toLocaleDateString([], {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </div>
               </div>
               <Badge
-                variant={p.payment_status === "paid" ? "default" : p.payment_status === "refunded" ? "secondary" : "outline"}
+                variant={
+                  p.payment_status === "paid"
+                    ? "default"
+                    : p.payment_status === "refunded"
+                      ? "secondary"
+                      : "outline"
+                }
               >
-                {PAYMENT_STATUS_LABEL[p.payment_status ?? "unpaid"] ?? p.payment_status}
+                {PAYMENT_STATUS_LABEL[p.payment_status ?? "unpaid"] ??
+                  p.payment_status}
               </Badge>
               <div className="text-sm font-medium tabular-nums w-24 text-right">
                 {fmtMoney(p.collected ?? 0)}
@@ -216,10 +380,28 @@ function PaymentsPage() {
 
       {!isLoading && !isError && (data?.count ?? 0) > 0 && (
         <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
-          <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, data!.count)} of {data!.count} bookings</span>
+          <span>
+            Showing {page * PAGE_SIZE + 1}–
+            {Math.min((page + 1) * PAGE_SIZE, data!.count)} of {data!.count}{" "}
+            bookings
+          </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === 0}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page + 1 >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
           </div>
         </div>
       )}
@@ -227,128 +409,245 @@ function PaymentsPage() {
       <Dialog open={!!selected} onOpenChange={(o) => !o && closeDetail()}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="truncate">{selected?.customer_name}</DialogTitle>
+            <DialogTitle className="truncate">
+              {selected?.customer_name}
+            </DialogTitle>
           </DialogHeader>
           {selected && (
             <>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Service</span>
-                <span className="font-medium">{selected.services?.name ?? "—"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Date</span>
-                <span className="font-medium">
-                  {new Date(selected.starts_at).toLocaleString([], { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Status</span>
-                <Badge
-                  variant={selected.payment_status === "paid" ? "default" : selected.payment_status === "refunded" ? "secondary" : "outline"}
-                >
-                  {PAYMENT_STATUS_LABEL[selected.payment_status ?? "unpaid"] ?? selected.payment_status}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Service price</span>
-                <span className="font-medium tabular-nums">{fmtMoney(selected.price_cents ?? 0)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Collected</span>
-                <span className="font-medium tabular-nums">{fmtMoney(selected.collected ?? 0)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Remaining</span>
-                <span className="font-medium tabular-nums">{fmtMoney(Math.max(0, (selected.price_cents ?? 0) - (selected.collected ?? 0)))}</span>
-              </div>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Service</span>
+                  <span className="font-medium">
+                    {selected.services?.name ?? "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Date</span>
+                  <span className="font-medium">
+                    {new Date(selected.starts_at).toLocaleString([], {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge
+                    variant={
+                      selected.payment_status === "paid"
+                        ? "default"
+                        : selected.payment_status === "refunded"
+                          ? "secondary"
+                          : "outline"
+                    }
+                  >
+                    {PAYMENT_STATUS_LABEL[
+                      selected.payment_status ?? "unpaid"
+                    ] ?? selected.payment_status}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Service price</span>
+                  <span className="font-medium tabular-nums">
+                    {fmtMoney(selected.price_cents ?? 0)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Collected</span>
+                  <span className="font-medium tabular-nums">
+                    {fmtMoney(selected.collected ?? 0)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Remaining</span>
+                  <span className="font-medium tabular-nums">
+                    {fmtMoney(
+                      Math.max(
+                        0,
+                        (selected.price_cents ?? 0) - (selected.collected ?? 0),
+                      ),
+                    )}
+                  </span>
+                </div>
 
-              <div className="space-y-2 border-t pt-3">
-                <p className="font-medium">Payment history</p>
-                {history.isLoading && <p className="text-muted-foreground">Loading payments…</p>}
-                {history.isError && <p role="alert">Could not load payment history. Refresh before refunding.</p>}
-                {history.data?.map((payment) => <div key={payment.id} className="flex justify-between gap-3">
-                  <span>{payment.payment_method === "cash" ? "Cash" : "Card"} · {payment.type === "refund" ? "Refund" : payment.type === "failure" ? "Failed" : "Payment"}<span className="block text-xs text-muted-foreground">{new Date(payment.created_at).toLocaleString("en-GB")} · {payment.status}</span></span>
-                  <span className="tabular-nums">{formatMoney(payment.amount_cents, payment.currency)}</span>
-                </div>)}
-                {history.data?.some((payment) => payment.payment_method === "cash") && <p className="text-xs text-muted-foreground">Cash payments are recorded here. Online refunds return card payments only.</p>}
-              </div>
-              {![
-                "paid",
-                "refunded",
-                "partially_refunded",
-              ].includes(selected.payment_status) &&
-                selected.price_cents > (selected.amount_paid_cents ?? 0) &&
-                !refundConfirming &&
-                !refundResults && (
-                <BookingBalanceCheckout key={selected.id} bookingId={selected.id} businessId={bid!} amountDueCents={selected.price_cents - (selected.amount_paid_cents ?? 0)} currency={biz?.currency ?? "GBP"} onUpdated={(updated) => {
-                  setSelected((current: any) => current?.id === updated.id ? { ...current, ...updated, collected: updated.amount_paid_cents } : current);
-                }} />
-              )}
-              {refundResults ? (
-                <div className="pt-3 border-t space-y-2">
-                  <div className="text-sm font-medium">
-                    {refundResults.every((r) => r.ok) ? "Refund submitted" : "Some refund requests need attention"}
-                  </div>
-                  <div className="space-y-1.5">
-                    {refundResults.map((r) => (
-                      <div key={r.paymentIntentId} className="flex items-start gap-2 text-sm">
-                        {r.ok ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                        )}
-                        <div className="min-w-0">
-                          <div className="tabular-nums">{fmtMoney(r.amountCents)} {r.ok ? "submitted" : "not accepted"}</div>
-                          {!r.ok && r.error && <div className="text-xs text-muted-foreground">{r.error}</div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {!refundResults.every((r) => r.ok) && (
+                <div className="space-y-2 border-t pt-3">
+                  <p className="font-medium">Payment history</p>
+                  {history.isLoading && (
+                    <p className="text-muted-foreground">Loading payments…</p>
+                  )}
+                  {history.isError && (
+                    <p role="alert">
+                      Could not load payment history. Refresh before refunding.
+                    </p>
+                  )}
+                  {history.data?.map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="flex justify-between gap-3"
+                    >
+                      <span>
+                        {PAYMENT_METHODS[
+                          payment.payment_method as PaymentMethod
+                        ] ?? "Unclassified"}{" "}
+                        ·{" "}
+                        {payment.type === "refund"
+                          ? "Refund"
+                          : payment.type === "failure"
+                            ? "Failed"
+                            : "Payment"}
+                        <span className="block text-xs text-muted-foreground">
+                          {new Date(payment.created_at).toLocaleString("en-GB")}{" "}
+                          · {payment.status}
+                        </span>
+                      </span>
+                      <span className="tabular-nums">
+                        {formatMoney(payment.amount_cents, payment.currency)}
+                      </span>
+                    </div>
+                  ))}
+                  {history.data?.some(
+                    (payment) => payment.payment_method === "cash",
+                  ) && (
                     <p className="text-xs text-muted-foreground">
-                      The amount that failed hasn't been touched — nothing was double-charged or double-refunded. Retry to finish the rest.
+                      Cash payments are recorded here. Online refunds return
+                      card payments only.
                     </p>
                   )}
                 </div>
-              ) : refundConfirming ? (
-                <div className="pt-3 border-t space-y-3">
-                  <p className="text-sm">
-                    Refund <span className="font-medium tabular-nums">{fmtMoney(refundableAmount)}</span> to{" "}
-                    <span className="font-medium">{selected.customer_name}</span>? It goes back to their original payment
-                    card. This does not cancel the booking or refund cash payments.
-                  </p>
-                </div>
-              ) : null}
-            </div>
-            <DialogFooter className="flex-wrap gap-2">
-              {refundResults ? (
-                <>
-                  {!refundResults.every((r) => r.ok) && (
+                {!["paid", "refunded", "partially_refunded"].includes(
+                  selected.payment_status,
+                ) &&
+                  selected.price_cents > (selected.amount_paid_cents ?? 0) &&
+                  !refundConfirming &&
+                  !refundResults && (
+                    <BookingBalanceCheckout
+                      key={selected.id}
+                      bookingId={selected.id}
+                      businessId={bid!}
+                      amountDueCents={
+                        selected.price_cents - (selected.amount_paid_cents ?? 0)
+                      }
+                      currency={biz?.currency ?? "GBP"}
+                      onUpdated={(updated) => {
+                        setSelected((current: any) =>
+                          current?.id === updated.id
+                            ? {
+                                ...current,
+                                ...updated,
+                                collected: updated.amount_paid_cents,
+                              }
+                            : current,
+                        );
+                      }}
+                    />
+                  )}
+                {refundResults ? (
+                  <div className="pt-3 border-t space-y-2">
+                    <div className="text-sm font-medium">
+                      {refundResults.every((r) => r.ok)
+                        ? "Refund submitted"
+                        : "Some refund requests need attention"}
+                    </div>
+                    <div className="space-y-1.5">
+                      {refundResults.map((r) => (
+                        <div
+                          key={r.paymentIntentId}
+                          className="flex items-start gap-2 text-sm"
+                        >
+                          {r.ok ? (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="tabular-nums">
+                              {fmtMoney(r.amountCents)}{" "}
+                              {r.ok ? "submitted" : "not accepted"}
+                            </div>
+                            {!r.ok && r.error && (
+                              <div className="text-xs text-muted-foreground">
+                                {r.error}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {!refundResults.every((r) => r.ok) && (
+                      <p className="text-xs text-muted-foreground">
+                        The amount that failed hasn't been touched — nothing was
+                        double-charged or double-refunded. Retry to finish the
+                        rest.
+                      </p>
+                    )}
+                  </div>
+                ) : refundConfirming ? (
+                  <div className="pt-3 border-t space-y-3">
+                    <p className="text-sm">
+                      Refund{" "}
+                      <span className="font-medium tabular-nums">
+                        {fmtMoney(refundableAmount)}
+                      </span>{" "}
+                      to{" "}
+                      <span className="font-medium">
+                        {selected.customer_name}
+                      </span>
+                      ? It goes back to their original payment card. This does
+                      not cancel the booking or refund cash payments.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+              <DialogFooter className="flex-wrap gap-2">
+                {refundResults ? (
+                  <>
+                    {!refundResults.every((r) => r.ok) && (
+                      <Button
+                        onClick={submitRefund}
+                        disabled={refundSubmitting}
+                      >
+                        {refundSubmitting ? "Retrying…" : "Retry failed refund"}
+                      </Button>
+                    )}
+                    <Button variant="ghost" onClick={closeDetail}>
+                      Close
+                    </Button>
+                  </>
+                ) : refundConfirming ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setRefundConfirming(false)}
+                      disabled={refundSubmitting}
+                    >
+                      Cancel
+                    </Button>
                     <Button onClick={submitRefund} disabled={refundSubmitting}>
-                      {refundSubmitting ? "Retrying…" : "Retry failed refund"}
+                      {refundSubmitting
+                        ? "Refunding…"
+                        : `Refund ${fmtMoney(refundableAmount)}`}
                     </Button>
-                  )}
-                  <Button variant="ghost" onClick={closeDetail}>Close</Button>
-                </>
-              ) : refundConfirming ? (
-                <>
-                  <Button variant="ghost" onClick={() => setRefundConfirming(false)} disabled={refundSubmitting}>Cancel</Button>
-                  <Button onClick={submitRefund} disabled={refundSubmitting}>
-                    {refundSubmitting ? "Refunding…" : `Refund ${fmtMoney(refundableAmount)}`}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {!history.isError && refundableAmount > 0 && (
-                    <Button variant="outline" onClick={() => setRefundConfirming(true)}>
-                      <Undo2 className="h-4 w-4 mr-1.5" /> Refund
+                  </>
+                ) : (
+                  <>
+                    {!history.isError && refundableAmount > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setRefundConfirming(true)}
+                      >
+                        <Undo2 className="h-4 w-4 mr-1.5" /> Refund
+                      </Button>
+                    )}
+                    <Button variant="ghost" onClick={closeDetail}>
+                      Close
                     </Button>
-                  )}
-                  <Button variant="ghost" onClick={closeDetail}>Close</Button>
-                </>
-              )}
-            </DialogFooter>
+                  </>
+                )}
+              </DialogFooter>
             </>
           )}
         </DialogContent>

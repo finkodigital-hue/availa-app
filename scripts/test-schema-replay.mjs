@@ -9,6 +9,9 @@ import { checkGiftPurchases } from './schema-gift-purchase-checks.mjs';
 import { checkRefundReviews } from './schema-refund-review-checks.mjs';
 import { checkFunctionAccess } from './schema-function-access-checks.mjs';
 import { checkCashPayments } from './schema-cash-payment-checks.mjs';
+import { checkDailyTakings } from './schema-daily-takings-checks.mjs';
+import { checkStaffRemoval } from './schema-staff-removal-checks.mjs';
+import { checkAppointmentImports } from './schema-import-checks.mjs';
 
 // Replay ALL application migrations. Supabase-owned Auth/Storage objects and
 // external cron/HTTP/Vault services are local fixtures, not a full Supabase stack.
@@ -21,7 +24,7 @@ create function auth.jwt() returns jsonb language sql stable as $$select coalesc
 create function auth.uid() returns uuid language sql stable as $$select nullif(auth.jwt()->>'sub','')::uuid$$;
 create function auth.role() returns text language sql stable as $$select auth.jwt()->>'role'$$;
 create function auth.email() returns text language sql stable as $$select auth.jwt()->>'email'$$;
-create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,raw_user_meta_data jsonb default '{}');
+create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,banned_until timestamptz,deleted_at timestamptz,raw_user_meta_data jsonb default '{}');
 create table auth.mfa_factors(id uuid primary key,user_id uuid references auth.users(id),status text);
 create table storage.buckets(id text primary key,name text,public boolean default false,file_size_limit bigint,allowed_mime_types text[]);
 create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text,owner uuid,owner_id text,metadata jsonb);
@@ -130,5 +133,8 @@ try {
  await checkRefundReviews(db);
  await checkFunctionAccess(db);
  await checkCashPayments(db);
+ await checkStaffRemoval(db);
+ await checkDailyTakings(db);
+ await checkAppointmentImports(db);
 } catch(error) {console.error(error);process.exitCode=1;}
 finally {await db.close();}

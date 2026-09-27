@@ -1,6 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { netCollected } from "@/lib/report-values";
+import {
+  aggregateDailyTakings,
+  type DailyTakingsCurrency,
+  type PaymentLedgerRow,
+} from "@/lib/report-values";
+import { businessDayRange } from "@/lib/business-day";
+import { businessDay, type DailyTakings } from "@/lib/takings";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
 // Shared booking-aggregation logic used by both the Dashboard's "Performance"
 // section and the Reports page's date-range reports — kept in one place so
@@ -75,8 +83,60 @@ export async function fetchBookingsInRange(
 ): Promise<ReportBooking[]> {
   return getBookingsInRange({
     data: { start: start.toISOString(), end: end.toISOString() },
+    headers: await getServerFnAuthHeaders(),
   });
 }
+
+export type DailyTakingsReport = {
+  start: string;
+  end: string;
+  timeZone: string;
+  currencies: DailyTakingsCurrency[];
+};
+
+export const getDailyTakings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<DailyTakingsReport> => {
+    const { requireWorkspacePermission } =
+      await import("@/lib/workspace-permission.server");
+    const businessId = await requireWorkspacePermission(
+      context,
+      "reports.read",
+    );
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { data: business, error: businessError } = await supabaseAdmin
+      .from("businesses")
+      .select("timezone,currency")
+      .eq("id", businessId)
+      .single();
+    if (businessError) throw businessError;
+    const timeZone = business.timezone || "Europe/London";
+    const { start, end } = businessDayRange(new Date(), timeZone);
+    const { data, error } = await supabaseAdmin.rpc(
+      "get_daily_takings" as never,
+      {
+        p_business_id: businessId,
+        p_day: businessDay(timeZone),
+      } as never,
+    );
+    if (error) throw error;
+    return {
+      start: start.toISOString(),
+      end: end.toISOString(),
+      timeZone,
+      currencies: aggregateDailyTakings(
+        (data as unknown as DailyTakings).rows.map((row) => ({
+          type: row.type,
+          status: "succeeded",
+          amount_cents: row.amountCents,
+          currency: row.currency,
+          payment_method: row.method,
+        })) as PaymentLedgerRow[],
+        business.currency || "GBP",
+      ),
+    };
+  });
 
 export type StaffPerformance = {
   staffId: string;
