@@ -85,10 +85,10 @@ try {
     height: 512,
     body: `<main><div>B<span>.</span></div></main>`,
     style: `
-      body { background: #142126; }
+      body { background: #242424; }
       main { align-items: center; display: flex; height: 100%; justify-content: center; width: 100%; }
-      div { color: #fffaf0; font-family: Georgia, serif; font-size: 355px; line-height: 1; margin: -35px 0 0 -5px; }
-      span { color: #c49b43; font-size: 165px; }
+      div { color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 365px; font-weight: 680; letter-spacing: -.065em; line-height: 1; margin: -34px 20px 0 0; }
+      span { color: #c9ad75; font-size: .68em; margin-left: .03em; }
     `,
   });
 } finally {
