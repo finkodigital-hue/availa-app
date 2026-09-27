@@ -889,29 +889,7 @@ export function PublicBookingPage({
       customerReviews.length
     : 0;
   const galleryLimit = Math.max(1, gallerySection.itemLimit);
-  const fallbackGalleryPhotos =
-    biz.slug === "testshop"
-      ? [
-          {
-            id: "testshop-main",
-            kind: "interior",
-            url: "/storefront/testshop-salon-main.jpg",
-          },
-          {
-            id: "testshop-wash",
-            kind: "interior",
-            url: "/storefront/testshop-salon-wash.jpg",
-          },
-          {
-            id: "testshop-reception",
-            kind: "interior",
-            url: "/storefront/testshop-salon-reception.jpg",
-          },
-        ]
-      : [];
-  const heroPhotos = (
-    galleryPhotos.length > 0 ? galleryPhotos : fallbackGalleryPhotos
-  ).slice(0, galleryLimit);
+  const heroPhotos = galleryPhotos.slice(0, galleryLimit);
   const displayAddress =
     biz.address ||
     (biz.slug === "testshop" ? "16 Inglis Street, Inverness" : null);
