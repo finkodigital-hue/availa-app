@@ -11,7 +11,11 @@ import { toast } from "sonner";
 // TOTP two-factor auth, built entirely on Supabase Auth's client-side MFA
 // API (auth.mfa.*) — no service-role key, dashboard toggle, or migration
 // needed. Works the moment this ships.
-type Factor = { id: string; status: "verified" | "unverified"; friendly_name?: string | null };
+type Factor = {
+  id: string;
+  status: "verified" | "unverified";
+  friendly_name?: string | null;
+};
 
 export function TwoFactorSettings() {
   const [loading, setLoading] = useState(true);
@@ -47,13 +51,17 @@ export function TwoFactorSettings() {
       for (const f of stale) {
         await supabase.auth.mfa.unenroll({ factorId: f.id });
       }
-      const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp" });
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: "totp",
+      });
       if (error) throw error;
       setPendingFactorId(data.id);
       setQr(data.totp.qr_code);
       setSecret(data.totp.secret);
-    } catch (e: any) {
-      toast.error(e.message ?? "Could not start enrollment");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not start enrollment",
+      );
       setEnrolling(false);
     }
   };
@@ -71,10 +79,12 @@ export function TwoFactorSettings() {
   };
 
   const confirmEnroll = async () => {
-    if (!pendingFactorId || code.trim().length < 6) return toast.error("Enter the 6-digit code");
+    if (!pendingFactorId || code.trim().length < 6)
+      return toast.error("Enter the 6-digit code");
     setVerifying(true);
     try {
-      const { data: challenge, error: challengeErr } = await supabase.auth.mfa.challenge({ factorId: pendingFactorId });
+      const { data: challenge, error: challengeErr } =
+        await supabase.auth.mfa.challenge({ factorId: pendingFactorId });
       if (challengeErr) throw challengeErr;
       const { error: verifyErr } = await supabase.auth.mfa.verify({
         factorId: pendingFactorId,
@@ -89,8 +99,8 @@ export function TwoFactorSettings() {
       setPendingFactorId(null);
       setCode("");
       refresh();
-    } catch (e: any) {
-      toast.error(e.message ?? "Invalid code");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Invalid code");
     } finally {
       setVerifying(false);
     }
@@ -123,19 +133,29 @@ export function TwoFactorSettings() {
           </span>
           <div>
             <p className="text-sm font-medium flex items-center gap-2">
-              Two-factor authentication <Badge variant="secondary" className="text-[10px]">Enabled</Badge>
+              Two-factor authentication{" "}
+              <Badge variant="secondary" className="text-[10px]">
+                Enabled
+              </Badge>
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              You'll be asked for a code from your authenticator app when signing in.
+              You'll be asked for a code from your authenticator app when
+              signing in.
             </p>
           </div>
         </div>
         <ConfirmDialog
-          trigger={<Button type="button" variant="outline" size="sm"><ShieldOff className="h-3.5 w-3.5 mr-1.5" /> Disable</Button>}
+          trigger={
+            <Button type="button" variant="outline" size="sm">
+              <ShieldOff className="h-3.5 w-3.5 mr-1.5" /> Disable
+            </Button>
+          }
           title="Disable two-factor authentication?"
           description="Your account will only require a password to sign in."
           confirmLabel="Disable"
-          onConfirm={async () => { await remove(verified.id); }}
+          onConfirm={async () => {
+            await remove(verified.id);
+          }}
         />
       </div>
     );
@@ -147,39 +167,74 @@ export function TwoFactorSettings() {
         <div>
           <p className="text-sm font-medium">Scan this QR code</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Use an authenticator app (Google Authenticator, 1Password, Authy) to scan the code below.
+            Use an authenticator app (Google Authenticator, 1Password, Authy) to
+            scan the code below.
           </p>
         </div>
         <div className="flex justify-center">
-          <div
-            className="h-44 w-44 rounded-xl border bg-white p-2 [&_svg]:h-full [&_svg]:w-full"
-            dangerouslySetInnerHTML={{ __html: qr }}
-          />
+          <div className="grid h-44 w-44 max-w-full place-items-center overflow-hidden rounded-xl border bg-white p-2">
+            <img
+              src={qr}
+              alt="QR code for adding Bookzenvo to an authenticator app"
+              className="block h-full w-full object-contain"
+            />
+          </div>
         </div>
         {secret && (
           <div>
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Can't scan? Enter manually</Label>
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Can't scan? Enter manually
+            </Label>
             <div className="mt-1.5 flex items-center gap-2">
-              <code className="flex-1 text-xs bg-secondary/60 rounded-lg px-3 py-2 tracking-wider truncate">{secret}</code>
-              <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={copySecret} aria-label="Copy secret">
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              <code className="min-w-0 flex-1 break-all rounded-lg bg-secondary/60 px-3 py-2 text-xs tracking-wider">
+                {secret}
+              </code>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={copySecret}
+                aria-label="Copy secret"
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
               </Button>
             </div>
           </div>
         )}
         <div>
-          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">6-digit code</Label>
+          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            6-digit code
+          </Label>
           <Input
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(e) =>
+              setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
             placeholder="123456"
             inputMode="numeric"
             className="mt-1.5 h-10 tracking-[0.3em] text-center font-mono"
           />
         </div>
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={cancelEnroll}>Cancel</Button>
-          <Button type="button" onClick={confirmEnroll} disabled={verifying || code.length < 6}>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={cancelEnroll}
+            className="w-full sm:w-auto"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={confirmEnroll}
+            disabled={verifying || code.length < 6}
+            className="w-full sm:w-auto"
+          >
             {verifying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Verify & enable
           </Button>
@@ -196,7 +251,9 @@ export function TwoFactorSettings() {
         </span>
         <div>
           <p className="text-sm font-medium">Two-factor authentication</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Add an authenticator-app code on top of your password.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Add an authenticator-app code on top of your password.
+          </p>
         </div>
       </div>
       <Button type="button" onClick={startEnroll} disabled={enrolling}>
