@@ -203,6 +203,9 @@ export async function createSimulatedReader(
       body: body({
         display_name: `Bookzenvo test · ${label}`,
         "address[country]": "GB",
+        "address[line1]": "1 Test Street",
+        "address[city]": "Inverness",
+        "address[postal_code]": "IV1 1AA",
         "metadata[business_id]": businessId,
       }),
     },
