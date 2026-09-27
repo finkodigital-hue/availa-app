@@ -54,6 +54,7 @@ export function BookingBalanceCheckout({
   const [readers, setReaders] = useState<TerminalReaderSummary[]>([]);
   const [readerId, setReaderId] = useState("");
   const [canCreateSimulator, setCanCreateSimulator] = useState(false);
+  const [readerSetupMessage, setReaderSetupMessage] = useState("");
   const [terminalBusy, setTerminalBusy] = useState(false);
   const [terminalMessage, setTerminalMessage] = useState("");
   const [attemptId, setAttemptId] = useState<string | null>(null);
@@ -70,8 +71,14 @@ export function BookingBalanceCheckout({
         setReaders(result.readers);
         setReaderId((current) => current || result.readers[0]?.id || "");
         setCanCreateSimulator(result.canCreateSimulator);
-      } catch {
-        // Reader controls stay hidden until Stripe Terminal is configured.
+        setReaderSetupMessage("");
+      } catch (error) {
+        if (!active) return;
+        setReaderSetupMessage(
+          error instanceof Error
+            ? error.message
+            : "Finish Stripe setup before adding a card reader.",
+        );
       }
     })();
     return () => {
@@ -313,73 +320,86 @@ export function BookingBalanceCheckout({
         Choose cash, the salon card reader, or a secure payment link on the
         customer&apos;s phone.
       </p>
-      {isOwner && (readers.length > 0 || canCreateSimulator) && (
-        <div className="space-y-2 rounded-lg border bg-background p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {readers.length > 0 && (
-              <select
-                aria-label="Card reader"
-                className="h-9 min-w-48 rounded-md border bg-background px-3 text-sm"
-                value={readerId}
-                disabled={terminalBusy || Boolean(attemptId)}
-                onChange={(event) => setReaderId(event.target.value)}
-              >
-                {readers.map((reader) => (
-                  <option key={reader.id} value={reader.id}>
-                    {reader.label} · {reader.status}
-                  </option>
-                ))}
-              </select>
-            )}
-            {readers.length > 0 && !attemptId && (
-              <Button
-                type="button"
-                disabled={terminalBusy || disabled || amountDueCents <= 0}
-                onClick={() => void takeReaderPayment()}
-              >
-                <Radio className="mr-1.5 h-4 w-4" />
-                {terminalBusy ? "Starting reader…" : "Take card payment"}
-              </Button>
-            )}
-            {attemptId && (
-              <>
+      {isOwner &&
+        (readers.length > 0 || canCreateSimulator || readerSetupMessage) && (
+          <div className="space-y-2 rounded-lg border bg-background p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {readers.length > 0 && (
+                <select
+                  aria-label="Card reader"
+                  className="h-9 min-w-48 rounded-md border bg-background px-3 text-sm"
+                  value={readerId}
+                  disabled={terminalBusy || Boolean(attemptId)}
+                  onChange={(event) => setReaderId(event.target.value)}
+                >
+                  {readers.map((reader) => (
+                    <option key={reader.id} value={reader.id}>
+                      {reader.label} · {reader.status}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {readers.length > 0 && !attemptId && (
                 <Button
                   type="button"
-                  disabled={terminalBusy}
-                  onClick={() => void checkReaderPayment()}
+                  disabled={terminalBusy || disabled || amountDueCents <= 0}
+                  onClick={() => void takeReaderPayment()}
                 >
-                  <RefreshCw className="mr-1.5 h-4 w-4" />
-                  {terminalBusy ? "Checking…" : "Check reader"}
+                  <Radio className="mr-1.5 h-4 w-4" />
+                  {terminalBusy ? "Starting reader…" : "Take card payment"}
                 </Button>
+              )}
+              {attemptId && (
+                <>
+                  <Button
+                    type="button"
+                    disabled={terminalBusy}
+                    onClick={() => void checkReaderPayment()}
+                  >
+                    <RefreshCw className="mr-1.5 h-4 w-4" />
+                    {terminalBusy ? "Checking…" : "Check reader"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={terminalBusy}
+                    onClick={() => void cancelReaderPayment()}
+                  >
+                    Cancel reader
+                  </Button>
+                </>
+              )}
+              {readers.length === 0 && canCreateSimulator && (
                 <Button
                   type="button"
                   variant="outline"
                   disabled={terminalBusy}
-                  onClick={() => void cancelReaderPayment()}
+                  onClick={() => void addTestReader()}
                 >
-                  Cancel reader
+                  <Radio className="mr-1.5 h-4 w-4" />
+                  {terminalBusy ? "Creating…" : "Create free test reader"}
                 </Button>
-              </>
+              )}
+              {readers.length === 0 &&
+                !canCreateSimulator &&
+                readerSetupMessage && (
+                  <Button asChild type="button" variant="outline">
+                    <a href="/settings?tab=payments">Finish Stripe setup</a>
+                  </Button>
+                )}
+            </div>
+            {readerSetupMessage && readers.length === 0 && (
+              <p role="status" className="text-sm text-muted-foreground">
+                {readerSetupMessage}
+              </p>
             )}
-            {readers.length === 0 && canCreateSimulator && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={terminalBusy}
-                onClick={() => void addTestReader()}
-              >
-                <Radio className="mr-1.5 h-4 w-4" />
-                {terminalBusy ? "Creating…" : "Create free test reader"}
-              </Button>
+            {terminalMessage && (
+              <p role="status" className="text-sm">
+                {terminalMessage}
+              </p>
             )}
           </div>
-          {terminalMessage && (
-            <p role="status" className="text-sm">
-              {terminalMessage}
-            </p>
-          )}
-        </div>
-      )}
+        )}
       <div className="flex flex-wrap gap-2">
         {isOwner && (
           <Button
