@@ -106,7 +106,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "creating-your-account",
     categorySlug: "getting-started",
     title: "Creating your account",
-    summary: "Public account creation is paused while Bookzenvo prepares launch.",
+    summary:
+      "Public account creation is paused while Bookzenvo prepares launch.",
     blocks: [
       {
         type: "p",
@@ -702,7 +703,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "calendar-files-and-provider-sync",
     categorySlug: "calendar-bookings",
     title: "Calendar files and provider sync",
-    summary: "What works now and what remains closed until provider activation.",
+    summary:
+      "What works now and what remains closed until provider activation.",
     blocks: [
       {
         type: "p",
@@ -717,7 +719,15 @@ export const HELP_ARTICLES: HelpArticle[] = [
         text: "When direct provider sync is enabled, Bookzenvo will push Bookzenvo appointment changes out to the connected calendar. It will not import arbitrary provider events or treat them as salon-wide blocked time. A continuously updating Apple-compatible subscription feed is also deferred.",
       },
     ],
-    keywords: ["calendar", "ics", "google", "microsoft", "outlook", "apple", "sync"],
+    keywords: [
+      "calendar",
+      "ics",
+      "google",
+      "microsoft",
+      "outlook",
+      "apple",
+      "sync",
+    ],
   },
 
   // ---------------------------------------------------------------------
@@ -786,25 +796,59 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "creating-consultation-forms",
     categorySlug: "consultations",
     title: "Creating a consultation or patch-test form",
-    summary: "Build a reusable form and assign it to the services that need it.",
+    summary:
+      "Build a reusable form and assign it to the services that need it.",
     blocks: [
-      { type: "p", text: "Open Consultations and choose New form. Start with a salon consultation or patch-test form, then add only the questions genuinely needed to provide the selected services safely." },
-      { type: "p", text: "Choose how long the completed form remains current and select every service that requires it. Matching bookings automatically receive a form request." },
-      { type: "note", text: "Health and allergy answers may be special-category personal data. The starter wording is not legal advice: have your final questions, consent wording, privacy information and retention policy reviewed for your salon before launch." },
+      {
+        type: "p",
+        text: "Open Consultations and choose New form. Start with a salon consultation or patch-test form, then add only the questions genuinely needed to provide the selected services safely.",
+      },
+      {
+        type: "p",
+        text: "Choose how long the completed form remains current and select every service that requires it. Matching bookings automatically receive a form request.",
+      },
+      {
+        type: "note",
+        text: "Health and allergy answers may be special-category personal data. The starter wording is not legal advice: have your final questions, consent wording, privacy information and retention policy reviewed for your salon before launch.",
+      },
     ],
-    keywords: ["consultation", "patch test", "allergy", "consent", "signature", "forms"],
+    keywords: [
+      "consultation",
+      "patch test",
+      "allergy",
+      "consent",
+      "signature",
+      "forms",
+    ],
   },
   {
     slug: "client-signing-consultations",
     categorySlug: "consultations",
     title: "Completing and signing a form in the salon",
-    summary: "Record the salon test, then let the client review and sign on your device.",
+    summary:
+      "Record the salon test, then let the client review and sign on your device.",
     blocks: [
-      { type: "p", text: "Open the client record from Consultations on the salon’s computer or tablet. For a patch test, staff record the completed test details first. Then hand the device to the client so they can review the information, answer the required questions, actively agree to the separate health-data statement and draw their own signature." },
-      { type: "p", text: "Bookzenvo saves an exact snapshot of the questions, answers and consent wording they signed. Editing the template later creates a new version and never changes older signed evidence." },
-      { type: "p", text: "If a client later withdraws consent, they should contact the salon. Open the signed record and choose Withdraw consent so it is clearly marked for staff review." },
+      {
+        type: "p",
+        text: "Open the client record from Consultations on the salon’s computer or tablet. For a patch test, staff record the completed test details first. Then hand the device to the client so they can review the information, answer the required questions, actively agree to the separate health-data statement and draw their own signature.",
+      },
+      {
+        type: "p",
+        text: "Bookzenvo saves an exact snapshot of the questions, answers and consent wording they signed. Editing the template later creates a new version and never changes older signed evidence.",
+      },
+      {
+        type: "p",
+        text: "If a client later withdraws consent, they should contact the salon. Open the signed record and choose Withdraw consent so it is clearly marked for staff review.",
+      },
     ],
-    keywords: ["in salon", "sign", "withdraw", "expired", "health data", "tablet"],
+    keywords: [
+      "in salon",
+      "sign",
+      "withdraw",
+      "expired",
+      "health data",
+      "tablet",
+    ],
   },
   {
     slug: "recording-patch-test-results",
@@ -812,8 +856,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Recording a patch-test result",
     summary: "Record the salon's observed result before the client signs.",
     blocks: [
-      { type: "p", text: "Open the client record from Consultations. Record whether the completed patch test passed, caused a reaction or requires a retest, together with the test date, staff member and private notes. Save those details, then let the client review and sign the finished record on the same device." },
-      { type: "note", text: "The result and client signature are locked together once signed. Follow the product manufacturer’s instructions, timings, professional guidance and your insurer’s requirements." },
+      {
+        type: "p",
+        text: "Open the client record from Consultations. Record whether the completed patch test passed, caused a reaction or requires a retest, together with the test date, staff member and private notes. Save those details, then let the client review and sign the finished record on the same device.",
+      },
+      {
+        type: "note",
+        text: "The result and client signature are locked together once signed. Follow the product manufacturer’s instructions, timings, professional guidance and your insurer’s requirements.",
+      },
     ],
     keywords: ["result", "passed", "failed", "retest", "colour"],
   },
@@ -955,6 +1005,33 @@ export const HELP_ARTICLES: HelpArticle[] = [
         text: "When a client books, Bookzenvo creates a Stripe Checkout session for the right amount and confirms the booking automatically once payment succeeds.",
       },
     ],
+  },
+  {
+    slug: "stripe-smart-reader",
+    categorySlug: "payments",
+    title: "Taking a booking balance with a Stripe smart reader",
+    summary:
+      "Use an activated internet-connected Stripe reader for an in-salon card payment.",
+    blocks: [
+      {
+        type: "p",
+        text: "After Bookzenvo support has activated a compatible reader on your live Stripe account, an owner can open a booking with money still due from Calendar, Bookings or Payments and choose the salon card reader.",
+      },
+      {
+        type: "steps",
+        items: [
+          "Check that the displayed remaining balance is correct and select the intended reader.",
+          'Choose "Take card payment" and ask the customer to follow the instructions on the reader.',
+          'Wait for Bookzenvo to confirm the result. If it is still processing, use "Check reader" before trying again.',
+          "Confirm that the booking balance and Payments record have updated before treating the visit as paid.",
+        ],
+      },
+      {
+        type: "note",
+        text: "The website supports compatible internet-connected Stripe smart readers. Tap to Pay on a staff member's phone is not included in the website release. If the reader is unavailable, use the secure payment-link option instead.",
+      },
+    ],
+    keywords: ["card reader", "stripe terminal", "in person", "contactless"],
   },
   {
     slug: "payment-statuses",

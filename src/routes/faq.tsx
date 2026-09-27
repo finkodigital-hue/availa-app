@@ -17,7 +17,7 @@ const QUESTIONS = [
   ],
   [
     "Do I need a card reader or other hardware to take payments?",
-    "Not for online payments. Customers can pay through Stripe Checkout or a payment link on their phone, tablet or laptop. Bookzenvo does not currently connect to a physical card reader or support in-salon Tap to Pay, so card-machine payments will not update a booking automatically.",
+    "Not for online payments. Customers can pay through Stripe Checkout or a payment link on their phone, tablet or laptop. Bookzenvo also supports compatible internet-connected Stripe smart readers for taking a booking's remaining balance in the salon, once the salon's live Stripe account and reader have been activated. Tap to Pay on a staff member's phone is not part of the website release.",
   ],
   [
     "Can I add more staff?",
