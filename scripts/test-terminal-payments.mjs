@@ -22,6 +22,14 @@ const rejects = async (promise, pattern) => {
   checks++;
 };
 
+const terminalServerSource = fs.readFileSync(
+  new URL("../src/lib/stripe-terminal.server.ts", import.meta.url),
+  "utf8",
+);
+same(terminalServerSource.includes('"address[line1]"'), true);
+same(terminalServerSource.includes('"address[city]"'), true);
+same(terminalServerSource.includes('"address[postal_code]"'), true);
+
 await db.exec(`
   create role anon; create role authenticated; create role service_role;
   create schema auth;
