@@ -49,7 +49,6 @@ type Booking = {
   ends_at: string;
   status: string;
   price_cents: number;
-  notes: string | null;
   businesses: {
     id: string;
     name: string;
@@ -95,10 +94,9 @@ function BookingsPage() {
 
   const cancelMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("bookings")
-        .update({ status: "cancelled" })
-        .eq("id", id);
+      const { error } = await (supabase.rpc as any)("cancel_portal_booking", {
+        _booking_id: id,
+      });
       if (error) throw error;
     },
     onSuccess: () => {

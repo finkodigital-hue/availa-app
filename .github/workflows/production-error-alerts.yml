@@ -28,7 +28,41 @@ jobs:
       - name: Check production incident status
         if: ${{ env.MONITORING_SECRET != '' }}
         run: |
-          curl --fail-with-body --silent --show-error \
-            --retry 2 --retry-all-errors --max-time 15 \
-            -H "Authorization: Bearer $MONITORING_SECRET" \
-            https://bookzenvo.com/api/monitoring/client-errors
+          node --input-type=module <<'EOF'
+          const endpoint = "https://bookzenvo.com/api/monitoring/client-errors";
+          let lastError;
+          for (let attempt = 1; attempt <= 3; attempt += 1) {
+            try {
+              const response = await fetch(endpoint, {
+                redirect: "follow",
+                headers: {
+                  authorization: `Bearer ${process.env.MONITORING_SECRET}`,
+                  "user-agent": "Bookzenvo-incident-check",
+                },
+                signal: AbortSignal.timeout(15_000),
+              });
+              const finalUrl = new URL(response.url);
+              if (finalUrl.protocol !== "https:" || finalUrl.hostname !== "bookzenvo.com") {
+                throw new Error(`Unexpected redirect target: ${response.url}`);
+              }
+              const body = await response.text();
+              let result;
+              try {
+                result = JSON.parse(body);
+              } catch {
+                throw new Error(`Expected JSON but received HTTP ${response.status}`);
+              }
+              if (!response.ok || result?.status !== "ok") {
+                throw new Error(
+                  `Incident endpoint failed: HTTP ${response.status}, status ${result?.status ?? "missing"}`,
+                );
+              }
+              console.log("Production incident endpoint is healthy.");
+              process.exit(0);
+            } catch (error) {
+              lastError = error;
+              if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 2_000));
+            }
+          }
+          throw lastError;
+          EOF

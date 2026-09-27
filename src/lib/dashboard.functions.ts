@@ -5,10 +5,7 @@ import {
   preparationBalance,
   preparationFormSummary,
 } from "@/lib/dashboard-preparation";
-import {
-  hasWorkspacePermission,
-  requireWorkspacePermission,
-} from "@/lib/workspace-permission.server";
+import { requireWorkspacePermission } from "@/lib/workspace-permission.server";
 
 export type DashboardBooking = {
   id: string;
@@ -99,11 +96,16 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const business = await workspaceBusiness(context);
-    const canManageCustomers = await hasWorkspacePermission(
-      context,
-      business.id,
-      "customers.manage",
-    );
+    const { data: ownership, error: ownershipError } = await (
+      context.supabase as any
+    )
+      .from("businesses")
+      .select("id")
+      .eq("id", business.id)
+      .eq("owner_id", context.userId)
+      .maybeSingle();
+    if (ownershipError) throw ownershipError;
+    const isOwner = Boolean(ownership?.id);
     // Keep dashboard reads scoped to the signed-in owner and enforced by RLS.
     // The authenticated client is created on the server by requireSupabaseAuth.
     const db = context.supabase as any;
@@ -120,7 +122,7 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
       data: null,
       error: null,
     });
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY && canManageCustomers) {
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY && isOwner) {
       const { supabaseAdmin } =
         await import("@/integrations/supabase/client.server");
       consultationPromise = (supabaseAdmin as any)
@@ -289,7 +291,7 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
       | null = null;
     if (
       process.env.SUPABASE_SERVICE_ROLE_KEY &&
-      canManageCustomers &&
+      isOwner &&
       preparationBookings.length
     ) {
       const { supabaseAdmin } =
@@ -416,7 +418,7 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
         (a, b) => Number(a.kind === "stock") - Number(b.kind === "stock"),
       ),
       consultationAttentionAvailable: Boolean(
-        process.env.SUPABASE_SERVICE_ROLE_KEY && canManageCustomers,
+        process.env.SUPABASE_SERVICE_ROLE_KEY && isOwner,
       ),
       setup,
     } satisfies DashboardOverview;

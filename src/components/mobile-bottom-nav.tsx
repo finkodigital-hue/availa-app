@@ -25,17 +25,16 @@ export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const access = useWorkspaceAccess();
 
-  // The drawer owns the entire phone screen while it is open. Hiding the
-  // navigation here prevents the floating action button or the tab bar from
-  // appearing above the drawer on slower devices during its transition.
-  if (menuOpen) return null;
-
   return (
     <>
       {/* Glass bar */}
       <nav
-        className="xl:hidden fixed bottom-0 left-0 right-0 z-40 pointer-events-none"
+        className={cn(
+          "fixed bottom-0 left-0 right-0 z-40 xl:hidden",
+          menuOpen ? "invisible pointer-events-none" : "pointer-events-none",
+        )}
         aria-label="Primary"
+        aria-hidden={menuOpen || undefined}
       >
         <div
           className="pointer-events-auto mx-3 mb-[max(env(safe-area-inset-bottom),0.5rem)] rounded-3xl border bg-card/70 backdrop-blur-2xl"
@@ -46,7 +45,11 @@ export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
         >
           <div className="grid grid-cols-5 items-center h-16 px-1">
             <NavItem item={TABS[0]} active={path.startsWith("/calendar")} />
-            {access.isOwner ? <NavItem item={TABS[1]} active={path.startsWith("/payments")} /> : <div aria-hidden />}
+            {access.isOwner ? (
+              <NavItem item={TABS[1]} active={path.startsWith("/payments")} />
+            ) : (
+              <div aria-hidden />
+            )}
             <div aria-hidden /> {/* center spacer for floating + */}
             <NavItem item={TABS[2]} active={path.startsWith("/bookings")} />
             <button
@@ -64,19 +67,21 @@ export function MobileBottomNav({ onAdd, onMore, menuOpen = false }: Props) {
 
       {/* Floating Add — separate fixed element so it can never be clipped or
           covered by the bar. Sits above the bar with its own z-index. */}
-      {access.can("calendar.manage") && <button
-        type="button"
-        onClick={onAdd}
-        aria-label="New booking"
-        className="xl:hidden fixed left-1/2 -translate-x-1/2 z-50 h-14 w-14 rounded-full grid place-items-center text-primary-foreground bg-primary active:scale-95 transition-transform duration-150"
-        style={{
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 2.75rem)",
-          boxShadow:
-            "0 14px 32px -10px color-mix(in oklab, var(--color-primary) 55%, transparent), 0 6px 14px -4px oklch(0 0 0 / 0.22)",
-        }}
-      >
-        <Plus className="h-6 w-6" strokeWidth={2.4} />
-      </button>}
+      {access.can("calendar.manage") && !menuOpen && (
+        <button
+          type="button"
+          onClick={onAdd}
+          aria-label="New booking"
+          className="xl:hidden fixed left-1/2 -translate-x-1/2 z-50 h-14 w-14 rounded-full grid place-items-center text-primary-foreground bg-primary active:scale-95 transition-transform duration-150"
+          style={{
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 2.75rem)",
+            boxShadow:
+              "0 14px 32px -10px color-mix(in oklab, var(--color-primary) 55%, transparent), 0 6px 14px -4px oklch(0 0 0 / 0.22)",
+          }}
+        >
+          <Plus className="h-6 w-6" strokeWidth={2.4} />
+        </button>
+      )}
     </>
   );
 }

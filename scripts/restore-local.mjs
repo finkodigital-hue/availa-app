@@ -52,6 +52,12 @@ if (!database || ["postgres", "template0", "template1"].includes(database)) {
   );
   process.exit(3);
 }
+if (!database.startsWith("bookzenvo_restore_")) {
+  console.error(
+    'REFUSED: the disposable database name must start with "bookzenvo_restore_".',
+  );
+  process.exit(3);
+}
 
 console.log(
   `Restore plan: ${backup} -> local database ${database} on ${target.hostname}`,
@@ -66,6 +72,17 @@ if (confirmation !== database) {
   console.error(`REFUSED: --confirm must exactly equal ${database}.`);
   process.exit(3);
 }
+
+const versionCheck = spawnSync("pg_restore", ["--version"], {
+  encoding: "utf8",
+});
+if (versionCheck.error || versionCheck.status !== 0) {
+  console.error(
+    "Could not run pg_restore. Install PostgreSQL client tools and ensure pg_restore is on PATH.",
+  );
+  process.exit(1);
+}
+console.log(versionCheck.stdout.trim());
 
 const result = spawnSync(
   "pg_restore",

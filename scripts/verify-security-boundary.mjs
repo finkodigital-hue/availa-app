@@ -260,6 +260,15 @@ assert(
   "Anonymous public-data and one-time-link endpoints must have privacy-preserving source quotas.",
 );
 assert(
+  publicStaffRoute.includes(
+    'isTenantAssetPathInFolder(safeValue, businessId, "staff")',
+  ) &&
+    publicGalleryRoute.includes(
+      'isTenantAssetPathInFolder(row.path, businessId, "gallery")',
+    ),
+  "Public image signers must restrict private paths to their tenant and feature folder.",
+);
+assert(
   internalAuth.includes("timingSafeTextEqual") &&
     [calendarSyncRoute, monitoringRoute, reminderRoute].every((route) =>
       route.includes("hasExpectedBearer"),
@@ -269,10 +278,10 @@ assert(
   "Internal bearer secrets must use the shared timing-resistant comparison.",
 );
 assert(
-  monitoringRoute.includes('stalledErasureStorageJobs') &&
+  monitoringRoute.includes("stalledErasureStorageJobs") &&
     monitoringRoute.includes('.eq("status", "pending")') &&
-    monitoringRoute.includes('ERASURE_STORAGE_JOB_MAX_AGE_MS') &&
-    monitoringRoute.includes('!stalledErasureStorageJobCount'),
+    monitoringRoute.includes("ERASURE_STORAGE_JOB_MAX_AGE_MS") &&
+    monitoringRoute.includes("!stalledErasureStorageJobCount"),
   "Production monitoring must alert on customer-photo erasure jobs that remain pending too long.",
 );
 assert(

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
@@ -36,7 +36,10 @@ import { fmtMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { BlockRenderer, type PageBlock } from "@/components/page-blocks";
 import {
+  accessibleForeground,
   applyThemeVars,
+  parseTheme,
+  solidButtonForeground,
   themeFontOverrideCss,
   themedButtonStyle,
   type Theme,
@@ -207,6 +210,13 @@ const STEPS: { id: Step; label: string }[] = [
   { id: "info", label: "Details" },
 ];
 
+const STEP_HEADINGS: Record<Exclude<Step, "service">, string> = {
+  staff: "Choose a professional",
+  time: "Choose a date and time",
+  info: "Your booking details",
+  done: "You're booked",
+};
+
 export function PublicBookingPage({
   business,
   theme,
@@ -243,6 +253,8 @@ export function PublicBookingPage({
   const biz = business;
   const currency = business.currency ?? "GBP";
   const [step, setStep] = useState<Step>("service");
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousStepRef = useRef<Step>("service");
   const [serviceGroup, setServiceGroup] = useState<ServiceGroup | null>(null);
   const [service, setService] = useState<Service | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
@@ -324,9 +336,28 @@ export function PublicBookingPage({
     }));
   }, [signedInUser, myProfile, infoTouched]);
 
-  const brand = theme.colors.primary;
-  const accent = theme.colors.accent;
-  const brandStyle = applyThemeVars(theme);
+  useEffect(() => {
+    if (previousStepRef.current === step) return;
+    previousStepRef.current = step;
+    if (step === "service") return;
+
+    const animationFrame = requestAnimationFrame(() => {
+      stepHeadingRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(animationFrame);
+  }, [step]);
+
+  const safeTheme = useMemo(() => parseTheme(theme), [theme]);
+  const brand = safeTheme.colors.primary;
+  const accent = safeTheme.colors.accent;
+  const themedSurfaces = [
+    safeTheme.colors.background,
+    safeTheme.colors.surface,
+  ];
+  const brandReadable = accessibleForeground(brand, themedSurfaces);
+  const accentReadable = accessibleForeground(accent, themedSurfaces);
+  const brandContrast = solidButtonForeground(brand);
+  const brandStyle = applyThemeVars(safeTheme);
   const storefront = useMemo(
     () => parseStorefrontSettings(storefrontSettings),
     [storefrontSettings],
@@ -910,19 +941,19 @@ export function PublicBookingPage({
       style={brandStyle}
       data-workspace-brand
     >
-      <style>{themeFontOverrideCss(theme, `#${domId}`)}</style>
+      <style>{themeFontOverrideCss(safeTheme, `#${domId}`)}</style>
       <header className="border-b bg-background/95">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-4 sm:px-6">
-          {theme.logoUrl ? (
+          {safeTheme.logoUrl ? (
             <img
-              src={safeImageSrc(theme.logoUrl) ?? undefined}
+              src={safeImageSrc(safeTheme.logoUrl) ?? undefined}
               alt={biz.name}
               className="h-11 w-11 rounded-xl object-cover"
             />
           ) : (
             <div
-              className="grid h-11 w-11 place-items-center rounded-xl text-lg font-display text-white"
-              style={{ background: brand }}
+              className="grid h-11 w-11 place-items-center rounded-xl text-lg font-display"
+              style={{ background: brand, color: brandContrast }}
             >
               {biz.name.charAt(0)}
             </div>
@@ -969,11 +1000,16 @@ export function PublicBookingPage({
         )}
 
         {step !== "done" && step !== "service" && (
-          <Stepper
-            step={step}
-            brand={brand}
-            skipStaff={allStaff?.length === 1}
-          />
+          <>
+            <Stepper
+              step={step}
+              brand={brand}
+              skipStaff={allStaff?.length === 1}
+            />
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="sr-only">
+              {STEP_HEADINGS[step]}
+            </h2>
+          </>
         )}
 
         {/* Selection summary */}
@@ -1038,9 +1074,11 @@ export function PublicBookingPage({
                       >
                         <div className="flex max-w-2xl flex-col justify-end">
                           <div className="flex items-center gap-3">
-                            {theme.logoUrl && (
+                            {safeTheme.logoUrl && (
                               <img
-                                src={safeImageSrc(theme.logoUrl) ?? undefined}
+                                src={
+                                  safeImageSrc(safeTheme.logoUrl) ?? undefined
+                                }
                                 alt=""
                                 className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/30"
                               />
@@ -1149,10 +1187,17 @@ export function PublicBookingPage({
                               setServiceSearch("");
                               setExpandedServices(false);
                             }}
-                            className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${!serviceSearch && activeCategory === category.name ? "font-medium text-white" : "bg-card hover:bg-secondary/50"}`}
+                            aria-pressed={
+                              !serviceSearch && activeCategory === category.name
+                            }
+                            className={`min-h-11 shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${!serviceSearch && activeCategory === category.name ? "font-medium" : "bg-card hover:bg-secondary/50"}`}
                             style={
                               !serviceSearch && activeCategory === category.name
-                                ? { background: brand, borderColor: brand }
+                                ? {
+                                    background: brand,
+                                    borderColor: brand,
+                                    color: brandContrast,
+                                  }
                                 : undefined
                             }
                           >
@@ -1174,13 +1219,17 @@ export function PublicBookingPage({
                                 setServiceSearch("");
                                 setExpandedServices(false);
                               }}
-                              className={`w-full rounded-xl px-4 py-3 text-left text-sm ${!serviceSearch && activeCategory === category.name ? "font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                              aria-pressed={
+                                !serviceSearch &&
+                                activeCategory === category.name
+                              }
+                              className={`min-h-11 w-full rounded-xl px-4 py-3 text-left text-sm ${!serviceSearch && activeCategory === category.name ? "font-medium" : "text-muted-foreground hover:text-foreground"}`}
                               style={
                                 !serviceSearch &&
                                 activeCategory === category.name
                                   ? {
                                       background: `color-mix(in srgb, ${accent} 14%, transparent)`,
-                                      color: accent,
+                                      color: accentReadable,
                                     }
                                   : undefined
                               }
@@ -1245,7 +1294,7 @@ export function PublicBookingPage({
                                       className="ml-auto mt-2 grid h-8 w-8 place-items-center rounded-full transition-transform group-hover:translate-x-0.5"
                                       style={{
                                         background: `color-mix(in srgb, ${accent} 14%, transparent)`,
-                                        color: accent,
+                                        color: accentReadable,
                                       }}
                                     >
                                       <ChevronRight className="h-4 w-4" />
@@ -1261,7 +1310,7 @@ export function PublicBookingPage({
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="mx-auto mt-5 flex rounded-full"
+                                className="mx-auto mt-5 flex min-h-11 rounded-full"
                                 onClick={() =>
                                   setExpandedServices((value) => !value)
                                 }
@@ -1316,7 +1365,7 @@ export function PublicBookingPage({
                                       ? brand
                                       : "transparent"
                                   }
-                                  style={{ color: brand }}
+                                  style={{ color: brandReadable }}
                                 />
                               ))}
                             </div>
@@ -1350,7 +1399,7 @@ export function PublicBookingPage({
                                         ? brand
                                         : "transparent"
                                     }
-                                    style={{ color: brand }}
+                                    style={{ color: brandReadable }}
                                   />
                                 ))}
                               </div>
@@ -1363,7 +1412,7 @@ export function PublicBookingPage({
                                   {review.verified && (
                                     <BadgeCheck
                                       className="h-4 w-4"
-                                      style={{ color: brand }}
+                                      style={{ color: brandReadable }}
                                       aria-label="Verified booking"
                                     />
                                   )}
@@ -1410,8 +1459,8 @@ export function PublicBookingPage({
                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="mt-5 inline-flex items-center gap-2 px-5 py-3 text-sm font-medium"
-                            style={themedButtonStyle(theme, "accent")}
+                            className="mt-5 inline-flex min-h-11 items-center gap-2 px-5 py-3 text-sm font-medium"
+                            style={themedButtonStyle(safeTheme, "accent")}
                           >
                             <Navigation className="h-4 w-4" />
                             Get directions
@@ -1449,7 +1498,7 @@ export function PublicBookingPage({
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="mt-6 inline-flex rounded-lg border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted"
+                              className="mt-6 inline-flex min-h-11 items-center rounded-lg border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted"
                             >
                               Open in Google Maps
                             </a>
@@ -1532,7 +1581,7 @@ export function PublicBookingPage({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-11 w-11"
                     aria-label="Previous day"
                     onClick={() => {
                       const d = new Date(date);
@@ -1546,7 +1595,7 @@ export function PublicBookingPage({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-11 w-11"
                     aria-label="Next day"
                     onClick={() => {
                       const d = new Date(date);
@@ -1565,12 +1614,22 @@ export function PublicBookingPage({
                     <button
                       key={d.toISOString()}
                       onClick={() => setDate(d)}
-                      className={`shrink-0 flex flex-col items-center min-w-[56px] py-2.5 rounded-xl text-xs transition-all ${
+                      aria-label={d.toLocaleDateString([], {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                      aria-pressed={isSel}
+                      className={`min-h-11 shrink-0 flex flex-col items-center min-w-[56px] py-2.5 rounded-xl text-xs transition-all ${
                         isSel
-                          ? "text-white shadow-soft"
+                          ? "shadow-soft"
                           : "bg-secondary/50 hover:bg-secondary text-foreground"
                       }`}
-                      style={isSel ? { background: brand } : undefined}
+                      style={
+                        isSel
+                          ? { background: brand, color: brandContrast }
+                          : undefined
+                      }
                     >
                       <span className="uppercase tracking-wider text-[10px] opacity-80">
                         {d.toLocaleDateString([], { weekday: "short" })}
@@ -1646,9 +1705,10 @@ export function PublicBookingPage({
           <div key="info" className="space-y-4 animate-rise">
             <BackBtn onClick={() => setStep("time")} />
             <div
-              className="rounded-2xl p-5 text-white shadow-elegant"
+              className="rounded-2xl p-5 shadow-elegant"
               style={{
-                background: `linear-gradient(135deg, ${brand}, color-mix(in oklab, ${brand} 70%, black))`,
+                background: brand,
+                color: brandContrast,
               }}
             >
               <div className="text-[11px] uppercase tracking-[0.2em] opacity-80">
@@ -1860,7 +1920,7 @@ export function PublicBookingPage({
                 !policyAccepted
               }
               className="w-full h-12 text-base shadow-glow"
-              style={themedButtonStyle(theme)}
+              style={themedButtonStyle(safeTheme)}
             >
               {submitting ? (
                 <>
@@ -1902,12 +1962,16 @@ export function PublicBookingPage({
         {step === "done" && service && staff && time && (
           <div className="text-center py-12 animate-rise">
             <div
-              className="mx-auto h-20 w-20 rounded-full grid place-items-center text-white shadow-glow animate-pulse-ring"
-              style={{ background: brand }}
+              className="mx-auto h-20 w-20 rounded-full grid place-items-center shadow-glow animate-pulse-ring"
+              style={{ background: brand, color: brandContrast }}
             >
               <Check className="h-9 w-9" />
             </div>
-            <h2 className="font-display text-3xl sm:text-4xl mt-8 text-balance">
+            <h2
+              ref={stepHeadingRef}
+              tabIndex={-1}
+              className="font-display text-3xl sm:text-4xl mt-8 text-balance"
+            >
               You're booked.
             </h2>
             <p className="text-muted-foreground mt-3 text-pretty">
@@ -2005,7 +2069,7 @@ function SlotGroup({
           <button
             key={s.iso}
             onClick={() => onPick(s.iso)}
-            className="px-3 h-11 rounded-xl border bg-card hover:text-white hover:border-transparent text-sm tabular-nums transition-colors"
+            className="px-3 h-11 rounded-xl border bg-card hover:text-[color:var(--brand-contrast)] hover:border-transparent text-sm tabular-nums transition-colors"
             style={{ ["--tw-bg-opacity" as any]: 1 }}
             onMouseEnter={(e) => (e.currentTarget.style.background = brand)}
             onMouseLeave={(e) => (e.currentTarget.style.background = "")}
@@ -2031,7 +2095,12 @@ function Stepper({
   const idx = steps.findIndex((s) => s.id === step);
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+      <div
+        className="flex items-center justify-between text-[11px] uppercase tracking-[0.15em] text-muted-foreground"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         <span>
           Step {idx + 1} of {steps.length}
         </span>
@@ -2061,7 +2130,7 @@ function BackBtn({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-4 group"
+      className="-ml-2 mb-4 inline-flex min-h-11 min-w-11 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:bg-secondary/50 hover:text-foreground group"
     >
       <ChevronLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />{" "}
       Back
@@ -2081,7 +2150,7 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-full bg-secondary hover:bg-secondary/70 px-2.5 py-1 text-foreground transition-colors"
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-secondary hover:bg-secondary/70 px-3 py-2 text-foreground transition-colors"
     >
       <Icon className="h-3 w-3" />
       <span className="truncate max-w-[180px]">{label}</span>
