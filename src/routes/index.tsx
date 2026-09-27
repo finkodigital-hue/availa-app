@@ -598,6 +598,35 @@ function Landing() {
               Stripe charges its standard card-processing rate. Bookzenvo takes
               nothing on top.
             </p>
+            <div className="lp-cost-clarity">
+              <h3>What would I actually pay?</h3>
+              <ul>
+                <li>
+                  <strong>Subscription:</strong> Solo is free; Studio is planned
+                  at £22 per month for the whole team.
+                </li>
+                <li>
+                  <strong>Bookings:</strong> No per-booking or per-staff
+                  Bookzenvo charge.
+                </li>
+                <li>
+                  <strong>Card payments:</strong> Stripe processing fees apply
+                  to payments and deposits. Check Stripe’s current rate before
+                  you start taking payments.
+                </li>
+                <li>
+                  <strong>Messages:</strong> Email confirmations are included.
+                  SMS needs a connected provider and may have usage charges; we
+                  will show those costs before live SMS is enabled.
+                </li>
+              </ul>
+              <p>
+                Plans are not open for public signup yet. Need to check a cost
+                or get help with a booking or payment?{" "}
+                <a href="mailto:help@bookzenvo.com">Email the Bookzenvo team</a>
+                .
+              </p>
+            </div>
           </section>
 
           <section className="lp-final-cta" data-reveal>

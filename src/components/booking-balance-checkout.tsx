@@ -320,6 +320,17 @@ export function BookingBalanceCheckout({
         Choose cash, the salon card reader, or a secure payment link on the
         customer&apos;s phone.
       </p>
+      <p className="text-xs text-muted-foreground">
+        If a reader or link fails, leave the balance due until payment is
+        confirmed. Need a person to help?{" "}
+        <a
+          className="font-medium underline underline-offset-2"
+          href="mailto:help@bookzenvo.com?subject=Booking%20payment%20help"
+        >
+          Contact Bookzenvo support
+        </a>
+        .
+      </p>
       {isOwner &&
         (readers.length > 0 || canCreateSimulator || readerSetupMessage) && (
           <div className="space-y-2 rounded-lg border bg-background p-3">
