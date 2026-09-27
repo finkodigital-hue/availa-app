@@ -73,12 +73,15 @@ export type ExistingBatch = {
 export async function findExistingBatchByHash(
   businessId: string,
   fileHash: string,
+  entityType: ImportEntity,
 ): Promise<ExistingBatch | null> {
   const { data, error } = await supabase
     .from("import_batches")
     .select("id, source_filename, created_at, row_count, status")
     .eq("business_id", businessId)
     .eq("file_hash", fileHash)
+    .eq("entity_type", entityType)
+    .eq("status", "completed")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
