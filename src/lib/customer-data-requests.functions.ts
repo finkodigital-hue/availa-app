@@ -7,6 +7,43 @@ type RequestInput = {
   requestId: string;
 };
 
+const STORAGE_LIST_PAGE_SIZE = 100;
+
+async function listCustomerPhotoPaths(
+  admin: any,
+  businessId: string,
+  customerId: string,
+  currentAvatarPath: string | null,
+) {
+  const folder = `${businessId}/customers`;
+  const paths = new Set<string>();
+  for (let offset = 0; ; offset += STORAGE_LIST_PAGE_SIZE) {
+    const { data, error } = await admin.storage
+      .from("business-assets")
+      .list(folder, {
+        limit: STORAGE_LIST_PAGE_SIZE,
+        offset,
+        search: customerId,
+        sortBy: { column: "name", order: "asc" },
+      });
+    if (error) throw error;
+    for (const entry of data ?? []) {
+      if (
+        entry.id !== null &&
+        (entry.name === customerId || entry.name.startsWith(`${customerId}-`))
+      ) {
+        paths.add(`${folder}/${entry.name}`);
+      }
+    }
+    if (!data || data.length < STORAGE_LIST_PAGE_SIZE) break;
+  }
+
+  // Preserve compatibility with any historic avatar path that pre-dates the
+  // current filename convention, while refusing a malformed cross-tenant row.
+  if (currentAvatarPath?.startsWith(`${folder}/`)) paths.add(currentAvatarPath);
+  return Array.from(paths);
+}
+
 type ExportBooking = {
   id: string;
   starts_at: string;
@@ -316,7 +353,7 @@ export const eraseCustomer = createServerFn({ method: "POST" })
 
     const { data: customer, error: customerError } = await context.supabase
       .from("customers")
-      .select("id, name, email")
+      .select("id, name, email, avatar_url")
       .eq("id", request.customer_id)
       .eq("business_id", business.id)
       .maybeSingle();
@@ -346,13 +383,11 @@ export const eraseCustomer = createServerFn({ method: "POST" })
     const { supabaseAdmin } =
       await import("@/integrations/supabase/client.server");
 
-    const photoPrefix = `${business.id}/customers`;
-    const { data: photoFiles, error: listError } = await supabaseAdmin.storage
-      .from("business-assets")
-      .list(photoPrefix, { search: customer.id });
-    if (listError) throw listError;
-    const photoPaths = (photoFiles ?? []).map(
-      (f) => `${photoPrefix}/${f.name}`,
+    const photoPaths = await listCustomerPhotoPaths(
+      supabaseAdmin,
+      business.id,
+      customer.id,
+      customer.avatar_url,
     );
 
     const { data: result, error: eraseError } = await (

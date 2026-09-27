@@ -212,22 +212,83 @@ export const openBillingPortal = createServerFn({ method: "POST" })
   .handler(async ({ context }): Promise<{ url: string }> => {
     const { data: business, error } = await context.supabase
       .from("businesses")
-      .select("id, stripe_billing_customer_id")
+      .select("id, stripe_billing_customer_id, stripe_subscription_id")
       .eq("owner_id", context.userId)
       .maybeSingle();
     if (error) throw error;
-    if (!business?.stripe_billing_customer_id) {
+    if (!business)
+      throw new Error("Only the business owner can manage billing.");
+    let customerId = business.stripe_billing_customer_id;
+    if (!customerId && business.stripe_subscription_id) {
+      const subscription = await stripeRequest<StripeSubscription>(
+        `/v1/subscriptions/${encodeURIComponent(business.stripe_subscription_id)}`,
+      );
+      customerId = subscription.customer;
+    }
+    if (!customerId) {
       throw new Error("No billing set up for this workspace yet.");
     }
 
     const origin = appOrigin();
-    const session = await stripeRequest<{ url: string }>("/v1/billing_portal/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formBody({
-        customer: business.stripe_billing_customer_id,
-        return_url: `${origin}/settings?tab=plan`,
-      }),
-    });
+    // Use our own configuration so cancellation is available even when the
+    // account's default portal has not been configured in the Stripe dashboard.
+    const configurations = await stripeRequest<{
+      data: { id: string; metadata?: Record<string, string> }[];
+    }>("/v1/billing_portal/configurations?active=true&limit=100");
+    let configuration = configurations.data.find(
+      (item) => item.metadata?.bookzenvo === "subscription_management_v1",
+    );
+    if (!configuration) {
+      configuration = await stripeRequest<{ id: string }>(
+        "/v1/billing_portal/configurations",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formBody({
+            "metadata[bookzenvo]": "subscription_management_v1",
+            "business_profile[headline]": "Manage your Bookzenvo subscription",
+            "features[invoice_history][enabled]": "true",
+            "features[payment_method_update][enabled]": "true",
+            "features[subscription_cancel][enabled]": "true",
+            "features[subscription_cancel][mode]": "at_period_end",
+          }),
+        },
+      );
+    }
+    const session = await stripeRequest<{ url: string }>(
+      "/v1/billing_portal/sessions",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formBody({
+          customer: customerId,
+          configuration: configuration.id,
+          return_url: `${origin}/settings?tab=plan`,
+        }),
+      },
+    );
     return { url: session.url };
+  });
+
+// A local plan change must never stand in for cancelling a paid subscription.
+export const switchManagedStudioToSolo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ changed: boolean }> => {
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("businesses")
+      .update({ plan: "free" })
+      .eq("owner_id", context.userId)
+      .eq("plan", "studio")
+      .is("stripe_subscription_id", null)
+      .is("stripe_billing_customer_id", null)
+      .select("id")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data)
+      throw new Error(
+        "Your plan has changed or billing is linked. Refresh and use Manage subscription to change your paid plan.",
+      );
+    return { changed: true };
   });

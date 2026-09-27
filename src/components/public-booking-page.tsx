@@ -41,7 +41,10 @@ import {
   themedButtonStyle,
   type Theme,
 } from "@/lib/theme";
-import { startBookingCheckout } from "@/lib/stripe-connect.functions";
+import {
+  finalizeBookingCheckout,
+  startBookingCheckout,
+} from "@/lib/stripe-connect.functions";
 import { createPublicBooking } from "@/lib/public-booking.functions";
 import { bookingSourceFromSearch } from "@/lib/booking-attribution";
 import { useAuth } from "@/lib/auth";
@@ -54,7 +57,10 @@ import {
 } from "@/lib/storefront";
 import { safeImageSrc } from "@/lib/safe-url";
 import { sanitizePageBlocks } from "@/lib/page-block-security";
-import { previousStepFromTime, soleEligibleStaff } from "@/lib/public-booking-flow";
+import {
+  previousStepFromTime,
+  soleEligibleStaff,
+} from "@/lib/public-booking-flow";
 
 // The real public booking page renderer — used both at /book/$slug and,
 // embedded/scaled/non-interactive, as the live preview in the setup wizard
@@ -270,6 +276,9 @@ export function PublicBookingPage({
   const [paymentReturn, setPaymentReturn] = useState<
     "success" | "cancelled" | null
   >(null);
+  const [paymentConfirmation, setPaymentConfirmation] = useState<
+    "checking" | "confirmed" | "delayed"
+  >("checking");
   const [serviceSearch, setServiceSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [expandedServices, setExpandedServices] = useState(false);
@@ -277,8 +286,28 @@ export function PublicBookingPage({
   const { profile: myProfile } = usePortalCustomer(biz.id);
 
   useEffect(() => {
-    const value = new URLSearchParams(window.location.search).get("payment");
+    const params = new URLSearchParams(window.location.search);
+    const value = params.get("payment");
     if (value === "success" || value === "cancelled") setPaymentReturn(value);
+    if (value !== "success") return;
+    const sessionId = params.get("session_id");
+    const holdId = params.get("hold_id");
+    if (!sessionId || !holdId) {
+      setPaymentConfirmation("delayed");
+      return;
+    }
+    let active = true;
+    void finalizeBookingCheckout({ data: { sessionId, holdId } })
+      .then((result) => {
+        if (active)
+          setPaymentConfirmation(result.confirmed ? "confirmed" : "delayed");
+      })
+      .catch(() => {
+        if (active) setPaymentConfirmation("delayed");
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Prefill from the signed-in visitor's saved details — but only until they
@@ -509,7 +538,9 @@ export function PublicBookingPage({
             .maybeSingle(),
           (supabase as any)
             .from("public_booking_slots")
-            .select("starts_at, ends_at, gap_min, active_after_min, buffer_before_min, buffer_after_min")
+            .select(
+              "starts_at, ends_at, gap_min, active_after_min, buffer_before_min, buffer_after_min",
+            )
             .eq("business_id", service!.business_id)
             .eq("staff_id", staff!.id)
             .lt("occupied_starts_at", dayEnd.toISOString())
@@ -677,12 +708,27 @@ export function PublicBookingPage({
       ).toISOString();
       const { data: clashRows } = await (supabase as any)
         .from("public_booking_slots")
-        .select("starts_at, ends_at, gap_min, active_after_min, buffer_before_min, buffer_after_min")
+        .select(
+          "starts_at, ends_at, gap_min, active_after_min, buffer_before_min, buffer_after_min",
+        )
         .eq("staff_id", staff.id)
-        .lt("occupied_starts_at", new Date(new Date(ends_at).getTime() + (service.buffer_after_min ?? 0) * 60000).toISOString())
-        .gt("occupied_ends_at", new Date(new Date(starts_at).getTime() - (service.buffer_before_min ?? 0) * 60000).toISOString());
+        .lt(
+          "occupied_starts_at",
+          new Date(
+            new Date(ends_at).getTime() +
+              (service.buffer_after_min ?? 0) * 60000,
+          ).toISOString(),
+        )
+        .gt(
+          "occupied_ends_at",
+          new Date(
+            new Date(starts_at).getTime() -
+              (service.buffer_before_min ?? 0) * 60000,
+          ).toISOString(),
+        );
       const candidateSegments = expandCandidateSegments(
-        new Date(starts_at).getTime() - (service.buffer_before_min ?? 0) * 60000,
+        new Date(starts_at).getTime() -
+          (service.buffer_before_min ?? 0) * 60000,
         service,
       );
       const clash = (clashRows ?? []).some((b: any) =>
@@ -903,7 +949,11 @@ export function PublicBookingPage({
       <main className="max-w-6xl mx-auto px-5 sm:px-6 py-8 sm:py-10 pb-32">
         {paymentReturn === "success" && (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm mb-6">
-            Payment received. Your booking is being confirmed now.
+            {paymentConfirmation === "confirmed"
+              ? "Payment received and your booking is confirmed."
+              : paymentConfirmation === "checking"
+                ? "Payment received. Confirming your booking now…"
+                : "Payment received. Confirmation is taking a little longer than usual; please keep your receipt and contact the business if no confirmation email arrives."}
           </div>
         )}
         {paymentReturn === "cancelled" && (
@@ -919,7 +969,11 @@ export function PublicBookingPage({
         )}
 
         {step !== "done" && step !== "service" && (
-          <Stepper step={step} brand={brand} skipStaff={allStaff?.length === 1} />
+          <Stepper
+            step={step}
+            brand={brand}
+            skipStaff={allStaff?.length === 1}
+          />
         )}
 
         {/* Selection summary */}
@@ -1055,7 +1109,11 @@ export function PublicBookingPage({
                       data-storefront-section="booking"
                       className="scroll-mt-5"
                     >
-                      <Stepper step={step} brand={brand} skipStaff={allStaff?.length === 1} />
+                      <Stepper
+                        step={step}
+                        brand={brand}
+                        skipStaff={allStaff?.length === 1}
+                      />
                       <div className="mt-10 max-w-3xl">
                         {section.heading && (
                           <h2 className="font-display text-3xl sm:text-5xl">
@@ -1456,7 +1514,9 @@ export function PublicBookingPage({
         {/* TIME */}
         {step === "time" && service && (
           <div key="time" className="animate-rise">
-            <BackBtn onClick={() => setStep(previousStepFromTime(allStaff?.length))} />
+            <BackBtn
+              onClick={() => setStep(previousStepFromTime(allStaff?.length))}
+            />
             {/* Date strip */}
             <div className="rounded-2xl border bg-card p-3 mb-5 shadow-soft">
               <div className="flex items-center justify-between mb-2 px-1">
@@ -1761,8 +1821,9 @@ export function PublicBookingPage({
               <p className="text-muted-foreground leading-5">
                 You can cancel or reschedule online until{" "}
                 {selectedPolicy.cancellation_window_hours ?? 24} hours before
-                your appointment. Closer to the time, online changes close;
-                {" "}{biz.name} can let you know what options remain under its policy.
+                your appointment. Closer to the time, online changes close;{" "}
+                {biz.name} can let you know what options remain under its
+                policy.
               </p>
               {selectedPolicy.cancellation_policy && (
                 <p className="text-muted-foreground leading-5 whitespace-pre-wrap">
@@ -1957,7 +2018,15 @@ function SlotGroup({
   );
 }
 
-function Stepper({ step, brand, skipStaff = false }: { step: Step; brand: string; skipStaff?: boolean }) {
+function Stepper({
+  step,
+  brand,
+  skipStaff = false,
+}: {
+  step: Step;
+  brand: string;
+  skipStaff?: boolean;
+}) {
   const steps = skipStaff ? STEPS.filter((s) => s.id !== "staff") : STEPS;
   const idx = steps.findIndex((s) => s.id === step);
   return (

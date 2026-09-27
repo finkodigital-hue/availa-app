@@ -4,6 +4,8 @@ Status date: 26 September 2026. This is a practical engineering hand-off, not le
 
 The external evidence needed from the founders, grant records, providers and qualified advisers is listed in [`founder-legal-launch-evidence.md`](./founder-legal-launch-evidence.md). A source-code check cannot close those gates.
 
+The grant and London event records can be indexed with [`grant-conference-evidence-template.md`](./grant-conference-evidence-template.md) without committing confidential award documents or payment evidence.
+
 ## Engineering completed
 
 - Public privacy, platform terms, cookie, refund and verified-review policies are routed and linked.

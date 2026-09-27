@@ -50,21 +50,30 @@ export async function analyzeStockPhoto({
 }): Promise<{ items: DetectedStockItem[] }> {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!supabaseUrl || !supabaseKey) throw new Error("Supabase is not configured");
+  if (!supabaseUrl || !supabaseKey)
+    throw new Error("Supabase is not configured");
 
   const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      storage: undefined,
+    },
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
-  const userData = await requireVerifiedIdentity(supabase, accessToken);
+  await requireVerifiedIdentity(supabase, accessToken);
 
   const { data: business } = await supabase
     .from("businesses")
     .select("id, plan")
     .eq("id", businessId)
-    .eq("owner_id", userData.user.id)
     .maybeSingle();
   if (!business) throw new Error("Not found");
+  const { data: allowed, error: permissionError } = await supabase.rpc(
+    "has_business_permission",
+    { _business_id: businessId, _permission: "inventory.manage" },
+  );
+  if (permissionError || allowed !== true) throw new Error("Not found");
   try {
     await assertStudio(businessId);
   } catch (error) {
@@ -76,7 +85,9 @@ export async function analyzeStockPhoto({
 
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error("ANTHROPIC_API_KEY is not configured");
-    throw new Error("AI stock scanning isn't configured yet. Please contact support.");
+    throw new Error(
+      "AI stock scanning isn't configured yet. Please contact support.",
+    );
   }
 
   await consumeBusinessUsage(businessId, "ai");
@@ -109,7 +120,9 @@ export async function analyzeStockPhoto({
   });
 
   if (response.stop_reason === "refusal") {
-    throw new StockScanError("The photo couldn't be analysed. Try a clearer shelf photo.");
+    throw new StockScanError(
+      "The photo couldn't be analysed. Try a clearer shelf photo.",
+    );
   }
   const text = response.content
     .filter((block) => block.type === "text")
@@ -121,14 +134,17 @@ export async function analyzeStockPhoto({
   try {
     parsed = JSON.parse(stripCodeFence(text));
   } catch {
-    throw new StockScanError("The scan returned an invalid result. Please try the photo again.");
+    throw new StockScanError(
+      "The scan returned an invalid result. Please try the photo again.",
+    );
   }
 
   const rawItems =
     parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? (parsed as { items?: unknown }).items
       : null;
-  if (!Array.isArray(rawItems)) throw new StockScanError("The scan result was incomplete.");
+  if (!Array.isArray(rawItems))
+    throw new StockScanError("The scan result was incomplete.");
 
   const items = rawItems
     .slice(0, 40)
@@ -154,7 +170,9 @@ function sanitizeItem(value: unknown): DetectedStockItem | null {
 }
 
 function cleanText(value: unknown, maxLength: number) {
-  return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, maxLength) : "";
+  return typeof value === "string"
+    ? value.trim().replace(/\s+/g, " ").slice(0, maxLength)
+    : "";
 }
 
 function toNumber(value: unknown) {

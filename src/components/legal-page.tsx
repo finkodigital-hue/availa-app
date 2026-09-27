@@ -115,8 +115,11 @@ export function LegalPage({
         <div className="mt-14 rounded-xl border border-border bg-white px-6 py-6">
           <h2 className="text-[1.45rem]">Need help?</h2>
           <p className="mt-2 text-[.92rem] leading-6 text-muted-foreground">
-            Visit the Help Centre and choose Contact support. We will get back
-            to you as soon as we can.
+            Email{" "}
+            <a className="underline underline-offset-4" href={`mailto:${legalOperator.contactEmail}`}>
+              {legalOperator.contactEmail}
+            </a>{" "}
+            or visit the Help Centre. We will get back to you as soon as we can.
           </p>
           <Link
             to="/help"

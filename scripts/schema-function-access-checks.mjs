@@ -31,6 +31,19 @@ export async function checkFunctionAccess(db) {
     and not exists(select 1 from pg_depend d where d.classid='pg_proc'::regclass and d.objid=p.oid and d.deptype='e')
   order by 1`);
  same(anonymousAppFunctions.map(row=>row.signature),['check_request_assurance()','get_invitation_by_token(text)','get_public_salon_professionals(uuid)','get_staff_account_invitation(text)','session_has_required_assurance()']);
+ const {rows:publicRoutineGrants}=await db.query(`select p.oid::regprocedure::text as signature
+  from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='public'
+    and exists(
+      select 1 from information_schema.routine_privileges rp
+      where rp.specific_schema=n.nspname
+        and rp.specific_name=p.proname||'_'||p.oid
+        and rp.grantee='PUBLIC'
+        and rp.privilege_type='EXECUTE'
+    )
+    and not exists(select 1 from pg_depend d where d.classid='pg_proc'::regclass and d.objid=p.oid and d.deptype='e')
+  order by 1`);
+ same(publicRoutineGrants,[]);
  const {rows:fixedPaths}=await db.query(`select p.proname,p.proconfig
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname='public' and p.proname=any($1::text[]) order by p.proname`,[['adjust_booking_stock_deduction','invalidate_tokens_on_reschedule','reset_reminder_state_on_reschedule','set_google_calendar_connection_updated_at']]);

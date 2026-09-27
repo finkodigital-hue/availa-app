@@ -49,7 +49,7 @@ const OPTIONS = [
   [
     "customer_booking_reminder_sms",
     "SMS appointment reminders",
-    "Text customers who explicitly opt in and provide an international-format mobile number.",
+    "After SMS activation, text eligible customers who provide an optional international-format mobile number after the booking notice.",
   ],
   [
     "customer_aftercare_email",

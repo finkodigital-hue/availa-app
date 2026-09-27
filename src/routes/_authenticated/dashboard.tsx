@@ -17,6 +17,7 @@ import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fmtTime } from "@/lib/format";
+import { useWorkspaceAccess } from "@/lib/business";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import {
   checkInDashboardBooking,
@@ -32,6 +33,9 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const queryClient = useQueryClient();
+  const access = useWorkspaceAccess();
+  const canManageCalendar = access.can("calendar.manage");
+  const canManageCustomers = access.can("customers.manage");
   const [newBookingOpen, setNewBookingOpen] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const { data, isLoading, isError } = useQuery({
@@ -116,6 +120,8 @@ function Dashboard() {
             checkingIn={checkingIn}
             onCheckIn={checkIn}
             onNewBooking={() => setNewBookingOpen(true)}
+            canManageCalendar={canManageCalendar}
+            canManageCustomers={canManageCustomers}
           />
         )}
       </div>
@@ -179,7 +185,7 @@ function Dashboard() {
                       </Link>
                     </Button>
                   </div>
-                  {booking.customerId && (
+                  {booking.customerId && canManageCustomers && (
                     <PrivatePreparationNotes customerId={booking.customerId} />
                   )}
                 </li>
@@ -239,7 +245,7 @@ function Dashboard() {
         </section>
       )}
 
-      {data?.business.id && (
+      {data?.business.id && canManageCalendar && (
         <NewBookingDialog
           open={newBookingOpen}
           onOpenChange={setNewBookingOpen}
@@ -339,7 +345,10 @@ function AttentionRow({ item }: { item: DashboardAttentionItem }) {
             {content}
           </Link>
         ) : item.kind === "consultation" ? (
-          <Link to="/consultations" search={{ tab: "records", recordId: item.recordId }}>
+          <Link
+            to="/consultations"
+            search={{ tab: "records", recordId: item.recordId }}
+          >
             {content}
           </Link>
         ) : (
@@ -355,11 +364,15 @@ function DailyFocus({
   checkingIn,
   onCheckIn,
   onNewBooking,
+  canManageCalendar,
+  canManageCustomers,
 }: {
   booking: DashboardBooking | null;
   checkingIn: boolean;
   onCheckIn: () => void;
   onNewBooking: () => void;
+  canManageCalendar: boolean;
+  canManageCustomers: boolean;
 }) {
   return (
     <section aria-labelledby="next-client-heading">
@@ -399,18 +412,20 @@ function DailyFocus({
               </div>
             </div>
 
-            <Button
-              className="h-14 w-full rounded-lg px-9 text-base shadow-glow lg:w-auto"
-              disabled={checkingIn || booking.status === "checked_in"}
-              onClick={onCheckIn}
-            >
-              <CheckCircle2 className="mr-2 h-5 w-5" aria-hidden="true" />
-              {booking.status === "checked_in"
-                ? "Checked in"
-                : checkingIn
-                  ? "Checking in…"
-                  : "Check in"}
-            </Button>
+            {canManageCalendar && (
+              <Button
+                className="h-14 w-full rounded-lg px-9 text-base shadow-glow lg:w-auto"
+                disabled={checkingIn || booking.status === "checked_in"}
+                onClick={onCheckIn}
+              >
+                <CheckCircle2 className="mr-2 h-5 w-5" aria-hidden="true" />
+                {booking.status === "checked_in"
+                  ? "Checked in"
+                  : checkingIn
+                    ? "Checking in…"
+                    : "Check in"}
+              </Button>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-4 text-muted-foreground">
@@ -424,25 +439,31 @@ function DailyFocus({
         )}
       </div>
 
-      <div className="mt-12 grid max-w-[640px] gap-3 sm:grid-cols-2">
-        <Button
-          variant="outline"
-          className="h-14 rounded-lg bg-background text-base"
-          onClick={onNewBooking}
-        >
-          <Plus className="mr-2 h-5 w-5" aria-hidden="true" /> New booking
-        </Button>
-        <Button
-          asChild
-          variant="outline"
-          className="h-14 rounded-lg bg-background text-base"
-        >
-          <Link to="/customers">
-            <UserPlus className="mr-2 h-5 w-5" aria-hidden="true" /> Add
-            customer
-          </Link>
-        </Button>
-      </div>
+      {(canManageCalendar || canManageCustomers) && (
+        <div className="mt-12 grid max-w-[640px] gap-3 sm:grid-cols-2">
+          {canManageCalendar && (
+            <Button
+              variant="outline"
+              className="h-14 rounded-lg bg-background text-base"
+              onClick={onNewBooking}
+            >
+              <Plus className="mr-2 h-5 w-5" aria-hidden="true" /> New booking
+            </Button>
+          )}
+          {canManageCustomers && (
+            <Button
+              asChild
+              variant="outline"
+              className="h-14 rounded-lg bg-background text-base"
+            >
+              <Link to="/customers">
+                <UserPlus className="mr-2 h-5 w-5" aria-hidden="true" /> Add
+                customer
+              </Link>
+            </Button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

@@ -99,7 +99,7 @@ function ReportsPage() {
       <PageHeader
         eyebrow="Analytics"
         title="Reports"
-        subtitle="See what your salon earned and download the numbers you need."
+        subtitle="See the net payments collected for appointments, after refunds, and download the numbers you need."
         action={
           <ReportDateRangePicker
             from={from}
@@ -163,7 +163,7 @@ function ReportsPage() {
               accent
               loading={loading}
               icon={DollarSign}
-              label="Revenue"
+              label="Net collected"
               value={fmtMoney(totals.revenue, currency)}
               trend={revenueTrend ?? undefined}
               hint={`${compareLabel}: ${fmtMoney(prevTotals.revenue, currency)}`}
