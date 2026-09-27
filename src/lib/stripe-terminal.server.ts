@@ -146,6 +146,21 @@ export function processTerminalPaymentIntent(
   );
 }
 
+export function presentSimulatedTerminalPayment(
+  accountId: string,
+  readerId: string,
+) {
+  if (!isStripeTestMode())
+    throw new Error(
+      "Simulated card presentation is only available in test mode.",
+    );
+  return terminalStripeRequest<StripeTerminalReader>(
+    accountId,
+    `/v1/test_helpers/terminal/readers/${encodeURIComponent(readerId)}/present_payment_method`,
+    { method: "POST" },
+  );
+}
+
 export function retrieveTerminalPaymentIntent(accountId: string, id: string) {
   return terminalStripeRequest<StripeTerminalPaymentIntent>(
     accountId,
@@ -221,6 +236,7 @@ export async function createSimulatedReader(
         label,
         location: location.id,
         "metadata[business_id]": businessId,
+        "metadata[bookzenvo_simulated]": "true",
       }),
     },
   );
