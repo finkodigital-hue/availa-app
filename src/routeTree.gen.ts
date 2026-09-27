@@ -43,6 +43,7 @@ import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-sugge
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiClientErrorsRouteImport } from './routes/api/client-errors'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiAppointmentWaitlistRouteImport } from './routes/api/appointment-waitlist'
 import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -62,8 +63,10 @@ import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
 import { Route as AuthenticatedBlockPreviewRouteImport } from './routes/_authenticated/block-preview'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
+import { Route as AuthenticatedAppointmentWaitlistRouteImport } from './routes/_authenticated/appointment-waitlist'
 import { Route as BookingActionRescheduleTokenRouteImport } from './routes/booking-action.reschedule.$token'
 import { Route as BookingActionActionTokenRouteImport } from './routes/booking-action.$action.$token'
+import { Route as BookSlugWaitlistRouteImport } from './routes/book.$slug.waitlist'
 import { Route as ApiSupabaseSplatRouteImport } from './routes/api/supabase/$'
 import { Route as ApiReviewsSubmitRouteImport } from './routes/api/reviews/submit'
 import { Route as ApiReviewsPeekRouteImport } from './routes/api/reviews/peek'
@@ -247,6 +250,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAppointmentWaitlistRoute = ApiAppointmentWaitlistRouteImport.update({
+  id: '/api/appointment-waitlist',
+  path: '/api/appointment-waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedStockRoute = AuthenticatedStockRouteImport.update({
   id: '/stock',
   path: '/stock',
@@ -346,6 +354,12 @@ const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAppointmentWaitlistRoute =
+  AuthenticatedAppointmentWaitlistRouteImport.update({
+    id: '/appointment-waitlist',
+    path: '/appointment-waitlist',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const BookingActionRescheduleTokenRoute =
   BookingActionRescheduleTokenRouteImport.update({
     id: '/booking-action/reschedule/$token',
@@ -358,6 +372,11 @@ const BookingActionActionTokenRoute =
     path: '/booking-action/$action/$token',
     getParentRoute: () => rootRouteImport,
   } as any)
+const BookSlugWaitlistRoute = BookSlugWaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => BookSlugRoute,
+} as any)
 const ApiSupabaseSplatRoute = ApiSupabaseSplatRouteImport.update({
   id: '/api/supabase/$',
   path: '/api/supabase/$',
@@ -443,6 +462,7 @@ export interface FileRoutesByFullPath {
   '/review-policy': typeof ReviewPolicyRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
+  '/appointment-waitlist': typeof AuthenticatedAppointmentWaitlistRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/bookings': typeof AuthenticatedBookingsRoute
@@ -462,6 +482,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/staff': typeof AuthenticatedStaffRoute
   '/stock': typeof AuthenticatedStockRoute
+  '/api/appointment-waitlist': typeof ApiAppointmentWaitlistRoute
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/health': typeof ApiHealthRoute
@@ -474,7 +495,7 @@ export interface FileRoutesByFullPath {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/api/waitlist': typeof ApiWaitlistRoute
-  '/book/$slug': typeof BookSlugRoute
+  '/book/$slug': typeof BookSlugRouteWithChildren
   '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -495,6 +516,7 @@ export interface FileRoutesByFullPath {
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
+  '/book/$slug/waitlist': typeof BookSlugWaitlistRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
   '/api/calendar/$provider/callback': typeof ApiCalendarProviderCallbackRoute
@@ -510,6 +532,7 @@ export interface FileRoutesByTo {
   '/review-policy': typeof ReviewPolicyRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
+  '/appointment-waitlist': typeof AuthenticatedAppointmentWaitlistRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/bookings': typeof AuthenticatedBookingsRoute
@@ -529,6 +552,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/staff': typeof AuthenticatedStaffRoute
   '/stock': typeof AuthenticatedStockRoute
+  '/api/appointment-waitlist': typeof ApiAppointmentWaitlistRoute
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/health': typeof ApiHealthRoute
@@ -541,7 +565,7 @@ export interface FileRoutesByTo {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/api/waitlist': typeof ApiWaitlistRoute
-  '/book/$slug': typeof BookSlugRoute
+  '/book/$slug': typeof BookSlugRouteWithChildren
   '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -562,6 +586,7 @@ export interface FileRoutesByTo {
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
+  '/book/$slug/waitlist': typeof BookSlugWaitlistRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
   '/api/calendar/$provider/callback': typeof ApiCalendarProviderCallbackRoute
@@ -581,6 +606,7 @@ export interface FileRoutesById {
   '/review-policy': typeof ReviewPolicyRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
+  '/_authenticated/appointment-waitlist': typeof AuthenticatedAppointmentWaitlistRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/block-preview': typeof AuthenticatedBlockPreviewRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
@@ -600,6 +626,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/_authenticated/stock': typeof AuthenticatedStockRoute
+  '/api/appointment-waitlist': typeof ApiAppointmentWaitlistRoute
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/health': typeof ApiHealthRoute
@@ -612,7 +639,7 @@ export interface FileRoutesById {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/twilio-sms-webhook': typeof ApiTwilioSmsWebhookRoute
   '/api/waitlist': typeof ApiWaitlistRoute
-  '/book/$slug': typeof BookSlugRoute
+  '/book/$slug': typeof BookSlugRouteWithChildren
   '/gift/$slug': typeof GiftSlugRoute
   '/help/$slug': typeof HelpSlugRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -633,6 +660,7 @@ export interface FileRoutesById {
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
+  '/book/$slug/waitlist': typeof BookSlugWaitlistRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
   '/api/calendar/$provider/callback': typeof ApiCalendarProviderCallbackRoute
@@ -652,6 +680,7 @@ export interface FileRouteTypes {
     | '/review-policy'
     | '/status'
     | '/terms'
+    | '/appointment-waitlist'
     | '/assistant'
     | '/block-preview'
     | '/bookings'
@@ -671,6 +700,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/staff'
     | '/stock'
+    | '/api/appointment-waitlist'
     | '/api/chat'
     | '/api/client-errors'
     | '/api/health'
@@ -704,6 +734,7 @@ export interface FileRouteTypes {
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
+    | '/book/$slug/waitlist'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
     | '/api/calendar/$provider/callback'
@@ -719,6 +750,7 @@ export interface FileRouteTypes {
     | '/review-policy'
     | '/status'
     | '/terms'
+    | '/appointment-waitlist'
     | '/assistant'
     | '/block-preview'
     | '/bookings'
@@ -738,6 +770,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/staff'
     | '/stock'
+    | '/api/appointment-waitlist'
     | '/api/chat'
     | '/api/client-errors'
     | '/api/health'
@@ -771,6 +804,7 @@ export interface FileRouteTypes {
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
+    | '/book/$slug/waitlist'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
     | '/api/calendar/$provider/callback'
@@ -789,6 +823,7 @@ export interface FileRouteTypes {
     | '/review-policy'
     | '/status'
     | '/terms'
+    | '/_authenticated/appointment-waitlist'
     | '/_authenticated/assistant'
     | '/_authenticated/block-preview'
     | '/_authenticated/bookings'
@@ -808,6 +843,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/staff'
     | '/_authenticated/stock'
+    | '/api/appointment-waitlist'
     | '/api/chat'
     | '/api/client-errors'
     | '/api/health'
@@ -841,6 +877,7 @@ export interface FileRouteTypes {
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
+    | '/book/$slug/waitlist'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
     | '/api/calendar/$provider/callback'
@@ -860,6 +897,7 @@ export interface RootRouteChildren {
   ReviewPolicyRoute: typeof ReviewPolicyRoute
   StatusRoute: typeof StatusRoute
   TermsRoute: typeof TermsRoute
+  ApiAppointmentWaitlistRoute: typeof ApiAppointmentWaitlistRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiClientErrorsRoute: typeof ApiClientErrorsRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -872,7 +910,7 @@ export interface RootRouteChildren {
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiTwilioSmsWebhookRoute: typeof ApiTwilioSmsWebhookRoute
   ApiWaitlistRoute: typeof ApiWaitlistRoute
-  BookSlugRoute: typeof BookSlugRoute
+  BookSlugRoute: typeof BookSlugRouteWithChildren
   GiftSlugRoute: typeof GiftSlugRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ReviewTokenRoute: typeof ReviewTokenRoute
@@ -1134,6 +1172,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/appointment-waitlist': {
+      id: '/api/appointment-waitlist'
+      path: '/api/appointment-waitlist'
+      fullPath: '/api/appointment-waitlist'
+      preLoaderRoute: typeof ApiAppointmentWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/stock': {
       id: '/_authenticated/stock'
       path: '/stock'
@@ -1267,6 +1312,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssistantRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/appointment-waitlist': {
+      id: '/_authenticated/appointment-waitlist'
+      path: '/appointment-waitlist'
+      fullPath: '/appointment-waitlist'
+      preLoaderRoute: typeof AuthenticatedAppointmentWaitlistRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/booking-action/reschedule/$token': {
       id: '/booking-action/reschedule/$token'
       path: '/booking-action/reschedule/$token'
@@ -1280,6 +1332,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/booking-action/$action/$token'
       preLoaderRoute: typeof BookingActionActionTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/book/$slug/waitlist': {
+      id: '/book/$slug/waitlist'
+      path: '/waitlist'
+      fullPath: '/book/$slug/waitlist'
+      preLoaderRoute: typeof BookSlugWaitlistRouteImport
+      parentRoute: typeof BookSlugRoute
     }
     '/api/supabase/$': {
       id: '/api/supabase/$'
@@ -1376,6 +1435,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAppointmentWaitlistRoute: typeof AuthenticatedAppointmentWaitlistRoute
   AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
   AuthenticatedBlockPreviewRoute: typeof AuthenticatedBlockPreviewRoute
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
@@ -1398,6 +1458,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAppointmentWaitlistRoute: AuthenticatedAppointmentWaitlistRoute,
   AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
   AuthenticatedBlockPreviewRoute: AuthenticatedBlockPreviewRoute,
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
@@ -1449,6 +1510,18 @@ const PortalRouteChildren: PortalRouteChildren = {
 const PortalRouteWithChildren =
   PortalRoute._addFileChildren(PortalRouteChildren)
 
+interface BookSlugRouteChildren {
+  BookSlugWaitlistRoute: typeof BookSlugWaitlistRoute
+}
+
+const BookSlugRouteChildren: BookSlugRouteChildren = {
+  BookSlugWaitlistRoute: BookSlugWaitlistRoute,
+}
+
+const BookSlugRouteWithChildren = BookSlugRoute._addFileChildren(
+  BookSlugRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -1462,6 +1535,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReviewPolicyRoute: ReviewPolicyRoute,
   StatusRoute: StatusRoute,
   TermsRoute: TermsRoute,
+  ApiAppointmentWaitlistRoute: ApiAppointmentWaitlistRoute,
   ApiChatRoute: ApiChatRoute,
   ApiClientErrorsRoute: ApiClientErrorsRoute,
   ApiHealthRoute: ApiHealthRoute,
@@ -1474,7 +1548,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiTwilioSmsWebhookRoute: ApiTwilioSmsWebhookRoute,
   ApiWaitlistRoute: ApiWaitlistRoute,
-  BookSlugRoute: BookSlugRoute,
+  BookSlugRoute: BookSlugRouteWithChildren,
   GiftSlugRoute: GiftSlugRoute,
   InviteTokenRoute: InviteTokenRoute,
   ReviewTokenRoute: ReviewTokenRoute,

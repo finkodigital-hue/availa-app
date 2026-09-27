@@ -819,7 +819,8 @@ function DataRequestActionDialog({
                 <span className="font-medium">
                   {exportResult.customer.name}
                 </span>
-                , plus {exportResult.consultations.length} consultation or
+                , plus {exportResult.appointmentRequests.length} matching appointment request
+                {exportResult.appointmentRequests.length === 1 ? "" : "s"} and {exportResult.consultations.length} consultation or
                 patch-test record
                 {exportResult.consultations.length === 1 ? "" : "s"}. The
                 request has been marked resolved. Deliver the file securely to
@@ -837,7 +838,7 @@ function DataRequestActionDialog({
           ) : (
             <p className="text-sm text-muted-foreground">
               Downloads the customer's profile, bookings, payments, reviews,
-              consultations and patch-test records as a JSON file, then marks
+              consultations, patch-test records and any verified-linked appointment requests as a JSON file, then marks
               this request as resolved. Confirm the requester’s identity and use
               a secure delivery method before sending it.
             </p>
@@ -853,8 +854,9 @@ function DataRequestActionDialog({
                   Personal information removed
                 </p>
                 <p className="leading-relaxed text-muted-foreground">
-                  The customer can no longer be identified. Booking and payment
-                  records needed for your accounts were kept safely.
+                  This customer's linked information was removed. Booking and payment
+                  records needed for your accounts were kept without identity details.
+                  Check the manual items below for records that could not be safely matched.
                 </p>
               </div>
             </div>
@@ -877,7 +879,9 @@ function DataRequestActionDialog({
                   {eraseResult.photosDeleted} photo
                   {eraseResult.photosDeleted === 1 ? "" : "s"}, plus{" "}
                   {eraseResult.consultationsDeleted} consultation or patch-test
-                  record{eraseResult.consultationsDeleted === 1 ? "" : "s"}
+                  record{eraseResult.consultationsDeleted === 1 ? "" : "s"}, and{" "}
+                  {eraseResult.appointmentRequestsDeleted} matching appointment request
+                  {eraseResult.appointmentRequestsDeleted === 1 ? "" : "s"}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4 border-t px-4 py-3">

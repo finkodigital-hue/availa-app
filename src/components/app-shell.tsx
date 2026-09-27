@@ -88,6 +88,12 @@ const NAV_GROUPS: readonly {
         label: "Consultations",
         ownerOnly: true,
       },
+      {
+        to: "/appointment-waitlist",
+        icon: CalendarCheck,
+        label: "Appointment requests",
+        ownerOnly: true,
+      },
     ],
   },
   {
