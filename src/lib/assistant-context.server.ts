@@ -73,7 +73,7 @@ export async function buildAssistantContext(accessToken: string) {
     supabase
       .from("bookings")
       .select(
-        "id, starts_at, customer_name, status, payment_status, price_cents, amount_paid_cents, services(name), staff(name)",
+        "starts_at, status, payment_status, price_cents, amount_paid_cents, services(name), staff(name)",
         { count: "exact" },
       )
       .eq("business_id", business.id)
@@ -84,7 +84,7 @@ export async function buildAssistantContext(accessToken: string) {
       .limit(80),
     supabase
       .from("bookings")
-      .select("id, starts_at, status, services(name), staff(name)", {
+      .select("starts_at, status, services(name), staff(name)", {
         count: "exact",
       })
       .eq("business_id", business.id)
@@ -240,9 +240,7 @@ export async function buildAssistantContext(accessToken: string) {
   }
 
   const today: AssistantVisit[] = (todayQ.data ?? []).map((booking) => ({
-    id: booking.id,
     startsAt: booking.starts_at,
-    customer: boundedName(booking.customer_name, "Customer"),
     service: boundedName(relationName(booking.services, "Service"), "Service"),
     staff: boundedName(relationName(booking.staff, "Unassigned"), "Unassigned"),
     status: booking.status,
@@ -251,9 +249,7 @@ export async function buildAssistantContext(accessToken: string) {
     paidCents: booking.amount_paid_cents ?? 0,
   }));
   const upcoming: AssistantVisit[] = (upcomingQ.data ?? []).map((booking) => ({
-    id: booking.id,
     startsAt: booking.starts_at,
-    customer: "",
     service: boundedName(relationName(booking.services, "Service"), "Service"),
     staff: boundedName(relationName(booking.staff, "Unassigned"), "Unassigned"),
     status: booking.status,
@@ -296,7 +292,6 @@ export async function buildAssistantContext(accessToken: string) {
     available: boolean;
     partial: boolean;
     opportunities: {
-      customerName: string;
       serviceName: string;
       dueAt: string;
     }[];
@@ -311,7 +306,6 @@ export async function buildAssistantContext(accessToken: string) {
         available: result.available,
         partial: result.partial,
         opportunities: result.opportunities.slice(0, 8).map((item) => ({
-          customerName: boundedName(item.customerName, "Customer"),
           serviceName: boundedName(item.serviceName, "Service"),
           dueAt: item.dueAt,
         })),

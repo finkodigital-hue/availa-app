@@ -1,7 +1,5 @@
 export type AssistantVisit = {
-  id: string;
   startsAt: string;
-  customer: string;
   service: string;
   staff: string;
   status: string;
@@ -79,8 +77,6 @@ export function assistantFacts(input: AssistantFactsInput) {
     )
     .slice(0, 12)
     .map((visit) => ({
-      bookingId: visit.id,
-      customer: visit.customer,
       startsAt: visit.startsAt,
       reason:
         visit.paymentStatus === "failed"
@@ -111,9 +107,7 @@ export function assistantFacts(input: AssistantFactsInput) {
       total: input.todayCount,
       listed: input.today.length,
       appointments: activeToday.slice(0, 20).map((visit) => ({
-        bookingId: visit.id,
         startsAt: visit.startsAt,
-        customer: visit.customer,
         service: visit.service,
         staff: visit.staff,
         status: visit.status,
@@ -129,7 +123,6 @@ export function assistantFacts(input: AssistantFactsInput) {
       total: input.upcomingCount,
       listed: input.upcoming.length,
       firstAppointments: input.upcoming.slice(0, 12).map((visit) => ({
-        bookingId: visit.id,
         startsAt: visit.startsAt,
         service: visit.service,
         staff: visit.staff,
@@ -167,7 +160,7 @@ export function assistantFacts(input: AssistantFactsInput) {
       "Appointment balance is price minus recorded amount paid, not a verified charge or refund ledger.",
       "Confirmed Stripe net includes succeeded charges minus refunds in the past 30 days only; it excludes cash, gift cards and other offline sales.",
       "Only next7DaysVerifiedSlots were checked against working hours, service/staff eligibility, existing appointments and blocked time. They may change; recheck Calendar before promising a slot. Null means availability could not be verified.",
-      "No customer email addresses, consultation answers or private notes are included.",
+      "No customer names, booking IDs, contact details, consultation answers or private notes are included.",
       "A truncated list is not a complete report; use total and listed counts to identify truncation.",
     ],
   };
