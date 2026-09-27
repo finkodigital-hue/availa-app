@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
+  calendarProviderConnectionsEnabled,
   callbackUrl,
   exchangeCode,
   providerIdentity,
@@ -13,6 +14,10 @@ export const Route = createFileRoute("/api/calendar/$provider/callback")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
+        if (!calendarProviderConnectionsEnabled())
+          return new Response("Calendar provider connections are not live yet", {
+            status: 503,
+          });
         const url = new URL(request.url);
         const appOrigin = trustedAppOrigin();
         const provider = params.provider as CalendarProvider;

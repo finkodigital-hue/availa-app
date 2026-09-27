@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   authorizationUrl,
+  calendarProviderConnectionsEnabled,
   callbackUrl,
   makeOauthState,
   type CalendarProvider,
@@ -14,6 +15,11 @@ export const Route = createFileRoute("/api/calendar/$provider/connect")({
   server: {
     handlers: {
       POST: async ({ request, params }) => {
+        if (!calendarProviderConnectionsEnabled())
+          return Response.json(
+            { error: "Calendar provider connections are not live yet" },
+            { status: 503 },
+          );
         const provider = params.provider as CalendarProvider;
         if (provider !== "google" && provider !== "microsoft")
           return Response.json(

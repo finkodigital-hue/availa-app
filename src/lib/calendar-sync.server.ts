@@ -17,6 +17,10 @@ const PROVIDERS = {
   },
 } as const;
 
+export function calendarProviderConnectionsEnabled() {
+  return process.env.ENABLE_CALENDAR_PROVIDER_CONNECTIONS === "true";
+}
+
 function credentials(provider: CalendarProvider) {
   const prefix =
     provider === "google" ? "GOOGLE_CALENDAR" : "MICROSOFT_CALENDAR";

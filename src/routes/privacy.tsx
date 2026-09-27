@@ -237,10 +237,12 @@ function PrivacyPage() {
                 authentication; Cloudflare for hosting and network security;
                 Stripe for subscription and appointment payments; Resend for
                 enabled transactional and operational emails, including booking,
-                account and waitlist messages; Twilio for enabled appointment SMS; Anthropic for optional
-                AI features; and ScreenshotOne for public-page screenshots used by the
-                optional AI page editor. Connected Google or Microsoft calendars receive
-                appointment details when a business enables calendar synchronisation.
+                account and waitlist messages; Twilio for enabled appointment SMS; and Anthropic for optional
+                AI features. The optional ScreenshotOne page-capture integration is
+                disabled while its data-protection position is reviewed. Google and
+                Microsoft calendar connections are also disabled until their production
+                registrations and consent checks are complete. If either feature is enabled
+                later, this notice and the provider register will be updated before use.
               </p>
               <p>
                 We may also disclose information to professional advisers,
