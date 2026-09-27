@@ -10,6 +10,7 @@ The grant and London event records can be indexed with [`grant-conference-eviden
 
 - Public privacy, platform terms, cookie, refund and verified-review policies are routed and linked.
 - The public operator disclosure identifies BOOKZENVO LTD, private limited company registered in Scotland under SC902170, at Pinefield, Cannich, Beauly, Scotland, IV4 7LY, with help@bookzenvo.com as the contact address.
+- The official Companies House record was rechecked on 27 September 2026 and showed BOOKZENVO LTD (SC902170) as an active private limited company at the same registered office. Recheck if a filing changes or launch is materially delayed.
 - A production audit fails if the legal operator name, legal form or service address is not published.
 - The production launch audit checked 119 public pages and assets on 27 September 2026 and passed its link and metadata checks.
 - The later website pilot passed 120 public pages/assets, the live Pasha booking flow at 390 pixels, signed-in phone-width checks across eight core routes, and Lighthouse mobile scores of 100 for accessibility, best practices and SEO on the homepage and booking page. See [`website-pilot-evidence-2026-09-27.md`](./website-pilot-evidence-2026-09-27.md).
@@ -23,7 +24,7 @@ The grant and London event records can be indexed with [`grant-conference-eviden
 ## Owner must complete before public launch
 
 - Assemble and review the grant award, submitted application, approved budget, conditions and variations. Record eligible-spend, procurement/card, match-funding, reporting, IP, publicity and London conference obligations.
-- Re-check the published company name, number, registered jurisdiction, service address and contact email against the Companies House record immediately before launch. Add VAT and ICO numbers only where applicable and verified.
+- Add VAT and ICO numbers only where applicable and verified; do not infer either registration from the Companies House record.
 - Re-run `npm run audit:launch -- https://bookzenvo.com` after the final production deployment and do not waive failures. The 27 September 2026 run passed all 119 checked public pages and assets.
 - Confirm the privacy notice reflects the actual production hosts, regions, subprocessors, email flows, payment setup and AI features.
 - Choose and document retention periods by record type. Configure provider backup expiry consistently; do not keep data merely because storage is available.

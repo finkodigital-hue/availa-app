@@ -25,7 +25,7 @@ This is an engineering risk review, not a substitute for advice from a qualified
 
 ## UK launch actions that cannot be completed in code
 
-1. Re-check the published operator identity against the Companies House record immediately before launch. Add VAT and ICO numbers only if applicable and verified.
+1. The published operator identity matched the official Companies House overview when rechecked on 27 September 2026. Recheck after any filing change or material launch delay. Add VAT and ICO numbers only if applicable and separately verified.
 2. Have UK counsel review the final customer contract, subscription cancellation/refund wording, marketplace role split, liability terms, and salon-facing template wording.
 3. Complete an ICO fee/self-assessment, records of processing, processor agreements, international-transfer assessment, breach procedure, retention schedule, and data-subject-request procedure.
 4. Preserve the bundled-asset source records and generator, maintain contributor/IP assignments, and record provenance for every future photo, font, icon, logo or marketing asset before publishing it.

@@ -56,6 +56,20 @@ The certificate presented for `bookzenvo.com` was valid through 16 December 2026
 - Six unused Pasha portraits, four unused or superseded landing files, three Pasha fallback premises images and three Testshop fallback images with unrecorded provenance were removed.
 - The remaining bundled photograph has its Pexels creator, source and licence recorded. The favicon and social-share image are generated from `scripts/generate-brand-assets.mjs`, which is kept with the source. Their deployed SHA-256 hashes matched the release files after deployment.
 
+## Company identity check
+
+The [official Companies House overview](https://find-and-update.company-information.service.gov.uk/company/SC902170) was read on 27 September 2026. It showed:
+
+- BOOKZENVO LTD;
+- company number SC902170;
+- active status;
+- private limited company;
+- registered office at Pinefield, Cannich, Beauly, Scotland, IV4 7LY;
+- incorporation on 9 September 2026; and
+- SIC 62012, business and domestic software development.
+
+The name, number, legal form and registered office match the website disclosure. Companies House itself states that it does not check the accuracy of filed information, so this verifies consistency with the public register rather than the truth of the underlying filing. The support email is a Bookzenvo operational detail and is not part of that register.
+
 ## Boundaries still open
 
 This evidence does not replace:
