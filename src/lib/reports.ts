@@ -8,6 +8,7 @@ import {
 } from "@/lib/report-values";
 import { businessDayRange } from "@/lib/business-day";
 import { businessDay, type DailyTakings } from "@/lib/takings";
+import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
 // Shared booking-aggregation logic used by both the Dashboard's "Performance"
 // section and the Reports page's date-range reports — kept in one place so
@@ -82,6 +83,7 @@ export async function fetchBookingsInRange(
 ): Promise<ReportBooking[]> {
   return getBookingsInRange({
     data: { start: start.toISOString(), end: end.toISOString() },
+    headers: await getServerFnAuthHeaders(),
   });
 }
 
