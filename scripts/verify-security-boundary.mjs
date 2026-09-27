@@ -269,6 +269,13 @@ assert(
   "Internal bearer secrets must use the shared timing-resistant comparison.",
 );
 assert(
+  monitoringRoute.includes('stalledErasureStorageJobs') &&
+    monitoringRoute.includes('.eq("status", "pending")') &&
+    monitoringRoute.includes('ERASURE_STORAGE_JOB_MAX_AGE_MS') &&
+    monitoringRoute.includes('!stalledErasureStorageJobCount'),
+  "Production monitoring must alert on customer-photo erasure jobs that remain pending too long.",
+);
+assert(
   marketingUnsubscribeRoute.includes("GET: async") &&
     marketingUnsubscribeRoute.includes("POST: async") &&
     marketingUnsubscribeRoute.includes('consumePublicRequest("token"') &&

@@ -5,6 +5,7 @@ import { hasExpectedBearer } from "@/lib/internal-auth.server";
 const DEFAULT_WINDOW_MINUTES = 20;
 const DEFAULT_THRESHOLD = 5;
 const REMINDER_CRON_MAX_AGE_MS = 40 * 60_000;
+const ERASURE_STORAGE_JOB_MAX_AGE_MS = 45 * 60_000;
 
 function isAuthorized(request: Request) {
   return hasExpectedBearer(request, process.env.MONITORING_SECRET);
@@ -37,20 +38,80 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
         }
 
         const observed = count ?? 0;
+        // Generated database types intentionally lag the operational tables.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const db = supabaseAdmin as any;
-        const [deliveryIssues, changeEmailIssues, paymentIssues, balanceIssues, giftIssues, refundIssues, erasureStorageIssues, reminderCron] = await Promise.all([
-          db.from("notification_deliveries").select("id", { count: "exact", head: true }).eq("manual_review", true),
-          db.from("booking_change_email_outbox").select("id", { count: "exact", head: true }).eq("manual_review", true),
-          db.from("booking_payment_issues").select("payment_intent_id", { count: "exact", head: true })
-            .in("status", ["open", "refund_pending"]).lt("created_at", new Date(Date.now()-30*60_000).toISOString()),
-          db.from("balance_checkout_attempts").select("id", { count: "exact", head: true }).eq("state", "review"),
-          db.from("gift_card_refunds").select("stripe_refund_id", { count: "exact", head: true }).eq("manual_review", true),
-          db.from("stripe_refund_reviews").select("stripe_refund_id", { count: "exact", head: true }).eq("manual_review", true),
-          db.from("customer_erasure_storage_jobs").select("id", { count: "exact", head: true }).eq("status", "failed"),
-          db.from("operational_job_heartbeats").select("last_started_at,last_completed_at,last_success_at")
-            .eq("job_name", "send-reminders").maybeSingle(),
+        const [
+          deliveryIssues,
+          changeEmailIssues,
+          paymentIssues,
+          balanceIssues,
+          giftIssues,
+          refundIssues,
+          erasureStorageIssues,
+          stalledErasureStorageJobs,
+          reminderCron,
+        ] = await Promise.all([
+          db
+            .from("notification_deliveries")
+            .select("id", { count: "exact", head: true })
+            .eq("manual_review", true),
+          db
+            .from("booking_change_email_outbox")
+            .select("id", { count: "exact", head: true })
+            .eq("manual_review", true),
+          db
+            .from("booking_payment_issues")
+            .select("payment_intent_id", { count: "exact", head: true })
+            .in("status", ["open", "refund_pending"])
+            .lt("created_at", new Date(Date.now() - 30 * 60_000).toISOString()),
+          db
+            .from("balance_checkout_attempts")
+            .select("id", { count: "exact", head: true })
+            .eq("state", "review"),
+          db
+            .from("gift_card_refunds")
+            .select("stripe_refund_id", { count: "exact", head: true })
+            .eq("manual_review", true),
+          db
+            .from("stripe_refund_reviews")
+            .select("stripe_refund_id", { count: "exact", head: true })
+            .eq("manual_review", true),
+          db
+            .from("customer_erasure_storage_jobs")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "failed"),
+          db
+            .from("customer_erasure_storage_jobs")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending")
+            .lt(
+              "created_at",
+              new Date(
+                Date.now() - ERASURE_STORAGE_JOB_MAX_AGE_MS,
+              ).toISOString(),
+            ),
+          db
+            .from("operational_job_heartbeats")
+            .select("last_started_at,last_completed_at,last_success_at")
+            .eq("job_name", "send-reminders")
+            .maybeSingle(),
         ]);
-        if (deliveryIssues.error || changeEmailIssues.error || paymentIssues.error || balanceIssues.error || giftIssues.error || refundIssues.error || erasureStorageIssues.error || reminderCron.error) return Response.json({ status: "error" }, { status: 503, headers: { "cache-control": "no-store" } });
+        if (
+          deliveryIssues.error ||
+          changeEmailIssues.error ||
+          paymentIssues.error ||
+          balanceIssues.error ||
+          giftIssues.error ||
+          refundIssues.error ||
+          erasureStorageIssues.error ||
+          stalledErasureStorageJobs.error ||
+          reminderCron.error
+        )
+          return Response.json(
+            { status: "error" },
+            { status: 503, headers: { "cache-control": "no-store" } },
+          );
         const unresolvedDeliveries = deliveryIssues.count ?? 0;
         const unresolvedChangeEmails = changeEmailIssues.count ?? 0;
         const unresolvedPayments = paymentIssues.count ?? 0;
@@ -58,10 +119,25 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
         const unresolvedGiftRefunds = giftIssues.count ?? 0;
         const unresolvedRefunds = refundIssues.count ?? 0;
         const unresolvedErasureStorageJobs = erasureStorageIssues.count ?? 0;
-        const reminderCronLastSuccessAt = reminderCron.data?.last_success_at ?? null;
-        const reminderCronStale = !reminderCronLastSuccessAt ||
-          Date.now() - Date.parse(reminderCronLastSuccessAt) > REMINDER_CRON_MAX_AGE_MS;
-        const healthy = observed < DEFAULT_THRESHOLD && !unresolvedDeliveries && !unresolvedChangeEmails && !unresolvedPayments && !unresolvedBalanceCheckouts && !unresolvedGiftRefunds && !unresolvedRefunds && !unresolvedErasureStorageJobs && !reminderCronStale;
+        const stalledErasureStorageJobCount =
+          stalledErasureStorageJobs.count ?? 0;
+        const reminderCronLastSuccessAt =
+          reminderCron.data?.last_success_at ?? null;
+        const reminderCronStale =
+          !reminderCronLastSuccessAt ||
+          Date.now() - Date.parse(reminderCronLastSuccessAt) >
+            REMINDER_CRON_MAX_AGE_MS;
+        const healthy =
+          observed < DEFAULT_THRESHOLD &&
+          !unresolvedDeliveries &&
+          !unresolvedChangeEmails &&
+          !unresolvedPayments &&
+          !unresolvedBalanceCheckouts &&
+          !unresolvedGiftRefunds &&
+          !unresolvedRefunds &&
+          !unresolvedErasureStorageJobs &&
+          !stalledErasureStorageJobCount &&
+          !reminderCronStale;
         return Response.json(
           {
             status: healthy ? "ok" : "alert",
@@ -76,9 +152,12 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
             unresolvedGiftRefunds,
             unresolvedRefunds,
             unresolvedErasureStorageJobs,
+            stalledErasureStorageJobs: stalledErasureStorageJobCount,
             reminderCronStale,
-            reminderCronLastStartedAt: reminderCron.data?.last_started_at ?? null,
-            reminderCronLastCompletedAt: reminderCron.data?.last_completed_at ?? null,
+            reminderCronLastStartedAt:
+              reminderCron.data?.last_started_at ?? null,
+            reminderCronLastCompletedAt:
+              reminderCron.data?.last_completed_at ?? null,
             reminderCronLastSuccessAt,
           },
           {
