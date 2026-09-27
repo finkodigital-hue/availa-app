@@ -53,6 +53,7 @@ import { bookingSourceFromSearch } from "@/lib/booking-attribution";
 import { useAuth } from "@/lib/auth";
 import { usePortalCustomer } from "@/lib/portal-customer";
 import { BookingSignIn } from "@/components/booking-sign-in";
+import { BookingOpeningRequest } from "@/components/booking-opening-request";
 import { AddToCalendar } from "@/components/add-to-calendar";
 import {
   parseStorefrontSettings,
@@ -536,7 +537,12 @@ export function PublicBookingPage({
     },
   });
 
-  const { data: dayData, isLoading: loadingDay } = useQuery({
+  const {
+    data: dayData,
+    isLoading: loadingDay,
+    isError: dayLoadFailed,
+    refetch: retryDay,
+  } = useQuery({
     queryKey: ["pub-day", service?.business_id, staff?.id, date.toDateString()],
     enabled: !!staff && !!service,
     queryFn: async () => {
@@ -583,6 +589,10 @@ export function PublicBookingPage({
             .lt("starts_at", dayEnd.toISOString())
             .gt("ends_at", dayStart.toISOString()),
         ]);
+      const failed = [hoursR, periodsR, staffHoursR, bookingsR, blockedR].find(
+        (result) => result.error,
+      );
+      if (failed?.error) throw failed.error;
       return {
         periods: resolveDayPeriods({
           weekday,
@@ -1616,12 +1626,40 @@ export function PublicBookingPage({
                   </div>
                 ))}
               </div>
+            ) : dayLoadFailed ? (
+              <div
+                role="alert"
+                className="rounded-2xl border bg-card p-6 text-center"
+              >
+                <p className="text-sm">
+                  We couldn&apos;t check available times just now.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => void retryDay()}
+                >
+                  Try again
+                </Button>
+              </div>
             ) : slots.length === 0 ? (
-              <div className="rounded-2xl border border-dashed bg-card/40 p-12 text-center">
+              <div className="rounded-2xl border border-dashed bg-card/40 p-5 text-center sm:p-8">
                 <Clock className="h-6 w-6 mx-auto text-muted-foreground" />
                 <p className="text-sm text-muted-foreground mt-3">
                   No availability on this day. Try another date.
                 </p>
+                {staff && biz.slug && (
+                  <BookingOpeningRequest
+                    key={`${service.id}-${staff.id}-${date.toDateString()}`}
+                    businessId={service.business_id}
+                    serviceId={service.id}
+                    serviceName={service.name}
+                    staffId={staff.id}
+                    staffName={staff.name}
+                    selectedDate={date}
+                  />
+                )}
               </div>
             ) : (
               <div className="space-y-5">

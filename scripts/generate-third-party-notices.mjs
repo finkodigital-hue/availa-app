@@ -7,8 +7,9 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const lockfilePath = join(projectRoot, "package-lock.json");
 const outputPath = join(projectRoot, "public", "third-party-notices.txt");
 const checkOnly = process.argv.includes("--check");
+const normalizedText = (path) => readFileSync(path, "utf8").replaceAll("\r\n", "\n");
 
-const lockfile = JSON.parse(readFileSync(lockfilePath, "utf8"));
+const lockfile = JSON.parse(normalizedText(lockfilePath));
 const packages = new Map();
 
 for (const [relativePath, lockedPackage] of Object.entries(
@@ -64,7 +65,7 @@ const sortedPackages = [...packages.values()].sort((a, b) =>
   `${a.name}@${a.version}`.localeCompare(`${b.name}@${b.version}`),
 );
 const lockfileHash = createHash("sha256")
-  .update(readFileSync(lockfilePath))
+  .update(normalizedText(lockfilePath))
   .digest("hex");
 const divider = "=".repeat(80);
 const output = [
@@ -88,7 +89,7 @@ const output = [
 ].join("\n");
 
 if (checkOnly) {
-  if (!existsSync(outputPath) || readFileSync(outputPath, "utf8") !== output) {
+  if (!existsSync(outputPath) || normalizedText(outputPath) !== output) {
     throw new Error(
       "Third-party notices are stale. Run `npm run notices:generate` and commit the result.",
     );
