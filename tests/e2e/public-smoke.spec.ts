@@ -14,6 +14,7 @@ test("public navigation reaches the key launch pages", async ({ page }) => {
     "href",
     "/favicon.ico",
   );
+  await page.getByRole("button", { name: "Reject non-essential" }).click();
 
   for (const [label, path] of [
     ["Privacy", "/privacy"],
