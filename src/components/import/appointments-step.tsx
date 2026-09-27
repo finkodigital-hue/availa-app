@@ -106,6 +106,7 @@ export function AppointmentsStep({
       r.startsAt.getTime() > Date.now() &&
       r.status === "confirmed",
   );
+  const prepaidRows = upload.rows.filter((r) => r.prepaymentCents > 0);
   const visibleRows = showUpcoming ? upcomingRows : upload.rows;
 
   const commit = async () => {
@@ -301,6 +302,11 @@ export function AppointmentsStep({
                     {upload.skipped.toLocaleString()} skipped (incomplete row)
                   </Badge>
                 )}
+                {prepaidRows.length > 0 && (
+                  <Badge variant="secondary">
+                    {prepaidRows.length.toLocaleString()} with a Fresha deposit
+                  </Badge>
+                )}
                 {unparsedDates > 0 && (
                   <Badge variant="secondary">
                     {unparsedDates.toLocaleString()} with an unreadable date —
@@ -318,7 +324,9 @@ export function AppointmentsStep({
                   missing, export them again before relying on this calendar.
                   After import, spot-check dates, times, services and team
                   members in Bookzenvo. Importing does not cancel bookings or
-                  reminders in your old system.
+                  reminders in your old system. Deposits are recorded against
+                  the remaining balance; the money stays with the original
+                  payment provider.
                 </AlertDescription>
               </Alert>
 
@@ -408,8 +416,17 @@ export function AppointmentsStep({
                         <TableCell className="text-muted-foreground whitespace-nowrap">
                           {r.startsAt ? r.startsAt.toLocaleDateString() : "—"}
                         </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {fmtMoney(r.priceCents, currency)}
+                        <TableCell className="text-right text-muted-foreground whitespace-nowrap">
+                          <div>{fmtMoney(r.priceCents, currency)}</div>
+                          {r.prepaymentCents > 0 && (
+                            <div className="text-xs">
+                              {fmtMoney(
+                                Math.min(r.priceCents, r.prepaymentCents),
+                                currency,
+                              )}{" "}
+                              paid
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
