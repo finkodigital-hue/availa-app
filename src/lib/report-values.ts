@@ -36,6 +36,7 @@ export type DailyTakingsCurrency = {
   currency: string;
   card: { received: number; refunded: number; net: number };
   cash: { received: number; refunded: number; net: number };
+  other?: { received: number; refunded: number; net: number };
   total: { received: number; refunded: number; net: number };
 };
 
@@ -72,19 +73,32 @@ export function aggregateDailyTakings(
       continue;
     if (!Number.isSafeInteger(row.amount_cents) || row.amount_cents < 0)
       throw new Error("Payment ledger contains an invalid amount.");
-    if (row.payment_method !== "card" && row.payment_method !== "cash")
+    if (
+      !["card", "cash", "bank_transfer", "other", "unknown"].includes(
+        row.payment_method,
+      )
+    )
       throw new Error("Payment ledger contains an unsupported payment method.");
     const value = ensure(row.currency);
-    const method = value[row.payment_method];
+    const method =
+      row.payment_method === "card" || row.payment_method === "cash"
+        ? value[row.payment_method]
+        : (value.other ??= { received: 0, refunded: 0, net: 0 });
     if (row.type === "charge") method.received += row.amount_cents;
     else method.refunded += row.amount_cents;
   }
 
   for (const value of currencies.values()) {
-    for (const method of [value.card, value.cash])
+    for (const method of [
+      value.card,
+      value.cash,
+      ...(value.other ? [value.other] : []),
+    ])
       method.net = method.received - method.refunded;
-    value.total.received = value.card.received + value.cash.received;
-    value.total.refunded = value.card.refunded + value.cash.refunded;
+    value.total.received =
+      value.card.received + value.cash.received + (value.other?.received ?? 0);
+    value.total.refunded =
+      value.card.refunded + value.cash.refunded + (value.other?.refunded ?? 0);
     value.total.net = value.total.received - value.total.refunded;
   }
   return Array.from(currencies.values()).sort((a, b) =>

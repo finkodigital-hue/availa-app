@@ -77,6 +77,14 @@ export function DailyTakings({ businessId }: { businessId?: string }) {
                   values={entry.cash}
                   currency={entry.currency}
                 />
+                {entry.other && (
+                  <MethodRow
+                    icon={Banknote}
+                    label="Other / unclassified"
+                    values={entry.other}
+                    currency={entry.currency}
+                  />
+                )}
               </div>
               {entry.total.refunded > 0 && (
                 <p className="mt-3 text-xs text-muted-foreground">
