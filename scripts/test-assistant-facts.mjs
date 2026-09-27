@@ -3,9 +3,7 @@ import { assistantFacts } from "../src/lib/assistant-facts.ts";
 import { cleanAssistantMessages } from "../src/lib/assistant-request.ts";
 
 const visit = {
-  id: "booking-1",
   startsAt: "2026-09-24T09:00:00Z",
-  customer: "Test customer",
   service: "Cut",
   staff: "Stylist",
   status: "completed",
@@ -45,6 +43,16 @@ assert.equal(
   null,
 );
 assert.equal(JSON.stringify(facts).includes("customer@example.com"), false);
+assert.equal(Object.hasOwn(facts.today.appointments[0], "customer"), false);
+assert.equal(Object.hasOwn(facts.today.appointments[0], "bookingId"), false);
+assert.equal(Object.hasOwn(facts.today.needsAttention[0], "customer"), false);
+assert.equal(Object.hasOwn(facts.today.needsAttention[0], "bookingId"), false);
+assert.equal(
+  facts.next14Days.firstAppointments.some((item) =>
+    Object.hasOwn(item, "bookingId"),
+  ),
+  false,
+);
 
 const valid = cleanAssistantMessages([{ role: "user", parts: [{ type: "text", text: "  Help me  " }] }]);
 assert.equal(valid?.[0].parts[0].text, "Help me");
