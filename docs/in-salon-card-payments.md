@@ -1,6 +1,6 @@
 # In-salon card payments: implementation plan
 
-Status: sandbox vertical slice implemented in code on 27 September 2026. It includes private reader mappings, locked/idempotent payment attempts, Stripe Connect PaymentIntent and reader calls, signed webhook reconciliation, booking UI controls, a free simulated-reader setup action, and database regression tests. It still needs deployment, a successful simulated Stripe end-to-end run, a supported physical GB reader, and a supervised small live charge/refund before it can be offered to salons.
+Status: sandbox vertical slice deployed and provider-tested on 27 September 2026. It includes private reader mappings, locked/idempotent payment attempts, Stripe Connect PaymentIntent and reader calls, signed webhook reconciliation, booking UI controls, a free simulated-reader setup action, and database regression tests. Connected-account simulated-reader payments and refunds completed and reconciled. It still needs a supported physical GB reader and a supervised small live payment, cancellation and refund before it can be offered to salons.
 
 ## Recommendation
 
@@ -27,8 +27,8 @@ Stripe says server-driven processing is asynchronous, recommends reader-action w
 
 ## Implementation slices
 
-1. **Correct product wording now:** explain that online payment links work today, but Bookzenvo does not yet connect a card reader or support tap-on-phone. A payment taken on an external machine does not automatically update Bookzenvo's booking or payment ledger.
-2. **Sandbox vertical slice (implemented; deployment and provider test pending):** explicit database migration for reader mappings and payment attempts, server endpoints for start/status/cancel, a booking checkout panel, connected-account Terminal webhook handlers, reconciliation, and tests for tenant isolation, amount calculation, retries, duplicate fulfilment, payment-method races and access. Stripe supports simulated server-driven readers (`simulated-wpe`, `simulated-s700`, `simulated-s710`) in a sandbox. [Simulated reader](https://docs.stripe.com/terminal/payments/connect-reader?reader-type=simulated&terminal-sdk-platform=server-driven).
+1. **Correct product wording (completed):** explain that compatible internet-connected Stripe smart readers are implemented but still require live-account and physical-reader activation. Keep phone-based Tap to Pay outside the website scope.
+2. **Sandbox vertical slice (completed):** explicit database migration for reader mappings and payment attempts, server endpoints for start/status/cancel, a booking checkout panel, connected-account Terminal webhook handlers, reconciliation, and tests for tenant isolation, amount calculation, retries, duplicate fulfilment, payment-method races and access. Simulated provider payments and refunds completed successfully. Stripe supports simulated server-driven readers (`simulated-wpe`, `simulated-s700`, `simulated-s710`) in a sandbox. [Simulated reader](https://docs.stripe.com/terminal/payments/connect-reader?reader-type=simulated&terminal-sdk-platform=server-driven).
 3. **Pilot and rollout:** test one physical GB reader with one consenting salon, including PIN/SCA fallbacks, connection loss, refunds, receipts, end-of-day reconciliation, and staff training. Start behind a business-level feature flag. A UK contactless card can require insertion/Chip-and-PIN; a smart reader or online link is a useful fallback. [UK considerations](https://docs.stripe.com/terminal/payments/regional?integration-country=GB).
 
 ## Release gates / unresolved decisions
@@ -36,7 +36,7 @@ Stripe says server-driven processing is asynchronous, recommends reader-action w
 - Confirm Stripe Terminal access and the precise Connect charge/fee model for Bookzenvo's connected accounts. Reader, location, PaymentIntent, and webhook account must match; do not mix platform and salon objects. Existing direct-charge approach is the design assumption, not a verified live capability for every salon.
 - Decide whether tips, split tender, cash, gift-card balances, and walk-in sales belong in v1. Recommend **booking balance only**, no tips or split tender initially. In the UK, Stripe's server-driven guide marks on-receipt tips as US-only, so do not promise that flow.
 - Confirm payment amount minimums, receipt handling, refund and dispute ownership, hardware purchase/support costs, and terms before announcing pricing.
-- The sandbox code and database tests do not prove the salon's connected Stripe account can use Terminal. Complete a simulated provider run after deployment. Then obtain one supported reader and complete a supervised low-value live charge, cancellation and refund before enabling it for salon use.
+- The simulated connected-account run proves the sandbox integration path, but not a physical reader or live salon account. Obtain one supported reader and complete a supervised low-value live payment, cancellation and refund before enabling it for salon use. The simulator completes too quickly to prove the operator cancellation journey.
 
 ## Sources checked
 
