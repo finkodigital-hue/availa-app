@@ -133,6 +133,7 @@ export function AppointmentsStep({
         setVerificationError(true);
       }
     } catch (e) {
+      onCommitted?.(); // Refresh history after a partial or failed import.
       toast.error(describeImportError(e));
     } finally {
       setCommitting(false);
