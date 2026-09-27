@@ -9,7 +9,9 @@ The grant and London event records can be indexed with [`grant-conference-eviden
 ## Engineering completed
 
 - Public privacy, platform terms, cookie, refund and verified-review policies are routed and linked.
+- The public operator disclosure identifies BOOKZENVO LTD, private limited company registered in Scotland under SC902170, at Pinefield, Cannich, Beauly, Scotland, IV4 7LY, with help@bookzenvo.com as the contact address.
 - A production audit fails if the legal operator name, legal form or service address is not published.
+- The production launch audit checked 119 public pages and assets on 27 September 2026 and passed its link and metadata checks.
 - Consultation and patch-test answers are isolated behind the authenticated server boundary; signed wording and evidence are immutable.
 - Health-data agreement is a separate affirmative step. Withdrawal is recorded and visible.
 - Customer exports include profile, booking, payment, review, consultation, patch-test, consent and signature records.
@@ -20,8 +22,8 @@ The grant and London event records can be indexed with [`grant-conference-eviden
 ## Owner must complete before public launch
 
 - Assemble and review the grant award, submitted application, approved budget, conditions and variations. Record eligible-spend, procurement/card, match-funding, reporting, IP, publicity and London conference obligations.
-- Set and verify `VITE_LEGAL_OPERATOR_NAME`, `VITE_LEGAL_OPERATOR_FORM`, `VITE_LEGAL_OPERATOR_ADDRESS`, and the public contact email. Add company number and registration jurisdiction, VAT and ICO numbers where applicable.
-- Run `npm run audit:launch -- https://bookzenvo.com` against the final production deployment and do not waive failures.
+- Re-check the published company name, number, registered jurisdiction, service address and contact email against the Companies House record immediately before launch. Add VAT and ICO numbers only where applicable and verified.
+- Re-run `npm run audit:launch -- https://bookzenvo.com` after the final production deployment and do not waive failures. The 27 September 2026 run passed all 119 checked public pages and assets.
 - Confirm the privacy notice reflects the actual production hosts, regions, subprocessors, email flows, payment setup and AI features.
 - Choose and document retention periods by record type. Configure provider backup expiry consistently; do not keep data merely because storage is available.
 - Establish a secure identity-check and delivery method for access requests. Record extensions, refusals, restrictions and legal holds outside the product until dedicated workflow support exists.

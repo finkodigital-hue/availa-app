@@ -27,9 +27,9 @@ test.describe("calendar sync security", () => {
       businessId: "business-1",
       userId: "user-1",
     });
-    expect(() => readOauthState(`${state.slice(0, -1)}x`)).toThrow(
-      /Invalid OAuth state/,
-    );
+    const finalCharacter = state.at(-1);
+    const tamperedState = `${state.slice(0, -1)}${finalCharacter === "x" ? "y" : "x"}`;
+    expect(() => readOauthState(tamperedState)).toThrow(/Invalid OAuth state/);
   });
 
   test("provider URLs request offline calendar access without including secrets", () => {
