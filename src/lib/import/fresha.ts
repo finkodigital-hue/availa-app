@@ -130,6 +130,7 @@ export type ParsedApptRow = {
   startsAt: Date | null;
   endsAt: Date | null;
   priceCents: number;
+  prepaymentCents: number;
   createdAt: Date | null;
 };
 
@@ -145,6 +146,7 @@ export function mapApptRow(r: Record<string, string>): ParsedApptRow | null {
   const dur = parseDuration(r.duration);
   const times = resolveApptTimes(scheduled, slot, explicitEnd, dur.minutes);
   const price = parsePrice(r.price);
+  const prepayment = parsePrice(r.prepayment);
   // Not every system exports a booking reference — synthesized per-row like
   // the customer external_id above, for the same duplicate-collision reason.
   const externalId = cleanText(r.externalId) ?? `row:${crypto.randomUUID()}`;
@@ -158,6 +160,7 @@ export function mapApptRow(r: Record<string, string>): ParsedApptRow | null {
     startsAt: times?.startsAt ?? null,
     endsAt: times?.endsAt ?? null,
     priceCents: price.cents,
+    prepaymentCents: Math.max(0, prepayment.cents),
     createdAt: parseGenericDateTime(r.createdDate),
   };
 }

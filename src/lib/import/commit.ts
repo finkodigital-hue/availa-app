@@ -602,6 +602,20 @@ export async function commitAppointments(params: {
       linkedToService++;
 
       const isPaid = r.status === "completed";
+      // Fresha exports the amount already collected as `Prepayments`. It can
+      // repeat a group payment on more than one service row, so never credit
+      // one appointment with more than its own price.
+      const importedPrepayment = Math.min(
+        r.priceCents,
+        Math.max(0, r.prepaymentCents ?? 0),
+      );
+      const amountPaid = isPaid ? r.priceCents : importedPrepayment;
+      const paymentStatus =
+        isPaid || (r.priceCents > 0 && amountPaid >= r.priceCents)
+          ? "paid"
+          : amountPaid > 0
+            ? "deposit_paid"
+            : "unpaid";
       toInsert.push({
         business_id: params.businessId,
         external_id: r.externalId,
@@ -613,9 +627,9 @@ export async function commitAppointments(params: {
         ends_at: r.endsAt.toISOString(),
         status: r.status,
         price_cents: r.priceCents,
-        amount_due_cents: r.priceCents,
-        amount_paid_cents: isPaid ? r.priceCents : 0,
-        payment_status: isPaid ? "paid" : "unpaid",
+        amount_due_cents: Math.max(0, r.priceCents - amountPaid),
+        amount_paid_cents: amountPaid,
+        payment_status: paymentStatus,
         source: "manual",
         notify_customer: false,
         // Pre-claimed so the confirmation-email sweep backstop can never pick

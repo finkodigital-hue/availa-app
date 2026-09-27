@@ -51,7 +51,7 @@ function load(file) {
   return exports;
 }
 const {commitAppointments}=load('src/lib/import/commit.ts');
-const rows=Array.from({length:501},(_,i)=>({externalId:'appt-'+i,clientName:'Client '+i,staffName:'Sam',serviceName:'Cut',startsAt:new Date('2030-01-07T10:00:00Z'),endsAt:new Date('2030-01-07T11:00:00Z'),status:'confirmed',priceCents:2000,createdAt:null}));
+const rows=Array.from({length:501},(_,i)=>({externalId:'appt-'+i,clientName:'Client '+i,staffName:'Sam',serviceName:'Cut',startsAt:new Date('2030-01-07T10:00:00Z'),endsAt:new Date('2030-01-07T11:00:00Z'),status:i===2?'completed':i===3?'cancelled':'confirmed',priceCents:2000,prepaymentCents:i===0?500:i===1?3000:i===2?500:i===3?500:0,createdAt:null}));
 const params={businessId:'business',sessionId:'session',filename:'fixture.csv',fileHash:'fixture-hash',totalRows:501,skippedInvalid:0,rows,createdBy:'owner'};
 await assert.rejects(commitAppointments(params),error=>error.message==='Simulated failed request');
 assert.equal(tables.bookings.length,500);
@@ -65,4 +65,8 @@ assert.equal(tables.import_batches[1].status,'completed');
 result=await commitAppointments(params);
 assert.equal(result.imported,0);assert.equal(result.duplicate,501);
 assert.equal(tables.bookings.length,501);
+assert.deepEqual([tables.bookings[0].amount_paid_cents,tables.bookings[0].amount_due_cents,tables.bookings[0].payment_status],[500,1500,'deposit_paid']);
+assert.deepEqual([tables.bookings[1].amount_paid_cents,tables.bookings[1].amount_due_cents,tables.bookings[1].payment_status],[2000,0,'paid']);
+assert.deepEqual([tables.bookings[2].amount_paid_cents,tables.bookings[2].amount_due_cents,tables.bookings[2].payment_status],[2000,0,'paid']);
+assert.deepEqual([tables.bookings[3].amount_paid_cents,tables.bookings[3].amount_due_cents,tables.bookings[3].payment_status],[500,1500,'deposit_paid']);
 console.log('Import recovery passed: failed second chunk records 500 saved rows; retry adds only the missing row; repeat creates no duplicates.');

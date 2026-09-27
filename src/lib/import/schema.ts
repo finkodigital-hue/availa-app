@@ -268,6 +268,18 @@ export const ENTITY_FIELDS: Record<ImportEntity, FieldSpec[]> = {
       aliases: ["net sales", "price", "total", "amount"],
     },
     {
+      key: "prepayment",
+      label: "Deposit / amount already paid",
+      required: false,
+      aliases: [
+        "prepayments",
+        "prepayment",
+        "deposit paid",
+        "deposit amount",
+        "amount paid",
+      ],
+    },
+    {
       key: "createdDate",
       label: "Created date",
       required: false,
