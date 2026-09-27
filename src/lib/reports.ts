@@ -7,6 +7,7 @@ import {
   type PaymentLedgerRow,
 } from "@/lib/report-values";
 import { businessDayRange } from "@/lib/business-day";
+import { businessDay, type DailyTakings } from "@/lib/takings";
 
 // Shared booking-aggregation logic used by both the Dashboard's "Performance"
 // section and the Reports page's date-range reports — kept in one place so
@@ -110,20 +111,26 @@ export const getDailyTakings = createServerFn({ method: "GET" })
     if (businessError) throw businessError;
     const timeZone = business.timezone || "Europe/London";
     const { start, end } = businessDayRange(new Date(), timeZone);
-    const { data, error } = await supabaseAdmin
-      .from("payments")
-      .select("type,status,amount_cents,currency,payment_method")
-      .eq("business_id", businessId)
-      .gte("created_at", start.toISOString())
-      .lt("created_at", end.toISOString())
-      .order("created_at", { ascending: true });
+    const { data, error } = await supabaseAdmin.rpc(
+      "get_daily_takings" as never,
+      {
+        p_business_id: businessId,
+        p_day: businessDay(timeZone),
+      } as never,
+    );
     if (error) throw error;
     return {
       start: start.toISOString(),
       end: end.toISOString(),
       timeZone,
       currencies: aggregateDailyTakings(
-        (data ?? []) as PaymentLedgerRow[],
+        (data as unknown as DailyTakings).rows.map((row) => ({
+          type: row.type,
+          status: "succeeded",
+          amount_cents: row.amountCents,
+          currency: row.currency,
+          payment_method: row.method,
+        })) as PaymentLedgerRow[],
         business.currency || "GBP",
       ),
     };
