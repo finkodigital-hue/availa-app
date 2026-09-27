@@ -11,6 +11,7 @@ import { checkFunctionAccess } from './schema-function-access-checks.mjs';
 import { checkCashPayments } from './schema-cash-payment-checks.mjs';
 import { checkDailyTakings } from './schema-daily-takings-checks.mjs';
 import { checkStaffRemoval } from './schema-staff-removal-checks.mjs';
+import { checkAppointmentImports } from './schema-import-checks.mjs';
 
 // Replay ALL application migrations. Supabase-owned Auth/Storage objects and
 // external cron/HTTP/Vault services are local fixtures, not a full Supabase stack.
@@ -134,5 +135,6 @@ try {
  await checkCashPayments(db);
  await checkStaffRemoval(db);
  await checkDailyTakings(db);
+ await checkAppointmentImports(db);
 } catch(error) {console.error(error);process.exitCode=1;}
 finally {await db.close();}

@@ -69,6 +69,7 @@ export function CustomersStep({
       toast.success(`Imported ${res.imported} clients`);
       onCommitted();
     } catch (e) {
+      onCommitted?.();
       toast.error(describeImportError(e));
     } finally {
       setCommitting(false);

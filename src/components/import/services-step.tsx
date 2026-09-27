@@ -60,6 +60,7 @@ export function ServicesStep({
       toast.success(`Imported ${res.imported} services`);
       onCommitted();
     } catch (e) {
+      onCommitted?.();
       toast.error(describeImportError(e));
     } finally {
       setCommitting(false);

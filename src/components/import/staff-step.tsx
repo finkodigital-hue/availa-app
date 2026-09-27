@@ -64,6 +64,7 @@ export function StaffStep({
       toast.success(`Imported ${res.imported} team members`);
       onCommitted();
     } catch (e) {
+      onCommitted?.();
       toast.error(describeImportError(e));
     } finally {
       setCommitting(false);
