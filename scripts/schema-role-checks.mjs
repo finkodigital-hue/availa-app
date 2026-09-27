@@ -88,7 +88,7 @@ export async function checkSchemaRoles(db) {
  same(await rows(`update bookings set price_cents=1 where id='${id(501)}' returning id`),[],'Portal cannot alter booking base rows');
  await db.exec('reset role');
  await db.exec(`insert into bookings(id,business_id,service_id,staff_id,customer_id,customer_name,customer_email,starts_at,ends_at)
-  values('${id(599)}','${id(101)}','${id(301)}','${id(201)}','${id(401)}','Portal cancellation fixture','fixture7@example.invalid',now()+interval '30 days',now()+interval '30 days 30 minutes')`);
+  values('${id(599)}','${id(101)}','${id(301)}','${id(201)}','${id(401)}','Portal cancellation fixture','fixture7@example.invalid',date_trunc('week',now())+interval '15 days 15 hours',date_trunc('week',now())+interval '15 days 15 hours 30 minutes')`);
  await login(7);await rows(`select cancel_portal_booking('${id(599)}')`);
  same((await rows(`select status from get_portal_bookings() where id='${id(599)}'`))[0].status,'cancelled','Portal cancellation uses the narrow RPC');
  await db.exec('reset role');await db.exec(`delete from bookings where id='${id(599)}'`);await login(7);

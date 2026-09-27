@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Banknote,
   Copy,
@@ -6,6 +6,7 @@ import {
   ExternalLink,
   Gift,
   RefreshCw,
+  Radio,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,14 @@ import { useWorkspaceAccess } from "@/lib/business";
 import { recordCashPayment } from "@/lib/cash-payment.functions";
 import { fmtMoney } from "@/lib/format";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  cancelTerminalPayment,
+  createTestTerminalReader,
+  getTerminalPaymentStatus,
+  listTerminalReaders,
+  startTerminalPayment,
+  type TerminalReaderSummary,
+} from "@/lib/terminal.functions";
 
 /** Keep the appointment open. Only the database can confirm payment. */
 export function BookingBalanceCheckout({
@@ -42,6 +51,159 @@ export function BookingBalanceCheckout({
   const qc = useQueryClient();
   const [cashConfirming, setCashConfirming] = useState(false);
   const cashRequest = useRef<string | null>(null);
+  const [readers, setReaders] = useState<TerminalReaderSummary[]>([]);
+  const [readerId, setReaderId] = useState("");
+  const [canCreateSimulator, setCanCreateSimulator] = useState(false);
+  const [terminalBusy, setTerminalBusy] = useState(false);
+  const [terminalMessage, setTerminalMessage] = useState("");
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const terminalRequest = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    let active = true;
+    void (async () => {
+      try {
+        const headers = await getServerFnAuthHeaders();
+        const result = await listTerminalReaders({ headers });
+        if (!active) return;
+        setReaders(result.readers);
+        setReaderId((current) => current || result.readers[0]?.id || "");
+        setCanCreateSimulator(result.canCreateSimulator);
+      } catch {
+        // Reader controls stay hidden until Stripe Terminal is configured.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [isOwner]);
+
+  function applyTerminalResult(result: {
+    attemptId: string;
+    state: string;
+    message?: string;
+  }) {
+    setAttemptId(result.attemptId);
+    if (result.state === "succeeded") {
+      setTerminalMessage(
+        "Card payment confirmed by Stripe. This visit is paid.",
+      );
+      setAttemptId(null);
+      terminalRequest.current = null;
+      void refresh();
+    } else if (result.state === "failed") {
+      setTerminalMessage(
+        result.message || "The card was not accepted. Try again.",
+      );
+      setAttemptId(null);
+      terminalRequest.current = null;
+    } else if (result.state === "canceled") {
+      setTerminalMessage("Reader payment canceled. No payment was recorded.");
+      setAttemptId(null);
+      terminalRequest.current = null;
+    } else if (result.state === "review") {
+      setTerminalMessage(
+        result.message ||
+          "The result is uncertain. Check the same payment before trying again.",
+      );
+    } else {
+      setTerminalMessage(
+        "Present the card to the reader and follow its instructions.",
+      );
+    }
+  }
+
+  async function takeReaderPayment() {
+    if (!readerId || terminalBusy || disabled) return;
+    setTerminalBusy(true);
+    setTerminalMessage("");
+    terminalRequest.current ??= crypto.randomUUID();
+    try {
+      const headers = await getServerFnAuthHeaders();
+      const result = await startTerminalPayment({
+        data: {
+          bookingId,
+          readerId,
+          requestId: terminalRequest.current,
+        },
+        headers,
+      });
+      applyTerminalResult(result);
+    } catch (error) {
+      setTerminalMessage(
+        error instanceof Error
+          ? error.message
+          : "The reader could not start the payment.",
+      );
+    } finally {
+      setTerminalBusy(false);
+    }
+  }
+
+  async function checkReaderPayment() {
+    if (!attemptId || terminalBusy) return;
+    setTerminalBusy(true);
+    try {
+      const headers = await getServerFnAuthHeaders();
+      applyTerminalResult(
+        await getTerminalPaymentStatus({ data: { attemptId }, headers }),
+      );
+    } catch (error) {
+      setTerminalMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not check the reader payment.",
+      );
+    } finally {
+      setTerminalBusy(false);
+    }
+  }
+
+  async function cancelReaderPayment() {
+    if (!attemptId || terminalBusy) return;
+    setTerminalBusy(true);
+    try {
+      const headers = await getServerFnAuthHeaders();
+      applyTerminalResult(
+        await cancelTerminalPayment({ data: { attemptId }, headers }),
+      );
+    } catch (error) {
+      setTerminalMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not cancel the reader payment.",
+      );
+    } finally {
+      setTerminalBusy(false);
+    }
+  }
+
+  async function addTestReader() {
+    if (terminalBusy) return;
+    setTerminalBusy(true);
+    setTerminalMessage("Creating a free Stripe test reader…");
+    try {
+      const headers = await getServerFnAuthHeaders();
+      const reader = await createTestTerminalReader({ data: {}, headers });
+      setReaders((current) => [
+        ...current.filter((r) => r.id !== reader.id),
+        reader,
+      ]);
+      setReaderId(reader.id);
+      setTerminalMessage(
+        "Test reader ready. No hardware or live charge is involved.",
+      );
+    } catch (error) {
+      setTerminalMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not create the test reader.",
+      );
+    } finally {
+      setTerminalBusy(false);
+    }
+  }
 
   async function receiveCash() {
     if (lock.current || disabled || !isOwner) return;
@@ -148,9 +310,76 @@ export function BookingBalanceCheckout({
         Remaining payment · {fmtMoney(amountDueCents, currency)}
       </p>
       <p className="text-xs text-muted-foreground">
-        Choose how the customer is paying. For card payments, the customer
-        approves payment in secure Stripe Checkout.
+        Choose cash, the salon card reader, or a secure payment link on the
+        customer&apos;s phone.
       </p>
+      {isOwner && (readers.length > 0 || canCreateSimulator) && (
+        <div className="space-y-2 rounded-lg border bg-background p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {readers.length > 0 && (
+              <select
+                aria-label="Card reader"
+                className="h-9 min-w-48 rounded-md border bg-background px-3 text-sm"
+                value={readerId}
+                disabled={terminalBusy || Boolean(attemptId)}
+                onChange={(event) => setReaderId(event.target.value)}
+              >
+                {readers.map((reader) => (
+                  <option key={reader.id} value={reader.id}>
+                    {reader.label} · {reader.status}
+                  </option>
+                ))}
+              </select>
+            )}
+            {readers.length > 0 && !attemptId && (
+              <Button
+                type="button"
+                disabled={terminalBusy || disabled || amountDueCents <= 0}
+                onClick={() => void takeReaderPayment()}
+              >
+                <Radio className="mr-1.5 h-4 w-4" />
+                {terminalBusy ? "Starting reader…" : "Take card payment"}
+              </Button>
+            )}
+            {attemptId && (
+              <>
+                <Button
+                  type="button"
+                  disabled={terminalBusy}
+                  onClick={() => void checkReaderPayment()}
+                >
+                  <RefreshCw className="mr-1.5 h-4 w-4" />
+                  {terminalBusy ? "Checking…" : "Check reader"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={terminalBusy}
+                  onClick={() => void cancelReaderPayment()}
+                >
+                  Cancel reader
+                </Button>
+              </>
+            )}
+            {readers.length === 0 && canCreateSimulator && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={terminalBusy}
+                onClick={() => void addTestReader()}
+              >
+                <Radio className="mr-1.5 h-4 w-4" />
+                {terminalBusy ? "Creating…" : "Create free test reader"}
+              </Button>
+            )}
+          </div>
+          {terminalMessage && (
+            <p role="status" className="text-sm">
+              {terminalMessage}
+            </p>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {isOwner && (
           <Button
