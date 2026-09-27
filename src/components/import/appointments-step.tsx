@@ -30,8 +30,10 @@ import {
 import {
   commitAppointments,
   fetchAllRows,
+  verifyUpcomingImport,
   type ApptCommitResult,
 } from "@/lib/import/commit";
+import type { ReconciliationResult } from "@/lib/import/reconcile";
 import { fmtMoney, statusMeta } from "@/lib/format";
 
 export function AppointmentsStep({
@@ -39,11 +41,13 @@ export function AppointmentsStep({
   sessionId,
   userId,
   currency,
+  onCommitted,
 }: {
   businessId: string;
   sessionId: string;
   userId: string | null;
   currency: string;
+  onCommitted?: () => void;
 }) {
   const upload = useEntityUpload<ParsedApptRow>(
     "bookings",
@@ -55,6 +59,9 @@ export function AppointmentsStep({
   const [committing, setCommitting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ApptCommitResult | null>(null);
+  const [reconciliation, setReconciliation] =
+    useState<ReconciliationResult | null>(null);
+  const [verificationError, setVerificationError] = useState(false);
   const [showUpcoming, setShowUpcoming] = useState(false);
 
   useEffect(() => {
@@ -118,7 +125,13 @@ export function AppointmentsStep({
           setProgress(Math.round((done / total) * 100)),
       });
       setResult(res);
+      onCommitted?.();
       toast.success(`Imported ${res.imported} appointments`);
+      try {
+        setReconciliation(await verifyUpcomingImport(businessId, upload.rows));
+      } catch {
+        setVerificationError(true);
+      }
     } catch (e) {
       toast.error(describeImportError(e));
     } finally {
@@ -135,7 +148,7 @@ export function AppointmentsStep({
       done={!!result}
     >
       {result ? (
-        <div className="space-y-1.5 text-sm">
+        <div className="space-y-3 text-sm">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-primary" />
             Imported {result.imported.toLocaleString()} appointments
@@ -149,6 +162,59 @@ export function AppointmentsStep({
             (inactive) · {result.duplicate.toLocaleString()} already imported,
             skipped
           </p>
+          {reconciliation ? (
+            <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+              <p className="font-medium">Upcoming booking check</p>
+              <p className="text-muted-foreground text-xs">
+                {reconciliation.matched} of {reconciliation.sourceCount}{" "}
+                upcoming confirmed appointments in this file match Bookzenvo on
+                time, client, service and team member.
+              </p>
+              {reconciliation.issues.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-destructive font-medium">
+                    {reconciliation.issues.length} need a closer look before
+                    switching.
+                  </p>
+                  <ul className="space-y-1 text-xs">
+                    {reconciliation.issues.slice(0, 10).map((issue, index) => (
+                      <li key={index}>
+                        {issue.clientName} · {issue.startsAt.toLocaleString()} —{" "}
+                        {issue.reason === "missing"
+                          ? "not found in Bookzenvo"
+                          : "details differ in Bookzenvo"}
+                      </li>
+                    ))}
+                  </ul>
+                  {reconciliation.issues.length > 10 && (
+                    <p className="text-xs text-muted-foreground">
+                      Showing the first 10 of {reconciliation.issues.length}{" "}
+                      issues.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  These appointments match. Still compare the file with your old
+                  diary: Bookzenvo cannot detect bookings that were left out of
+                  the export.
+                </p>
+              )}
+            </div>
+          ) : verificationError ? (
+            <Alert variant="destructive">
+              <AlertDescription>
+                Appointments were imported, but Bookzenvo could not complete the
+                automatic check. Compare your upcoming diary manually before
+                switching.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <p className="text-xs text-muted-foreground flex items-center gap-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Checking upcoming appointments…
+            </p>
+          )}
         </div>
       ) : !upload.fileName ? (
         <Dropzone

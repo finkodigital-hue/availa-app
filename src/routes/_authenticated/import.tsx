@@ -81,6 +81,7 @@ function ImportPage() {
           sessionId={sessionId}
           userId={user?.id ?? null}
           currency={biz.currency ?? "GBP"}
+          onCommitted={invalidateAll}
         />
       </div>
 

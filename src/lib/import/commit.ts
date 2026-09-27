@@ -5,8 +5,17 @@
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeName, phoneDigits } from "./parse";
 import { NameIndex } from "./matching";
-import type { ParsedApptRow, ParsedCustomerRow, ParsedServiceRow, ParsedStaffRow } from "./fresha";
+import type {
+  ParsedApptRow,
+  ParsedCustomerRow,
+  ParsedServiceRow,
+  ParsedStaffRow,
+} from "./fresha";
 import type { ImportEntity } from "./fresha";
+import {
+  reconcileUpcomingAppointments,
+  type SavedAppointment,
+} from "./reconcile";
 
 const CHUNK_SIZE = 500;
 const PAGE_SIZE = 1000;
@@ -141,7 +150,11 @@ export async function commitStaff(params: {
     createdBy: params.createdBy,
   });
 
-  const existing = await fetchAllRows<{ name: string }>("staff", "name", params.businessId);
+  const existing = await fetchAllRows<{ name: string }>(
+    "staff",
+    "name",
+    params.businessId,
+  );
   const existingNames = new Set(existing.map((s) => normalizeName(s.name)));
 
   const seen = new Set<string>();
@@ -167,7 +180,11 @@ export async function commitStaff(params: {
   }
 
   await insertChunked("staff", toInsert);
-  const result = { imported: toInsert.length, skipped: params.skippedNoName, duplicate };
+  const result = {
+    imported: toInsert.length,
+    skipped: params.skippedNoName,
+    duplicate,
+  };
   await finishBatch(batch.id, result);
   return { batchId: batch.id, ...result };
 }
@@ -194,14 +211,20 @@ export async function commitCustomers(params: {
     createdBy: params.createdBy,
   });
 
-  const existing = await fetchAllRows<{ email: string | null; phone_normalized: string | null; external_id: string | null }>(
-    "customers",
-    "email, phone_normalized, external_id",
-    params.businessId,
+  const existing = await fetchAllRows<{
+    email: string | null;
+    phone_normalized: string | null;
+    external_id: string | null;
+  }>("customers", "email, phone_normalized, external_id", params.businessId);
+  const existingEmails = new Set(
+    existing.map((c) => (c.email ?? "").trim().toLowerCase()).filter(Boolean),
   );
-  const existingEmails = new Set(existing.map((c) => (c.email ?? "").trim().toLowerCase()).filter(Boolean));
-  const existingPhones = new Set(existing.map((c) => c.phone_normalized).filter(Boolean));
-  const existingExternalIds = new Set(existing.map((c) => c.external_id).filter(Boolean));
+  const existingPhones = new Set(
+    existing.map((c) => c.phone_normalized).filter(Boolean),
+  );
+  const existingExternalIds = new Set(
+    existing.map((c) => c.external_id).filter(Boolean),
+  );
 
   const seenEmails = new Set<string>();
   const seenPhones = new Set<string>();
@@ -209,7 +232,10 @@ export async function commitCustomers(params: {
   let duplicate = params.mergedWithinFile;
   const toInsert: Record<string, unknown>[] = [];
   for (const r of params.rows) {
-    if (existingExternalIds.has(r.externalId) || seenExternalIds.has(r.externalId)) {
+    if (
+      existingExternalIds.has(r.externalId) ||
+      seenExternalIds.has(r.externalId)
+    ) {
       duplicate++;
       continue;
     }
@@ -217,8 +243,10 @@ export async function commitCustomers(params: {
     const emailLower = r.email ? r.email.toLowerCase() : "";
     const phoneNorm = phoneDigits(r.phone) ?? "";
     const isDupe =
-      (emailLower && (existingEmails.has(emailLower) || seenEmails.has(emailLower))) ||
-      (phoneNorm && (existingPhones.has(phoneNorm) || seenPhones.has(phoneNorm)));
+      (emailLower &&
+        (existingEmails.has(emailLower) || seenEmails.has(emailLower))) ||
+      (phoneNorm &&
+        (existingPhones.has(phoneNorm) || seenPhones.has(phoneNorm)));
     if (isDupe) {
       duplicate++;
       continue;
@@ -237,7 +265,11 @@ export async function commitCustomers(params: {
   }
 
   await insertChunked("customers", toInsert, params.onProgress);
-  const result = { imported: toInsert.length, skipped: params.skippedNoName, duplicate };
+  const result = {
+    imported: toInsert.length,
+    skipped: params.skippedNoName,
+    duplicate,
+  };
   await finishBatch(batch.id, result);
   return { batchId: batch.id, ...result };
 }
@@ -262,13 +294,14 @@ export async function commitServices(params: {
     createdBy: params.createdBy,
   });
 
-  const existing = await fetchAllRows<{ name: string; external_id: string | null }>(
-    "services",
-    "name, external_id",
-    params.businessId,
-  );
+  const existing = await fetchAllRows<{
+    name: string;
+    external_id: string | null;
+  }>("services", "name, external_id", params.businessId);
   const existingNames = new Set(existing.map((s) => normalizeName(s.name)));
-  const existingExternalIds = new Set(existing.map((s) => s.external_id).filter(Boolean));
+  const existingExternalIds = new Set(
+    existing.map((s) => s.external_id).filter(Boolean),
+  );
 
   const seen = new Set<string>();
   const seenExternalIds = new Set<string>();
@@ -290,7 +323,8 @@ export async function commitServices(params: {
     // genuinely distinct services with different names, so keep the row but
     // only credit the ID to whichever one we saw first, since it can't
     // uniquely identify either after that.
-    const externalId = r.externalId && !seenExternalIds.has(r.externalId) ? r.externalId : null;
+    const externalId =
+      r.externalId && !seenExternalIds.has(r.externalId) ? r.externalId : null;
     if (r.externalId) seenExternalIds.add(r.externalId);
     toInsert.push({
       business_id: params.businessId,
@@ -306,7 +340,11 @@ export async function commitServices(params: {
   }
 
   await insertChunked("services", toInsert);
-  const result = { imported: toInsert.length, skipped: params.skippedNoName, duplicate };
+  const result = {
+    imported: toInsert.length,
+    skipped: params.skippedNoName,
+    duplicate,
+  };
   await finishBatch(batch.id, result);
   return { batchId: batch.id, ...result };
 }
@@ -317,6 +355,35 @@ export type ApptCommitResult = CommitResult & {
   linkedToCustomer: number;
   linkedToService: number;
 };
+
+export async function verifyUpcomingImport(
+  businessId: string,
+  rows: ParsedApptRow[],
+) {
+  const now = new Date();
+  const ids = [
+    ...new Set(
+      rows
+        .filter(
+          (row) =>
+            row.startsAt && row.startsAt > now && row.status === "confirmed",
+        )
+        .map((row) => row.externalId),
+    ),
+  ];
+  const saved: SavedAppointment[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    saved.push(
+      ...(await fetchAllRows<SavedAppointment>(
+        "bookings",
+        "external_id, customer_name, starts_at, ends_at, status, staff(name), services(name)",
+        businessId,
+        (query) => query.in("external_id", ids.slice(i, i + 100)),
+      )),
+    );
+  }
+  return reconcileUpcomingAppointments(rows, saved, now);
+}
 
 export async function commitAppointments(params: {
   businessId: string;
@@ -340,11 +407,26 @@ export async function commitAppointments(params: {
   });
 
   const [staffRows, custRows, svcRows, bookingRows] = await Promise.all([
-    fetchAllRows<{ id: string; name: string }>("staff", "id, name", params.businessId),
-    fetchAllRows<{ id: string; name: string }>("customers", "id, name", params.businessId),
-    fetchAllRows<{ id: string; name: string }>("services", "id, name", params.businessId),
-    fetchAllRows<{ external_id: string | null }>("bookings", "external_id", params.businessId, (q) =>
-      q.not("external_id", "is", null),
+    fetchAllRows<{ id: string; name: string }>(
+      "staff",
+      "id, name",
+      params.businessId,
+    ),
+    fetchAllRows<{ id: string; name: string }>(
+      "customers",
+      "id, name",
+      params.businessId,
+    ),
+    fetchAllRows<{ id: string; name: string }>(
+      "services",
+      "id, name",
+      params.businessId,
+    ),
+    fetchAllRows<{ external_id: string | null }>(
+      "bookings",
+      "external_id",
+      params.businessId,
+      (q) => q.not("external_id", "is", null),
     ),
   ]);
 
@@ -355,7 +437,9 @@ export async function commitAppointments(params: {
     const key = normalizeName(s.name);
     if (!serviceByName.has(key)) serviceByName.set(key, s);
   }
-  const existingExternalIds = new Set(bookingRows.map((b) => b.external_id).filter(Boolean));
+  const existingExternalIds = new Set(
+    bookingRows.map((b) => b.external_id).filter(Boolean),
+  );
 
   // Placeholder staff for team members mentioned in appointment history but
   // absent from the staff file — inactive by default so they never appear as
@@ -408,10 +492,16 @@ export async function commitAppointments(params: {
   const placeholderServiceNamesSeen = new Set<string>();
   for (const r of params.rows) {
     const key = normalizeName(r.serviceName);
-    if (serviceByName.has(key) || placeholderServiceNamesSeen.has(key)) continue;
+    if (serviceByName.has(key) || placeholderServiceNamesSeen.has(key))
+      continue;
     placeholderServiceNamesSeen.add(key);
     const durationMinutes =
-      r.startsAt && r.endsAt ? Math.max(5, Math.round((r.endsAt.getTime() - r.startsAt.getTime()) / 60000)) : 60;
+      r.startsAt && r.endsAt
+        ? Math.max(
+            5,
+            Math.round((r.endsAt.getTime() - r.startsAt.getTime()) / 60000),
+          )
+        : 60;
     newPlaceholderServices.push({
       business_id: params.businessId,
       name: r.serviceName,
@@ -437,7 +527,10 @@ export async function commitAppointments(params: {
   const seenExternalIds = new Set<string>();
   const toInsert: Record<string, unknown>[] = [];
   for (const r of params.rows) {
-    if (existingExternalIds.has(r.externalId) || seenExternalIds.has(r.externalId)) {
+    if (
+      existingExternalIds.has(r.externalId) ||
+      seenExternalIds.has(r.externalId)
+    ) {
       duplicate++;
       continue;
     }
@@ -519,7 +612,10 @@ export async function listImportBatches(businessId: string) {
 // data still references a row from this batch (e.g. a manually-created
 // booking against an imported customer), the delete is blocked by the
 // database — surfaced as a friendly error rather than a raw Postgres one.
-export async function rollbackBatch(batchId: string, businessId: string): Promise<void> {
+export async function rollbackBatch(
+  batchId: string,
+  businessId: string,
+): Promise<void> {
   const { error: bookingsErr } = await supabase
     .from("bookings")
     .delete()
@@ -543,7 +639,10 @@ export async function rollbackBatch(batchId: string, businessId: string): Promis
   if (error) throw error;
 }
 
-function friendlyRollbackError(error: { code?: string; message: string }): Error {
+function friendlyRollbackError(error: {
+  code?: string;
+  message: string;
+}): Error {
   if (error.code === "23503") {
     return new Error(
       "Can't undo this import yet — some of this data still has other things linked to it (for example, a booking created after the import). Undo any later imports first.",
