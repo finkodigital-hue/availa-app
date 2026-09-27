@@ -2,7 +2,7 @@
 
 Authorised scope: fix, test and deploy the website, including mobile-web layouts. Native apps deferred by the founder. Stripe remains sandbox; the founder's real-card test is the final step when they return. No paid Twilio upgrade authorised yet.
 
-Company details supplied: BOOKZENVO LTD, SC902170, registered in Scotland, Pinefield, Tomich, Cannich, IV4 7LY; help@bookzenvo.com.
+Company details initially supplied: BOOKZENVO LTD, SC902170, registered in Scotland, and help@bookzenvo.com. The registered-office wording was later checked against Companies House and is recorded in the verified item below.
 
 ## Live configuration
 

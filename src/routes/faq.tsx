@@ -13,7 +13,7 @@ const QUESTIONS = [
   ],
   [
     "Can I take deposits and payments?",
-    "Yes. Connect Stripe from Settings > Payments, then choose whether bookings take no online payment, a deposit, or the full amount. Card details are handled by Stripe, not Bookzenvo.",
+    "When live payments open, you will connect Stripe from Settings > Payments, then choose whether bookings take no online payment, a deposit, or the full amount. Card details are handled by Stripe, not Bookzenvo. Pre-launch sandbox checkouts are tests and do not take live customer payments.",
   ],
   [
     "Do I need a card reader or other hardware to take payments?",
@@ -106,7 +106,7 @@ function FaqPage() {
         <div className="mt-10 rounded-xl border border-border px-6 py-6">
           <h2 className="text-[1.4rem]">Still need a hand?</h2>
           <p className="mt-2 text-[.92rem] leading-6 text-muted-foreground">
-            Visit the Help Centre for guides or to contact support.
+            Visit the Help Centre for guides, or email help@bookzenvo.com.
           </p>
           <Link
             to="/help"

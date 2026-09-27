@@ -147,10 +147,10 @@ export function ContactSupportDialog({
               <br />
               Prefer email?{" "}
               <a
-                href="mailto:help@finkodigital.com"
+                href="mailto:help@bookzenvo.com"
                 className="underline underline-offset-4 hover:text-foreground"
               >
-                help@finkodigital.com
+                help@bookzenvo.com
               </a>
             </DialogDescription>
           </DialogHeader>

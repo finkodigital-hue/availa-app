@@ -30,6 +30,23 @@ type BalanceCheckoutInput = {
   bookingId: string;
 };
 
+type BookingCheckoutResultInput = {
+  sessionId: string;
+  holdId: string;
+};
+
+type BookingCheckoutSession = {
+  id: string;
+  mode: string;
+  status: string | null;
+  payment_status: string;
+  amount_total: number | null;
+  currency: string | null;
+  payment_intent: string | null;
+  customer: string | null;
+  metadata: Record<string, string | undefined>;
+};
+
 type RefundInput = {
   bookingId: string;
 };
@@ -279,11 +296,15 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
       Number.isNaN(Date.parse(data.endsAt))
     )
       throw new Error("Invalid booking time.");
-    return { ...data, bookingSource: normalizeBookingSource(data.bookingSource) };
+    return {
+      ...data,
+      bookingSource: normalizeBookingSource(data.bookingSource),
+    };
   })
   .handler(async ({ data }): Promise<{ checkoutUrl: string | null }> => {
     const { normalizeSmsPhone } = await import("@/lib/sms-phone");
-    const { consumePublicRequest } = await import("@/lib/public-request-limit.server");
+    const { consumePublicRequest } =
+      await import("@/lib/public-request-limit.server");
     await consumePublicRequest("booking");
     const { supabaseAdmin } =
       await import("@/integrations/supabase/client.server");
@@ -330,14 +351,20 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
       throw new Error("This booking amount is too small for online payment.");
 
     const { sha256Hex } = await import("@/lib/booking-tokens.server");
-    const { data: hold, error: holdError } = await (supabaseAdmin as any).rpc("reserve_booking_checkout", {
-      p_business_id: business.id, p_service_id: service.id, p_staff_id: data.staffId,
-      p_starts_at: new Date(data.startsAt).toISOString(),
-      p_request_key: await sha256Hex(JSON.stringify({ ...data, amount })),
-      p_contact_key: await sha256Hex(data.customerEmail.trim().toLowerCase()),
-    });
+    const { data: hold, error: holdError } = await (supabaseAdmin as any).rpc(
+      "reserve_booking_checkout",
+      {
+        p_business_id: business.id,
+        p_service_id: service.id,
+        p_staff_id: data.staffId,
+        p_starts_at: new Date(data.startsAt).toISOString(),
+        p_request_key: await sha256Hex(JSON.stringify({ ...data, amount })),
+        p_contact_key: await sha256Hex(data.customerEmail.trim().toLowerCase()),
+      },
+    );
     if (holdError) throw holdError;
-    if (!hold?.id || !hold?.ends_at) throw new Error("Could not reserve this appointment.");
+    if (!hold?.id || !hold?.ends_at)
+      throw new Error("Could not reserve this appointment.");
 
     const origin = appOrigin();
     const paymentLabel =
@@ -356,19 +383,21 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
         body: formBody({
           mode: "payment",
           "payment_method_types[0]": "card",
-          expires_at: String(Math.floor(Date.parse(hold.expires_at)/1000)-600),
+          expires_at: String(
+            Math.floor(Date.parse(hold.expires_at) / 1000) - 600,
+          ),
           customer_creation: "always",
           customer_email: data.customerEmail.trim(),
-          success_url: `${origin}${data.returnPath}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+          success_url: `${origin}${data.returnPath}?payment=success&hold_id=${encodeURIComponent(hold.id)}&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${origin}${data.returnPath}?payment=cancelled${data.bookingSource ? `&utm_source=${data.bookingSource}` : ""}`,
-          "line_items[0][price_data][currency]":
-            hold.currency,
+          "line_items[0][price_data][currency]": hold.currency,
           "line_items[0][price_data][product_data][name]": paymentLabel,
           "line_items[0][price_data][unit_amount]": String(hold.amount_cents),
           "line_items[0][quantity]": "1",
           "metadata[business_id]": business.id,
           "metadata[hold_id]": hold.id,
-          "metadata[booking_source]": normalizeBookingSource(data.bookingSource) ?? "",
+          "metadata[booking_source]":
+            normalizeBookingSource(data.bookingSource) ?? "",
           "metadata[service_id]": data.serviceId,
           "metadata[staff_id]": data.staffId,
           "metadata[customer_name]": data.customerName.trim(),
@@ -384,12 +413,9 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
           "metadata[ends_at]": hold.ends_at,
           "metadata[notes]": data.notes.trim(),
           "metadata[payment_mode]": hold.payment_mode,
-          "metadata[gap_min]":
-            hold.gap_min != null ? String(hold.gap_min) : "",
+          "metadata[gap_min]": hold.gap_min != null ? String(hold.gap_min) : "",
           "metadata[active_after_min]":
-            hold.active_after_min != null
-              ? String(hold.active_after_min)
-              : "",
+            hold.active_after_min != null ? String(hold.active_after_min) : "",
           "payment_intent_data[metadata][business_id]": business.id,
           "payment_intent_data[metadata][service_id]": data.serviceId,
           "payment_intent_data[metadata][staff_id]": data.staffId,
@@ -399,6 +425,135 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
     return { checkoutUrl: session.url };
   });
 
+// Stripe webhooks remain the primary fulfilment path. This authenticated-by-
+// possession return path closes the smaller reliability gap where Stripe has
+// accepted payment but its webhook is delayed or missed. The session is read
+// directly from the connected account and every immutable value is matched to
+// the server-side hold before the same idempotent SQL fulfilment RPC is called.
+export const finalizeBookingCheckout = createServerFn({ method: "POST" })
+  .validator((data: BookingCheckoutResultInput) => {
+    if (!/^cs_(?:test_|live_)?[A-Za-z0-9]+$/.test(data.sessionId))
+      throw new Error("Invalid checkout receipt.");
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        data.holdId,
+      )
+    )
+      throw new Error("Invalid booking receipt.");
+    return data;
+  })
+  .handler(
+    async ({ data }): Promise<{ confirmed: boolean; bookingId?: string }> => {
+      const { consumePublicRequest } =
+        await import("@/lib/public-request-limit.server");
+      await consumePublicRequest("booking");
+      const { supabaseAdmin } =
+        await import("@/integrations/supabase/client.server");
+      const { data: hold, error: holdError } = await (supabaseAdmin as any)
+        .from("booking_checkout_holds")
+        .select("id, business_id, amount_cents, currency, fulfilled_booking_id")
+        .eq("id", data.holdId)
+        .maybeSingle();
+      if (holdError) throw holdError;
+      if (!hold) throw new Error("Booking receipt not found.");
+
+      const { data: business, error: businessError } = await supabaseAdmin
+        .from("businesses")
+        .select("stripe_account_id")
+        .eq("id", hold.business_id)
+        .maybeSingle();
+      if (businessError) throw businessError;
+      if (!business?.stripe_account_id)
+        throw new Error("This payment account is unavailable.");
+
+      const session = await stripeRequest<BookingCheckoutSession>(
+        `/v1/checkout/sessions/${encodeURIComponent(data.sessionId)}`,
+        { headers: { "Stripe-Account": business.stripe_account_id } },
+      );
+      if (
+        session.id !== data.sessionId ||
+        session.mode !== "payment" ||
+        session.metadata?.hold_id !== hold.id ||
+        session.metadata?.business_id !== hold.business_id ||
+        session.amount_total !== hold.amount_cents ||
+        session.currency?.toLowerCase() !== String(hold.currency).toLowerCase()
+      ) {
+        throw new Error("That payment does not match this booking.");
+      }
+      if (
+        session.status !== "complete" ||
+        session.payment_status !== "paid" ||
+        !session.payment_intent
+      ) {
+        return { confirmed: false };
+      }
+
+      const metadata = session.metadata ?? {};
+      let bookingId = hold.fulfilled_booking_id as string | null;
+      if (!bookingId) {
+        const { data: fulfilledId, error: fulfilError } = await (
+          supabaseAdmin as any
+        ).rpc("fulfill_held_booking", {
+          p_hold_id: hold.id,
+          p_amount_cents: session.amount_total,
+          p_currency: session.currency,
+          p_payment_intent_id: session.payment_intent,
+          p_customer_name: metadata.customer_name ?? "",
+          p_customer_email: metadata.customer_email ?? "",
+          p_customer_phone: metadata.customer_phone ?? "",
+          p_notes: metadata.notes ?? "",
+          p_stripe_customer_id: session.customer ?? "",
+        });
+        if (fulfilError) throw fulfilError;
+        bookingId = fulfilledId;
+      }
+      if (!bookingId) throw new Error("Booking confirmation did not complete.");
+
+      if (
+        bookingId &&
+        metadata.customer_phone &&
+        (metadata.sms_reminder_notice === "true" ||
+          metadata.sms_reminder_consent === "true")
+      ) {
+        const { error: noticeError } = await (supabaseAdmin as any)
+          .from("bookings")
+          .update(
+            metadata.sms_reminder_notice === "true"
+              ? {
+                  sms_reminder_notice_at: new Date().toISOString(),
+                  sms_reminder_notice_version: "appointment-service-sms-v1",
+                }
+              : {
+                  sms_reminder_consent_at: new Date().toISOString(),
+                  sms_reminder_consent_version: "appointment-sms-v1",
+                },
+          )
+          .eq("id", bookingId)
+          .eq("business_id", hold.business_id);
+        if (noticeError) throw noticeError;
+      }
+      if (
+        bookingId &&
+        metadata.email_marketing_consent === "true" &&
+        metadata.customer_email
+      ) {
+        const { recordBookingEmailMarketingConsent } =
+          await import("@/lib/marketing-consent.server");
+        await recordBookingEmailMarketingConsent({
+          bookingId,
+          businessId: hold.business_id,
+        });
+      }
+      const { error: resolutionError } = await (supabaseAdmin as any)
+        .from("booking_payment_issues")
+        .update({ status: "resolved", resolved_at: new Date().toISOString() })
+        .eq("payment_intent_id", session.payment_intent)
+        .eq("status", "open");
+      if (resolutionError) throw resolutionError;
+      return { confirmed: true, bookingId };
+    },
+  );
+
 export const startBalanceCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data: BalanceCheckoutInput) => {
@@ -406,14 +561,23 @@ export const startBalanceCheckout = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data, context }) => {
-    const { data: business, error } = await context.supabase.from("businesses")
-      .select("id").eq("owner_id", context.userId).maybeSingle();
+    const { data: business, error } = await context.supabase
+      .from("businesses")
+      .select("id")
+      .eq("owner_id", context.userId)
+      .maybeSingle();
     if (error) throw error;
-    if (!business) throw new Error("Only the business owner can collect a balance.");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { openBalanceCheckout } = await import("@/lib/balance-checkout.server");
+    if (!business)
+      throw new Error("Only the business owner can collect a balance.");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { openBalanceCheckout } =
+      await import("@/lib/balance-checkout.server");
     return openBalanceCheckout(business.id, data.bookingId, {
-      database: supabaseAdmin, stripeFetch: fetch, key: stripeSecretKey(), origin: appOrigin(),
+      database: supabaseAdmin,
+      stripeFetch: fetch,
+      key: stripeSecretKey(),
+      origin: appOrigin(),
     });
   });
 
@@ -495,7 +659,8 @@ export const refundBooking = createServerFn({ method: "POST" })
         throw new Error("This booking has already been fully refunded.");
 
       const results: RefundChargeResult[] = [];
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { supabaseAdmin } =
+        await import("@/integrations/supabase/client.server");
 
       const stripeHeaders = {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -517,14 +682,23 @@ export const refundBooking = createServerFn({ method: "POST" })
               "metadata[initiated_by_user_id]": context.userId,
             }),
           });
-          if (!["succeeded", "pending", "requires_action"].includes(refund.status)) {
-            throw new Error("Stripe did not accept this refund. Review the payment in Stripe before retrying.");
+          if (
+            !["succeeded", "pending", "requires_action"].includes(refund.status)
+          ) {
+            throw new Error(
+              "Stripe did not accept this refund. Review the payment in Stripe before retrying.",
+            );
           }
           results.push({
             paymentIntentId,
             amountCents: refund.amount,
             ok: refund.status !== "requires_action",
-            ...(refund.status === "requires_action" ? { error: "Stripe requires further action. Review this refund in Stripe before retrying." } : {}),
+            ...(refund.status === "requires_action"
+              ? {
+                  error:
+                    "Stripe requires further action. Review this refund in Stripe before retrying.",
+                }
+              : {}),
           });
         } catch (error) {
           const message =
@@ -537,21 +711,26 @@ export const refundBooking = createServerFn({ method: "POST" })
             ok: false,
             error: message,
           });
-          const { error: auditError } = await supabaseAdmin.from("payments").insert({
-            business_id: business.id,
-            booking_id: booking.id,
-            stripe_payment_intent_id: paymentIntentId,
-            type: "failure",
-            status: "failed",
-            amount_cents: charge.amountCents,
-            currency: business.currency.toLowerCase(),
-            customer_name: booking.customer_name,
-            customer_email: booking.customer_email,
-            description: "Refund attempt failed",
-            error_message: message,
-            initiated_by_user_id: context.userId,
-          });
-          if (auditError) console.error("Could not record refund attempt failure", { code: auditError.code });
+          const { error: auditError } = await supabaseAdmin
+            .from("payments")
+            .insert({
+              business_id: business.id,
+              booking_id: booking.id,
+              stripe_payment_intent_id: paymentIntentId,
+              type: "failure",
+              status: "failed",
+              amount_cents: charge.amountCents,
+              currency: business.currency.toLowerCase(),
+              customer_name: booking.customer_name,
+              customer_email: booking.customer_email,
+              description: "Refund attempt failed",
+              error_message: message,
+              initiated_by_user_id: context.userId,
+            });
+          if (auditError)
+            console.error("Could not record refund attempt failure", {
+              code: auditError.code,
+            });
         }
       }
       return { results };

@@ -26,7 +26,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
     slug: "getting-started",
     title: "Getting Started",
     description:
-      "Create your account, run the setup wizard and get your page live.",
+      "Join the waitlist or set up an account provided for the launch pilot.",
     icon: "Rocket",
   },
   {
@@ -106,15 +106,15 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "creating-your-account",
     categorySlug: "getting-started",
     title: "Creating your account",
-    summary: "Sign up with your name, email and a password.",
+    summary: "Public account creation is paused while Bookzenvo prepares launch.",
     blocks: [
       {
         type: "p",
-        text: "Go to the sign-up screen and enter your name, email and a password (at least 6 characters), then click Create account. There's no social or magic-link sign-in for business owners — just email and password.",
+        text: "Public self-signup is not open yet. The sign-up option currently joins the Bookzenvo launch waitlist; it does not create a business account or start a paid plan. Existing pilot account holders can continue to sign in with email and password.",
       },
       {
         type: "note",
-        text: 'Forgot your password later? See "Resetting your password" in Account & Security.',
+        text: 'If you already have a pilot account and forgot its password, see "Resetting your password" in Account & Security.',
       },
     ],
   },
@@ -123,11 +123,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     categorySlug: "getting-started",
     title: "Creating your workspace",
     summary:
-      "The one-step form that creates your business and booking page link.",
+      "The one-step form pilot accounts use to create a business and booking page link.",
     blocks: [
       {
         type: "p",
-        text: 'After you sign up, you\'ll land on a short "Getting Started" screen with two fields:',
+        text: 'After Bookzenvo provisions an eligible pilot account, its first sign-in opens a short "Getting Started" screen with two fields:',
       },
       {
         type: "list",
@@ -163,13 +163,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "free-vs-studio",
     categorySlug: "getting-started",
     title: "Free vs Studio: choosing a plan",
-    summary: "What each plan includes today.",
+    summary: "The planned launch plans and what activation still depends on.",
     blocks: [
       {
         type: "list",
         items: [
-          "Free — one staff member; unlimited bookings; manual branded-page editing; deposits, payments and refunds; confirmation emails and calendar invites; one-tap booking links; the client book; CSV import/export; and support.",
-          "Studio (£22/month) — everything in Free, plus unlimited staff, automated reminders, analytics, AI tools, consultations and patch-test forms, verified reviews, stock management and photo scanning, the customer portal, and chair rent and commission tracking.",
+          "Planned Solo launch plan — free for one staff member, with unlimited bookings, manual branded-page editing, deposits, payments and refunds, confirmation emails and calendar invites, one-tap booking links, the client book, CSV import/export and support.",
+          "Planned Studio launch plan — £22/month, with everything in Solo plus unlimited staff, automated reminders, analytics, AI tools, consultations and patch-test forms, verified reviews, stock management and photo scanning, the customer portal, and chair rent and commission tracking.",
         ],
       },
       {
@@ -178,7 +178,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         type: "note",
-        text: "Upgrading is instant and self-serve — go to Settings → Plan and click Upgrade to pay by card through Stripe Checkout. You're on Studio as soon as payment goes through, and the same page gives you a billing portal to update your card, view invoices, or cancel any time.",
+        text: "Self-serve paid upgrades will open only after Bookzenvo's live Stripe subscription account, price, tax treatment, checkout, webhook, invoice, cancellation and refund journeys have passed production checks. Until then, any sandbox checkout is a test and does not create a live paid subscription.",
       },
     ],
     keywords: ["pricing", "upgrade", "plan", "billing"],
@@ -698,6 +698,27 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     keywords: ["reminders", "email", "sms", "bell"],
   },
+  {
+    slug: "calendar-files-and-provider-sync",
+    categorySlug: "calendar-bookings",
+    title: "Calendar files and provider sync",
+    summary: "What works now and what remains closed until provider activation.",
+    blocks: [
+      {
+        type: "p",
+        text: "Booking confirmation emails and appointment downloads can include a standard .ics calendar file. A customer can open that file in Apple Calendar, Outlook or Google Calendar without connecting the salon's calendar account to Bookzenvo.",
+      },
+      {
+        type: "note",
+        text: "Direct Google Calendar and Microsoft 365 connections are not open yet. They will be enabled only after the production OAuth registrations and live create, move and cancel checks are complete. Do not rely on the connection controls until Bookzenvo confirms activation.",
+      },
+      {
+        type: "p",
+        text: "When direct provider sync is enabled, Bookzenvo will push Bookzenvo appointment changes out to the connected calendar. It will not import arbitrary provider events or treat them as salon-wide blocked time. A continuously updating Apple-compatible subscription feed is also deferred.",
+      },
+    ],
+    keywords: ["calendar", "ics", "google", "microsoft", "outlook", "apple", "sync"],
+  },
 
   // ---------------------------------------------------------------------
   // Customers
@@ -899,6 +920,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
         type: "p",
         text: "Your connection status shows as Not connected, Setup needed, or Ready. If it looks stuck, use the Refresh button to re-check your status with Stripe.",
       },
+      {
+        type: "note",
+        text: "Real client payments must remain off until Bookzenvo's live Stripe platform account and the salon's connected account are activated and an authorised live payment, webhook, cancellation and refund journey has been checked. A sandbox connection is only for testing and cannot be treated as a live payment service.",
+      },
     ],
     keywords: ["stripe connect", "onboarding"],
   },
@@ -972,7 +997,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         type: "note",
-        text: "Revenue figures reflect the listed price of bookings, not necessarily what's actually been collected via Stripe — check Payments for collection status.",
+        text: "Reports group the net amount recorded as paid, less recorded refunds, by the appointment date. They are not a Stripe payout or bank-settlement report and do not replace accounting reconciliation. Check Payments, Stripe and your accounting records before relying on the figures for tax or financial reporting.",
       },
     ],
   },

@@ -1,6 +1,6 @@
 # Founder and adviser launch evidence register
 
-Status date: 26 September 2026. This register lists evidence that cannot be created or proved by application code. It is not legal advice or a declaration that Bookzenvo is ready to launch.
+Status date: 27 September 2026. This register lists evidence that cannot be created or proved by application code. It is not legal advice or a declaration that Bookzenvo is ready to launch.
 
 ## How to close an item
 
@@ -19,6 +19,10 @@ A screenshot on its own is weak evidence. Keep the underlying agreement, receipt
 | Receipts, invoices, proof of payment, approvals and an expenditure ledger mapped to the approved grant budget. | Founder and accountant/grant administrator. | Every claimed cost is eligible, evidenced and allocated once. |
 
 The grant paperwork is required even though it does not belong in the product repository. It controls what can be purchased, claimed and said publicly. Keep it in the company's controlled records and link to it from the private launch decision record.
+
+Use [`grant-conference-evidence-template.md`](./grant-conference-evidence-template.md) to index the award, conditions, expenditure and conference evidence without storing confidential source documents in this repository.
+
+The public Companies House record was rechecked on 27 September 2026 and showed BOOKZENVO LTD, SC902170, active, registered office `Pinefield, Cannich, Beauly, Scotland, IV4 7LY`, incorporated 9 September 2026. The repository's legal-operator defaults match that wording. The founder must still reconcile the same identity and address across provider accounts, invoices and signed contracts, and recheck it if a filing changes.
 
 ## 2. Copyright, brand and other intellectual property
 

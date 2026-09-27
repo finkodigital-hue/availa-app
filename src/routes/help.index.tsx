@@ -226,8 +226,9 @@ function HelpCentre() {
 
       <footer className="border-t border-border py-8">
         <div className="max-w-[1120px] mx-auto px-6 text-[.85rem] text-muted-foreground">
-          © {new Date().getFullYear()} Bookzenvo — can't find what you need? Reach out from inside the
-          app via Contact support.
+          © {new Date().getFullYear()} Bookzenvo — can&apos;t find what you need? Email{" "}
+          <a className="underline underline-offset-4" href="mailto:help@bookzenvo.com">help@bookzenvo.com</a>{" "}
+          or, if signed in, use Contact support in the app.
         </div>
       </footer>
     </div>

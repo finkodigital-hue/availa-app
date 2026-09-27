@@ -79,6 +79,10 @@ const SETTINGS_TABS = [
   "calendar",
 ] as const;
 
+// Google and Microsoft OAuth remain closed until the production provider
+// registrations and end-to-end delivery checks have been completed.
+const CALENDAR_PROVIDER_CONNECTIONS_OPEN = false;
+
 export const Route = createFileRoute("/_authenticated/settings")({
   validateSearch: (
     search: Record<string, unknown>,
@@ -327,7 +331,7 @@ function SettingsPage() {
             icon={CalendarSync}
             title="Calendar sync"
             description="Keep Bookzenvo appointments in your work calendar."
-            summary="Google, Apple-compatible feeds and Outlook"
+            summary="Calendar files available · provider connections coming later"
             onClick={() => openSetting("calendar")}
           />
         </SettingsGroup>
@@ -544,6 +548,13 @@ function CalendarSyncSettings({ businessId }: { businessId: string }) {
           imported, so they cannot silently block every staff member.
         </p>
       </div>
+      {!CALENDAR_PROVIDER_CONNECTIONS_OPEN && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          Google and Microsoft connections are not open yet. Bookzenvo will enable them only after
+          the production provider registrations and live sync checks are complete. Standard
+          calendar-file downloads still work.
+        </div>
+      )}
       {(["google", "microsoft"] as const).map((provider) => {
         const connection = connections.find(
           (c: any) => c.provider === provider,
@@ -576,11 +587,11 @@ function CalendarSyncSettings({ businessId }: { businessId: string }) {
                 Disconnect
               </Button>
             ) : (
-              <Button onClick={() => connect(provider)} disabled={!!connecting}>
+              <Button onClick={() => connect(provider)} disabled={!!connecting || !CALENDAR_PROVIDER_CONNECTIONS_OPEN}>
                 {connecting === provider && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Connect
+                {CALENDAR_PROVIDER_CONNECTIONS_OPEN ? "Connect" : "Not live yet"}
               </Button>
             )}
           </div>
