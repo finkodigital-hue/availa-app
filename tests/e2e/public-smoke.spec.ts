@@ -12,7 +12,7 @@ test("public navigation reaches the key launch pages", async ({ page }) => {
   ).toHaveAttribute("href", "#top");
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
     "href",
-    "/favicon.ico",
+    "/favicon.png",
   );
   await page.getByRole("button", { name: "Reject non-essential" }).click();
 
@@ -43,7 +43,9 @@ test("FAQ answers expand and link to the help centre", async ({ page }) => {
     .getByText("Do I need a card reader or other hardware to take payments?")
     .click();
   await expect(
-    page.getByText(/does not currently connect to a physical card reader/),
+    page.getByText(
+      /supports compatible internet-connected Stripe smart readers/,
+    ),
   ).toBeVisible();
   await page.getByRole("link", { name: "Go to Help Centre" }).click();
   await expect(page).toHaveURL(/\/help(?:\/|$)/);
