@@ -32,7 +32,7 @@ import { NewBookingDialog } from "@/components/new-booking-dialog";
 import { AddTimeOffDialog } from "@/components/time-off-editor";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { BookingBalanceCheckout } from "@/components/booking-balance-checkout";
-import { BookingConsultationStatus } from "@/components/booking-consultation-status";
+import { AppointmentBrief } from "@/components/appointment-brief";
 import { fmtMoney as formatMoney, fmtTime, BOOKING_STATUSES, statusMeta, type BookingStatus } from "@/lib/format";
 import { resolveDayPeriods, isMinuteWithinPeriods, type DayPeriod } from "@/lib/staff-hours";
 import {
@@ -747,7 +747,12 @@ function CalendarPage() {
             <StockUsedPanel bookingId={selected.id} />
           )}
           {selected && selected.business_id === bid && (
-            <BookingConsultationStatus bookingId={selected.id} />
+            <AppointmentBrief
+              bookingId={selected.id}
+              businessId={bid!}
+              customerId={selected.customer_id}
+              startsAt={selected.starts_at}
+            />
           )}
           {selected && (
             <div className="space-y-2">
