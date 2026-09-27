@@ -12,6 +12,7 @@ The grant and London event records can be indexed with [`grant-conference-eviden
 - The public operator disclosure identifies BOOKZENVO LTD, private limited company registered in Scotland under SC902170, at Pinefield, Cannich, Beauly, Scotland, IV4 7LY, with help@bookzenvo.com as the contact address.
 - A production audit fails if the legal operator name, legal form or service address is not published.
 - The production launch audit checked 119 public pages and assets on 27 September 2026 and passed its link and metadata checks.
+- The later website pilot passed 120 public pages/assets, the live Pasha booking flow at 390 pixels, signed-in phone-width checks across eight core routes, and Lighthouse mobile scores of 100 for accessibility, best practices and SEO on the homepage and booking page. See [`website-pilot-evidence-2026-09-27.md`](./website-pilot-evidence-2026-09-27.md).
 - Consultation and patch-test answers are isolated behind the authenticated server boundary; signed wording and evidence are immutable.
 - Health-data agreement is a separate affirmative step. Withdrawal is recorded and visible.
 - Customer exports include profile, booking, payment, review, consultation, patch-test, consent and signature records.
