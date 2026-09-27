@@ -625,6 +625,7 @@ function Landing() {
               <Link to="/terms">Terms</Link>
               <Link to="/cookie-policy">Cookies</Link>
               <Link to="/refund-policy">Refunds</Link>
+              <a href="/third-party-notices.txt">Software notices</a>
               <Link to="/faq">FAQ</Link>
               <a href="mailto:help@bookzenvo.com">Contact</a>
               <Link to="/help">Help Centre</Link>
