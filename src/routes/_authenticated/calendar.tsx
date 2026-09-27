@@ -668,7 +668,15 @@ function CalendarPage() {
       </div>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto"
+          onOpenAutoFocus={(event) => {
+            // Start at the appointment heading, rather than scrolling down
+            // to the first status/payment control when the dialog opens.
+            event.preventDefault();
+            (event.target as HTMLElement).focus({ preventScroll: true });
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="font-display text-2xl">{selected?.customer_name}</DialogTitle>
             <DialogDescription>

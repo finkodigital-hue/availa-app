@@ -7,7 +7,7 @@ import { layoutOverlaps } from "@/lib/calendar-layout";
 import type { StaffPalette } from "@/lib/staff-colors";
 import { unavailableRanges, isMinuteWithinPeriods, type DayPeriod } from "@/lib/staff-hours";
 import { useHours, HOUR_PX, SLOT_PX, SLOT_MIN } from "./hours-context";
-import { BookingCard, OverflowChip, MIN_DURATION_MS } from "./booking-card";
+import { BookingCard, OverflowChip } from "./booking-card";
 import type { DragMode, DragState } from "./types";
 
 export function StaffColumn({
@@ -84,8 +84,7 @@ export function StaffColumn({
         bookings.map((b: any) => {
           const startMs = new Date(b.starts_at).getTime();
           const endMs = new Date(b.ends_at).getTime();
-          // Effective end, not real end — see MIN_DURATION_MS.
-          return { id: b.id, startMs, endMs: Math.max(endMs, startMs + MIN_DURATION_MS) };
+          return { id: b.id, startMs, endMs };
         }),
       ),
     [bookings],
