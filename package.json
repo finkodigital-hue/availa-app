@@ -17,7 +17,7 @@
     "verify:security": "node scripts/verify-security-boundary.mjs",
     "verify:production": "node scripts/verify-production.mjs",
     "verify:recovery-controls": "node scripts/verify-recovery-controls.mjs",
-    "test:recovery-controls": "node scripts/test-recovery-controls.mjs",
+    "test:recovery-controls": "node scripts/test-recovery-controls.mjs && node scripts/test-backup-tools.mjs",
     "audit:launch": "node scripts/audit-launch.mjs",
     "recovery:restore-local": "node scripts/restore-local.mjs",
     "deploy:cloudflare": "npm run build && npx wrangler deploy --keep-vars",
