@@ -8,6 +8,22 @@ The repository restore helper rejects every non-local hostname, defaults to a pl
 
 ## Supabase backup configuration
 
+### Verified production state — 28 September 2026
+
+- Project: `repamfxdbsbotkonhxmj` (`chairly project`, production branch).
+- Region: `eu-west-1`, shown by Supabase as West EU (Ireland).
+- Organisation plan: Free.
+- Scheduled-backup screen: **“Free Plan does not include project backups.”**
+- Point-in-Time Recovery: not available on the current plan.
+- Actual managed recovery window: none. Do not describe the project as backed up.
+
+This is an availability and recovery launch blocker before accepting irreplaceable
+salon data. It does not require an immediate purchase while the site remains in
+controlled testing. Before real salon data is accepted, either upgrade to a plan
+with managed backups or complete, encrypt and restore-test an independent database
+and Storage export. Record the chosen owner, storage location, frequency and first
+successful restore. Source files and migrations alone do not recover customer data.
+
 In the Supabase dashboard, document the production project's current plan and confirm the backup screen shows successful scheduled database backups. Enable Point-in-Time Recovery where the plan and recovery objectives require it. Dashboard database backups do not include Storage objects; protect both `business-assets` and `business-public-assets` separately.
 
 Recommended baseline:

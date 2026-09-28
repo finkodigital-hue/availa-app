@@ -2,6 +2,12 @@
 
 Status: evidence template, not a claim that every listed provider is enabled or contractually approved. Populate it from the production configuration and executed provider terms. Publish only the customer-facing fields after privacy/legal review.
 
+Current technical/provider research is recorded in
+[`provider-data-readiness-2026-09-28.md`](./provider-data-readiness-2026-09-28.md).
+The production Supabase project region is verified as `eu-west-1` (West EU,
+Ireland), but the Free plan has no managed backups. ScreenshotOne and Google/
+Microsoft provider connections are technically disabled pending approval.
+
 ## Production register
 
 | Provider/legal entity | Service and data purpose | Data subjects/categories | Role | Processing/storage locations | UK transfer mechanism and assessment | DPA/terms version and evidence | Retention/deletion setting | Security/contact evidence | Enabled features | Change/objection notice | Owner/review |
@@ -33,4 +39,3 @@ Remove a provider from the public list when the feature is disabled and no produ
 ## Change process
 
 Before adding or materially changing a provider, the technical owner submits the data flow and intended date to the privacy owner. The privacy owner assesses contract, transfers, notice/objection requirements and DPIA impact. The provider remains disabled until approval and production controls are evidenced. Keep the old and new register versions and the notices sent.
-
