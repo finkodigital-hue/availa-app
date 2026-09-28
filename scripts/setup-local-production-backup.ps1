@@ -66,14 +66,16 @@ $storageSecret | ConvertFrom-SecureString | Set-Content -LiteralPath (Join-Path 
 $keySecret = ConvertTo-SecureString $derived.key -AsPlainText -Force
 $keySecret | ConvertFrom-SecureString | Set-Content -LiteralPath (Join-Path $ConfigRoot 'encryption-key.dpapi') -Encoding ascii
 $keyRecovery = [ordered]@{ algorithm = $derived.algorithm; salt = $derived.salt; N = $derived.N; r = $derived.r; p = $derived.p }
-$keyRecovery | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $ConfigRoot 'key-recovery.json') -Encoding utf8NoBOM
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$keyRecoveryJson = $keyRecovery | ConvertTo-Json
+[IO.File]::WriteAllText((Join-Path $ConfigRoot 'key-recovery.json'), $keyRecoveryJson, $utf8NoBom)
 $derived = $null
 
 $time = [DateTime]::ParseExact($DailyAt, 'HH:mm', [Globalization.CultureInfo]::InvariantCulture)
 $taskName = 'Bookzenvo encrypted production backup'
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$Runner`" -PrivateRoot `"$PrivateRoot`""
 $trigger = New-ScheduledTaskTrigger -Daily -At $time
-$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 4)
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 4)
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description 'Daily encrypted Bookzenvo database and Supabase Storage backup.' -Force | Out-Null
 
