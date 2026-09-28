@@ -24,6 +24,43 @@ with managed backups or complete, encrypt and restore-test an independent databa
 and Storage export. Record the chosen owner, storage location, frequency and first
 successful restore. Source files and migrations alone do not recover customer data.
 
+### No-cost Windows backup path
+
+The repository includes a local fallback for the current Free-plan period:
+
+- `scripts/setup-local-production-backup.ps1` asks for the production database URL
+  and a dedicated Supabase secret key (or legacy service-role key) without echoing
+  them. Windows DPAPI protects both for
+  the current Windows account; neither secret is written to this repository.
+- `scripts/run-local-production-backup.ps1` creates a PostgreSQL custom-format dump,
+  copies every object from `business-assets` and `business-public-assets`, encrypts
+  both archives with AES-256-GCM, verifies their authentication tags and checksums,
+  and removes the plaintext staging files.
+- A Windows Scheduled Task runs the job daily at 02:30 and starts a missed run when
+  the computer next becomes available. Daily generations older than 35 days expire.
+- Setup asks for a recovery passphrase and derives the encryption key with scrypt.
+  Save that passphrase in the company password manager. Each generation includes
+  non-secret key-derivation metadata so it can be recovered after loss of the Windows
+  account by passing that file to `decrypt-production-backup.ps1 -RecoveryMetadata`.
+- Files are stored under `C:\bookzenvo\private-launch-records\backups`, outside the
+  repository. This first local copy reduces the immediate data-loss gap, but it is
+  not access-separated from the computer. Add a separately controlled encrypted copy
+  before treating the 35-day archive as resilient to theft, disk failure or malware.
+
+Run setup from PowerShell while signed into the Windows account that will own the
+scheduled task:
+
+```powershell
+& .\scripts\setup-local-production-backup.ps1
+```
+
+The setup performs the first backup immediately. A successful generation contains
+`database.dump.bzenc`, `storage.zip.bzenc`, `key-recovery.json` and a non-secret
+`backup-metadata.json`.
+The metadata must show both encrypted checksums and the console must report that the
+backup completed and verified. Use `decrypt-production-backup.ps1` only into a
+disposable recovery directory, then follow the local restore rehearsal below.
+
 In the Supabase dashboard, document the production project's current plan and confirm the backup screen shows successful scheduled database backups. Enable Point-in-Time Recovery where the plan and recovery objectives require it. Dashboard database backups do not include Storage objects; protect both `business-assets` and `business-public-assets` separately.
 
 Recommended baseline:
@@ -58,6 +95,12 @@ An export is portability evidence, not a database backup: it is not intended for
 7. Apply no production webhooks, email keys, Stripe keys, cron secrets or service-role keys to the rehearsal environment. Keep outbound email disabled.
 8. Run migrations/checks, count core tables, sample bookings/customers, verify foreign keys, and test private/public Storage access using copied test objects.
 9. Record restore duration, selected recovery point, checks, failures and remediation. Destroy the disposable environment according to the test-data policy.
+
+The no-cost archive is not marked launch-ready merely because its scheduled task
+exists. The first database dump and Storage copy must succeed, and an encrypted
+generation must be decrypted and restored into a disposable local Supabase-compatible
+environment. Until that dated rehearsal passes, `restoreRehearsal` remains `pending`
+in the local metadata and the launch blocker remains open.
 
 ## Incident restore decision
 
