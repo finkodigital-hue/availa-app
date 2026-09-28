@@ -19,7 +19,10 @@ function Read-ProtectedText([string]$Path) {
   if (-not (Test-Path -LiteralPath $Path)) {
     throw "Backup configuration is incomplete: $Path"
   }
-  $secure = Get-Content -LiteralPath $Path -Raw | ConvertTo-SecureString
+  # Set-Content terminates the DPAPI ciphertext with a newline. Windows
+  # PowerShell 5.1 does not ignore it when converting the value back.
+  $protectedValue = (Get-Content -LiteralPath $Path -Raw).Trim()
+  $secure = $protectedValue | ConvertTo-SecureString
   $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
   try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer) }
   finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
@@ -119,7 +122,9 @@ try {
     encryption = 'AES-256-GCM; key protected for the current Windows user with DPAPI'
     restoreRehearsal = 'pending'
   }
-  $metadata | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $MetadataPath -Encoding utf8NoBOM
+  $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  $metadataJson = $metadata | ConvertTo-Json -Depth 6
+  [IO.File]::WriteAllText($MetadataPath, $metadataJson, $utf8NoBom)
   Remove-PrivatePath $Staging $Generation
 
   if (-not $KeepDailyBeyondRetention) {
