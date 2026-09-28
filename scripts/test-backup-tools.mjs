@@ -91,8 +91,9 @@ try {
   const required = [
     [
       setup,
-      "Read-Host 'Paste the Supabase production database connection URL' -AsSecureString",
+      "Read-Host 'Production Supabase database password' -AsSecureString",
     ],
+    [setup, "aws-0-eu-west-1.pooler.supabase.com:5432/postgres"],
     [setup, "ConvertFrom-SecureString"],
     [setup, "backup-key.mjs"],
     [runner, "--format=custom"],
