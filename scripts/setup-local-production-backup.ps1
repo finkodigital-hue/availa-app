@@ -20,19 +20,19 @@ New-Item -ItemType Directory -Path $ConfigRoot, $BackupRoot -Force | Out-Null
 & icacls.exe $ConfigRoot /inheritance:r /grant:r "$env:USERNAME`:(OI)(CI)F" 'SYSTEM:(OI)(CI)F' | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Could not restrict the local backup configuration directory.' }
 
-$databaseSecret = Read-Host 'Paste the Supabase production database connection URL' -AsSecureString
-$databaseText = Unprotect-Temporarily $databaseSecret
+$databasePasswordSecret = Read-Host 'Production Supabase database password' -AsSecureString
+$databasePasswordText = Unprotect-Temporarily $databasePasswordSecret
 try {
-  $databaseUri = [Uri]$databaseText
-  $userInfo = $databaseUri.UserInfo.Split(':', 2)
-  $databaseUser = if ($userInfo.Count -gt 0) { [Uri]::UnescapeDataString($userInfo[0]) } else { '' }
-  $validProject = $databaseUri.Host -eq "db.$ProjectRef.supabase.co" -or $databaseUser.Contains($ProjectRef)
-  if ($databaseUri.Scheme -notin @('postgres', 'postgresql') -or -not $validProject -or $databaseUri.AbsolutePath.TrimStart('/') -ne 'postgres') {
-    throw 'That connection URL does not match the Bookzenvo production database.'
-  }
-  if ($userInfo.Count -ne 2 -or -not $userInfo[1]) { throw 'The database URL must include its password.' }
+  if (-not $databasePasswordText) { throw 'The production database password is required.' }
+  $encodedPassword = [Uri]::EscapeDataString($databasePasswordText)
+  $databaseUrl = "postgresql://postgres.$ProjectRef`:$encodedPassword@aws-0-eu-west-1.pooler.supabase.com:5432/postgres"
+  $databaseSecret = ConvertTo-SecureString $databaseUrl -AsPlainText -Force
 }
-finally { $databaseText = $null }
+finally {
+  $databasePasswordText = $null
+  $encodedPassword = $null
+  $databaseUrl = $null
+}
 
 $storageSecret = Read-Host 'Paste a production Supabase secret key (or legacy service-role key) for Storage backup' -AsSecureString
 $storageText = Unprotect-Temporarily $storageSecret

@@ -28,9 +28,10 @@ successful restore. Source files and migrations alone do not recover customer da
 
 The repository includes a local fallback for the current Free-plan period:
 
-- `scripts/setup-local-production-backup.ps1` asks for the production database URL
-  and a dedicated Supabase secret key (or legacy service-role key) without echoing
-  them. Windows DPAPI protects both for
+- `scripts/setup-local-production-backup.ps1` asks for the production database
+  password and a dedicated Supabase secret key (or legacy service-role key) without
+  echoing them. It builds the verified Ireland session-pooler connection locally, so
+  the operator does not edit a connection URL. Windows DPAPI protects both for
   the current Windows account; neither secret is written to this repository.
 - `scripts/run-local-production-backup.ps1` creates a PostgreSQL custom-format dump,
   copies every object from `business-assets` and `business-public-assets`, encrypts
