@@ -26,6 +26,7 @@ export function BookingOpeningRequest({
   const [from, setFrom] = useState(() => dateValue(selectedDate));
   const [through, setThrough] = useState(() => dateValue(selectedDate));
   const [preferredTime, setPreferredTime] = useState("any");
+  const [anyStaff, setAnyStaff] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -33,6 +34,7 @@ export function BookingOpeningRequest({
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState("");
+  const lastAllowedDate = dateValue(new Date(Date.now() + 60 * 86_400_000));
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,7 +51,7 @@ export function BookingOpeningRequest({
         body: JSON.stringify({
           businessId,
           serviceId,
-          staffId,
+          staffId: anyStaff ? null : staffId,
           from,
           through,
           preferredTime,
@@ -78,12 +80,10 @@ export function BookingOpeningRequest({
 
   return (
     <div className="mt-5 rounded-2xl border bg-card p-4 text-left sm:p-5">
-      <h3 className="text-base font-semibold">
-        Want us to let the salon know?
-      </h3>
+      <h3 className="text-lg font-semibold">No time that works?</h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        Ask about an opening for {serviceName} with {staffName}. This does not
-        reserve a time.
+        Ask the salon to contact you if a suitable time opens for {serviceName}.
+        This is a request, not a booking.
       </p>
       {!open && !saved && (
         <button
@@ -95,34 +95,60 @@ export function BookingOpeningRequest({
           }}
           className="mt-4 min-h-11 rounded-xl border px-4 text-sm font-semibold hover:bg-muted"
         >
-          Ask about an opening
+          Ask for a time
         </button>
       )}
       {saved ? (
-        <p role="status" className="mt-4 text-sm">
-          {message}
-        </p>
+        <div
+          role="status"
+          className="mt-4 rounded-xl border border-[#e7dcc5] bg-[#fbf8f1] p-4 text-sm"
+        >
+          <p className="font-semibold">Request sent</p>
+          <p className="mt-1 text-muted-foreground">{message}</p>
+        </div>
       ) : open ? (
         <form onSubmit={submit} className="mt-4 space-y-4">
+          <div className="rounded-xl border bg-muted/40 p-3 text-sm">
+            <span className="font-medium">{serviceName}</span>
+            <span className="text-muted-foreground">
+              {" "}
+              · {anyStaff ? "Any available stylist" : staffName}
+            </span>
+          </div>
+          <label className="flex items-center gap-3 rounded-xl border p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={anyStaff}
+              onChange={(event) => setAnyStaff(event.target.checked)}
+              className="h-4 w-4 accent-[#80683d]"
+            />
+            Any available stylist is fine
+          </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-medium">
-              From
+              First day that works
               <input
                 required
                 type="date"
                 value={from}
                 min={dateValue(new Date())}
-                onChange={(event) => setFrom(event.target.value)}
+                max={lastAllowedDate}
+                onChange={(event) => {
+                  setFrom(event.target.value);
+                  if (through < event.target.value)
+                    setThrough(event.target.value);
+                }}
                 className="mt-1 min-h-11 w-full rounded-lg border bg-background px-3"
               />
             </label>
             <label className="text-sm font-medium">
-              Until
+              Last day that works
               <input
                 required
                 type="date"
                 value={through}
                 min={from}
+                max={lastAllowedDate}
                 onChange={(event) => setThrough(event.target.value)}
                 className="mt-1 min-h-11 w-full rounded-lg border bg-background px-3"
               />
@@ -184,8 +210,8 @@ export function BookingOpeningRequest({
               className="mt-1"
             />
             <span>
-              The salon may contact me about this appointment request. This is
-              not consent to marketing. Requests are removed after 90 days.
+              The salon may contact me about this request. This is not consent
+              to marketing. Requests are removed after 90 days.
             </span>
           </label>
           {message && (
@@ -197,7 +223,7 @@ export function BookingOpeningRequest({
             disabled={busy}
             className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {busy ? "Sending…" : "Send request"}
+            {busy ? "Sending…" : "Ask the salon to contact me"}
           </button>
         </form>
       ) : null}

@@ -97,7 +97,7 @@ const NAV_GROUPS: readonly {
       {
         to: "/appointment-waitlist",
         icon: CalendarCheck,
-        label: "Appointment requests",
+        label: "Booking requests",
         ownerOnly: true,
       },
     ],
