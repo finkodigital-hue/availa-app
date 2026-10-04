@@ -18,6 +18,14 @@ const TIME = new Set(["any", "morning", "afternoon", "evening"]);
 export const Route = createFileRoute("/api/appointment-waitlist")({
   server: {
     handlers: {
+      GET: async () =>
+        Response.json(
+          {
+            automaticEmailAlertsAvailable:
+              process.env.BETTER_TIME_OFFERS_ENABLED === "true",
+          },
+          { headers: { "Cache-Control": "no-store" } },
+        ),
       POST: async ({ request }) => {
         // Never trust the incoming Host header as the CSRF origin. Proxies can
         // forward a caller-controlled Host; the configured public app origin
@@ -49,12 +57,25 @@ export const Route = createFileRoute("/api/appointment-waitlist")({
           phone.length > 50 ||
           !TIME.has(preferredTime) ||
           input.consent !== true ||
+          (input.automaticEmailOptIn !== true &&
+            input.automaticEmailOptIn !== false) ||
           !/^\d{4}-\d{2}-\d{2}$/.test(from) ||
           !/^\d{4}-\d{2}-\d{2}$/.test(through)
         )
           return Response.json(
             { message: "Please check your details and selected dates." },
             { status: 400 },
+          );
+        if (
+          input.automaticEmailOptIn === true &&
+          process.env.BETTER_TIME_OFFERS_ENABLED !== "true"
+        )
+          return Response.json(
+            {
+              message:
+                "Automatic opening alerts are not available yet. Please try again shortly.",
+            },
+            { status: 503 },
           );
         try {
           await consumePublicRequest("waitlist", { headers: request.headers });
@@ -155,6 +176,9 @@ export const Route = createFileRoute("/api/appointment-waitlist")({
             preferred_after: window.after,
             preferred_before: window.before,
             preferred_time: preferredTime,
+            ...(input.automaticEmailOptIn === true
+              ? { automatic_offer_email_opt_in_at: new Date().toISOString() }
+              : {}),
           });
         if (error) {
           console.error("Appointment waitlist request failed", error.code);

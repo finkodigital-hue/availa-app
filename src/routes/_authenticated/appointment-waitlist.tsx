@@ -429,7 +429,8 @@ function BookingRequestsPage() {
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-5 py-3 sm:px-6">
                     <p className="text-xs text-muted-foreground">
-                      No message or booking is created automatically.
+                      Contact clients manually if needed. Automatic opening
+                      alerts are sent only to clients who opted in, when enabled.
                     </p>
                     <div className="flex flex-wrap gap-3">
                       {request.status === "active" ? (

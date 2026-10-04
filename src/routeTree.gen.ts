@@ -43,6 +43,7 @@ import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-sugge
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiClientErrorsRouteImport } from './routes/api/client-errors'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiBetterTimeOfferRouteImport } from './routes/api/better-time-offer'
 import { Route as ApiAppointmentWaitlistRouteImport } from './routes/api/appointment-waitlist'
 import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
@@ -67,6 +68,7 @@ import { Route as AuthenticatedAppointmentWaitlistRouteImport } from './routes/_
 import { Route as BookingActionRescheduleTokenRouteImport } from './routes/booking-action.reschedule.$token'
 import { Route as BookingActionActionTokenRouteImport } from './routes/booking-action.$action.$token'
 import { Route as BookSlugWaitlistRouteImport } from './routes/book.$slug_.waitlist'
+import { Route as BookSlugOfferRouteImport } from './routes/book.$slug_.offer'
 import { Route as ApiSupabaseSplatRouteImport } from './routes/api/supabase/$'
 import { Route as ApiReviewsSubmitRouteImport } from './routes/api/reviews/submit'
 import { Route as ApiReviewsPeekRouteImport } from './routes/api/reviews/peek'
@@ -250,6 +252,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBetterTimeOfferRoute = ApiBetterTimeOfferRouteImport.update({
+  id: '/api/better-time-offer',
+  path: '/api/better-time-offer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAppointmentWaitlistRoute = ApiAppointmentWaitlistRouteImport.update({
   id: '/api/appointment-waitlist',
   path: '/api/appointment-waitlist',
@@ -377,6 +384,11 @@ const BookSlugWaitlistRoute = BookSlugWaitlistRouteImport.update({
   path: '/book/$slug/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BookSlugOfferRoute = BookSlugOfferRouteImport.update({
+  id: '/book/$slug_/offer',
+  path: '/book/$slug/offer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSupabaseSplatRoute = ApiSupabaseSplatRouteImport.update({
   id: '/api/supabase/$',
   path: '/api/supabase/$',
@@ -483,6 +495,7 @@ export interface FileRoutesByFullPath {
   '/staff': typeof AuthenticatedStaffRoute
   '/stock': typeof AuthenticatedStockRoute
   '/api/appointment-waitlist': typeof ApiAppointmentWaitlistRoute
+  '/api/better-time-offer': typeof ApiBetterTimeOfferRoute
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/health': typeof ApiHealthRoute
@@ -516,6 +529,7 @@ export interface FileRoutesByFullPath {
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
+  '/book/$slug/offer': typeof BookSlugOfferRoute
   '/book/$slug/waitlist': typeof BookSlugWaitlistRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
@@ -553,6 +567,7 @@ export interface FileRoutesByTo {
   '/staff': typeof AuthenticatedStaffRoute
   '/stock': typeof AuthenticatedStockRoute
   '/api/appointment-waitlist': typeof ApiAppointmentWaitlistRoute
+  '/api/better-time-offer': typeof ApiBetterTimeOfferRoute
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/health': typeof ApiHealthRoute
@@ -586,6 +601,7 @@ export interface FileRoutesByTo {
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
+  '/book/$slug/offer': typeof BookSlugOfferRoute
   '/book/$slug/waitlist': typeof BookSlugWaitlistRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
@@ -627,6 +643,7 @@ export interface FileRoutesById {
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/_authenticated/stock': typeof AuthenticatedStockRoute
   '/api/appointment-waitlist': typeof ApiAppointmentWaitlistRoute
+  '/api/better-time-offer': typeof ApiBetterTimeOfferRoute
   '/api/chat': typeof ApiChatRoute
   '/api/client-errors': typeof ApiClientErrorsRoute
   '/api/health': typeof ApiHealthRoute
@@ -660,6 +677,7 @@ export interface FileRoutesById {
   '/api/reviews/peek': typeof ApiReviewsPeekRoute
   '/api/reviews/submit': typeof ApiReviewsSubmitRoute
   '/api/supabase/$': typeof ApiSupabaseSplatRoute
+  '/book/$slug_/offer': typeof BookSlugOfferRoute
   '/book/$slug_/waitlist': typeof BookSlugWaitlistRoute
   '/booking-action/$action/$token': typeof BookingActionActionTokenRoute
   '/booking-action/reschedule/$token': typeof BookingActionRescheduleTokenRoute
@@ -701,6 +719,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/stock'
     | '/api/appointment-waitlist'
+    | '/api/better-time-offer'
     | '/api/chat'
     | '/api/client-errors'
     | '/api/health'
@@ -734,6 +753,7 @@ export interface FileRouteTypes {
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
+    | '/book/$slug/offer'
     | '/book/$slug/waitlist'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
@@ -771,6 +791,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/stock'
     | '/api/appointment-waitlist'
+    | '/api/better-time-offer'
     | '/api/chat'
     | '/api/client-errors'
     | '/api/health'
@@ -804,6 +825,7 @@ export interface FileRouteTypes {
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
+    | '/book/$slug/offer'
     | '/book/$slug/waitlist'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
@@ -844,6 +866,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff'
     | '/_authenticated/stock'
     | '/api/appointment-waitlist'
+    | '/api/better-time-offer'
     | '/api/chat'
     | '/api/client-errors'
     | '/api/health'
@@ -877,6 +900,7 @@ export interface FileRouteTypes {
     | '/api/reviews/peek'
     | '/api/reviews/submit'
     | '/api/supabase/$'
+    | '/book/$slug_/offer'
     | '/book/$slug_/waitlist'
     | '/booking-action/$action/$token'
     | '/booking-action/reschedule/$token'
@@ -898,6 +922,7 @@ export interface RootRouteChildren {
   StatusRoute: typeof StatusRoute
   TermsRoute: typeof TermsRoute
   ApiAppointmentWaitlistRoute: typeof ApiAppointmentWaitlistRoute
+  ApiBetterTimeOfferRoute: typeof ApiBetterTimeOfferRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiClientErrorsRoute: typeof ApiClientErrorsRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -926,6 +951,7 @@ export interface RootRouteChildren {
   ApiReviewsPeekRoute: typeof ApiReviewsPeekRoute
   ApiReviewsSubmitRoute: typeof ApiReviewsSubmitRoute
   ApiSupabaseSplatRoute: typeof ApiSupabaseSplatRoute
+  BookSlugOfferRoute: typeof BookSlugOfferRoute
   BookSlugWaitlistRoute: typeof BookSlugWaitlistRoute
   BookingActionActionTokenRoute: typeof BookingActionActionTokenRoute
   BookingActionRescheduleTokenRoute: typeof BookingActionRescheduleTokenRoute
@@ -1173,6 +1199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/better-time-offer': {
+      id: '/api/better-time-offer'
+      path: '/api/better-time-offer'
+      fullPath: '/api/better-time-offer'
+      preLoaderRoute: typeof ApiBetterTimeOfferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/appointment-waitlist': {
       id: '/api/appointment-waitlist'
       path: '/api/appointment-waitlist'
@@ -1339,6 +1372,13 @@ declare module '@tanstack/react-router' {
       path: '/book/$slug/waitlist'
       fullPath: '/book/$slug/waitlist'
       preLoaderRoute: typeof BookSlugWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$slug_/offer': {
+      id: '/book/$slug_/offer'
+      path: '/book/$slug/offer'
+      fullPath: '/book/$slug/offer'
+      preLoaderRoute: typeof BookSlugOfferRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/supabase/$': {
@@ -1525,6 +1565,7 @@ const rootRouteChildren: RootRouteChildren = {
   StatusRoute: StatusRoute,
   TermsRoute: TermsRoute,
   ApiAppointmentWaitlistRoute: ApiAppointmentWaitlistRoute,
+  ApiBetterTimeOfferRoute: ApiBetterTimeOfferRoute,
   ApiChatRoute: ApiChatRoute,
   ApiClientErrorsRoute: ApiClientErrorsRoute,
   ApiHealthRoute: ApiHealthRoute,
@@ -1554,6 +1595,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiReviewsPeekRoute: ApiReviewsPeekRoute,
   ApiReviewsSubmitRoute: ApiReviewsSubmitRoute,
   ApiSupabaseSplatRoute: ApiSupabaseSplatRoute,
+  BookSlugOfferRoute: BookSlugOfferRoute,
   BookSlugWaitlistRoute: BookSlugWaitlistRoute,
   BookingActionActionTokenRoute: BookingActionActionTokenRoute,
   BookingActionRescheduleTokenRoute: BookingActionRescheduleTokenRoute,
@@ -1563,13 +1605,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

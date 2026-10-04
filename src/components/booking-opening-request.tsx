@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 function dateValue(date: Date) {
   const year = date.getFullYear();
@@ -31,10 +31,20 @@ export function BookingOpeningRequest({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false);
+  const [automaticAlerts, setAutomaticAlerts] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState("");
   const lastAllowedDate = dateValue(new Date(Date.now() + 60 * 86_400_000));
+
+  useEffect(() => {
+    fetch("/api/appointment-waitlist", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((result: { automaticEmailAlertsAvailable?: boolean }) =>
+        setAutomaticAlerts(result.automaticEmailAlertsAvailable === true),
+      )
+      .catch(() => setAutomaticAlerts(false));
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,6 +69,7 @@ export function BookingOpeningRequest({
           email,
           phone,
           consent,
+          automaticEmailOptIn: automaticAlerts && consent,
         }),
       });
       const result = (await response.json()) as { message?: string };
@@ -210,8 +221,10 @@ export function BookingOpeningRequest({
               className="mt-1"
             />
             <span>
-              The salon may contact me about this request. This is not consent
-              to marketing. Requests are removed after 90 days.
+              {automaticAlerts
+                ? "Email me if a matching cancellation opens up. The salon may also contact me about this request."
+                : "The salon may contact me about this request."}{" "}
+              This is not marketing; requests are removed after 90 days.
             </span>
           </label>
           {message && (
