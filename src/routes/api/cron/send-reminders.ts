@@ -11,6 +11,7 @@ import { buildReminderSms } from "@/lib/sms/reminder-sms.server";
 import { runRetentionSweep } from "@/lib/retention-sweep.server";
 import { markBookingNotification } from "@/lib/notification-delivery.server";
 import { processBookingChangeEmails } from "@/lib/booking-change-email.server";
+import { processBetterTimeOffers } from "@/lib/better-time-offers.server";
 import { hasExpectedBearer } from "@/lib/internal-auth.server";
 
 // Woken up every 15 minutes by a Supabase pg_cron + pg_net job (see
@@ -55,7 +56,9 @@ async function processCustomerErasureStorageJobs() {
         .update({
           attempts,
           status: attempts >= 12 ? "failed" : "pending",
-          last_error: String(removeError.message ?? "Storage removal failed").slice(0, 500),
+          last_error: String(
+            removeError.message ?? "Storage removal failed",
+          ).slice(0, 500),
         })
         .eq("id", job.id);
     } else {
@@ -102,21 +105,37 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           console.error("[send-reminders] Could not record cron start");
         }
 
-        const { reconcileFailedBookingPayments } = await import("@/lib/payment-reconciliation.server");
-        const { error: leaseSweepError } = await (supabaseAdmin as any).rpc("sweep_notification_delivery_leases");
-        if (leaseSweepError) console.error("[notification-recovery] Delivery lease sweep failed");
-        const { error: usageCleanupError } = await (supabaseAdmin as any).rpc("prune_business_usage_counters");
-        if (usageCleanupError) console.error("[usage-protection] Usage counter cleanup failed");
-        const { error: publicCounterCleanupError } = await (supabaseAdmin as any).rpc("cleanup_public_request_counters");
-        if (publicCounterCleanupError) console.error("[request-protection] Counter cleanup failed");
-        const bookingPaymentRecovery = await reconcileFailedBookingPayments().catch(() => {
-          console.error("[booking-payment-recovery] Reconciliation unavailable; notification processing continues");
-          return { checked: 0, refunded: 0, failed: 1 };
-        });
-        const erasureStorageCleanup = await processCustomerErasureStorageJobs().catch(() => {
-          console.error("[customer-erasure] Storage cleanup retry unavailable");
-          return { completed: 0, failed: 1 };
-        });
+        const { reconcileFailedBookingPayments } =
+          await import("@/lib/payment-reconciliation.server");
+        const { error: leaseSweepError } = await (supabaseAdmin as any).rpc(
+          "sweep_notification_delivery_leases",
+        );
+        if (leaseSweepError)
+          console.error("[notification-recovery] Delivery lease sweep failed");
+        const { error: usageCleanupError } = await (supabaseAdmin as any).rpc(
+          "prune_business_usage_counters",
+        );
+        if (usageCleanupError)
+          console.error("[usage-protection] Usage counter cleanup failed");
+        const { error: publicCounterCleanupError } = await (
+          supabaseAdmin as any
+        ).rpc("cleanup_public_request_counters");
+        if (publicCounterCleanupError)
+          console.error("[request-protection] Counter cleanup failed");
+        const bookingPaymentRecovery =
+          await reconcileFailedBookingPayments().catch(() => {
+            console.error(
+              "[booking-payment-recovery] Reconciliation unavailable; notification processing continues",
+            );
+            return { checked: 0, refunded: 0, failed: 1 };
+          });
+        const erasureStorageCleanup =
+          await processCustomerErasureStorageJobs().catch(() => {
+            console.error(
+              "[customer-erasure] Storage cleanup retry unavailable",
+            );
+            return { completed: 0, failed: 1 };
+          });
 
         const { data: businesses, error: bizErr } = await (supabaseAdmin as any)
           .from("businesses")
@@ -221,7 +240,12 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 messageType: "booking_reminder",
                 idempotencyKey: `booking:${booking.id}:reminder:${booking.starts_at}`,
               });
-              await markBookingNotification(supabaseAdmin, booking.id, "reminder_sent_at", booking.starts_at);
+              await markBookingNotification(
+                supabaseAdmin,
+                booking.id,
+                "reminder_sent_at",
+                booking.starts_at,
+              );
               sent++;
             } catch (err) {
               failed++;
@@ -254,7 +278,9 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 "id,starts_at,customer_phone,customers(phone),services(name)",
               )
               .eq("business_id", business.id)
-              .or("sms_reminder_notice_at.not.is.null,sms_reminder_consent_at.not.is.null")
+              .or(
+                "sms_reminder_notice_at.not.is.null,sms_reminder_consent_at.not.is.null",
+              )
               .is("sms_reminder_sent_at", null)
               .not("status", "in", "(cancelled,completed,no_show)")
               .gt("starts_at", now.toISOString())
@@ -366,7 +392,11 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                 messageType: "booking_confirmation",
                 idempotencyKey: `booking:${booking.id}:confirmation:v1`,
               });
-              await markBookingNotification(supabaseAdmin, booking.id, "confirmation_sent_at");
+              await markBookingNotification(
+                supabaseAdmin,
+                booking.id,
+                "confirmation_sent_at",
+              );
               confirmationsSent++;
             } catch (err) {
               confirmationsFailed++;
@@ -461,7 +491,11 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
                   messageType: "review_request",
                   idempotencyKey: `booking:${booking.id}:review:v1`,
                 });
-                await markBookingNotification(supabaseAdmin, booking.id, "review_request_sent_at");
+                await markBookingNotification(
+                  supabaseAdmin,
+                  booking.id,
+                  "review_request_sent_at",
+                );
                 reviewRequestsSent++;
               } catch (err) {
                 reviewRequestsFailed++;
@@ -498,11 +532,27 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           console.error("[send-reminders] retention sweep failed", error);
         }
 
-        let bookingChangeEmails = { sent: 0, suppressed: 0, skipped: 0, failed: 0 };
+        let bookingChangeEmails = {
+          sent: 0,
+          suppressed: 0,
+          skipped: 0,
+          failed: 0,
+        };
         try {
           bookingChangeEmails = await processBookingChangeEmails();
         } catch {
-          console.error("[send-reminders] booking change email sweep unavailable");
+          console.error(
+            "[send-reminders] booking change email sweep unavailable",
+          );
+        }
+
+        // Disabled until the offer-acceptance journey and database migration
+        // have passed end-to-end QA. No customer messages leave by default.
+        let betterTimeOffers = { reserved: 0, sent: 0, skipped: 0, failed: 0 };
+        try {
+          betterTimeOffers = await processBetterTimeOffers();
+        } catch {
+          console.error("[send-reminders] better-time offer sweep unavailable");
         }
 
         // --- Studio subscription status sweep ---
@@ -585,6 +635,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
 
         const summary = {
           bookingPaymentRecovery,
+          betterTimeOffers,
           erasureStorageCleanup,
           claimed,
           sent,
@@ -613,8 +664,12 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           })
           .eq("job_name", REMINDER_CRON_JOB_NAME);
         if (heartbeatFinishError) {
-          console.error("[send-reminders] Could not record successful cron completion");
-          return new Response("Cron heartbeat could not be recorded", { status: 500 });
+          console.error(
+            "[send-reminders] Could not record successful cron completion",
+          );
+          return new Response("Cron heartbeat could not be recorded", {
+            status: 500,
+          });
         }
         return Response.json(summary);
       },

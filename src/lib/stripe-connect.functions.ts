@@ -12,6 +12,8 @@ type StripeAccount = {
 };
 
 type CheckoutInput = {
+  offerToken?: string;
+  offerPolicyAccepted?: boolean;
   bookingSource?: string | null;
   businessId: string;
   serviceId: string;
@@ -296,6 +298,10 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
       Number.isNaN(Date.parse(data.endsAt))
     )
       throw new Error("Invalid booking time.");
+    if (data.offerToken && !/^[a-f0-9]{64}$/.test(data.offerToken))
+      throw new Error("Invalid appointment offer.");
+    if (data.offerToken && data.offerPolicyAccepted !== true)
+      throw new Error("Please accept the booking policy first.");
     return {
       ...data,
       bookingSource: normalizeBookingSource(data.bookingSource),
@@ -351,16 +357,30 @@ export const startBookingCheckout = createServerFn({ method: "POST" })
       throw new Error("This booking amount is too small for online payment.");
 
     const { sha256Hex } = await import("@/lib/booking-tokens.server");
+    const contactHash = await sha256Hex(
+      data.customerEmail.trim().toLowerCase(),
+    );
     const { data: hold, error: holdError } = await (supabaseAdmin as any).rpc(
-      "reserve_booking_checkout",
-      {
-        p_business_id: business.id,
-        p_service_id: service.id,
-        p_staff_id: data.staffId,
-        p_starts_at: new Date(data.startsAt).toISOString(),
-        p_request_key: await sha256Hex(JSON.stringify({ ...data, amount })),
-        p_contact_key: await sha256Hex(data.customerEmail.trim().toLowerCase()),
-      },
+      data.offerToken
+        ? "accept_appointment_waitlist_offer_checkout"
+        : "reserve_booking_checkout",
+      data.offerToken
+        ? {
+            p_token_hash: await sha256Hex(data.offerToken),
+            p_business_id: business.id,
+            p_service_id: service.id,
+            p_staff_id: data.staffId,
+            p_starts_at: new Date(data.startsAt).toISOString(),
+            p_contact_hash: contactHash,
+          }
+        : {
+            p_business_id: business.id,
+            p_service_id: service.id,
+            p_staff_id: data.staffId,
+            p_starts_at: new Date(data.startsAt).toISOString(),
+            p_request_key: await sha256Hex(JSON.stringify({ ...data, amount })),
+            p_contact_key: contactHash,
+          },
     );
     if (holdError) throw holdError;
     if (!hold?.id || !hold?.ends_at)
