@@ -203,7 +203,7 @@ body:has([data-workspace-content])
     outline-offset: 3px;
   }
 
-  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not(
+  input:not([data-command-search-input]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not(
       [type="range"]
     ):not([type="hidden"]):not([type="file"]),
   textarea,
@@ -224,7 +224,7 @@ body:has([data-workspace-content])
     color: var(--muted-foreground);
     opacity: 1;
   }
-  input:focus-visible,
+  input:not([data-command-search-input]):focus-visible,
   textarea:focus-visible,
   select:focus-visible {
     outline: 3px solid color-mix(in srgb, var(--ring) 25%, transparent);
