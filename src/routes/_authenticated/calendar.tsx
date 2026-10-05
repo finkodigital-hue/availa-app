@@ -350,7 +350,7 @@ function CalendarPage() {
     qc.invalidateQueries({ queryKey: ["booking-stock-deductions", id] });
   };
 
-  const openNewBooking = (cell?: { staffId?: string; isoTime?: string; date?: Date }) => {
+  const openNewBooking = (cell?: { staffId?: string; serviceId?: string; customerId?: string; isoTime?: string; date?: Date }) => {
     setPrefill(cell);
     setNewOpen(true);
   };
@@ -360,16 +360,39 @@ function CalendarPage() {
     setBlockOpen(true);
   };
 
-  // Global trigger from the mobile bottom nav floating "+" button, and from
-  // ?new=1 deep links (navigating to /calendar from elsewhere).
+  // Global trigger from the mobile bottom nav and from request-aware deep links.
   useEffect(() => {
     const handler = () => openNewBooking();
     window.addEventListener("luma:new-booking", handler as EventListener);
-    if (typeof window !== "undefined" && window.location.search.includes("new=1")) {
-      handler();
+    if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
-      url.searchParams.delete("new");
-      window.history.replaceState({}, "", url.toString());
+      if (url.searchParams.get("new") === "1") {
+        const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const serviceId = url.searchParams.get("serviceId") ?? "";
+        const staffId = url.searchParams.get("staffId") ?? "";
+        const dateText = url.searchParams.get("date") ?? "";
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateText);
+        const date = match
+          ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+          : undefined;
+        const validDate = date && !Number.isNaN(date.getTime()) &&
+          date.getFullYear() === Number(match?.[1]) &&
+          date.getMonth() === Number(match?.[2]) - 1 &&
+          date.getDate() === Number(match?.[3]);
+        const requestedDate = validDate ? date : undefined;
+        if (requestedDate) {
+          setAnchor(requestedDate);
+          setView("day");
+        }
+        openNewBooking({
+          serviceId: uuid.test(serviceId) ? serviceId : undefined,
+          staffId: uuid.test(staffId) ? staffId : undefined,
+          date: requestedDate,
+        });
+        for (const key of ["new", "serviceId", "staffId", "date"])
+          url.searchParams.delete(key);
+        window.history.replaceState({}, "", url.toString());
+      }
     }
     return () => window.removeEventListener("luma:new-booking", handler as EventListener);
   }, []);

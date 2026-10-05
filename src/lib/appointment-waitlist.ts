@@ -16,6 +16,19 @@ export type CancelledSlot = {
   ends_at: string;
 };
 
+/** Use the salon's calendar day for a request, even across UK DST changes. */
+export function firstRequestedSalonDay(instant: string, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(instant));
+  const value = (part: string) =>
+    parts.find((item) => item.type === part)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
 /** The stored end is exclusive. Show the last requested salon day, not the next midnight. */
 export function formatRequestedSalonDates(
   after: string,

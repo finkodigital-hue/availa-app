@@ -2,7 +2,7 @@ BOOKZENVO THIRD-PARTY SOFTWARE NOTICES
 
 This file records licence information shipped with production dependencies.
 The original authors retain all rights granted or reserved by their licences.
-package-lock.json SHA-256: b49c6c0e0b9d6e38c2389810a9b9af3f4d45bf43bf1e44cd0b4f1643a4230d02
+package-lock.json SHA-256: 484cca9275ebddec531e76afb2fcd5a2c607242790e2edf434bc7ec769ebfbb4
 Package/version records: 299
 
 ================================================================================
@@ -9328,7 +9328,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-undici 7.29.0
+undici 7.30.0
 Declared licence: MIT
 Source: git+https://github.com/nodejs/undici.git
 
