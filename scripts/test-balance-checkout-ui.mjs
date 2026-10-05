@@ -10,6 +10,7 @@ const mocks = {
   "@tanstack/react-router": `import React from 'react'; export const Link = React.forwardRef(({to,search,...props},ref) => React.createElement('a',{...props,href:to,ref}));`,
   "@/lib/cash-payment.functions": `export async function recordCashPayment({data}) { window.cashCalls = [...(window.cashCalls ?? []), data]; if(window.cashError) throw new Error('Could not confirm cash payment'); return {id:'fixture-booking',payment_status:'paid',amount_paid_cents:3500}; }`,
   "@/lib/stripe-connect.functions": `export async function startBalanceCheckout() { return {checkoutUrl: 'https://checkout.stripe.com/c/pay/fictional'}; }`,
+  "@/lib/terminal.functions": `export async function listTerminalReaders() { return {readers: [], canCreateSimulator: false}; } export async function startTerminalPayment() { throw new Error('Not used in this fixture'); } export async function getTerminalPaymentStatus() { throw new Error('Not used in this fixture'); } export async function cancelTerminalPayment() { throw new Error('Not used in this fixture'); } export async function createTestTerminalReader() { throw new Error('Not used in this fixture'); }`,
   "@/lib/server-fn-auth": `export async function getServerFnAuthHeaders() { return {}; }`,
   "@/lib/business": `export function useWorkspaceAccess() { return {isOwner:!!window.fixtureOwner}; }`,
   "@/lib/format": `export const fmtMoney = (cents,currency) => new Intl.NumberFormat('en-GB',{style:'currency',currency}).format(cents/100);`,
