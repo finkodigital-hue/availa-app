@@ -13,7 +13,6 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-  CommandShortcut,
 } from "@/components/ui/command";
 
 const QUICK_LINKS = [
@@ -98,7 +97,6 @@ export function GlobalSearch() {
       <Button variant="outline" className="w-full justify-start gap-2 h-9 text-xs" onClick={() => setOpen(true)}>
         <Search className="h-3.5 w-3.5" />
         <span className="flex-1 text-left">Search</span>
-        <CommandShortcut>⌘K</CommandShortcut>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Search customers, services or pages…" value={query} onValueChange={setQuery} />
