@@ -18,10 +18,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useMyBusiness } from "@/lib/business";
 import {
+  firstRequestedSalonDay,
   formatRequestedSalonDates,
-  requestMatchesCancelledSlot,
   type AppointmentWaitlistRequest,
-  type CancelledSlot,
 } from "@/lib/appointment-waitlist";
 
 export const Route = createFileRoute("/_authenticated/appointment-waitlist")({
@@ -34,7 +33,14 @@ type RequestRow = AppointmentWaitlistRequest & {
   customer_email: string;
   customer_phone: string | null;
   created_at: string;
+  resolution: "booked" | "contacted" | "unavailable" | null;
 };
+
+const resolutionLabels = {
+  booked: "Booked",
+  contacted: "Contacted",
+  unavailable: "Couldn’t help",
+} as const;
 
 function BookingRequestsPage() {
   const { user } = useAuth();
@@ -48,26 +54,15 @@ function BookingRequestsPage() {
     queryKey: ["appointment-waitlist", business?.id],
     enabled: isOwner,
     queryFn: async () => {
-      const now = new Date();
-      const future = new Date(now.getTime() + 61 * 86_400_000).toISOString();
-      const [requests, cancellations, services, staff] = await Promise.all([
+      let [requests, services, staff] = await Promise.all([
         (supabase as any)
           .from("appointment_waitlist_requests")
           .select(
-            "id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,customer_name,customer_email,customer_phone,created_at",
+            "id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,resolution,customer_name,customer_email,customer_phone,created_at",
           )
           .eq("business_id", business!.id)
           .order("created_at", { ascending: false })
           .limit(200),
-        supabase
-          .from("bookings")
-          .select("id,service_id,staff_id,starts_at,ends_at")
-          .eq("business_id", business!.id)
-          .eq("status", "cancelled")
-          .gt("starts_at", now.toISOString())
-          .lt("starts_at", future)
-          .order("starts_at")
-          .limit(100),
         supabase
           .from("services")
           .select("id,name")
@@ -77,11 +72,23 @@ function BookingRequestsPage() {
           .select("id,name")
           .eq("business_id", business!.id),
       ]);
-      for (const result of [requests, cancellations, services, staff])
+      let resolutionEnabled = true;
+      if (requests.error && /resolution/i.test(requests.error.message ?? "")) {
+        resolutionEnabled = false;
+        requests = await (supabase as any)
+          .from("appointment_waitlist_requests")
+          .select(
+            "id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,customer_name,customer_email,customer_phone,created_at",
+          )
+          .eq("business_id", business!.id)
+          .order("created_at", { ascending: false })
+          .limit(200);
+      }
+      for (const result of [requests, services, staff])
         if (result.error) throw result.error;
       return {
         requests: (requests.data ?? []) as RequestRow[],
-        cancellations: (cancellations.data ?? []) as CancelledSlot[],
+        resolutionEnabled,
         services: new Map((services.data ?? []).map((s) => [s.id, s.name])),
         staff: new Map((staff.data ?? []).map((s) => [s.id, s.name])),
       };
@@ -104,12 +111,19 @@ function BookingRequestsPage() {
         ].some((value) => value.toLowerCase().includes(term))),
   );
 
-  async function updateStatus(id: string, status: "active" | "closed") {
+  async function updateStatus(
+    id: string,
+    status: "active" | "closed",
+    resolution: RequestRow["resolution"] = null,
+  ) {
     if (!business) return;
     setWorkingId(id);
+    const update = query.data?.resolutionEnabled
+      ? { status, resolution }
+      : { status };
     const { error } = await (supabase as any)
       .from("appointment_waitlist_requests")
-      .update({ status })
+      .update(update)
       .eq("id", id)
       .eq("business_id", business.id);
     setWorkingId(null);
@@ -118,9 +132,11 @@ function BookingRequestsPage() {
       return;
     }
     toast.success(
-      status === "closed"
-        ? "Moved to Handled. No booking or message was sent."
-        : "Moved back to Needs a reply.",
+      status === "closed" && !query.data?.resolutionEnabled
+        ? "Moved to Handled. Apply the booking-request update to record specific outcomes."
+        : status === "closed"
+          ? `Marked ${resolution ? resolutionLabels[resolution].toLowerCase() : "handled"}. This did not create a booking or send a message.`
+          : "Moved back to Needs a reply.",
     );
     await qc.invalidateQueries({
       queryKey: ["appointment-waitlist", business.id],
@@ -164,7 +180,7 @@ function BookingRequestsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-7xl space-y-6 px-5 py-8 sm:px-8 md:px-10 md:py-10">
       <PageHeader
         title="Booking requests"
         subtitle="Help clients find a time when nothing suitable is available."
@@ -175,38 +191,27 @@ function BookingRequestsPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-3xl border border-[#e7dcc5] bg-gradient-to-br from-[#fbf8f1] to-card p-5 sm:p-6">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#80683d]">
-                  Follow up made simple
-                </p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight">
-                  {!query.data
-                    ? "Your booking requests"
-                    : activeCount
-                      ? `${activeCount} ${activeCount === 1 ? "client needs" : "clients need"} a reply`
-                      : "You're all caught up"}
-                </h2>
-                <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                  These are requests, not bookings. Check the calendar, contact
-                  the client, then mark the request handled.
-                </p>
+          {(activeCount > 0 || !query.data) && (
+            <div className="rounded-3xl border border-[#e7dcc5] bg-gradient-to-br from-[#fbf8f1] to-card p-5 sm:p-6">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#80683d]">
+                    Follow up made simple
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight">
+                    {!query.data
+                      ? "Your booking requests"
+                      : `${activeCount} ${activeCount === 1 ? "client needs" : "clients need"} a reply`}
+                  </h2>
+                  <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                    These are requests, not bookings. Find a suitable time,
+                    contact the client, then record what happened.
+                  </p>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={copyLink}
-                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#d8c9ac] bg-card px-4 text-sm font-medium hover:bg-[#f6f0e4] active:scale-[0.98]"
-              >
-                <Clipboard
-                  className="h-4 w-4 text-[#80683d]"
-                  aria-hidden="true"
-                />{" "}
-                Copy request link
-              </button>
             </div>
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          )}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div
               className="flex gap-1 rounded-xl bg-muted/70 p-1"
               role="group"
@@ -230,20 +235,30 @@ function BookingRequestsPage() {
                 Handled <span className="ml-1 text-xs">{closedCount}</span>
               </button>
             </div>
-            <label className="relative block sm:w-64">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <span className="sr-only">Search booking requests</span>
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search name or service"
-                className="min-h-11 w-full rounded-xl border bg-card pl-10 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#a8874e]"
-              />
-            </label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={copyLink}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-medium text-muted-foreground hover:bg-card hover:text-foreground"
+              >
+                <Clipboard className="h-4 w-4" aria-hidden="true" /> Copy
+                request link
+              </button>
+              <label className="relative block sm:w-64">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <span className="sr-only">Search booking requests</span>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search name or service"
+                  className="min-h-11 w-full rounded-xl border bg-card pl-10 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#a8874e]"
+                />
+              </label>
+            </div>
           </div>
           {query.isLoading && (
             <p className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground">
@@ -296,13 +311,6 @@ function BookingRequestsPage() {
                 ? (query.data!.staff.get(request.preferred_staff_id) ??
                   "Selected stylist")
                 : "Any stylist";
-              const matches = query.data!.cancellations.filter((slot) =>
-                requestMatchesCancelledSlot(
-                  request,
-                  slot,
-                  business!.timezone || "UTC",
-                ),
-              );
               const subject = encodeURIComponent(
                 `Your ${serviceName} time request`,
               );
@@ -320,7 +328,9 @@ function BookingRequestsPage() {
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#80683d]">
                           {request.status === "active"
                             ? "Needs a reply"
-                            : "Handled · not necessarily booked"}
+                            : request.resolution
+                              ? resolutionLabels[request.resolution]
+                              : "Handled · outcome not recorded"}
                         </p>
                         <h2 className="mt-1 text-xl font-semibold tracking-tight">
                           {request.customer_name}
@@ -370,38 +380,24 @@ function BookingRequestsPage() {
                         </strong>
                       </div>
                     </div>
-                    {request.status === "active" && matches.length > 0 && (
-                      <div className="mt-4 rounded-xl border border-[#e7dcc5] bg-[#fbf8f1] px-4 py-3 text-sm text-[#665536]">
-                        <p className="font-semibold">
-                          A recently cancelled time might fit
-                        </p>
-                        <p className="mt-1">
-                          {matches
-                            .slice(0, 2)
-                            .map((slot) =>
-                              new Intl.DateTimeFormat("en-GB", {
-                                timeZone: business!.timezone || "UTC",
-                                day: "numeric",
-                                month: "short",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }).format(new Date(slot.starts_at)),
-                            )
-                            .join(" · ")}
-                        </p>
-                        <p className="mt-1 text-xs">
-                          It may already be taken. Check the calendar before
-                          offering it.
-                        </p>
-                      </div>
-                    )}
                     <div className="mt-5 flex flex-wrap gap-2">
                       <Link
                         to="/calendar"
+                        search={
+                          {
+                            new: 1,
+                            serviceId: request.service_id,
+                            staffId: request.preferred_staff_id ?? undefined,
+                          date: firstRequestedSalonDay(
+                              request.preferred_after,
+                              business!.timezone || "UTC",
+                            ),
+                          } as any
+                        }
                         className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#78633d] px-4 text-sm font-semibold text-white hover:bg-[#665231] active:scale-[0.98]"
                       >
                         <CalendarDays className="h-4 w-4" aria-hidden="true" />{" "}
-                        Check calendar
+                        Find a time
                       </Link>
                       <a
                         href={`mailto:${request.customer_email}?subject=${subject}&body=${body}`}
@@ -429,16 +425,53 @@ function BookingRequestsPage() {
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-5 py-3 sm:px-6">
                     <p className="text-xs text-muted-foreground">
-                      Contact clients manually if needed. Automatic opening
-                      alerts are sent only to clients who opted in, when enabled.
+                      Check availability before offering a time. A request does
+                      not reserve a slot.
                     </p>
                     <div className="flex flex-wrap gap-3">
-                      {request.status === "active" ? (
+                      {request.status === "active" &&
+                      query.data?.resolutionEnabled ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Check
+                            className="h-4 w-4 text-[#6c5631]"
+                            aria-hidden="true"
+                          />
+                          <label
+                            className="sr-only"
+                            htmlFor={`request-outcome-${request.id}`}
+                          >
+                            Record request outcome
+                          </label>
+                          <select
+                            id={`request-outcome-${request.id}`}
+                            value=""
+                            disabled={workingId === request.id}
+                            onChange={(event) => {
+                              const resolution = event.target.value as Exclude<
+                                RequestRow["resolution"],
+                                null
+                              >;
+                              if (resolution)
+                                void updateStatus(
+                                  request.id,
+                                  "closed",
+                                  resolution,
+                                );
+                            }}
+                            className="min-h-11 rounded-lg border bg-card px-3 text-sm font-medium text-[#6c5631]"
+                          >
+                            <option value="">Record outcome…</option>
+                            <option value="booked">Booked — after confirming</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="unavailable">Couldn’t help</option>
+                          </select>
+                        </div>
+                      ) : request.status === "active" ? (
                         <button
                           type="button"
                           disabled={workingId === request.id}
                           onClick={() => updateStatus(request.id, "closed")}
-                          className="inline-flex min-h-9 items-center gap-1.5 text-sm font-semibold text-[#6c5631] hover:underline disabled:opacity-50"
+                          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#6c5631] hover:underline disabled:opacity-50"
                         >
                           <Check className="h-4 w-4" aria-hidden="true" /> Mark
                           handled
@@ -468,14 +501,11 @@ function BookingRequestsPage() {
               );
             })}
           </div>
-          {query.data &&
-            (query.data.requests.length >= 200 ||
-              query.data.cancellations.length >= 100) && (
-              <p className="text-sm text-amber-700">
-                Showing only the most recent requests or cancellations. Check
-                the calendar for the full diary.
-              </p>
-            )}
+          {query.data && query.data.requests.length >= 200 && (
+            <p className="text-sm text-amber-700">
+              Showing only the 200 most recent requests.
+            </p>
+          )}
         </>
       )}
     </div>

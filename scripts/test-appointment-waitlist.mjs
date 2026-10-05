@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  firstRequestedSalonDay,
   formatRequestedSalonDates,
   requestMatchesCancelledSlot,
   salonDateWindow,
@@ -42,6 +43,8 @@ assert.equal(
   formatRequestedSalonDates("bad", autumnDay.before, "Europe/London"),
   "Date unavailable",
 );
+assert.equal(firstRequestedSalonDay(springDay.after, "Europe/London"), "2026-03-29");
+assert.equal(firstRequestedSalonDay(autumnDay.after, "Europe/London"), "2026-10-25");
 
 const request = {
   id: "r",
