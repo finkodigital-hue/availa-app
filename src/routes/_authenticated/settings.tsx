@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   CreditCard,
+  ReceiptText,
   Bell,
   Trash2,
   AlertTriangle,
@@ -338,7 +339,7 @@ function SettingsPage() {
 
         <SettingsGroup label="Money & plan">
           <SettingsRow
-            icon={Sparkles}
+            icon={ReceiptText}
             title="Plan & billing"
             description="View your plan, billing options and included features."
             summary={planSummary}
