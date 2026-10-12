@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { safeImageSrc, safePublicHref } from "@/lib/safe-url";
 import type { HeroConfig } from "./types";
@@ -24,7 +25,10 @@ export function Hero({ config }: { config: HeroConfig }) {
 
   if (config.variant === "text-photo") {
     return (
-      <section style={{ borderRadius: radius }} className="overflow-hidden border">
+      <section
+        style={{ borderRadius: radius }}
+        className="overflow-hidden border"
+      >
         <div className="relative h-56 sm:h-72">
           <Photo url={config.photoUrl} className="absolute inset-0" />
           <div
@@ -55,21 +59,31 @@ export function Hero({ config }: { config: HeroConfig }) {
   );
 }
 
-function Photo({ url, className }: { url?: string | null; className?: string }) {
+function Photo({
+  url,
+  className,
+}: {
+  url?: string | null;
+  className?: string;
+}) {
   const safeUrl = safeImageSrc(url);
-  if (!safeUrl) {
-    return (
-      <div
-        className={cn(
-          "bg-secondary grid place-items-center text-sm text-muted-foreground",
-          className,
-        )}
-      >
-        No photo
-      </div>
-    );
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [safeUrl]);
+
+  if (!safeUrl || failed) {
+    return <div aria-hidden="true" className={cn("bg-secondary", className)} />;
   }
-  return <img src={safeUrl} alt="" className={cn("h-full w-full object-cover", className)} />;
+  return (
+    <img
+      src={safeUrl}
+      alt=""
+      className={cn("h-full w-full object-cover", className)}
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 function HeroCopy({
@@ -84,17 +98,27 @@ function HeroCopy({
   return (
     <div className={cn(centered && "mx-auto max-w-xl")}>
       {config.eyebrow && (
-        <div className="text-[11px] uppercase tracking-[0.2em] mb-2" style={{ color: brand }}>
+        <div
+          className="text-[11px] uppercase tracking-[0.2em] mb-2"
+          style={{ color: brand }}
+        >
           {config.eyebrow}
         </div>
       )}
-      <h1 className="font-display text-3xl sm:text-4xl text-balance">{config.heading}</h1>
+      <h1 className="font-display text-3xl sm:text-4xl text-balance">
+        {config.heading}
+      </h1>
       <div
-        className={cn("h-[3px] w-12 rounded-full mt-2.5", centered && "mx-auto")}
+        className={cn(
+          "h-[3px] w-12 rounded-full mt-2.5",
+          centered && "mx-auto",
+        )}
         style={{ background: "var(--brand-accent)" }}
       />
       {config.subheading && (
-        <p className="text-muted-foreground mt-3 text-pretty">{config.subheading}</p>
+        <p className="text-muted-foreground mt-3 text-pretty">
+          {config.subheading}
+        </p>
       )}
       {config.ctaLabel && (
         <a

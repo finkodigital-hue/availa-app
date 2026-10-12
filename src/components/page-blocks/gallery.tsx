@@ -11,18 +11,19 @@ export function Gallery({ config }: { config: GalleryConfig }) {
         const safeUrl = safeImageSrc(p.url);
         if (!safeUrl) return null;
         return (
-        <div
-          key={i}
-          style={{ borderRadius: "var(--brand-radius)" }}
-          className="aspect-square overflow-hidden bg-secondary"
-        >
-          <img
-            src={safeUrl}
-            alt={p.alt ?? ""}
-            className="h-full w-full object-cover"
-            loading="lazy"
-          />
-        </div>
+          <div
+            key={i}
+            style={{ borderRadius: "var(--brand-radius)" }}
+            className="aspect-square overflow-hidden bg-secondary"
+          >
+            <img
+              src={safeUrl}
+              alt={p.alt ?? ""}
+              className="h-full w-full object-cover"
+              loading="lazy"
+              onError={(event) => event.currentTarget.remove()}
+            />
+          </div>
         );
       })}
       {Array.from({ length: placeholders }).map((_, i) => (

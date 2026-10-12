@@ -14,7 +14,11 @@ type StaffRow = {
 
 export function StaffSpotlight({ config }: { config: StaffSpotlightConfig }) {
   const { data: staff, isLoading } = useQuery({
-    queryKey: ["page-block-staff", config.businessId, (config.staffIds ?? []).join(",")],
+    queryKey: [
+      "page-block-staff",
+      config.businessId,
+      (config.staffIds ?? []).join(","),
+    ],
     queryFn: async () => {
       let query = supabase
         .from("staff")
@@ -31,7 +35,9 @@ export function StaffSpotlight({ config }: { config: StaffSpotlightConfig }) {
   return (
     <section>
       {config.heading && (
-        <h2 className="font-display text-2xl mb-5 text-center">{config.heading}</h2>
+        <h2 className="font-display text-2xl mb-5 text-center">
+          {config.heading}
+        </h2>
       )}
       <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
         {isLoading &&
@@ -59,15 +65,20 @@ export function StaffSpotlight({ config }: { config: StaffSpotlightConfig }) {
                   alt={`${s.name}${s.role ? ` — ${s.role}` : ""}`}
                   className="h-full w-full object-cover"
                   loading="lazy"
+                  onError={(event) => event.currentTarget.remove()}
                 />
               ) : (
                 s.name.charAt(0).toUpperCase()
               )}
             </div>
             <div className="font-medium mt-3">{s.name}</div>
-            {s.role && <div className="text-xs text-muted-foreground">{s.role}</div>}
+            {s.role && (
+              <div className="text-xs text-muted-foreground">{s.role}</div>
+            )}
             {s.bio && (
-              <p className="text-xs text-muted-foreground mt-2 text-pretty line-clamp-3">{s.bio}</p>
+              <p className="text-xs text-muted-foreground mt-2 text-pretty line-clamp-3">
+                {s.bio}
+              </p>
             )}
           </div>
         ))}
