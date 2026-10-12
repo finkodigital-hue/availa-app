@@ -15,7 +15,7 @@ export async function checkFunctionAccess(db) {
   const {rows}=await db.query("select has_function_privilege('anon',$1,'execute') as anonymous,has_function_privilege('authenticated',$1,'execute') as member,has_function_privilege('service_role',$1,'execute') as server",['public.'+signature]);
   same(rows[0],{anonymous:false,member:true,server:true});
  }
- const memberOnly=['adjust_booking_stock_deduction(uuid,numeric)','create_staff_booking(uuid,uuid,uuid,uuid,text,text,text,timestamp with time zone,timestamp with time zone,integer,integer,integer,text,text,boolean,boolean,text,text,text,integer,integer,text)','ensure_business_hours(uuid)','generate_rent_payment(uuid)','move_booking(uuid,timestamp with time zone,timestamp with time zone,uuid)','reassign_staff_bookings(uuid,uuid,boolean)','reschedule_booking(uuid,timestamp with time zone)'];
+ const memberOnly=['adjust_booking_stock_deduction(uuid,numeric)','assert_no_booking_conflict(uuid,timestamp with time zone,timestamp with time zone,integer,integer,uuid)','create_staff_booking(uuid,uuid,uuid,uuid,text,text,text,timestamp with time zone,timestamp with time zone,integer,integer,integer,text,text,boolean,boolean,text,text,text,integer,integer,text)','ensure_business_hours(uuid)','generate_rent_payment(uuid)','move_booking(uuid,timestamp with time zone,timestamp with time zone,uuid)','reassign_staff_bookings(uuid,uuid,boolean)','reschedule_booking(uuid,timestamp with time zone)'];
  for(const signature of memberOnly) {
   const {rows}=await db.query("select has_function_privilege('anon',$1,'execute') as anonymous,has_function_privilege('authenticated',$1,'execute') as member",['public.'+signature]);
   same(rows[0],{anonymous:false,member:true});

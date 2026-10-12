@@ -32,6 +32,15 @@ export async function checkSchemaRoles(db) {
  await login(1);
  same((await rows('select id from bookings order by id')).map(x=>x.id),[id(501),id(503)],'Owner sees own appointments only');
  same((await rows('select id from customers')).map(x=>x.id),[id(401)],'Owner sees own customers only');
+ const ownerCreatedBooking=(await rows(`select create_staff_booking(
+  '${id(101)}','${id(301)}','${id(201)}','${id(401)}',
+  'Owner-created fictional booking','fixture7@example.invalid','',
+  date_trunc('week',now())+interval '16 days 10 hours',
+  date_trunc('week',now())+interval '16 days 10 hours 30 minutes',
+  1000,0,1000,'','walkin',false,false,null,null,'confirmed',null,null,'unpaid'
+ ) as id`))[0].id;
+ same((await rows(`select business_id from bookings where id='${ownerCreatedBooking}'`))[0].business_id,id(101),'Owner booking RPC can call the protected conflict checker');
+ await rows(`delete from bookings where id='${ownerCreatedBooking}'`);
  await fail(`update customers set auth_user_id='${id(6)}' where id='${id(401)}'`,/server-managed/);
  same((await rows("select name from storage.objects where bucket_id='business-assets'")).map(x=>x.name),[`${id(101)}/private.txt`],'Private storage owner scope');
  same((await rows("select name from storage.objects where bucket_id='business-public-assets'")).map(x=>x.name),[`${id(101)}/logo/public.jpg`],'Owner can manage own public asset metadata');
