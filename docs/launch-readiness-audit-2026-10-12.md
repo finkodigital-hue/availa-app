@@ -4,7 +4,7 @@ This is an engineering and operational readiness record for the website release.
 
 ## Release decision
 
-**Website code: conditionally ready after the fixes in this audit are merged and the exact deployment passes the post-release checks below.**
+**Website code: deployed and verified.** Pull request #155 was merged, Cloudflare served the merged revision, and both the repository release checks and production uptime check passed.
 
 **Public launch: not yet approved.** The remaining blockers require provider activation, physical evidence, company records or professional review that source code cannot supply.
 
@@ -73,20 +73,28 @@ Automated checks do not replace a human keyboard-only, 200%/400% zoom, named scr
 - Repository-wide lint remains historical technical debt: 7,798 findings, of which 7,318 are auto-formatting findings; after excluding formatting, 460 are explicit `any` typing findings, with a small number of React hook warnings. This does not currently block the tested build, but lint cannot yet be used as a clean release gate.
 - The largest shared browser chunk is about 584 KB before transfer compression. Route splitting is present, but bundle reduction remains a performance improvement for slower phones.
 
+### Release evidence
+
+- Pull request #155 passed the independent website release workflow and was squash-merged to `main`.
+- Cloudflare served the merged functional revision `20b5672a5f33db8fbef9bc8bafa22dd3dddc63af` before this record-only follow-up.
+- The exact-revision production health check passed.
+- The post-deployment crawler rechecked all 120 public pages and assets.
+- The post-deployment public browser suite passed 15/15, including the complete non-mutating Pasha booking journey at desktop and phone widths.
+- GitHub's production uptime workflow passed, and a fresh 320-pixel visual review confirmed that the removed Pasha image no longer exposes a broken-image control.
+
 ## Ordered launch blockers
 
-1. **Merge and deploy this audit release.** Require the repository checks, let the production deployment finish, verify its exact revision, rerun the 120-target launch audit and visually confirm that the Pasha page no longer shows a broken image.
-2. **Finish the real salon pilot.** On actual customer and salon phones, complete the owner booking, public booking, confirmation, reschedule/cancel, check-in and closing/reconciliation journeys. Replace fictional Pasha content and stale photo choices with authorised, accurate salon information. Record a signed go/no-go result.
-3. **Activate Stripe live mode last, as planned.** Finish the platform and connected-salon identity checks, live webhook configuration and bank details. Make one authorised low-value live payment, verify the local ledger and payout destination, then refund it and confirm the final provider status. Do not infer live readiness from sandbox evidence.
-4. **Choose the launch card-present scope.** If physical card payments are promised, obtain a Stripe-supported GB reader such as a currently supported WisePOS E or S700/S710, register its location and complete payment, cancellation, decline and refund tests. The Fresha Castles SATURN1000 is not a reusable Stripe Terminal reader. Keep Tap to Pay out of the website launch; it needs a native mobile SDK and provider/Apple requirements.
-5. **Either activate Twilio properly or keep SMS visibly disabled.** The last verified account record was a trial with no sender. Upgrade, acquire/approve a UK-capable sender, set budget alerts, review provider retention/DPA settings and send one authorised delivery/callback/opt-out test. Email-only launch is acceptable if every SMS toggle remains off and public wording stays accurate.
-6. **Close the recovery gap before irreplaceable salon data.** The encrypted local daily backup and an earlier restore rehearsal exist, but the archive is on the same computer. Add an encrypted access-separated/off-device copy and complete a dated restore rehearsal for a current generation, or buy and verify an adequate managed backup/PITR plan while separately protecting Storage.
-7. **Complete ICO registration and payment at release.** The prior self-assessment returned Tier 1; retain the receipt and publish the registration number only after it is issued and verified.
-8. **Complete company/legal records.** Obtain and review the grant award/application/conditions and conference obligations; complete the expenditure/evidence schedule; sign and witness founder/contributor IP assignments; and obtain qualified review of the subscription terms, DPA/processor terms, liability, refunds, special-category data, minors/guardians and salon marketplace split.
-9. **Finish data-protection operations.** Approve the retention schedule, records of processing, subprocessor/international-transfer register, DPIA for consultation/health data, breach response, data-subject identity checks and notice-and-takedown procedure.
-10. **Reauthenticate and record hosted controls.** Recheck the Supabase Security and Performance Advisers after the final migrations, record the intentionally reviewed public projection findings, verify Auth settings and document the actual backup plan. Today’s dashboard check stopped at its two-factor challenge.
-11. **Confirm monitoring reaches people.** Verify GitHub production-check notifications and Cloudflare availability/exception alerts reach at least two maintainers. Observe a real reminder for an authorised pilot appointment without putting recipient data in the repository.
-12. **Run the human accessibility pass.** Use keyboard only, 200% and 400% zoom, Windows Narrator or NVDA, and contrast checks on the landing, sign-in, public booking, portal, calendar, booking detail, payments and consultation flows.
+1. **Finish the real salon pilot.** On actual customer and salon phones, complete the owner booking, public booking, confirmation, reschedule/cancel, check-in and closing/reconciliation journeys. Replace fictional Pasha content and stale photo choices with authorised, accurate salon information. Record a signed go/no-go result.
+2. **Activate Stripe live mode last, as planned.** Finish the platform and connected-salon identity checks, live webhook configuration and bank details. Make one authorised low-value live payment, verify the local ledger and payout destination, then refund it and confirm the final provider status. Do not infer live readiness from sandbox evidence.
+3. **Choose the launch card-present scope.** If physical card payments are promised, obtain a Stripe-supported GB reader such as a currently supported WisePOS E or S700/S710, register its location and complete payment, cancellation, decline and refund tests. The Fresha Castles SATURN1000 is not a reusable Stripe Terminal reader. Keep Tap to Pay out of the website launch; it needs a native mobile SDK and provider/Apple requirements.
+4. **Either activate Twilio properly or keep SMS visibly disabled.** The last verified account record was a trial with no sender. Upgrade, acquire/approve a UK-capable sender, set budget alerts, review provider retention/DPA settings and send one authorised delivery/callback/opt-out test. Email-only launch is acceptable if every SMS toggle remains off and public wording stays accurate.
+5. **Close the recovery gap before irreplaceable salon data.** The encrypted local daily backup and an earlier restore rehearsal exist, but the archive is on the same computer. Add an encrypted access-separated/off-device copy and complete a dated restore rehearsal for a current generation, or buy and verify an adequate managed backup/PITR plan while separately protecting Storage.
+6. **Complete ICO registration and payment at release.** The prior self-assessment returned Tier 1; retain the receipt and publish the registration number only after it is issued and verified.
+7. **Complete company/legal records.** Obtain and review the grant award/application/conditions and conference obligations; complete the expenditure/evidence schedule; sign and witness founder/contributor IP assignments; and obtain qualified review of the subscription terms, DPA/processor terms, liability, refunds, special-category data, minors/guardians and salon marketplace split.
+8. **Finish data-protection operations.** Approve the retention schedule, records of processing, subprocessor/international-transfer register, DPIA for consultation/health data, breach response, data-subject identity checks and notice-and-takedown procedure.
+9. **Reauthenticate and record hosted controls.** Recheck the Supabase Security and Performance Advisers after the final migrations, record the intentionally reviewed public projection findings, verify Auth settings and document the actual backup plan. Today’s dashboard check stopped at its two-factor challenge.
+10. **Confirm monitoring reaches people.** Verify GitHub production-check notifications and Cloudflare availability/exception alerts reach at least two maintainers. Observe a real reminder for an authorised pilot appointment without putting recipient data in the repository.
+11. **Run the human accessibility pass.** Use keyboard only, 200% and 400% zoom, Windows Narrator or NVDA, and contrast checks on the landing, sign-in, public booking, portal, calendar, booking detail, payments and consultation flows.
 
 ## Final release-day sequence
 
