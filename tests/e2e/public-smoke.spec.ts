@@ -12,7 +12,7 @@ test("public navigation reaches the key launch pages", async ({ page }) => {
   ).toHaveAttribute("href", "#top");
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
     "href",
-    "/favicon.png",
+    /^\/favicon\.png(?:\?.*)?$/,
   );
   await page.getByRole("button", { name: "Reject non-essential" }).click();
 

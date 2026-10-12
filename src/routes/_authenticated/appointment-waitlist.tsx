@@ -54,7 +54,7 @@ function BookingRequestsPage() {
     queryKey: ["appointment-waitlist", business?.id],
     enabled: isOwner,
     queryFn: async () => {
-      let [requests, services, staff] = await Promise.all([
+      const [initialRequests, services, staff] = await Promise.all([
         (supabase as any)
           .from("appointment_waitlist_requests")
           .select(
@@ -72,6 +72,7 @@ function BookingRequestsPage() {
           .select("id,name")
           .eq("business_id", business!.id),
       ]);
+      let requests = initialRequests;
       let resolutionEnabled = true;
       if (requests.error && /resolution/i.test(requests.error.message ?? "")) {
         resolutionEnabled = false;
@@ -388,7 +389,7 @@ function BookingRequestsPage() {
                             new: 1,
                             serviceId: request.service_id,
                             staffId: request.preferred_staff_id ?? undefined,
-                          date: firstRequestedSalonDay(
+                            date: firstRequestedSalonDay(
                               request.preferred_after,
                               business!.timezone || "UTC",
                             ),
@@ -461,7 +462,9 @@ function BookingRequestsPage() {
                             className="min-h-11 rounded-lg border bg-card px-3 text-sm font-medium text-[#6c5631]"
                           >
                             <option value="">Record outcome…</option>
-                            <option value="booked">Booked — after confirming</option>
+                            <option value="booked">
+                              Booked — after confirming
+                            </option>
                             <option value="contacted">Contacted</option>
                             <option value="unavailable">Couldn’t help</option>
                           </select>

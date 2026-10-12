@@ -919,6 +919,7 @@ export function PublicBookingPage({
               src={safeImageSrc(safeTheme.logoUrl) ?? undefined}
               alt={biz.name}
               className="h-11 w-11 rounded-xl object-cover"
+              onError={(event) => event.currentTarget.remove()}
             />
           ) : (
             <div
@@ -1036,6 +1037,7 @@ export function PublicBookingPage({
                           fetchPriority="high"
                           decoding="async"
                           className="absolute inset-0 h-full w-full object-cover opacity-65"
+                          onError={(event) => event.currentTarget.remove()}
                         />
                       )}
                       <div className="absolute inset-0 bg-black/35" />
@@ -1051,6 +1053,9 @@ export function PublicBookingPage({
                                 }
                                 alt=""
                                 className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/30"
+                                onError={(event) =>
+                                  event.currentTarget.remove()
+                                }
                               />
                             )}
                             <div>
@@ -1097,6 +1102,9 @@ export function PublicBookingPage({
                                 loading="lazy"
                                 decoding="async"
                                 className="h-full min-h-0 w-full rounded-2xl object-cover ring-1 ring-white/25"
+                                onError={(event) =>
+                                  event.currentTarget.remove()
+                                }
                               />
                             ))}
                           </div>

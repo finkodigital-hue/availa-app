@@ -3,9 +3,16 @@ import { safeImageSrc } from "@/lib/safe-url";
 
 export function About({ config }: { config: AboutConfig }) {
   return (
-    <section style={{ borderRadius: "var(--brand-radius)" }} className="border bg-card p-8 sm:p-10">
+    <section
+      style={{ borderRadius: "var(--brand-radius)" }}
+      className="border bg-card p-8 sm:p-10"
+    >
       <div
-        className={config.photoUrl ? "grid sm:grid-cols-[auto_1fr] gap-6 items-start" : undefined}
+        className={
+          config.photoUrl
+            ? "grid sm:grid-cols-[auto_1fr] gap-6 items-start"
+            : undefined
+        }
       >
         {safeImageSrc(config.photoUrl) && (
           <img
@@ -13,11 +20,16 @@ export function About({ config }: { config: AboutConfig }) {
             alt=""
             style={{ borderRadius: "var(--brand-radius)" }}
             className="h-24 w-24 object-cover shrink-0"
+            onError={(event) => event.currentTarget.remove()}
           />
         )}
         <div>
-          {config.heading && <h2 className="font-display text-2xl mb-3">{config.heading}</h2>}
-          <p className="text-muted-foreground text-pretty whitespace-pre-line">{config.bio}</p>
+          {config.heading && (
+            <h2 className="font-display text-2xl mb-3">{config.heading}</h2>
+          )}
+          <p className="text-muted-foreground text-pretty whitespace-pre-line">
+            {config.bio}
+          </p>
         </div>
       </div>
     </section>

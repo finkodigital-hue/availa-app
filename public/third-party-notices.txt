@@ -2,8 +2,8 @@ BOOKZENVO THIRD-PARTY SOFTWARE NOTICES
 
 This file records licence information shipped with production dependencies.
 The original authors retain all rights granted or reserved by their licences.
-package-lock.json SHA-256: 484cca9275ebddec531e76afb2fcd5a2c607242790e2edf434bc7ec769ebfbb4
-Package/version records: 299
+package-lock.json SHA-256: f33fca32bd78edaa5965b52c0bbbb5ddcdc397ac24988ce3b49d38d82f585cce
+Package/version records: 298
 
 ================================================================================
 @ai-sdk/anthropic 4.0.39
@@ -8731,20 +8731,7 @@ The above copyright notice and this permission notice (including the next paragr
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
-seroval 1.5.4
-Declared licence: MIT
-Source: https://github.com/lxsmnsyc/seroval.git
-
-MIT License Copyright (c) 2025 Alexis Munsayac <alexis.munsayac@gmail.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice (including the next paragraph) shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-================================================================================
-seroval 1.6.2
+seroval 1.6.9
 Declared licence: MIT
 Source: https://github.com/lxsmnsyc/seroval.git
 
@@ -8784,7 +8771,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-source-map-js 1.2.1
+source-map-js 1.2.2
 Declared licence: BSD-3-Clause
 Source: 7rulnik/source-map-js
 
