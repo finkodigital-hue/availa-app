@@ -55,9 +55,10 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
-  reportClientError(error.message, error.stack);
+  const reportedError = error instanceof Error ? error : new Error(String(error));
+  reportClientError(reportedError.message, reportedError.stack);
   const router = useRouter();
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">

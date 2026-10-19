@@ -1,5 +1,7 @@
 # Tasks
 
+**22 October launch decision:** See [19 October readiness audit](docs/launch-readiness-audit-2026-10-19.md) for the current verified state and release gates. An unrestricted public launch is not yet approved; the critical TanStack dependency patch, controlled pilot, provider tests, recovery drill and human review need evidence. Older dated notes below are historical, not current sign-off.
+
 Launch readiness reviewed 2026-09-24. A checked item needs evidence, not just passing code checks. Do not test with imported customer data or send customer messages without an approved pilot.
 
 ## Active
