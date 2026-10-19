@@ -53,6 +53,27 @@ jobs:
                 throw new Error(`Expected JSON but received HTTP ${response.status}`);
               }
               if (!response.ok || result?.status !== "ok") {
+                // Report only the endpoint's aggregate incident counters. Never
+                // print response bodies, request headers or customer records.
+                const fields = [
+                  "count",
+                  "unresolvedDeliveries",
+                  "unresolvedChangeEmails",
+                  "unresolvedPayments",
+                  "unresolvedBalanceCheckouts",
+                  "unresolvedGiftRefunds",
+                  "unresolvedRefunds",
+                  "unresolvedErasureStorageJobs",
+                  "stalledErasureStorageJobs",
+                  "reminderCronStale",
+                  "reminderCronLastSuccessAt",
+                ];
+                const summary = Object.fromEntries(
+                  fields.map((field) => [field, result?.[field] ?? null]),
+                );
+                if (attempt === 3) {
+                  console.error(`Incident summary: ${JSON.stringify(summary)}`);
+                }
                 throw new Error(
                   `Incident endpoint failed: HTTP ${response.status}, status ${result?.status ?? "missing"}`,
                 );
