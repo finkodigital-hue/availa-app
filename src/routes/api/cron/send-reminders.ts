@@ -143,6 +143,9 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
             "id, name, timezone, currency, address, page_theme, reminder_hours_before",
           )
           .eq("plan", "studio")
+          // Suppressed QA/import workspaces must not consume per-Worker
+          // subrequests before the sweep reaches completion/recovery work.
+          .or("email_suppressed.eq.false,sms_suppressed.eq.false")
           .is("deletion_requested_at", null);
         if (bizErr) {
           console.error("[send-reminders] failed to load businesses", bizErr);
@@ -342,8 +345,9 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
         )
           .from("bookings")
           .select(
-            "id, business_id, created_at, starts_at, ends_at, price_cents, customer_email, customers(email), status, services(name), staff(name), businesses(name, timezone, currency, address, page_theme)",
+            "id, business_id, created_at, starts_at, ends_at, price_cents, customer_email, customers(email), status, services(name), staff(name), businesses!inner(name, timezone, currency, address, page_theme)",
           )
+          .eq("businesses.email_suppressed", false)
           .is("confirmation_sent_at", null)
           .neq("status", "cancelled")
           .eq("notify_customer", true)
@@ -429,6 +433,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           .from("businesses")
           .select("id, name, timezone, page_theme, reviews_enabled_at")
           .eq("review_requests_enabled", true)
+          .eq("email_suppressed", false)
           .eq("plan", "studio")
           .is("deletion_requested_at", null);
         if (reviewBizErr) {

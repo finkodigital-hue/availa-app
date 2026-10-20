@@ -27,6 +27,7 @@ export async function runRetentionSweep(): Promise<RetentionStats> {
     .from("businesses")
     .select("id,name,slug,page_theme")
     .eq("plan", "studio")
+    .eq("email_suppressed", false)
     .is("deletion_requested_at", null);
   if (error) throw error;
 
