@@ -26,7 +26,10 @@ export async function processBookingChangeEmails(bookingId?: string) {
     .eq("manual_review", false)
     .lte("next_attempt_at", now)
     .order("created_at", { ascending: true })
-    .limit(50);
+    // A cron invocation also performs reminders, retention and recovery work.
+    // Drain the outbox in small batches so its backlog cannot exhaust the
+    // Worker's subrequest budget before the completion heartbeat is saved.
+    .limit(bookingId ? 50 : 3);
   if (bookingId) query = query.eq("booking_id", bookingId);
   const { data: events, error } = await query;
   if (error) throw new Error("Booking change email queue unavailable");
@@ -45,11 +48,16 @@ export async function processBookingChangeEmails(bookingId?: string) {
     try {
       const { data: booking, error: bookingError } = await (supabaseAdmin as any)
         .from("bookings")
-        .select("id,status,starts_at,ends_at,customer_email,customers(email),services(name),staff(name),businesses(name,timezone,address,page_theme)")
+        .select("id,status,starts_at,ends_at,customer_email,customers(email),services(name),staff(name),businesses(name,timezone,address,page_theme,email_suppressed)")
         .eq("id", event.booking_id)
         .eq("business_id", event.business_id)
         .maybeSingle();
       if (bookingError) throw new Error("Booking change could not be loaded");
+      if (booking && booking.businesses?.email_suppressed !== false) {
+        await markProcessed();
+        result.suppressed++;
+        continue;
+      }
       const stale = !booking || (event.change_type === "rescheduled"
         ? booking.status !== "confirmed" || booking.starts_at !== event.new_starts_at
         : booking.status !== "cancelled");
