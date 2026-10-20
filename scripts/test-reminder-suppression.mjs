@@ -18,25 +18,29 @@ const visited = new Set();
 const database = {
   async rpc() { requests++; return {data:null,error:null}; },
   from(table) {
-    const filters = []; let either = false; let values; let selection = '';
+    const filters = []; let either = false; let values; let selection = ''; let maximum=Infinity;
     const q = {
       select(v) { selection=v; return q; },
       eq(k,v) { filters.push([k,v]); return q; },
       or(v) { if(v==='email_suppressed.eq.false,sms_suppressed.eq.false') either=true; return q; },
       is(){return q;},not(){return q;},gt(){return q;},gte(){return q;},lt(){return q;},lte(){return q;},
-      neq(){return q;},order(){return q;},limit(){return q;},maybeSingle(){return q;},
+      neq(){return q;},order(){return q;},limit(n){maximum=n;return q;},maybeSingle(){return q;},
       upsert(v){values=v; return q;},update(v){values=v; return q;},
       then(resolve,reject) {
         try {
           assert.ok(++requests < 50,'Suppressed tenants exhausted the Worker request budget');
           if(values?.last_success_at) completed=true;
           let data=[];
+          if(table==='booking_change_email_outbox' && !values) {
+            data=Array.from({length:100},(_,i)=>({id:`event-${i}`,booking_id:`booking-${i}`,business_id:'suppressed-0',change_type:'cancelled'})).slice(0,maximum);
+          }
           if(table==='businesses') {
             data=businesses.filter(b=>(!either || b.email_suppressed===false || b.sms_suppressed===false)
               && filters.every(([k,v])=>!['email_suppressed','sms_suppressed'].includes(k)||b[k]===v));
           }
           if(table==='bookings') {
-            for(const [k,v] of filters) if(k==='business_id') visited.add(v);
+            if(filters.some(([k])=>k==='id')) data={businesses:{email_suppressed:true}};
+            for(const [k,v] of filters) if(k==='business_id' && !filters.some(([key])=>key==='id')) visited.add(v);
             if(selection.includes('confirmation_sent_at') || selection.includes('created_at')) {
               assert.ok(selection.includes('businesses!inner('),'Confirmation suppression must filter parent bookings');
               assert.ok(filters.some(([k,v])=>k==='businesses.email_suppressed'&&v===false));
@@ -71,10 +75,13 @@ function load(path) {
   return exports;
 }
 modules['@/lib/retention-sweep.server']=load('../src/lib/retention-sweep.server.ts');
+modules['@/lib/booking-change-email.server']=load('../src/lib/booking-change-email.server.ts');
 const route=load('../src/routes/api/cron/send-reminders.ts');
 const response=await route.Route.server.handlers.POST({request:{}});
 assert.equal(response.status,200);
 assert.ok(completed);
 assert.deepEqual([...visited].sort(),['email-only','sms-only']);
-assert.ok(requests<20);
-console.log(`Reminder sweep completed in ${requests} mock requests with 100 suppressed tenants; email-only/SMS-only tenants retained, null flags excluded, zero sends.`);
+assert.ok(requests<30);
+const summary=await response.json();
+assert.equal(summary.bookingChangeEmails.suppressed,3);
+console.log(`Reminder sweep completed in ${requests} mock requests with 100 suppressed tenants and 100 queued changes; email-only/SMS-only tenants retained, null flags excluded, zero sends.`);

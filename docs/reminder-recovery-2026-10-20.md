@@ -21,7 +21,7 @@ Regression tests execute the stored scheduler command against inert services,
 verify repeated migration application and absence of immediate requests, and run
 the real route/retention handlers against 100 suppressed fictional businesses
 plus email-only and SMS-only businesses under a simulated 50-request ceiling.
-The fixture completes with a successful heartbeat in 16 requests and no sends.
+The fixture also includes 100 queued booking changes and completes with a successful heartbeat in 23 requests and no sends. The background outbox processes three changes per sweep, and suppressed changes are marked processed before email generation. Immediate booking-specific processing retains its existing batch size.
 
 Before production verification, the remaining fictional QA Free Salon's email
 and SMS flags were changed from enabled to suppressed. All production
