@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as SoftwareNoticesRouteImport } from './routes/software-notices'
 import { Route as ReviewPolicyRouteImport } from './routes/review-policy'
 import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -91,6 +92,11 @@ const TermsRoute = TermsRouteImport.update({
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SoftwareNoticesRoute = SoftwareNoticesRouteImport.update({
+  id: '/software-notices',
+  path: '/software-notices',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReviewPolicyRoute = ReviewPolicyRouteImport.update({
@@ -472,6 +478,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/refund-policy': typeof RefundPolicyRoute
   '/review-policy': typeof ReviewPolicyRoute
+  '/software-notices': typeof SoftwareNoticesRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
   '/appointment-waitlist': typeof AuthenticatedAppointmentWaitlistRoute
@@ -544,6 +551,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/refund-policy': typeof RefundPolicyRoute
   '/review-policy': typeof ReviewPolicyRoute
+  '/software-notices': typeof SoftwareNoticesRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
   '/appointment-waitlist': typeof AuthenticatedAppointmentWaitlistRoute
@@ -620,6 +628,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/refund-policy': typeof RefundPolicyRoute
   '/review-policy': typeof ReviewPolicyRoute
+  '/software-notices': typeof SoftwareNoticesRoute
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
   '/_authenticated/appointment-waitlist': typeof AuthenticatedAppointmentWaitlistRoute
@@ -696,6 +705,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/refund-policy'
     | '/review-policy'
+    | '/software-notices'
     | '/status'
     | '/terms'
     | '/appointment-waitlist'
@@ -768,6 +778,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/refund-policy'
     | '/review-policy'
+    | '/software-notices'
     | '/status'
     | '/terms'
     | '/appointment-waitlist'
@@ -843,6 +854,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/refund-policy'
     | '/review-policy'
+    | '/software-notices'
     | '/status'
     | '/terms'
     | '/_authenticated/appointment-waitlist'
@@ -919,6 +931,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RefundPolicyRoute: typeof RefundPolicyRoute
   ReviewPolicyRoute: typeof ReviewPolicyRoute
+  SoftwareNoticesRoute: typeof SoftwareNoticesRoute
   StatusRoute: typeof StatusRoute
   TermsRoute: typeof TermsRoute
   ApiAppointmentWaitlistRoute: typeof ApiAppointmentWaitlistRoute
@@ -973,6 +986,13 @@ declare module '@tanstack/react-router' {
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/software-notices': {
+      id: '/software-notices'
+      path: '/software-notices'
+      fullPath: '/software-notices'
+      preLoaderRoute: typeof SoftwareNoticesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/review-policy': {
@@ -1562,6 +1582,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RefundPolicyRoute: RefundPolicyRoute,
   ReviewPolicyRoute: ReviewPolicyRoute,
+  SoftwareNoticesRoute: SoftwareNoticesRoute,
   StatusRoute: StatusRoute,
   TermsRoute: TermsRoute,
   ApiAppointmentWaitlistRoute: ApiAppointmentWaitlistRoute,

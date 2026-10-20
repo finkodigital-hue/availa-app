@@ -153,9 +153,9 @@ export function LegalPage({
           <Link to="/review-policy" className="hover:text-foreground">
             Review policy
           </Link>
-          <a href="/third-party-notices.txt" className="hover:text-foreground">
+          <Link to="/software-notices" className="hover:text-foreground">
             Software notices
-          </a>
+          </Link>
           <Link to="/help" className="hover:text-foreground">
             Contact
           </Link>
