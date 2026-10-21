@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 // TOTP two-factor auth, built entirely on Supabase Auth's client-side MFA
 // API (auth.mfa.*) — no service-role key, dashboard toggle, or migration
@@ -18,6 +19,8 @@ type Factor = {
 };
 
 export function TwoFactorSettings() {
+  const qc = useQueryClient();
+  const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [factors, setFactors] = useState<Factor[]>([]);
   const [enrolling, setEnrolling] = useState(false);
@@ -30,10 +33,22 @@ export function TwoFactorSettings() {
 
   const refresh = async () => {
     setLoading(true);
-    const { data, error } = await supabase.auth.mfa.listFactors();
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    setFactors((data?.totp ?? []) as Factor[]);
+    setLoadError(false);
+    try {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+      setFactors((data?.totp ?? []) as Factor[]);
+      await qc.invalidateQueries({ queryKey: ["settings-mfa-summary"] });
+    } catch (error) {
+      setLoadError(true);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not load sign-in protection",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -79,7 +94,7 @@ export function TwoFactorSettings() {
   };
 
   const confirmEnroll = async () => {
-    if (!pendingFactorId || code.trim().length < 6)
+    if (!pendingFactorId || !/^\d{6}$/.test(code.trim()))
       return toast.error("Enter the 6-digit code");
     setVerifying(true);
     try {
@@ -123,6 +138,15 @@ export function TwoFactorSettings() {
   if (loading) {
     return <div className="h-16 rounded-xl bg-secondary/40 animate-pulse" />;
   }
+  if (loadError)
+    return (
+      <div role="alert">
+        <p className="text-sm">Sign-in protection could not be loaded.</p>
+        <Button variant="outline" className="mt-3" onClick={refresh}>
+          Try again
+        </Button>
+      </div>
+    );
 
   if (verified) {
     return (

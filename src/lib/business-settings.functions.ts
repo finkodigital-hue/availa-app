@@ -33,18 +33,23 @@ type WhiteLabelInput = {
 
 function optionalText(value: string | null | undefined, max: number) {
   const trimmed = value?.trim() ?? "";
-  if (trimmed.length > max) throw new Error(`A value is longer than ${max} characters.`);
+  if (trimmed.length > max)
+    throw new Error(`A value is longer than ${max} characters.`);
   return trimmed || null;
 }
 
-async function ownedBusiness(context: { supabase: SupabaseClient<Database>; userId: string }) {
+async function ownedBusiness(context: {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+}) {
   const { data, error } = await context.supabase
     .from("businesses")
     .select("id, plan, reminder_hours_before, hide_powered_by")
     .eq("owner_id", context.userId)
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("Only the business owner can change these settings.");
+  if (!data)
+    throw new Error("Only the business owner can change these settings.");
   return data as {
     id: string;
     plan: string;
@@ -57,15 +62,46 @@ export const saveBusinessProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data: BusinessProfileInput) => {
     const name = data.name.trim();
-    if (!name || name.length > 120) throw new Error("Enter a valid business name.");
-    if (!data.timezone || data.timezone.length > 80) throw new Error("Enter a valid timezone.");
-    if (!CURRENCIES.has(data.currency)) throw new Error("Choose a supported currency.");
+    if (!name || name.length > 120)
+      throw new Error("Enter a valid business name.");
+    if (!data.timezone || data.timezone.length > 80)
+      throw new Error("Enter a valid timezone.");
+    try {
+      new Intl.DateTimeFormat("en-GB", { timeZone: data.timezone }).format();
+    } catch {
+      throw new Error("Enter a recognised timezone, such as Europe/London.");
+    }
+    if (
+      data.email?.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())
+    )
+      throw new Error("Enter a valid business email address.");
+    if (data.website?.trim()) {
+      try {
+        const url = new URL(data.website.trim());
+        if (!["https:", "http:"].includes(url.protocol)) throw new Error();
+      } catch {
+        throw new Error("Enter a website beginning with https:// or http://.");
+      }
+    }
+    if (
+      data.reminderHoursBefore != null &&
+      (!Number.isInteger(data.reminderHoursBefore) ||
+        data.reminderHoursBefore < 1 ||
+        data.reminderHoursBefore > 168)
+    )
+      throw new Error("Reminder hours must be a whole number from 1 to 168.");
+    if (!CURRENCIES.has(data.currency))
+      throw new Error("Choose a supported currency.");
     return { ...data, name };
   })
   .handler(async ({ data, context }) => {
     const business = await ownedBusiness(context);
     const studio = business.plan === "studio";
-    const reminderHours = Math.max(1, Math.min(168, Number(data.reminderHoursBefore) || 24));
+    const reminderHours = Math.max(
+      1,
+      Math.min(168, Number(data.reminderHoursBefore) || 24),
+    );
     const payload = {
       name: data.name,
       description: optionalText(data.description, 2000),
@@ -88,13 +124,45 @@ export const saveBusinessProfile = createServerFn({ method: "POST" })
 
     const savedReminderHours = Number(business.reminder_hours_before) || 24;
     if (studio && reminderHours !== savedReminderHours) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { supabaseAdmin } =
+        await import("@/integrations/supabase/client.server");
       const { error: reminderError } = await supabaseAdmin
         .from("businesses")
         .update({ reminder_hours_before: reminderHours })
         .eq("id", business.id);
       if (reminderError) throw reminderError;
     }
+    return { saved: true };
+  });
+
+export const saveOpeningHours = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(
+    (data: {
+      businessId: string;
+      periods: { weekday: number; open_time: string; close_time: string }[];
+    }) => {
+      if (
+        !data.businessId ||
+        !Array.isArray(data.periods) ||
+        data.periods.length > 100
+      )
+        throw new Error("Enter valid opening hours.");
+      return data;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const business = await ownedBusiness(context);
+    if (business.id !== data.businessId)
+      throw new Error("Only the business owner can change these hours.");
+    const { error } = await context.supabase.rpc(
+      "save_business_opening_hours" as never,
+      {
+        p_business_id: business.id,
+        p_periods: data.periods,
+      } as never,
+    );
+    if (error) throw error;
     return { saved: true };
   });
 
@@ -106,14 +174,22 @@ export const saveWhiteLabel = createServerFn({ method: "POST" })
     const studio = business.plan === "studio";
     const { assertStudio } = await import("@/lib/plan.server");
     await assertStudio(business.id);
-    const customDomain = optionalText(data.customDomain, 253)?.toLowerCase() ?? null;
-    if (customDomain && (!/^[a-z0-9.-]+$/.test(customDomain) || customDomain.includes(".."))) {
-      throw new Error("Enter a valid custom domain without https:// or a path.");
+    const customDomain =
+      optionalText(data.customDomain, 253)?.toLowerCase() ?? null;
+    if (
+      customDomain &&
+      (!/^[a-z0-9.-]+$/.test(customDomain) || customDomain.includes(".."))
+    ) {
+      throw new Error(
+        "Enter a valid custom domain without https:// or a path.",
+      );
     }
     const safeAssetPath = (value: string | null | undefined) => {
       const path = optionalText(value, 1000);
       if (path && !isTenantAssetPath(path, business.id)) {
-        throw new Error("That uploaded asset does not belong to this business.");
+        throw new Error(
+          "That uploaded asset does not belong to this business.",
+        );
       }
       return path;
     };
@@ -131,7 +207,8 @@ export const saveWhiteLabel = createServerFn({ method: "POST" })
     if (error) throw error;
 
     if (hidePoweredBy !== Boolean(business.hide_powered_by)) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { supabaseAdmin } =
+        await import("@/integrations/supabase/client.server");
       const { error: brandingError } = await supabaseAdmin
         .from("businesses")
         .update({ hide_powered_by: hidePoweredBy })
