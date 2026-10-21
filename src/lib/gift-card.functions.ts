@@ -119,6 +119,8 @@ export const startGiftCardCheckout = createServerFn({ method: "POST" })
     }
     const { consumePublicRequest } = await import("@/lib/public-request-limit.server");
     const sourceKey = await consumePublicRequest("gift");
+    const { assertStudio } = await import("@/lib/plan.server");
+    await assertStudio(data.businessId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: business, error } = await supabaseAdmin
       .from("businesses")
@@ -247,6 +249,8 @@ export const issueGiftCard = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw error;
     if (!business) throw new Error("Only the business owner can issue gift cards.");
+    const { assertStudio } = await import("@/lib/plan.server");
+    await assertStudio(business.id);
 
     const seed = crypto.randomUUID();
     const code = await codeForCard(seed, business.id);
@@ -284,6 +288,8 @@ export const redeemGiftCard = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw error;
     if (!business) throw new Error("Only the business owner can redeem gift cards.");
+      const { assertStudio } = await import("@/lib/plan.server");
+      await assertStudio(business.id);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error: redeemError } = await (supabaseAdmin as any).rpc("redeem_gift_card", {
       p_business_id: business.id,

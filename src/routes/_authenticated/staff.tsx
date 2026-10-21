@@ -1,3 +1,4 @@
+import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
@@ -336,7 +337,22 @@ function StaffPage() {
                 <TabsContent value="hours" className="m-0 p-5">{bid && <StaffHoursEditor staffId={edit.id} businessId={bid} />}</TabsContent>
                 <TabsContent value="services" className="m-0 p-5">{bid && <StaffServicesEditor staffId={edit.id} businessId={bid} />}</TabsContent>
                 <TabsContent value="timeoff" className="m-0 p-5">{bid && <TimeOffEditor businessId={bid} staffId={edit.id} />}</TabsContent>
-                {access.isOwner && <TabsContent value="access" className="m-0 p-5">{bid && <StaffAccountAccess staff={edit as Staff} businessId={bid} />}</TabsContent>}
+                {access.isOwner && (
+                  <TabsContent value="access" className="m-0 p-5">
+                    {bid &&
+                      (biz?.plan === "studio" ? (
+                        <StaffAccountAccess
+                          staff={edit as Staff}
+                          businessId={bid}
+                        />
+                      ) : (
+                        <StudioUpgradePanel
+                          title="Staff accounts are on Studio"
+                          description="Upgrade to invite staff and manage their permissions."
+                        />
+                      ))}
+                  </TabsContent>
+                )}
               </Tabs>
             ) : (
               <div className="p-5"><StaffProfileForm edit={edit} setEdit={setEdit} businessId={bid} onSaved={() => { qc.invalidateQueries({ queryKey: ["staff"] }); setEdit(null); }} /></div>

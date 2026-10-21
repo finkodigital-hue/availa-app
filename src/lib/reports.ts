@@ -58,6 +58,9 @@ export const getBookingsInRange = createServerFn({ method: "GET" })
       "reports.read",
     );
 
+    const { assertStudio } = await import("@/lib/plan.server");
+    await assertStudio(businessId);
+
     // Reporting rows are read only after the signed-in owner's business has
     // been resolved above. Use the server-only client so browser-facing RLS
     // restrictions cannot silently turn a valid report into an empty one.

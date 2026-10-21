@@ -50,12 +50,17 @@ export const Route = createFileRoute("/api/calendar/$provider/connect")({
           );
         const { data: business } = await (supabaseAdmin as any)
           .from("businesses")
-          .select("id")
+          .select("id, plan")
           .eq("id", parsed.value.businessId)
           .eq("owner_id", auth.user.id)
           .maybeSingle();
         if (!business)
           return Response.json({ error: "Forbidden" }, { status: 403 });
+        if (business.plan !== "studio")
+          return Response.json(
+            { error: "Calendar connections are on the Studio plan." },
+            { status: 402 },
+          );
         const redirect = callbackUrl(provider, trustedAppOrigin());
         const state = makeOauthState({
           provider,

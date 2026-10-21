@@ -1,3 +1,4 @@
+import { checkApprovedPlans } from './schema-plan-checks.mjs';
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import fs from 'node:fs';
@@ -138,5 +139,6 @@ try {
  await checkDailyTakings(db);
  await checkAppointmentImports(db);
  await checkBetterTimeOffers(db);
+ await checkApprovedPlans(db);
 } catch(error) {console.error(error);process.exitCode=1;}
 finally {await db.close();}

@@ -19,6 +19,7 @@ import {
 } from "@/components/cookie-consent";
 import { Wordmark } from "@/components/wordmark";
 import "../landing.css";
+import { FREE_FEATURES, STUDIO_FEATURES } from "@/lib/plan-features";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -66,16 +67,6 @@ const steps = [
     "Make the next one easier",
     "Keep the visit on the client record and help them book their next appointment.",
   ],
-];
-
-const studioFeatures = [
-  "Unlimited staff and chair rental",
-  "Paperless consultations and patch tests",
-  "Verified customer reviews",
-  "Stock with photo scanning",
-  "Automated reminders and customer portal",
-  "AI business co-pilot and page editor",
-  "Analytics and insights",
 ];
 
 function StartLink({
@@ -551,24 +542,11 @@ function Landing() {
                   <strong>Free</strong>
                 </div>
                 <ul>
-                  <li>
-                    <Check /> One staff member
-                  </li>
-                  <li>
-                    <Check /> Unlimited bookings
-                  </li>
-                  <li>
-                    <Check /> Branded booking page
-                  </li>
-                  <li>
-                    <Check /> Deposits and online payments
-                  </li>
-                  <li>
-                    <Check /> Confirmation emails and client book
-                  </li>
-                  <li>
-                    <Check /> Import from your old system
-                  </li>
+                  {FREE_FEATURES.map((feature) => (
+                    <li key={feature}>
+                      <Check /> {feature}
+                    </li>
+                  ))}
                 </ul>
                 <StartLink />
               </article>
@@ -585,7 +563,7 @@ function Landing() {
                 </div>
                 <p className="lp-includes">Everything in Solo, plus</p>
                 <ul>
-                  {studioFeatures.map((feature) => (
+                  {STUDIO_FEATURES.map((feature) => (
                     <li key={feature}>
                       <Check /> {feature}
                     </li>

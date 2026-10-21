@@ -423,7 +423,7 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           }
         }
 
-        // --- Completed-booking review requests (Studio only) ---
+        // --- Completed-booking review requests (all plans) ---
         let reviewRequestsClaimed = 0;
         let reviewRequestsSent = 0;
         let reviewRequestsFailed = 0;
@@ -434,7 +434,6 @@ export const Route = createFileRoute("/api/cron/send-reminders")({
           .select("id, name, timezone, page_theme, reviews_enabled_at")
           .eq("review_requests_enabled", true)
           .eq("email_suppressed", false)
-          .eq("plan", "studio")
           .is("deletion_requested_at", null);
         if (reviewBizErr) {
           console.error(

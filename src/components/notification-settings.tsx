@@ -10,6 +10,15 @@ import {
 } from "@/lib/notification.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
+import { useMyBusiness } from "@/lib/business";
+
+const STUDIO_MESSAGES = new Set([
+  "customer_booking_reminder",
+  "customer_booking_reminder_sms",
+  "customer_aftercare_email",
+  "customer_rebooking_email",
+]);
+
 const OPTIONS = [
   [
     "owner_booking_created",
@@ -65,6 +74,8 @@ const OPTIONS = [
 
 export function NotificationSettings({ businessId }: { businessId: string }) {
   const qc = useQueryClient();
+  const { data: business } = useMyBusiness();
+  const studio = business?.plan === "studio";
   const load = useServerFn(getNotificationCenter);
   const save = useServerFn(saveNotificationPreferences);
   const query = useQuery({
@@ -101,18 +112,27 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
             className="flex items-center justify-between gap-5 p-4"
           >
             <div>
-              <div className="text-sm font-medium">{title}</div>
+              <div className="text-sm font-medium">
+                {title}
+                {STUDIO_MESSAGES.has(key) && !studio && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    Studio
+                  </span>
+                )}
+              </div>
               <div className="mt-0.5 text-xs text-muted-foreground">
                 {description}
               </div>
             </div>
             <Switch
               checked={
-                preferences?.[key] ??
-                (key !== "customer_booking_reminder_sms" &&
-                  key !== "customer_rebooking_email")
+                STUDIO_MESSAGES.has(key) && !studio
+                  ? false
+                  : (preferences?.[key] ??
+                    (key !== "customer_booking_reminder_sms" &&
+                      key !== "customer_rebooking_email"))
               }
-              disabled={!preferences}
+              disabled={!preferences || (STUDIO_MESSAGES.has(key) && !studio)}
               onCheckedChange={(checked) => change(key, checked)}
               aria-label={title}
             />

@@ -42,6 +42,7 @@ type DashboardOverview = {
     phone: string | null;
     email: string | null;
     timezone: string | null;
+    plan: string;
   };
   nextBooking: DashboardBooking | null;
   preparation: (DashboardBooking & { formSummary: string })[];
@@ -84,7 +85,7 @@ async function workspaceBusiness(
   const businessId = await requireWorkspacePermission(context, permission);
   const { data, error } = await context.supabase
     .from("businesses")
-    .select("id, name, slug, currency, address, phone, email, timezone")
+    .select("id, name, slug, currency, address, phone, email, timezone, plan")
     .eq("id", businessId)
     .maybeSingle();
   if (error) throw error;
@@ -122,7 +123,11 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
       data: null,
       error: null,
     });
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY && isOwner) {
+    if (
+      process.env.SUPABASE_SERVICE_ROLE_KEY &&
+      isOwner &&
+      business.plan === "studio"
+    ) {
       const { supabaseAdmin } =
         await import("@/integrations/supabase/client.server");
       consultationPromise = (supabaseAdmin as any)
@@ -418,7 +423,9 @@ export const getDashboardOverview = createServerFn({ method: "GET" })
         (a, b) => Number(a.kind === "stock") - Number(b.kind === "stock"),
       ),
       consultationAttentionAvailable: Boolean(
-        process.env.SUPABASE_SERVICE_ROLE_KEY && isOwner,
+        process.env.SUPABASE_SERVICE_ROLE_KEY &&
+        isOwner &&
+        business.plan === "studio",
       ),
       setup,
     } satisfies DashboardOverview;

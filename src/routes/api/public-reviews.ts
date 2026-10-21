@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
-import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
+import {
+  consumePublicRequest,
+  publicRequestLimitResponse,
+} from "@/lib/public-request-limit.server";
 
 function publicName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -9,14 +11,20 @@ function publicName(name: string) {
   return `${parts[0]} ${parts.at(-1)![0].toUpperCase()}.`;
 }
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const Route = createFileRoute("/api/public-reviews")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        try { await consumePublicRequest("public_read", { headers: request.headers }); }
-        catch (error) { return publicRequestLimitResponse(error); }
+        try {
+          await consumePublicRequest("public_read", {
+            headers: request.headers,
+          });
+        } catch (error) {
+          return publicRequestLimitResponse(error);
+        }
         const businessId = new URL(request.url).searchParams.get("business_id");
         if (!businessId || !UUID_PATTERN.test(businessId)) {
           return Response.json({ reviews: [] }, { status: 400 });
@@ -27,14 +35,6 @@ export const Route = createFileRoute("/api/public-reviews")({
           .eq("id", businessId)
           .maybeSingle();
         if (!business) return Response.json({ reviews: [] }, { status: 404 });
-        try {
-          await assertStudio(businessId);
-        } catch (error) {
-          if (error instanceof Error && error.message === STUDIO_FEATURE_ERROR) {
-            return Response.json({ reviews: [], error: STUDIO_FEATURE_ERROR }, { status: 402 });
-          }
-          throw error;
-        }
         const { data: rows, error } = await (supabaseAdmin as any)
           .from("customer_reviews")
           .select(

@@ -22,24 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
-const FREE_FEATURES = [
-  "One staff member",
-  "Unlimited bookings and manual page editing",
-  "Deposits, online payments and refunds",
-  "Confirmation emails, calendar invites and one-tap booking links",
-  "Client book, CSV import/export and support",
-];
-const STUDIO_FEATURES = [
-  "Unlimited staff",
-  "Automated appointment reminders",
-  "Analytics & insights",
-  "AI assistant & AI page editor",
-  "Consultations & patch-test forms",
-  "Verified customer reviews",
-  "Stock, photo scanning & automatic deduction",
-  "Customer portal",
-  "Chair rent & commission tracking",
-];
+import { FREE_FEATURES, STUDIO_FEATURES } from "@/lib/plan-features";
 
 type PlanBusiness = {
   id: string;
@@ -202,6 +185,9 @@ export function PlanSettings({ business }: { business: PlanBusiness }) {
               /month
             </span>
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Everything in Solo, plus:
+          </p>
           <ul className="mt-4 space-y-2">
             {STUDIO_FEATURES.map((f) => (
               <li key={f} className="flex gap-2 text-sm text-muted-foreground">

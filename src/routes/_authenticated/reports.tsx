@@ -1,3 +1,4 @@
+import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -58,7 +59,7 @@ function ReportsPage() {
     refetch,
   } = useQuery({
     queryKey: ["report-bookings", from.toISOString(), to.toISOString()],
-    enabled: !!bid,
+    enabled: !!bid && biz?.plan === "studio",
     queryFn: () => fetchBookingsInRange(from, to),
   });
 
@@ -69,7 +70,7 @@ function ReportsPage() {
     refetch: refetchPrevious,
   } = useQuery({
     queryKey: ["report-bookings", prevFrom.toISOString(), prevTo.toISOString()],
-    enabled: !!bid,
+    enabled: !!bid && biz?.plan === "studio",
     queryFn: () => fetchBookingsInRange(prevFrom, prevTo),
   });
 
@@ -94,6 +95,16 @@ function ReportsPage() {
       ? "Same period last year"
       : "Previous period";
   const loading = isLoading || prevLoading;
+
+  if (!biz) return <div className="p-8">Loading...</div>;
+  if (biz.plan !== "studio")
+    return (
+      <StudioUpgradePanel
+        className="m-5 sm:m-8"
+        title="Reports and insights are on Studio"
+        description="Upgrade to Studio to use reports and insights."
+      />
+    );
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">
