@@ -15,9 +15,12 @@ export const Route = createFileRoute("/api/calendar/$provider/callback")({
     handlers: {
       GET: async ({ request, params }) => {
         if (!calendarProviderConnectionsEnabled())
-          return new Response("Calendar provider connections are not live yet", {
-            status: 503,
-          });
+          return new Response(
+            "Calendar provider connections are not live yet",
+            {
+              status: 503,
+            },
+          );
         const url = new URL(request.url);
         const appOrigin = trustedAppOrigin();
         const provider = params.provider as CalendarProvider;
@@ -27,11 +30,13 @@ export const Route = createFileRoute("/api/calendar/$provider/callback")({
             throw new Error("Invalid callback");
           const { data: business } = await (supabaseAdmin as any)
             .from("businesses")
-            .select("id")
+            .select("id, plan")
             .eq("id", state.businessId)
             .eq("owner_id", state.userId)
             .maybeSingle();
           if (!business) throw new Error("Business access changed");
+          if (business.plan !== "studio")
+            throw new Error("Calendar connections are on the Studio plan.");
           const tokens = await exchangeCode(
             provider,
             url.searchParams.get("code")!,

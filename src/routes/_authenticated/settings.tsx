@@ -1,3 +1,4 @@
+import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -482,7 +483,14 @@ function SettingsPage() {
           title="Calendar sync"
           description="Send booking changes to your work calendar without exposing account tokens to this browser."
         >
-          <CalendarSyncSettings businessId={biz.id} />
+          {biz.plan === "studio" ? (
+            <CalendarSyncSettings businessId={biz.id} />
+          ) : (
+            <StudioUpgradePanel
+              title="Calendar connections are on Studio"
+              description="Upgrade to connect Google Calendar or Outlook. Calendar invitations remain included in Free."
+            />
+          )}
         </Section>
       )}
     </div>
@@ -551,9 +559,9 @@ function CalendarSyncSettings({ businessId }: { businessId: string }) {
       </div>
       {!CALENDAR_PROVIDER_CONNECTIONS_OPEN && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-          Google and Microsoft connections are not open yet. Bookzenvo will enable them only after
-          the production provider registrations and live sync checks are complete. Standard
-          calendar-file downloads still work.
+          Google and Microsoft connections are not open yet. Bookzenvo will
+          enable them only after the production provider registrations and live
+          sync checks are complete. Standard calendar-file downloads still work.
         </div>
       )}
       {(["google", "microsoft"] as const).map((provider) => {
@@ -588,11 +596,16 @@ function CalendarSyncSettings({ businessId }: { businessId: string }) {
                 Disconnect
               </Button>
             ) : (
-              <Button onClick={() => connect(provider)} disabled={!!connecting || !CALENDAR_PROVIDER_CONNECTIONS_OPEN}>
+              <Button
+                onClick={() => connect(provider)}
+                disabled={!!connecting || !CALENDAR_PROVIDER_CONNECTIONS_OPEN}
+              >
                 {connecting === provider && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {CALENDAR_PROVIDER_CONNECTIONS_OPEN ? "Connect" : "Not live yet"}
+                {CALENDAR_PROVIDER_CONNECTIONS_OPEN
+                  ? "Connect"
+                  : "Not live yet"}
               </Button>
             )}
           </div>

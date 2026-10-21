@@ -81,6 +81,19 @@ function Layout() {
     if (!biz) {
           return <Outlet />;
     }
+  if (!access.isOwner && biz.plan !== "studio") {
+    return (
+      <main className="min-h-screen grid place-items-center p-6">
+        <div className="max-w-sm text-center space-y-3">
+          <h1 className="font-display text-2xl">Staff access needs Studio</h1>
+          <p>
+            This workspace is on the Free plan. Ask the owner to upgrade to
+            restore staff access.
+          </p>
+        </div>
+      </main>
+    );
+  }
     return (
           <AppShell>
               <Outlet />

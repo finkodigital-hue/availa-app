@@ -104,6 +104,8 @@ export const saveWhiteLabel = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const business = await ownedBusiness(context);
     const studio = business.plan === "studio";
+    const { assertStudio } = await import("@/lib/plan.server");
+    await assertStudio(business.id);
     const customDomain = optionalText(data.customDomain, 253)?.toLowerCase() ?? null;
     if (customDomain && (!/^[a-z0-9.-]+$/.test(customDomain) || customDomain.includes(".."))) {
       throw new Error("Enter a valid custom domain without https:// or a path.");

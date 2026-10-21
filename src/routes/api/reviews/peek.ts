@@ -2,17 +2,25 @@ import { createFileRoute } from "@tanstack/react-router";
 import { peekBookingActionToken } from "@/lib/booking-tokens.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseTheme } from "@/lib/theme";
-import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
-import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
+import {
+  consumePublicRequest,
+  publicRequestLimitResponse,
+} from "@/lib/public-request-limit.server";
 
 export const Route = createFileRoute("/api/reviews/peek")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        try { await consumePublicRequest("token", { headers: request.headers }); }
-        catch (error) { return publicRequestLimitResponse(error); }
-        const parsed = await readJsonWithLimit<{ token?: string }>(request, 4 * 1024);
+        try {
+          await consumePublicRequest("token", { headers: request.headers });
+        } catch (error) {
+          return publicRequestLimitResponse(error);
+        }
+        const parsed = await readJsonWithLimit<{ token?: string }>(
+          request,
+          4 * 1024,
+        );
         const { token } = "error" in parsed ? {} : parsed.value;
         if (!token)
           return Response.json(
@@ -37,14 +45,6 @@ export const Route = createFileRoute("/api/reviews/peek")({
             { ok: false, reason: "not_completed" },
             { status: 400 },
           );
-        try {
-          await assertStudio(booking.business_id);
-        } catch (error) {
-          if (error instanceof Error && error.message === STUDIO_FEATURE_ERROR) {
-            return Response.json({ ok: false, reason: "studio_required", error: STUDIO_FEATURE_ERROR }, { status: 402 });
-          }
-          throw error;
-        }
         const { data: existing } = await (supabaseAdmin as any)
           .from("customer_reviews")
           .select("id")

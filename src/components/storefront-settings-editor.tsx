@@ -9,8 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ReviewManager } from "@/components/review-manager";
-import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
-import { useMyBusiness } from "@/lib/business";
 import {
   STOREFRONT_SECTION_LABELS,
   defaultStorefrontSettings,
@@ -32,7 +30,6 @@ export function StorefrontSettingsEditor({
   showSave?: boolean;
   selectedSection?: StorefrontSectionId;
 }) {
-  const { data: business } = useMyBusiness();
   const qc = useQueryClient();
   const [draft, setDraft] = useState<StorefrontSettings>(
     defaultStorefrontSettings(),
@@ -225,15 +222,7 @@ export function StorefrontSettingsEditor({
                   </div>
                 </div>
                 {section.id === "reviews" && (
-                  business?.plan === "studio" ? (
-                    <ReviewManager businessId={businessId} />
-                  ) : (
-                    <StudioUpgradePanel
-                      className="mt-4 p-6 sm:p-8"
-                      title="Verified reviews are a Studio feature"
-                      description="Upgrade to request and publish genuine reviews from completed bookings."
-                    />
-                  )
+                  <ReviewManager businessId={businessId} />
                 )}
               </div>
             )}

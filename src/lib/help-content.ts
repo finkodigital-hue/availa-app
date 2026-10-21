@@ -169,13 +169,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         type: "list",
         items: [
-          "Planned Solo launch plan — free for one staff member, with unlimited bookings, manual branded-page editing, deposits, payments and refunds, confirmation emails and calendar invites, one-tap booking links, the client book, CSV import/export and support.",
-          "Planned Studio launch plan — £22/month, with everything in Solo plus unlimited staff, automated reminders, analytics, AI tools, consultations and patch-test forms, verified reviews, stock management and photo scanning, the customer portal, and chair rent and commission tracking.",
+          "Planned Solo launch plan — free for one staff member, with unlimited bookings, manual branded-page editing, deposits, payments and refunds, confirmation emails and calendar invites, one-tap booking links, the client book, CSV import/export, daily takings, verified customer reviews, mobile access and support.",
+          "Planned Studio launch plan — £22/month, with everything in Solo plus unlimited staff, automated reminders, analytics, AI tools, consultations and patch-test forms, gift cards, stock management and photo scanning, the customer portal, and chair rent and commission tracking.",
         ],
       },
       {
         type: "p",
-        text: "Studio features are actively enforced. If a Free workspace opens consultations, reviews, stock, the customer portal, rent tracking, analytics or AI tools, Bookzenvo shows an upgrade prompt without deleting any previously saved data.",
+        text: "Studio features are actively enforced. If a Free workspace opens consultations, gift cards, stock, the customer portal, rent tracking, analytics or AI tools, Bookzenvo shows an upgrade prompt without deleting any previously saved data.",
       },
       {
         type: "note",

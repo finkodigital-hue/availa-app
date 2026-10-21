@@ -1,3 +1,4 @@
+import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -57,7 +58,7 @@ function GiftCardsPage() {
 
   const cards = useQuery({
     queryKey: ["gift-cards", businessId],
-    enabled: !!businessId,
+    enabled: business?.plan === "studio" && !!businessId,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("gift_cards")
@@ -72,7 +73,7 @@ function GiftCardsPage() {
 
   const refundReviews = useQuery({
     queryKey: ["gift-card-refund-reviews", businessId],
-    enabled: !!businessId,
+    enabled: business?.plan === "studio" && !!businessId,
     queryFn: async () => {
       const { count, error } = await (supabase as any).from("gift_card_refunds")
         .select("stripe_refund_id", { count: "exact", head: true })
@@ -84,7 +85,7 @@ function GiftCardsPage() {
 
   const transactions = useQuery({
     queryKey: ["gift-card-transactions", businessId],
-    enabled: !!businessId,
+    enabled: business?.plan === "studio" && !!businessId,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("gift_card_transactions")
@@ -99,7 +100,7 @@ function GiftCardsPage() {
 
   const bookings = useQuery({
     queryKey: ["gift-card-payable-bookings", businessId],
-    enabled: !!businessId,
+    enabled: business?.plan === "studio" && !!businessId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
@@ -115,7 +116,7 @@ function GiftCardsPage() {
 
   const linkedBooking = useQuery({
     queryKey: ["gift-card-linked-booking", businessId, linkedBookingId],
-    enabled: !!businessId && !!linkedBookingId,
+    enabled: business?.plan === "studio" && !!businessId && !!linkedBookingId,
     queryFn: async () => {
       const { data, error } = await supabase.from("bookings")
         .select("id, customer_name, starts_at, price_cents, amount_paid_cents, status")
@@ -172,6 +173,16 @@ function GiftCardsPage() {
       toast.error(error instanceof Error ? error.message : "Could not redeem gift card.");
     } finally { setRedeeming(false); }
   };
+
+  if (!business) return <div className="p-8">Loading...</div>;
+  if (business.plan !== "studio")
+    return (
+      <StudioUpgradePanel
+        className="m-5 sm:m-8"
+        title="Gift cards are on Studio"
+        description="Upgrade to Studio to use gift cards."
+      />
+    );
 
   return (
     <div className="p-5 sm:p-8 md:p-10 max-w-6xl">

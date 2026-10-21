@@ -1,3 +1,4 @@
+import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
@@ -79,6 +80,14 @@ export function WhiteLabelEditor({ business }: { business: any }) {
       setSaving(false);
     }
   };
+
+  if (business.plan !== "studio")
+    return (
+      <StudioUpgradePanel
+        title="Custom domain and email branding are on Studio"
+        description="Upgrade to use your own domain and outgoing email branding."
+      />
+    );
 
   return (
     <div className="space-y-5">

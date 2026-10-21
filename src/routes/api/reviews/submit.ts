@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { peekBookingActionToken, sha256Hex } from "@/lib/booking-tokens.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { assertStudio, STUDIO_FEATURE_ERROR } from "@/lib/plan.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
-import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
+import {
+  consumePublicRequest,
+  publicRequestLimitResponse,
+} from "@/lib/public-request-limit.server";
 
 const MAX_REVIEW_BODY_BYTES = 8 * 1024;
 
@@ -11,8 +13,11 @@ export const Route = createFileRoute("/api/reviews/submit")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        try { await consumePublicRequest("token", { headers: request.headers }); }
-        catch (error) { return publicRequestLimitResponse(error); }
+        try {
+          await consumePublicRequest("token", { headers: request.headers });
+        } catch (error) {
+          return publicRequestLimitResponse(error);
+        }
         const parsed = await readJsonWithLimit<{
           token?: string;
           rating?: number;
@@ -42,15 +47,11 @@ export const Route = createFileRoute("/api/reviews/submit")({
           .select("business_id")
           .eq("id", lookup.bookingId)
           .maybeSingle();
-        if (!booking) return Response.json({ ok: false, reason: "invalid" }, { status: 400 });
-        try {
-          await assertStudio(booking.business_id);
-        } catch (error) {
-          if (error instanceof Error && error.message === STUDIO_FEATURE_ERROR) {
-            return Response.json({ ok: false, reason: "studio_required", error: STUDIO_FEATURE_ERROR }, { status: 402 });
-          }
-          throw error;
-        }
+        if (!booking)
+          return Response.json(
+            { ok: false, reason: "invalid" },
+            { status: 400 },
+          );
         const { data, error } = await (supabaseAdmin as any).rpc(
           "submit_customer_review",
           {
