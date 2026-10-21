@@ -59,6 +59,7 @@ type Step =
   | "custom";
 
 type Prefill = {
+  requestId?: string;
   staffId?: string;
   date?: Date;
   isoTime?: string;
@@ -163,6 +164,7 @@ export function NewBookingDialog({
 
     const hasAnyId = !!(
       prefill?.staffId ||
+      prefill?.requestId ||
       prefill?.serviceId ||
       prefill?.customerId
     );
@@ -179,6 +181,25 @@ export function NewBookingDialog({
     }
     setLoadingPrefill(true);
     (async () => {
+      let requestCustomer: { name: string; email: string; phone: string } | null = null;
+      if (prefill?.requestId) {
+        // Read through owner RLS, never put contact details in a deep link.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Table is newer than generated database types.
+        const { data, error } = await (supabase as any)
+          .from("appointment_waitlist_requests")
+          .select("customer_name,customer_email,customer_phone")
+          .eq("id", prefill.requestId)
+          .eq("business_id", businessId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (error || !data) {
+          setLoadingPrefill(false);
+          toast.error("Could not load the requester's details. Please return to booking requests and try again.");
+          setStep("customer");
+          return;
+        }
+        requestCustomer = { name: data.customer_name, email: data.customer_email, phone: data.customer_phone ?? "" };
+      }
       const staffRes = prefill?.staffId
         ? await supabase
             .from("staff")
@@ -237,10 +258,12 @@ export function NewBookingDialog({
       if (!st && targetBusinessId !== businessId) sv = null;
       if (sv) setService(sv);
       if (cu) setCustomer(cu);
+      const draftCustomer = targetBusinessId === businessId ? requestCustomer : null;
+      if (!cu && draftCustomer) setNewCust(draftCustomer);
       setLoadingPrefill(false);
       setStep(
         firstMissing({
-          hasCustomer: !!cu,
+          hasCustomer: !!cu || !!draftCustomer,
           hasService: !!sv,
           hasStaff: !!st,
           hasTime: !!prefill?.isoTime,
@@ -344,20 +367,20 @@ export function NewBookingDialog({
         // their customer list and RLS blocks writes here anyway.
         if (!isCrossBiz && !custId && newCust) {
           const phoneNorm = newCust.phone.replace(/\D/g, "") || null;
-          const orParts: string[] = [];
-          if (newCust.email) orParts.push(`email.ilike.${newCust.email}`);
-          if (phoneNorm) orParts.push(`phone_normalized.eq.${phoneNorm}`);
-          if (orParts.length) {
-            const { data: existing } = await supabase
-              .from("customers")
-              .select("id, name, email, phone")
-              .eq("business_id", businessId)
-              .or(orParts.join(","))
-              .limit(1);
-            if (existing && existing.length) {
-              custId = existing[0].id;
-              custName = existing[0].name;
-            }
+          // Request contact values must remain values, never PostgREST filter syntax.
+          const candidates = await Promise.all([
+            newCust.email ? supabase.from("customers").select("id,name")
+              .eq("business_id", businessId).eq("email", newCust.email.trim().toLowerCase()).limit(1)
+              : Promise.resolve({ data: [], error: null }),
+            phoneNorm ? supabase.from("customers").select("id,name")
+              .eq("business_id", businessId).eq("phone_normalized", phoneNorm).limit(1)
+              : Promise.resolve({ data: [], error: null }),
+          ]);
+          for (const result of candidates) if (result.error) throw result.error;
+          const existing = candidates[0].data?.[0] ?? candidates[1].data?.[0];
+          if (existing) {
+            custId = existing.id;
+            custName = existing.name;
           }
           if (!custId) {
             const { data: ins, error } = await supabase
