@@ -5,6 +5,9 @@ import {
   formatRequestedSalonDates,
   requestMatchesCancelledSlot,
   salonDateWindow,
+  collectRequestPages,
+  requestDateBounds,
+  requestStaffOptions,
 } from "../src/lib/appointment-waitlist.ts";
 
 const routeTree = readFileSync(new URL("../src/routeTree.gen.ts", import.meta.url), "utf8");
@@ -113,3 +116,18 @@ assert.equal(
   false,
 );
 console.log("Appointment waitlist matching tests passed");
+
+assert.deepEqual(requestDateBounds('Europe/London', Date.parse('2026-07-01T23:30:00Z')), {first:'2026-07-02',last:'2026-08-31'});
+assert.deepEqual(requestDateBounds('America/New_York', Date.parse('2026-07-01T01:00:00Z')), {first:'2026-06-30',last:'2026-08-29'});
+const manyRequests = Array.from({length:1201}, (_,id)=>({id,status:id<1200?'closed':'active'}));
+const pages=[];
+const all = await collectRequestPages(async(from,to)=>{pages.push([from,to]);return {data:manyRequests.slice(from,to+1),error:null};});
+assert.equal(all.length,1201);
+assert.equal(all.filter(r=>r.status==='active').length,1);
+assert.deepEqual(pages,[[0,499],[500,999],[1000,1499]]);
+await assert.rejects(collectRequestPages(async()=>({data:null,error:new Error('offline')})),/offline/);
+const team=[{id:'a'},{id:'b'}];
+assert.deepEqual(requestStaffOptions(team,[{service_id:'colour',staff_id:'a'}],'colour'),[{id:'a'}]);
+assert.deepEqual(requestStaffOptions(team,[{service_id:'colour',staff_id:'a'}],'cut'),team);
+assert.deepEqual(requestStaffOptions(team,[{service_id:'colour',staff_id:'inactive'}],'colour'),[]);
+console.log('Request pagination, salon date bounds and service/staff regression checks passed');

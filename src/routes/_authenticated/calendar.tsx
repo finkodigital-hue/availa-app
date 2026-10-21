@@ -77,7 +77,7 @@ function CalendarPage() {
   });
   const [selected, setSelected] = useState<any | null>(null);
   const [newOpen, setNewOpen] = useState(false);
-  const [prefill, setPrefill] = useState<{ customerId?: string; serviceId?: string; staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
+  const [prefill, setPrefill] = useState<{ requestId?: string; customerId?: string; serviceId?: string; staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockPrefill, setBlockPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -350,7 +350,7 @@ function CalendarPage() {
     qc.invalidateQueries({ queryKey: ["booking-stock-deductions", id] });
   };
 
-  const openNewBooking = (cell?: { staffId?: string; serviceId?: string; customerId?: string; isoTime?: string; date?: Date }) => {
+  const openNewBooking = (cell?: { staffId?: string; serviceId?: string; requestId?: string; customerId?: string; isoTime?: string; date?: Date }) => {
     setPrefill(cell);
     setNewOpen(true);
   };
@@ -368,6 +368,7 @@ function CalendarPage() {
       const url = new URL(window.location.href);
       if (url.searchParams.get("new") === "1") {
         const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const requestId = url.searchParams.get("requestId") ?? "";
         const serviceId = url.searchParams.get("serviceId") ?? "";
         const staffId = url.searchParams.get("staffId") ?? "";
         const dateText = url.searchParams.get("date") ?? "";
@@ -385,11 +386,12 @@ function CalendarPage() {
           setView("day");
         }
         openNewBooking({
+          requestId: uuid.test(requestId) ? requestId : undefined,
           serviceId: uuid.test(serviceId) ? serviceId : undefined,
           staffId: uuid.test(staffId) ? staffId : undefined,
           date: requestedDate,
         });
-        for (const key of ["new", "serviceId", "staffId", "date"])
+        for (const key of ["new", "requestId", "serviceId", "staffId", "date"])
           url.searchParams.delete(key);
         window.history.replaceState({}, "", url.toString());
       }

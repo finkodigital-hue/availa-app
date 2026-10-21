@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useMyBusiness } from "@/lib/business";
 import {
+  collectRequestPages,
   firstRequestedSalonDay,
   formatRequestedSalonDates,
   type AppointmentWaitlistRequest,
@@ -54,15 +55,17 @@ function BookingRequestsPage() {
     queryKey: ["appointment-waitlist", business?.id],
     enabled: isOwner,
     queryFn: async () => {
+      const loadRequests = async (columns: string) => {
+        try {
+          const data = await collectRequestPages<RequestRow>((from, to) =>
+            (supabase as any).from("appointment_waitlist_requests").select(columns)
+              .eq("business_id", business!.id).order("created_at", { ascending: false })
+              .order("id", { ascending: false }).range(from, to));
+          return { data, error: null };
+        } catch (error) { return { data: null, error: error as { message?: string } }; }
+      };
       const [initialRequests, services, staff] = await Promise.all([
-        (supabase as any)
-          .from("appointment_waitlist_requests")
-          .select(
-            "id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,resolution,customer_name,customer_email,customer_phone,created_at",
-          )
-          .eq("business_id", business!.id)
-          .order("created_at", { ascending: false })
-          .limit(200),
+        loadRequests("id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,resolution,customer_name,customer_email,customer_phone,created_at"),
         supabase
           .from("services")
           .select("id,name")
@@ -76,14 +79,7 @@ function BookingRequestsPage() {
       let resolutionEnabled = true;
       if (requests.error && /resolution/i.test(requests.error.message ?? "")) {
         resolutionEnabled = false;
-        requests = await (supabase as any)
-          .from("appointment_waitlist_requests")
-          .select(
-            "id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,customer_name,customer_email,customer_phone,created_at",
-          )
-          .eq("business_id", business!.id)
-          .order("created_at", { ascending: false })
-          .limit(200);
+        requests = await loadRequests("id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,customer_name,customer_email,customer_phone,created_at");
       }
       for (const result of [requests, services, staff])
         if (result.error) throw result.error;
@@ -387,6 +383,7 @@ function BookingRequestsPage() {
                         search={
                           {
                             new: 1,
+                            requestId: request.id,
                             serviceId: request.service_id,
                             staffId: request.preferred_staff_id ?? undefined,
                             date: firstRequestedSalonDay(
@@ -504,11 +501,6 @@ function BookingRequestsPage() {
               );
             })}
           </div>
-          {query.data && query.data.requests.length >= 200 && (
-            <p className="text-sm text-amber-700">
-              Showing only the 200 most recent requests.
-            </p>
-          )}
         </>
       )}
     </div>

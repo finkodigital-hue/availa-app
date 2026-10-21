@@ -16,6 +16,33 @@ export type CancelledSlot = {
   ends_at: string;
 };
 
+/** Inclusive calendar bounds in the salon's timezone, not the visitor's. */
+export function requestDateBounds(timeZone: string, now = Date.now()) {
+  const first = firstRequestedSalonDay(new Date(now).toISOString(), timeZone);
+  const last = new Date(Date.parse(`${first}T00:00:00Z`) + 60 * 86_400_000)
+    .toISOString().slice(0, 10);
+  return { first, last };
+}
+
+export async function collectRequestPages<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += 500) {
+    const result = await fetchPage(from, from + 499);
+    if (result.error) throw result.error;
+    rows.push(...(result.data ?? []));
+    if ((result.data?.length ?? 0) < 500) return rows;
+  }
+}
+
+export function requestStaffOptions<T extends { id: string }>(
+  staff: T[], links: { service_id: string; staff_id: string }[], serviceId: string,
+) {
+  const assigned = links.filter((link) => link.service_id === serviceId);
+  return staff.filter((person) => !assigned.length || assigned.some((link) => link.staff_id === person.id));
+}
+
 /** Use the salon's calendar day for a request, even across UK DST changes. */
 export function firstRequestedSalonDay(instant: string, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {

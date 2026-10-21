@@ -2,21 +2,18 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-
-function localDateValue(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
+import { requestDateBounds, requestStaffOptions } from "@/lib/appointment-waitlist";
 
 export const Route = createFileRoute("/book/$slug_/waitlist")({
   loader: async ({ params }) => {
     const { data: business, error } = await (supabase as any)
       .from("public_businesses")
-      .select("id,name,slug")
+      .select("id,name,slug,timezone")
       .eq("slug", params.slug)
       .maybeSingle();
     if (error) throw error;
     if (!business) throw notFound();
-    const [{ data: services }, { data: staff }] = await Promise.all([
+    const [serviceResult, staffResult, linkResult] = await Promise.all([
       (supabase as any)
         .from("services")
         .select("id,name")
@@ -28,34 +25,41 @@ export const Route = createFileRoute("/book/$slug_/waitlist")({
         .select("id,name")
         .eq("business_id", business.id)
         .order("name"),
+      (supabase as any)
+        .from("service_staff")
+        .select("service_id,staff_id")
+        .eq("business_id", business.id),
     ]);
+    for (const result of [serviceResult, staffResult, linkResult])
+      if (result.error) throw result.error;
     return {
       business,
-      services: (services ?? []) as { id: string; name: string }[],
-      staff: (staff ?? []) as { id: string; name: string }[],
+      services: (serviceResult.data ?? []) as { id: string; name: string }[],
+      staff: (staffResult.data ?? []) as { id: string; name: string }[],
+      links: (linkResult.data ?? []) as { service_id: string; staff_id: string }[],
     };
   },
   component: AppointmentWaitlistPage,
 });
 
 function AppointmentWaitlistPage() {
-  const { business, services, staff } = Route.useLoaderData();
+  const { business, services, staff, links } = Route.useLoaderData();
+  const bounds = requestDateBounds(business.timezone || "UTC");
   const [serviceId, setServiceId] = useState("");
   const [staffId, setStaffId] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [after, setAfter] = useState(() => localDateValue(new Date()));
-  const [before, setBefore] = useState(() => localDateValue(new Date()));
+  const [after, setAfter] = useState(() => bounds.first);
+  const [before, setBefore] = useState(() => bounds.first);
   const [preferredTime, setPreferredTime] = useState("any");
   const [consent, setConsent] = useState(false);
   const [automaticAlerts, setAutomaticAlerts] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [saved, setSaved] = useState(false);
-  const lastAllowedDate = localDateValue(
-    new Date(Date.now() + 60 * 86_400_000),
-  );
+  const lastAllowedDate = bounds.last;
+  const availableStaff = requestStaffOptions(staff, links, serviceId);
 
   useEffect(() => {
     fetch("/api/appointment-waitlist", { cache: "no-store" })
@@ -155,7 +159,7 @@ function AppointmentWaitlistPage() {
                 <select
                   required
                   value={serviceId}
-                  onChange={(e) => setServiceId(e.target.value)}
+                  onChange={(e) => { setServiceId(e.target.value); setStaffId(""); }}
                   className="waitlist-input"
                 >
                   <option value="">Choose a service</option>
@@ -169,11 +173,12 @@ function AppointmentWaitlistPage() {
               <Field label="Team member">
                 <select
                   value={staffId}
+                  disabled={!serviceId}
                   onChange={(e) => setStaffId(e.target.value)}
                   className="waitlist-input"
                 >
                   <option value="">Anyone available</option>
-                  {staff.map((s: { id: string; name: string }) => (
+                  {availableStaff.map((s: { id: string; name: string }) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                     </option>
@@ -189,7 +194,7 @@ function AppointmentWaitlistPage() {
                     required
                     type="date"
                     value={after}
-                    min={localDateValue(new Date())}
+                    min={bounds.first}
                     max={lastAllowedDate}
                     onChange={(e) => {
                       setAfter(e.target.value);

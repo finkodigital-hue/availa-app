@@ -6,7 +6,7 @@ import {
   publicRequestLimitResponse,
 } from "@/lib/public-request-limit.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
-import { salonDateWindow } from "@/lib/appointment-waitlist";
+import { salonDateWindow, requestDateBounds } from "@/lib/appointment-waitlist";
 import { trustedAppOrigin } from "@/lib/app-origin.server";
 
 type Submission = Record<string, unknown>;
@@ -35,6 +35,15 @@ export const Route = createFileRoute("/api/appointment-waitlist")({
         const parsed = await readJsonWithLimit<Submission>(request, 4096);
         if ("error" in parsed) return parsed.error;
         const input = parsed.value ?? {};
+        if (
+          typeof input !== "object" || Array.isArray(input) ||
+          ["businessId", "serviceId", "name", "email", "from", "through"].some(
+            (key) => typeof input[key] !== "string",
+          ) ||
+          (input.staffId != null && typeof input.staffId !== "string") ||
+          (input.phone != null && typeof input.phone !== "string") ||
+          (input.preferredTime != null && typeof input.preferredTime !== "string")
+        ) return Response.json({ message: "Please check your details and selected dates." }, { status: 400 });
         const businessId = String(input.businessId ?? "");
         const serviceId = String(input.serviceId ?? "");
         const staffId = input.staffId ? String(input.staffId) : null;
@@ -98,6 +107,8 @@ export const Route = createFileRoute("/api/appointment-waitlist")({
         let window: ReturnType<typeof salonDateWindow>;
         try {
           window = salonDateWindow(from, through, business.timezone || "UTC");
+          const bounds = requestDateBounds(business.timezone || "UTC");
+          if (from < bounds.first || through > bounds.last) throw new Error("Outside request window");
         } catch {
           return Response.json(
             { message: "Choose valid dates within the next 61 days." },
