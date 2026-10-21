@@ -1,6 +1,13 @@
 import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useState,
+  useId,
+} from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -28,6 +35,10 @@ import {
   ExternalLink,
   Download,
   RotateCcw,
+  Search,
+  Users,
+  Palette,
+  LifeBuoy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
@@ -53,7 +64,10 @@ import {
   exportMyWorkspace,
 } from "@/lib/account.functions";
 import { downloadJson } from "@/lib/csv";
-import { saveBusinessProfile } from "@/lib/business-settings.functions";
+import {
+  saveBusinessProfile,
+  saveOpeningHours,
+} from "@/lib/business-settings.functions";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { NotificationSettings } from "@/components/notification-settings";
 import {
@@ -79,10 +93,9 @@ const SETTINGS_TABS = [
   "chairs",
   "notifications",
   "calendar",
+  "data",
 ] as const;
 
-// Google and Microsoft OAuth remain closed until the production provider
-// registrations and end-to-end delivery checks have been completed.
 const CALENDAR_PROVIDER_CONNECTIONS_OPEN = false;
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -97,7 +110,12 @@ export const Route = createFileRoute("/_authenticated/settings")({
 });
 
 function SettingsPage() {
-  const { data: biz } = useMyBusiness();
+  const {
+    data: biz,
+    isError: businessError,
+    refetch: reloadBusiness,
+  } = useMyBusiness();
+  const [search, setSearch] = useState("");
   const { user } = useAuth();
   const { tab } = Route.useSearch();
   const navigate = useNavigate();
@@ -160,6 +178,12 @@ function SettingsPage() {
     },
   });
 
+  if (businessError)
+    return (
+      <div className="p-8">
+        <SettingsLoadError retry={reloadBusiness} />
+      </div>
+    );
   if (!biz)
     return (
       <div className="p-8">
@@ -179,11 +203,7 @@ function SettingsPage() {
       biz.currency,
       biz.email,
       biz.phone,
-      biz.website,
       biz.address,
-      biz.description,
-      biz.instagram,
-      biz.logo_url,
     ];
     const completedProfileFields = profileFields.filter(
       (value) => typeof value === "string" && value.trim().length > 0,
@@ -211,8 +231,6 @@ function SettingsPage() {
     const activeRentals = (salonLinks ?? []).filter(
       (link) => link.status === "active",
     ).length;
-    const planSummary =
-      (biz.plan ?? "free") === "free" ? "Solo · Free" : "Studio · £22/month";
     const paymentSummary = biz.stripe_charges_enabled
       ? "Stripe connected"
       : biz.stripe_account_id
@@ -283,102 +301,173 @@ function SettingsPage() {
           </Button>
         </section>
 
-        <SettingsGroup label="Your business">
-          <SettingsRow
-            icon={Building2}
-            title="Business profile"
-            description="Manage your salon name, location and contact details."
-            summary={`${biz.name} · ${biz.timezone || "Timezone not set"}`}
-            onClick={() => openSetting("profile")}
+        <div className="relative mb-6">
+          <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            aria-label="Search settings"
+            placeholder="Search settings, e.g. deposits, password or team"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="h-10 pl-9"
           />
-          <SettingsRow
-            icon={Clock}
-            title="Opening hours"
-            description="Set your working hours and holiday closures."
-            summary={hoursSummary}
-            onClick={() => openSetting("hours")}
-          />
-          <SettingsRow
-            icon={Crown}
-            title="Bookzenvo branding"
-            description="Choose where customers see the Bookzenvo name and add your own logo."
-            summary={
-              biz.hide_powered_by
-                ? "Bookzenvo branding hidden"
-                : "Bookzenvo branding shown"
-            }
-            onClick={() => openSetting("whitelabel")}
-          />
-          {isIndependentPro && (
+        </div>
+        <div role="status" className="sr-only">
+          {search ? `Settings matching ${search}` : "All settings"}
+        </div>
+        <div>
+          <SettingsGroup label="Your business" search={search}>
+            <SettingsRow
+              icon={Building2}
+              title="Business profile"
+              description="Manage your salon name, location and contact details."
+              summary={`${biz.name} · ${biz.timezone || "Timezone not set"}`}
+              onClick={() => openSetting("profile")}
+            />
+            <SettingsRow
+              icon={Clock}
+              title="Opening hours"
+              description="Set your working hours and holiday closures."
+              summary={hoursSummary}
+              onClick={() => openSetting("hours")}
+            />
+            <SettingsRow
+              icon={Crown}
+              title="Bookzenvo branding"
+              description="Choose where customers see the Bookzenvo name and add your own logo."
+              summary={
+                biz.hide_powered_by
+                  ? "Bookzenvo branding hidden"
+                  : "Bookzenvo branding shown"
+              }
+              onClick={() => openSetting("whitelabel")}
+            />
+            {isIndependentPro && (
+              <SettingsRow
+                icon={Armchair}
+                title="Chair rentals"
+                description="View and manage your active chair rentals."
+                summary={
+                  activeRentals === 0
+                    ? "No active rentals"
+                    : `${activeRentals} active`
+                }
+                onClick={() => openSetting("chairs")}
+              />
+            )}
+            <SettingsRow
+              icon={CreditCard}
+              title="Payments & booking policies"
+              description="Manage payment collection, deposits and Stripe."
+              summary={paymentSummary}
+              onClick={() => openSetting("payments")}
+            />
+            <SettingsRow
+              icon={CalendarSync}
+              title="Calendar sync"
+              description="Keep Bookzenvo appointments in your work calendar."
+              summary="Calendar files available · provider connections coming later"
+              onClick={() => openSetting("calendar")}
+            />
+          </SettingsGroup>
+
+          <SettingsGroup label="Website & team" search={search}>
+            <SettingsRow
+              icon={Palette}
+              title="Booking website & design"
+              description="Edit your logo, colours, services and public booking page."
+              summary="Open website editor"
+              onClick={() => navigate({ to: "/page-builder" })}
+            />
+            <SettingsRow
+              icon={Users}
+              title="Staff & access"
+              description="Manage your team, invitations, roles and working schedules."
+              summary="Manage team"
+              onClick={() => navigate({ to: "/staff" })}
+            />
             <SettingsRow
               icon={Armchair}
-              title="Chair rentals"
-              description="View and manage your active chair rentals."
-              summary={
-                activeRentals === 0
-                  ? "No active rentals"
-                  : `${activeRentals} active`
-              }
-              onClick={() => openSetting("chairs")}
+              title="Professional connections"
+              description="Manage independent professionals and chair rental agreements."
+              summary="Manage connections"
+              onClick={() => navigate({ to: "/professionals" })}
             />
-          )}
-          <SettingsRow
-            icon={CreditCard}
-            title="Payments"
-            description="Manage payment collection, deposits and Stripe."
-            summary={paymentSummary}
-            onClick={() => openSetting("payments")}
-          />
-          <SettingsRow
-            icon={CalendarSync}
-            title="Calendar sync"
-            description="Keep Bookzenvo appointments in your work calendar."
-            summary="Calendar files available · provider connections coming later"
-            onClick={() => openSetting("calendar")}
-          />
-        </SettingsGroup>
+          </SettingsGroup>
+          <SettingsGroup label="Money & plan" search={search}>
+            <SettingsRow
+              icon={ReceiptText}
+              title="Plan & billing"
+              description="View your plan, billing options and included features."
+              summary={
+                (biz.plan ?? "free") === "free" ? "Solo · Free" : "Studio"
+              }
+              onClick={() => openSetting("plan")}
+            />
+          </SettingsGroup>
 
-        <SettingsGroup label="Money & plan">
-          <SettingsRow
-            icon={ReceiptText}
-            title="Plan & billing"
-            description="View your plan, billing options and included features."
-            summary={planSummary}
-            onClick={() => openSetting("plan")}
-          />
-        </SettingsGroup>
-
-        <SettingsGroup label="Account">
-          <SettingsRow
-            icon={Bell}
-            title="Notifications"
-            description="Owner alerts, customer messages and delivery history."
-            summary="Manage preferences"
-            onClick={() => openSetting("notifications")}
-          />
-          <SettingsRow
-            icon={UserRound}
-            title="Your account"
-            description="Update your account details and password."
-            summary={user?.email || "Account details"}
-            onClick={() => openSetting("account")}
-          />
-          <SettingsRow
-            icon={ShieldCheck}
-            title="Security"
-            description="Manage two-factor authentication."
-            summary={
-              mfaSummaryError
-                ? "Manage sign-in protection"
-                : mfaEnabled === undefined
-                  ? "Checking protection…"
-                  : mfaEnabled
-                    ? "2-step verification on"
-                    : "2-step verification off"
-            }
-            onClick={() => openSetting("security")}
-          />
-        </SettingsGroup>
+          <SettingsGroup label="Account" search={search}>
+            <SettingsRow
+              icon={Bell}
+              title="Notifications"
+              description="Owner alerts, customer messages and delivery history."
+              summary="Manage preferences"
+              onClick={() => openSetting("notifications")}
+            />
+            <SettingsRow
+              icon={UserRound}
+              title="Your account"
+              description="Update your account details and password."
+              summary={user?.email || "Account details"}
+              onClick={() => openSetting("account")}
+            />
+            <SettingsRow
+              icon={ShieldCheck}
+              title="Security"
+              description="Manage two-factor authentication."
+              summary={
+                mfaSummaryError
+                  ? "Manage sign-in protection"
+                  : mfaEnabled === undefined
+                    ? "Checking protection…"
+                    : mfaEnabled
+                      ? "2-step verification on"
+                      : "2-step verification off"
+              }
+              onClick={() => openSetting("security")}
+            />
+            <SettingsRow
+              icon={Download}
+              title="Data & privacy"
+              description="Export workspace data, import clients or manage workspace closure and recovery."
+              summary="Manage your data"
+              onClick={() => openSetting("data")}
+            />
+          </SettingsGroup>
+          <SettingsGroup label="Help" search={search}>
+            <SettingsRow
+              icon={LifeBuoy}
+              title="Help centre"
+              description="Find guides to bookings, payments and managing your workspace."
+              summary="Browse help"
+              onClick={() => navigate({ to: "/help" })}
+            />
+          </SettingsGroup>
+          <div
+            className="hidden rounded-2xl border p-6 text-center only:block"
+            role="status"
+          >
+            <p className="text-sm text-muted-foreground">
+              No settings match “{search}”. Try another word.
+            </p>
+            <Button
+              variant="outline"
+              className="mt-3"
+              onClick={() => setSearch("")}
+            >
+              Clear search
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -402,14 +491,30 @@ function SettingsPage() {
           >
             {user && <AccountEditor user={user} />}
           </Section>
-          <Section
-            icon={AlertTriangle}
-            title="Danger zone"
-            description="Export your data or close this workspace with a 30-day recovery window."
-          >
-            <DeleteAccountSection biz={biz} />
-          </Section>
         </div>
+      )}
+      {tab === "data" && (
+        <Section
+          icon={Download}
+          title="Data & privacy"
+          description="Download a copy of your workspace or manage closure and recovery."
+        >
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
+            <div>
+              <p className="text-sm font-medium">Import customer data</p>
+              <p className="text-xs text-muted-foreground">
+                Bring existing clients and bookings into Bookzenvo.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate({ to: "/import" })}
+            >
+              Open import
+            </Button>
+          </div>
+          <DeleteAccountSection biz={biz} />
+        </Section>
       )}
       {tab === "security" && (
         <Section
@@ -465,9 +570,16 @@ function SettingsPage() {
           <WhiteLabelEditor business={biz} />
         </Section>
       )}
-      {tab === "chairs" && isIndependentPro && (
-        <ChairRentalsEditor businessId={biz.id} links={salonLinks ?? []} />
-      )}
+      {tab === "chairs" &&
+        (isIndependentPro ? (
+          <ChairRentalsEditor businessId={biz.id} links={salonLinks ?? []} />
+        ) : (
+          <Section title="Chair rentals">
+            <p className="text-sm text-muted-foreground">
+              No chair rental connections to display.
+            </p>
+          </Section>
+        ))}
       {tab === "notifications" && (
         <Section
           icon={Bell}
@@ -500,7 +612,13 @@ function SettingsPage() {
 function CalendarSyncSettings({ businessId }: { businessId: string }) {
   const qc = useQueryClient();
   const [connecting, setConnecting] = useState<string | null>(null);
-  const { data: connections = [], isLoading } = useQuery({
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const {
+    data: connections = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["calendar-connections", businessId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -526,26 +644,31 @@ function CalendarSyncSettings({ businessId }: { businessId: string }) {
       if (!response.ok)
         throw new Error(result.error || "Could not start connection");
       window.location.assign(result.url);
-    } catch {
+    } catch (error) {
       toast.error(
-        "Could not start the calendar connection. Check the provider setup and try again.",
+        error instanceof Error ? error.message : "Could not connect calendar",
       );
       setConnecting(null);
     }
   };
   const disconnect = async (id: string) => {
-    const { error } = await (supabase as any).rpc("disconnect_calendar", {
-      p_connection_id: id,
-    });
-    if (error)
-      return toast.error(
-        "Could not disconnect this calendar. It is still connected; try again.",
-      );
-    await qc.invalidateQueries({
-      queryKey: ["calendar-connections", businessId],
-    });
-    toast.success("Calendar disconnected and stored tokens deleted");
+    setDisconnecting(id);
+    try {
+      const { error } = await (supabase as any).rpc("disconnect_calendar", {
+        p_connection_id: id,
+      });
+      if (error) throw error;
+      await qc.invalidateQueries({
+        queryKey: ["calendar-connections", businessId],
+      });
+      toast.success("Calendar disconnected and stored tokens deleted");
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not disconnect calendar");
+    } finally {
+      setDisconnecting(null);
+    }
   };
+  if (isError) return <SettingsLoadError retry={refetch} />;
   if (isLoading) return <Skeleton className="h-32 w-full" />;
   return (
     <div className="space-y-4">
@@ -559,9 +682,8 @@ function CalendarSyncSettings({ businessId }: { businessId: string }) {
       </div>
       {!CALENDAR_PROVIDER_CONNECTIONS_OPEN && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-          Google and Microsoft connections are not open yet. Bookzenvo will
-          enable them only after the production provider registrations and live
-          sync checks are complete. Standard calendar-file downloads still work.
+          Google and Microsoft connections are not open yet. Standard
+          calendar-file downloads still work.
         </div>
       )}
       {(["google", "microsoft"] as const).map((provider) => {
@@ -589,12 +711,29 @@ function CalendarSyncSettings({ businessId }: { businessId: string }) {
               )}
             </div>
             {connection ? (
-              <Button
-                variant="outline"
-                onClick={() => disconnect(connection.id)}
-              >
-                Disconnect
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                {connection.status === "needs_reconnect" && (
+                  <Button
+                    disabled={
+                      !!connecting ||
+                      !!disconnecting ||
+                      !CALENDAR_PROVIDER_CONNECTIONS_OPEN
+                    }
+                    onClick={() => connect(provider)}
+                  >
+                    Reconnect
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  disabled={!!disconnecting || !!connecting}
+                  onClick={() => disconnect(connection.id)}
+                >
+                  {disconnecting === connection.id
+                    ? "Disconnecting…"
+                    : "Disconnect"}
+                </Button>
+              </div>
             ) : (
               <Button
                 onClick={() => connect(provider)}
@@ -625,7 +764,12 @@ function CalendarSyncSettings({ businessId }: { businessId: string }) {
 }
 
 function AccountEditor({ user }: { user: { id: string; email?: string } }) {
-  const { data: profile, isLoading } = useQuery({
+  const {
+    data: profile,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["my-profile", user.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -672,10 +816,8 @@ function AccountEditor({ user }: { user: { id: string; email?: string } }) {
       if (authResult.error) throw authResult.error;
       qc.invalidateQueries({ queryKey: ["my-profile", user.id] });
       toast.success("Account details saved");
-    } catch {
-      toast.error(
-        "Could not finish saving your account details. Some details may have changed; refresh before trying again.",
-      );
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not save account details");
     } finally {
       setSaving(false);
     }
@@ -684,17 +826,20 @@ function AccountEditor({ user }: { user: { id: string; email?: string } }) {
   const sendPasswordReset = async () => {
     if (!user.email) return toast.error("This account has no email address");
     setSendingReset(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-      redirectTo: `${window.location.origin}/auth?mode=update`,
-    });
-    setSendingReset(false);
-    if (error)
-      return toast.error(
-        "Could not send the reset email. Check your connection and try again shortly.",
-      );
-    toast.success("Password reset email sent");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/auth?mode=update`,
+      });
+      if (error) throw error;
+      toast.success("Password reset email sent");
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not send password reset");
+    } finally {
+      setSendingReset(false);
+    }
   };
 
+  if (isError) return <SettingsLoadError retry={refetch} />;
   if (isLoading) return <Skeleton className="h-56 w-full" />;
 
   return (
@@ -928,17 +1073,33 @@ function DeleteAccountSection({
 function SettingsGroup({
   label,
   children,
+  search = "",
 }: {
   label: string;
   children: React.ReactNode;
+  search?: string;
 }) {
+  const rows = Children.toArray(children).filter((child) => {
+    if (
+      !isValidElement<{
+        title?: string;
+        description?: string;
+        summary?: string;
+      }>(child)
+    )
+      return false;
+    return `${label} ${child.props.title} ${child.props.description} ${child.props.summary}`
+      .toLowerCase()
+      .includes(search.trim().toLowerCase());
+  });
+  if (!rows.length) return null;
   return (
     <section className="mb-7">
       <h2 className="mb-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </h2>
       <div className="overflow-hidden rounded-2xl border bg-card shadow-soft">
-        {children}
+        {rows}
       </div>
     </section>
   );
@@ -1023,12 +1184,22 @@ function Field({
   label: string;
   children: React.ReactNode;
 }) {
+  const id = useId();
   return (
     <div>
-      <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+      <Label
+        htmlFor={id}
+        className="text-[11px] uppercase tracking-wide text-muted-foreground"
+      >
         {label}
       </Label>
-      <div className="mt-1.5">{children}</div>
+      <div className="mt-1.5">
+        {Children.map(children, (child, index) =>
+          index === 0 && isValidElement<{ id?: string }>(child)
+            ? cloneElement(child, { id })
+            : child,
+        )}
+      </div>
     </div>
   );
 }
@@ -1225,6 +1396,13 @@ function ProfileEditor({ biz }: { biz: any }) {
 
   const save = async () => {
     if (!form.name?.trim()) return toast.error("Business name is required");
+    if (
+      premium &&
+      (!Number.isInteger(Number(form.reminder_hours_before ?? 24)) ||
+        Number(form.reminder_hours_before ?? 24) < 1 ||
+        Number(form.reminder_hours_before ?? 24) > 168)
+    )
+      return toast.error("Reminder hours must be a whole number from 1 to 168");
     setSaving(true);
     try {
       const headers = await getServerFnAuthHeaders();
@@ -1273,10 +1451,26 @@ function ProfileEditor({ biz }: { biz: any }) {
         </Field>
         <Field label="Timezone">
           <Input
+            list="business-timezones"
+            placeholder="Europe/London"
             value={form.timezone ?? ""}
             onChange={(e) => setForm({ ...form, timezone: e.target.value })}
             className="h-10"
           />
+          <datalist id="business-timezones">
+            {[
+              "Europe/London",
+              "Europe/Dublin",
+              "Europe/Paris",
+              "America/New_York",
+              "America/Chicago",
+              "America/Los_Angeles",
+              "Australia/Sydney",
+              "Pacific/Auckland",
+            ].map((zone) => (
+              <option key={zone} value={zone} />
+            ))}
+          </datalist>
         </Field>
         <Field label="Currency">
           <select
@@ -1415,7 +1609,12 @@ type Period = { id?: string; open_time: string; close_time: string };
 
 function HoursEditor({ biz }: { biz: any }) {
   const qc = useQueryClient();
-  const { data: periods, isLoading } = useQuery({
+  const {
+    data: periods,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["business-hour-periods", biz.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1499,47 +1698,24 @@ function HoursEditor({ biz }: { biz: any }) {
         }
       }
 
-      // Wipe & reinsert — simplest correct behaviour.
-      const { error: delErr } = await supabase
-        .from("business_hour_periods")
-        .delete()
-        .eq("business_id", biz.id);
-      if (delErr) throw delErr;
-      const rows = days.flatMap((arr, w) =>
-        arr.map((p) => ({
-          business_id: biz.id,
-          weekday: w,
-          open_time: p.open_time,
-          close_time: p.close_time,
-        })),
-      );
-      if (rows.length) {
-        const { error } = await supabase
-          .from("business_hour_periods")
-          .insert(rows);
-        if (error) throw error;
-      }
-
-      // Mirror primary period back into legacy business_hours for compatibility.
-      const legacy = Array.from({ length: 7 }, (_, w) => {
-        const first = [...days[w]].sort((a, b) =>
-          a.open_time.localeCompare(b.open_time),
-        )[0];
-        return {
-          business_id: biz.id,
-          weekday: w,
-          open_time: first?.open_time ?? null,
-          close_time: first?.close_time ?? null,
-          closed: !first,
-        };
+      await saveOpeningHours({
+        data: {
+          businessId: biz.id,
+          periods: days.flatMap((periods, weekday) =>
+            periods.map((period) => ({
+              weekday,
+              open_time: period.open_time,
+              close_time: period.close_time,
+            })),
+          ),
+        },
+        headers: await getServerFnAuthHeaders(),
       });
-      await supabase
-        .from("business_hours")
-        .upsert(legacy, { onConflict: "business_id,weekday" });
 
       toast.success("Hours saved");
       qc.invalidateQueries({ queryKey: ["business-hour-periods"] });
       qc.invalidateQueries({ queryKey: ["business-hours"] });
+      qc.invalidateQueries({ queryKey: ["settings-hours-summary", biz.id] });
       qc.invalidateQueries({ queryKey: ["slots-day"] });
     } catch (e: any) {
       toast.error(e.message ?? "Could not save");
@@ -1548,6 +1724,7 @@ function HoursEditor({ biz }: { biz: any }) {
     }
   };
 
+  if (isError) return <SettingsLoadError retry={refetch} />;
   if (isLoading)
     return (
       <div className="space-y-2">
@@ -1645,7 +1822,12 @@ function HoursEditor({ biz }: { biz: any }) {
 
 function HolidayClosures({ businessId }: { businessId: string }) {
   const qc = useQueryClient();
-  const { data: rows } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["holiday-closures", businessId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1657,34 +1839,54 @@ function HolidayClosures({ businessId }: { businessId: string }) {
       return data ?? [];
     },
   });
+  const [pending, setPending] = useState(false);
   const [draft, setDraft] = useState({ label: "", starts_on: "", ends_on: "" });
 
   const add = async () => {
-    if (!draft.label || !draft.starts_on || !draft.ends_on)
+    if (!draft.label.trim() || !draft.starts_on || !draft.ends_on)
       return toast.error("Fill all fields");
     if (draft.starts_on > draft.ends_on)
       return toast.error("End date must be on or after the start date");
-    const { error } = await supabase
-      .from("holiday_closures")
-      .insert({ business_id: businessId, ...draft });
-    if (error)
-      return toast.error(
-        "Could not add this closure. Check the dates and try again.",
-      );
-    setDraft({ label: "", starts_on: "", ends_on: "" });
-    qc.invalidateQueries({ queryKey: ["holiday-closures"] });
+    setPending(true);
+    try {
+      const { error } = await supabase.from("holiday_closures").insert({
+        business_id: businessId,
+        ...draft,
+        label: draft.label.trim(),
+      });
+      if (error) throw error;
+      setDraft({ label: "", starts_on: "", ends_on: "" });
+      await qc.invalidateQueries({
+        queryKey: ["holiday-closures", businessId],
+      });
+      toast.success("Closure added");
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not add closure");
+    } finally {
+      setPending(false);
+    }
   };
   const remove = async (id: string) => {
-    const { error } = await supabase
-      .from("holiday_closures")
-      .delete()
-      .eq("id", id);
-    if (error)
-      return toast.error(
-        "Could not remove this closure. It has not been removed; try again.",
-      );
-    qc.invalidateQueries({ queryKey: ["holiday-closures"] });
+    setPending(true);
+    try {
+      const { error } = await supabase
+        .from("holiday_closures")
+        .delete()
+        .eq("id", id)
+        .eq("business_id", businessId);
+      if (error) throw error;
+      await qc.invalidateQueries({
+        queryKey: ["holiday-closures", businessId],
+      });
+      toast.success("Closure removed");
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not remove closure");
+    } finally {
+      setPending(false);
+    }
   };
+  if (isLoading) return <Skeleton className="h-32" />;
+  if (isError) return <SettingsLoadError retry={refetch} />;
 
   return (
     <div className="rounded-xl border bg-background p-4">
@@ -1710,6 +1912,7 @@ function HolidayClosures({ businessId }: { businessId: string }) {
               variant="ghost"
               size="sm"
               onClick={() => remove(r.id)}
+              disabled={pending}
               className="h-7 text-xs text-muted-foreground hover:text-destructive"
             >
               Remove
@@ -1717,8 +1920,9 @@ function HolidayClosures({ businessId }: { businessId: string }) {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-[1fr_140px_140px_auto] gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_140px_140px_auto] gap-2">
         <Input
+          aria-label="Closure reason"
           placeholder="Reason (e.g. Christmas)"
           value={draft.label}
           onChange={(e) => setDraft({ ...draft, label: e.target.value })}
@@ -1726,20 +1930,36 @@ function HolidayClosures({ businessId }: { businessId: string }) {
         />
         <Input
           type="date"
+          aria-label="Closure start date"
           value={draft.starts_on}
           onChange={(e) => setDraft({ ...draft, starts_on: e.target.value })}
           className="h-9 tabular-nums"
         />
         <Input
           type="date"
+          aria-label="Closure end date"
           value={draft.ends_on}
           onChange={(e) => setDraft({ ...draft, ends_on: e.target.value })}
           className="h-9 tabular-nums"
         />
-        <Button variant="outline" size="sm" onClick={add}>
+        <Button variant="outline" size="sm" onClick={add} disabled={pending}>
           Add
         </Button>
       </div>
+    </div>
+  );
+}
+
+function SettingsLoadError({ retry }: { retry: () => unknown }) {
+  return (
+    <div role="alert" className="rounded-xl border p-5">
+      <p className="text-sm">
+        These settings could not be loaded. Please try again before making
+        changes.
+      </p>
+      <Button variant="outline" className="mt-3" onClick={() => retry()}>
+        Try again
+      </Button>
     </div>
   );
 }

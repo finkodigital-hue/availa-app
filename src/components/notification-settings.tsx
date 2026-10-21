@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Delivery rows come from a server-only table deliberately excluded from browser database types. */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,7 @@ const OPTIONS = [
 ] as const;
 
 export function NotificationSettings({ businessId }: { businessId: string }) {
+  const [saving, setSaving] = useState(false);
   const qc = useQueryClient();
   const { data: business } = useMyBusiness();
   const studio = business?.plan === "studio";
@@ -84,7 +86,8 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
   });
   const preferences = query.data?.preferences;
   const change = async (key: string, checked: boolean) => {
-    if (!preferences) return;
+    if (!preferences || saving) return;
+    setSaving(true);
     const next = { ...preferences, [key]: checked };
     qc.setQueryData(["notification-settings", businessId], {
       ...query.data,
@@ -92,11 +95,33 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
     });
     try {
       await save({ data: next, headers: await getServerFnAuthHeaders() });
+      toast.success("Notification preference saved");
     } catch (error: any) {
       toast.error(error.message ?? "Could not save notification preferences.");
-      query.refetch();
+      await query.refetch();
+    } finally {
+      setSaving(false);
     }
   };
+  if (query.isLoading)
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Loading notification settings…
+      </p>
+    );
+  if (query.isError)
+    return (
+      <div role="alert">
+        <p className="text-sm">Notification settings could not be loaded.</p>
+        <Button
+          variant="outline"
+          className="mt-3"
+          onClick={() => query.refetch()}
+        >
+          Try again
+        </Button>
+      </div>
+    );
   return (
     <div className="space-y-6">
       <div>
@@ -132,7 +157,9 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
                     (key !== "customer_booking_reminder_sms" &&
                       key !== "customer_rebooking_email"))
               }
-              disabled={!preferences || (STUDIO_MESSAGES.has(key) && !studio)}
+              disabled={
+                !preferences || saving || (STUDIO_MESSAGES.has(key) && !studio)
+              }
               onCheckedChange={(checked) => change(key, checked)}
               aria-label={title}
             />
@@ -141,7 +168,9 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
       </div>
       <div>
         <h3 className="text-sm font-semibold">Message delivery</h3>
-        <p className="mt-1 text-xs text-muted-foreground">Messages needing review appear first, followed by recent activity.</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Messages needing review appear first, followed by recent activity.
+        </p>
         <div className="mt-2 divide-y rounded-2xl border bg-card">
           {(query.data?.deliveries ?? []).slice(0, 20).map((item: any) => (
             <div
@@ -155,8 +184,16 @@ export function NotificationSettings({ businessId }: { businessId: string }) {
                   {item.recipient_masked} ·{" "}
                   {new Date(item.created_at).toLocaleString()}
                 </div>
-                {item.manual_review && <p className="mt-1 text-xs text-destructive">Delivery needs review. Contact support before sending again.</p>}
-                {!item.manual_review && item.next_attempt_at && <p className="mt-1 text-xs text-muted-foreground">A retry is scheduled.</p>}
+                {item.manual_review && (
+                  <p className="mt-1 text-xs text-destructive">
+                    Delivery needs review. Contact support before sending again.
+                  </p>
+                )}
+                {!item.manual_review && item.next_attempt_at && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    A retry is scheduled.
+                  </p>
+                )}
               </div>
               <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs capitalize">
                 {item.manual_review ? "Needs review" : item.status}
