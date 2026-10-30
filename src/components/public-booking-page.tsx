@@ -1778,6 +1778,7 @@ export function PublicBookingPage({
               </Label>
               <Input
                 id={`${domId}-customer-name`}
+                autoComplete="name"
                 value={info.name}
                 onChange={(e) => {
                   setInfoTouched(true);
@@ -1799,6 +1800,15 @@ export function PublicBookingPage({
                 <Input
                   id={`${domId}-customer-email`}
                   type="email"
+                  autoComplete="email"
+                  aria-invalid={
+                    info.email.length > 0 && !isValidEmail(info.email)
+                  }
+                  aria-describedby={
+                    info.email.length > 0 && !isValidEmail(info.email)
+                      ? `${domId}-customer-email-error`
+                      : undefined
+                  }
                   value={info.email}
                   onChange={(e) => {
                     setInfoTouched(true);
@@ -1808,7 +1818,11 @@ export function PublicBookingPage({
                   placeholder="you@email.com"
                 />
                 {info.email.length > 0 && !isValidEmail(info.email) && (
-                  <p className="mt-1 text-xs text-destructive">
+                  <p
+                    id={`${domId}-customer-email-error`}
+                    role="status"
+                    className="mt-1 text-xs text-destructive"
+                  >
                     Please enter a valid email address.
                   </p>
                 )}
@@ -1823,6 +1837,14 @@ export function PublicBookingPage({
                 <Input
                   id={`${domId}-customer-phone`}
                   type="tel"
+                  aria-invalid={
+                    info.phone.length > 0 && !isValidPhone(info.phone)
+                  }
+                  aria-describedby={
+                    info.phone.length > 0 && !isValidPhone(info.phone)
+                      ? `${domId}-customer-phone-error`
+                      : undefined
+                  }
                   value={info.phone}
                   onChange={(e) => {
                     setInfoTouched(true);
@@ -1834,7 +1856,11 @@ export function PublicBookingPage({
                   autoComplete="tel"
                 />
                 {info.phone.length > 0 && !isValidPhone(info.phone) && (
-                  <p className="mt-1 text-xs text-destructive">
+                  <p
+                    id={`${domId}-customer-phone-error`}
+                    role="status"
+                    className="mt-1 text-xs text-destructive"
+                  >
                     Please enter a valid phone number (7–15 digits).
                   </p>
                 )}
