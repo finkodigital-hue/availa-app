@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ interface CookieConsentCtx {
   rejectNonEssential: () => void;
   openPreferences: () => void;
   closePreferences: () => void;
+  restorePreferencesFocus: () => void;
 }
 
 const Ctx = createContext<CookieConsentCtx | null>(null);
@@ -41,6 +42,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
   const [consent, setConsent] = useState<ConsentChoice | null>(null);
   const [ready, setReady] = useState(false);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const preferencesTrigger = useRef<HTMLElement | null>(null);
 
   // Read on mount only — localStorage isn't available during SSR, and
   // starting from `ready: false` keeps the client's first render matching
@@ -75,8 +77,18 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
         preferencesOpen,
         acceptAll,
         rejectNonEssential,
-        openPreferences: () => setPreferencesOpen(true),
+        openPreferences: () => {
+          preferencesTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          setPreferencesOpen(true);
+        },
         closePreferences: () => setPreferencesOpen(false),
+        restorePreferencesFocus: () => {
+          // Accepting a choice removes the banner, so its trigger may be gone.
+          const target = preferencesTrigger.current?.isConnected
+            ? preferencesTrigger.current
+            : document.querySelector<HTMLElement>("[data-cookie-settings]");
+          target?.focus();
+        },
       }}
     >
       {children}
@@ -100,6 +112,7 @@ export function CookieSettingsFooterLink({ className }: { className?: string }) 
   return (
     <button
       type="button"
+      data-cookie-settings
       onClick={openPreferences}
       className={cn("hover:text-foreground underline-offset-4 hover:underline transition-colors cursor-pointer", className)}
     >
@@ -151,11 +164,14 @@ export function CookieConsentBanner() {
 }
 
 function CookiePreferencesDialog() {
-  const { preferencesOpen, closePreferences, acceptAll, rejectNonEssential } = useCookieConsentCtx();
+  const { preferencesOpen, closePreferences, restorePreferencesFocus, acceptAll, rejectNonEssential } = useCookieConsentCtx();
 
   return (
     <Dialog open={preferencesOpen} onOpenChange={(open) => { if (!open) closePreferences(); }}>
-      <DialogContent className="max-w-md rounded-2xl">
+      <DialogContent className="max-w-md rounded-2xl" onCloseAutoFocus={(event) => {
+        event.preventDefault();
+        restorePreferencesFocus();
+      }}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Cookie preferences</DialogTitle>
           <DialogDescription>
