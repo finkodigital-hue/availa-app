@@ -15,7 +15,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      # Match Cloudflare automatic dependency installation.
+      - run: npx --yes npm@10.9.2 ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:balance-checkout-ui
       - run: npm run build
