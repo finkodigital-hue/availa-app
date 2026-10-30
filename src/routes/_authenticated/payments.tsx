@@ -27,6 +27,7 @@ import {
 import { fmtMoney as formatMoney } from "@/lib/format";
 import { refundBooking } from "@/lib/stripe-connect.functions";
 import { displayedBookingCollection } from "@/lib/report-values";
+import { invalidatePaymentViews } from "@/lib/payment-cache";
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { BookingBalanceCheckout } from "@/components/booking-balance-checkout";
 import { DailyTakings } from "@/components/daily-takings";
@@ -236,9 +237,7 @@ function BookingPayments() {
         data: { bookingId: selected.id },
         headers,
       });
-      qc.invalidateQueries({ queryKey: ["payments", bid] });
-      qc.invalidateQueries({ queryKey: ["payments-totals", bid] });
-      qc.invalidateQueries({ queryKey: ["booking-payment-history", bid] });
+      await invalidatePaymentViews(qc);
       if (results.every((r) => r.ok)) {
         toast.success(
           `Refund submitted for ${fmtMoney(results.reduce((a, r) => a + r.amountCents, 0))}.`,
