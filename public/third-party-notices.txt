@@ -2,7 +2,7 @@ BOOKZENVO THIRD-PARTY SOFTWARE NOTICES
 
 This file records licence information shipped with production dependencies.
 The original authors retain all rights granted or reserved by their licences.
-package-lock.json SHA-256: 79ca976facc37fea14462c24154e6a7539bbd30b5dbab16df97f5ae39765eb69
+package-lock.json SHA-256: 5710de9bcb8ee9d418577fe2323020af01c47b53d15a4eaeeea885fe3d44e6ba
 Package/version records: 298
 
 ================================================================================
