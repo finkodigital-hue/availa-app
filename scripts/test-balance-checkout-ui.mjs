@@ -37,6 +37,7 @@ const server = await createServer({
     alias: [
       { find: "@/components", replacement: resolve("src/components") },
       { find: "@/lib/utils", replacement: resolve("src/lib/utils") },
+      { find: "@/lib/payment-cache", replacement: resolve("src/lib/payment-cache.ts") },
     ],
   },
   server: {
