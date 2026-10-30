@@ -17,6 +17,7 @@ import { useWorkspaceAccess } from "@/lib/business";
 import { recordCashPayment } from "@/lib/cash-payment.functions";
 import { fmtMoney } from "@/lib/format";
 import { useQueryClient } from "@tanstack/react-query";
+import { invalidatePaymentViews } from "@/lib/payment-cache";
 import {
   cancelTerminalPayment,
   createTestTerminalReader,
@@ -98,7 +99,13 @@ export function BookingBalanceCheckout({
       );
       setAttemptId(null);
       terminalRequest.current = null;
-      void refresh();
+      void refresh().catch((error) => {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not refresh the payment. Check again.",
+        );
+      });
     } else if (result.state === "failed") {
       setTerminalMessage(
         result.message || "The card was not accepted. Try again.",
@@ -233,18 +240,8 @@ export function BookingBalanceCheckout({
       setCashConfirming(false);
       setCheckoutUrl(null);
       setMessage("Cash payment recorded. This visit is paid.");
-      for (const key of [
-        "payments",
-        "payments-totals",
-        "booking-payment-history",
-        "calendar",
-        "bookings-list",
-        "dashboard-overview",
-        "report-bookings",
-      ]) {
-        void qc.invalidateQueries({ queryKey: [key] });
-      }
       onUpdated(booking);
+      await invalidatePaymentViews(qc);
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -266,6 +263,7 @@ export function BookingBalanceCheckout({
       .single();
     if (error) throw error;
     onUpdated(data);
+    await invalidatePaymentViews(qc);
     setMessage(
       data.payment_status === "paid"
         ? "Payment confirmed. You can now book the next visit."
