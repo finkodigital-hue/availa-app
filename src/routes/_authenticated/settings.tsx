@@ -1283,6 +1283,8 @@ function ChairRentalsEditor({
       const { data, error } = await supabase.from("salon_professionals").update({ permissions: next }).eq("id", link.id).select("id").maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("This professional link is no longer available.");
+      qc.removeQueries({ queryKey: ["shared-calendar"] });
+      qc.invalidateQueries({ queryKey: ["calendar-linked-pros"] });
       toast.success("Saved");
     } catch (error) {
       toast.error((error as Error).message);

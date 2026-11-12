@@ -14,6 +14,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
+import { sharedCalendarKey, visibleSharedCalendar } from "@/lib/shared-calendar";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -125,7 +126,7 @@ function CalendarPage() {
   // Load business IDs whose staff/bookings should appear on this salon's
   // shared calendar: the salon itself + every actively linked independent
   // professional whose permissions allow calendar visibility.
-  const { data: linkedPros } = useQuery({
+  const { data: linkedPros, error: linkedProsError } = useQuery({
     queryKey: ["calendar-linked-pros", bid],
     enabled: !!bid,
     queryFn: async () => {
@@ -158,7 +159,7 @@ function CalendarPage() {
   );
 
   const { data: sharedCalendar, error: sharedCalendarError } = useQuery({
-    queryKey: ["shared-calendar", bid, range.start.toISOString(), range.end.toISOString()],
+    queryKey: sharedCalendarKey(bid, linkedProBusinessIds, range.start.toISOString(), range.end.toISOString()),
     enabled: !!bid && biz?.plan === "studio" && linkedProBusinessIds.length > 0,
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("get_linked_professional_busy_times", {
@@ -168,6 +169,19 @@ function CalendarPage() {
       return data as { staff: any[]; busy: any[] };
     },
   });
+
+  // Disabling a query does not remove its cached result. Hide withdrawn links
+  // immediately and discard older membership snapshots so they cannot reappear.
+  const visibleShared = useMemo(() => visibleSharedCalendar(
+    sharedCalendar, linkedProBusinessIds,
+    biz?.plan === "studio" && !sharedCalendarError && !linkedProsError,
+  ), [sharedCalendar, linkedProBusinessIds, biz?.plan, sharedCalendarError, linkedProsError]);
+  const sharedMembershipKey = sharedCalendarKey(bid, linkedProBusinessIds, "", "")[2];
+  useEffect(() => {
+    qc.removeQueries({ predicate: (query) => query.queryKey[0] === "shared-calendar"
+      && query.queryKey[1] === bid
+      && (biz?.plan !== "studio" || query.queryKey[2] !== sharedMembershipKey) });
+  }, [qc, bid, biz?.plan, sharedMembershipKey]);
 
   const { data: ownStaff } = useQuery({
     queryKey: ["calendar-staff", bid, linkedBizKey],
@@ -190,8 +204,8 @@ function CalendarPage() {
 
   const staff = useMemo(() => [
     ...(ownStaff ?? []),
-    ...(biz?.plan === "studio" ? sharedCalendar?.staff ?? [] : []).map(s => ({...s, is_independent: true, _readOnly: true, chair_label: chairLabelByBizId.get(s.business_id) ?? null})),
-  ], [ownStaff, sharedCalendar, chairLabelByBizId, biz?.plan]);
+    ...visibleShared.staff.map(s => ({...s, is_independent: true, _readOnly: true, chair_label: chairLabelByBizId.get(s.business_id) ?? null})),
+  ], [ownStaff, visibleShared, chairLabelByBizId]);
   const { data: ownBookings, isLoading } = useQuery({
     queryKey: calendarQueryKey,
     enabled: !!bid && linkedPros !== undefined,
@@ -210,11 +224,11 @@ function CalendarPage() {
 
   const bookings = useMemo(() => [
     ...(ownBookings ?? []),
-    ...(biz?.plan === "studio" ? sharedCalendar?.busy ?? [] : []).filter(b => b.kind === "booking").map(b => ({
+    ...visibleShared.busy.filter(b => b.kind === "booking").map(b => ({
       ...b, _readOnly: true, customer_name: "Reserved", status: "confirmed", services: null,
       staff: staff.find(s => s.id === b.staff_id),
     })),
-  ], [ownBookings, sharedCalendar, staff, biz?.plan]);
+  ], [ownBookings, visibleShared, staff]);
   const { data: ownBlocked } = useQuery({
     queryKey: ["calendar-blocked", bid, linkedBizKey, range.start.toISOString(), range.end.toISOString()],
     enabled: !!bid && linkedPros !== undefined,
@@ -230,7 +244,7 @@ function CalendarPage() {
     },
   });
 
-  const blocked = useMemo(() => [...(ownBlocked ?? []), ...(sharedCalendar?.busy ?? []).filter(b => b.kind === "block").map(b => ({...b, reason: "Unavailable"}))], [ownBlocked, sharedCalendar, biz?.plan]);
+  const blocked = useMemo(() => [...(ownBlocked ?? []), ...visibleShared.busy.filter(b => b.kind === "block").map(b => ({...b, reason: "Unavailable"}))], [ownBlocked, visibleShared]);
   const selectBooking = (booking: any) => {
     if (booking._readOnly) { toast.info("This professional shares busy times only. Manage their bookings in their own workspace."); return; }
     setSelected(booking);
@@ -652,7 +666,7 @@ function CalendarPage() {
       )}
 
       {biz?.plan === "studio" && linkedProBusinessIds.length > 0 && <p className="px-3 text-sm text-muted-foreground">Independent professionals share busy times only. Create and change their bookings in their own workspace.</p>}
-        {sharedCalendarError && <p role="alert" className="px-3 text-sm text-destructive">Shared availability could not load. Do not assume these professionals are free.</p>}
+        {(sharedCalendarError || linkedProsError) && <p role="alert" className="px-3 text-sm text-destructive">Shared availability could not load. Do not assume these professionals are free.</p>}
       {!calendarIsExpanded && view === "day" && (
         <TodayStrip bookings={ownBookings ?? []} staff={ownStaff ?? []} date={anchor} />
       )}

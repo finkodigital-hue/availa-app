@@ -125,6 +125,8 @@ function ProfessionalsPage() {
     if (error || !data) return toast.error("Could not unlink this professional. The link is still in place; try again.");
     toast.success("Professional unlinked");
     qc.invalidateQueries({ queryKey: ["salon-professionals", biz?.id] });
+    qc.removeQueries({ queryKey: ["shared-calendar", biz?.id] });
+    qc.invalidateQueries({ queryKey: ["calendar-linked-pros", biz?.id] });
   };
 
   const isLoading = linksLoading || invLoading;
