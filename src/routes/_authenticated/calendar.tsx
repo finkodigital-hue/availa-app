@@ -15,6 +15,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { sharedCalendarKey, visibleSharedCalendar } from "@/lib/shared-calendar";
+import { restoreCalendarDialogFocus } from "@/lib/calendar-dialog-focus";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +83,7 @@ function CalendarPage() {
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockPrefill, setBlockPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const bookingTriggerRef = useRef<HTMLElement | null>(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const calendarIsExpanded = isFocusMode;
 
@@ -245,8 +247,9 @@ function CalendarPage() {
   });
 
   const blocked = useMemo(() => [...(ownBlocked ?? []), ...visibleShared.busy.filter(b => b.kind === "block").map(b => ({...b, reason: "Unavailable"}))], [ownBlocked, visibleShared]);
-  const selectBooking = (booking: any) => {
+  const selectBooking = (booking: any, trigger?: HTMLElement) => {
     if (booking._readOnly) { toast.info("This professional shares busy times only. Manage their bookings in their own workspace."); return; }
+    bookingTriggerRef.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     setSelected(booking);
   };
 
@@ -625,6 +628,7 @@ function CalendarPage() {
     <HoursContext.Provider value={hoursWindow}>
     <div
       ref={calendarRef}
+      tabIndex={-1}
       data-calendar-page
       data-calendar-expanded={calendarIsExpanded ? "true" : "false"}
       data-calendar-view={view}
@@ -668,7 +672,7 @@ function CalendarPage() {
       {biz?.plan === "studio" && linkedProBusinessIds.length > 0 && <p className="px-3 text-sm text-muted-foreground">Independent professionals share busy times only. Create and change their bookings in their own workspace.</p>}
         {(sharedCalendarError || linkedProsError) && <p role="alert" className="px-3 text-sm text-destructive">Shared availability could not load. Do not assume these professionals are free.</p>}
       {!calendarIsExpanded && view === "day" && (
-        <TodayStrip bookings={ownBookings ?? []} staff={ownStaff ?? []} date={anchor} />
+        <TodayStrip bookings={ownBookings ?? []} staff={ownStaff ?? []} date={anchor} currency={biz?.currency ?? "GBP"} />
       )}
 
       <CalendarToolbar
@@ -741,6 +745,7 @@ function CalendarPage() {
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent
           className="sm:max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto"
+          onCloseAutoFocus={(event) => restoreCalendarDialogFocus(event, bookingTriggerRef.current, calendarRef.current, newOpen)}
           onOpenAutoFocus={(event) => {
             // Start at the appointment heading, rather than scrolling down
             // to the first status/payment control when the dialog opens.

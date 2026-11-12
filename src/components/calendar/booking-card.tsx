@@ -25,7 +25,7 @@ type BookingCardProps = {
   date: Date;
   staffId?: string;
   slot: LayoutSlot | undefined;
-  onSelect: (b: any) => void;
+  onSelect: (b: any, trigger?: HTMLElement) => void;
   drag?: DragState | null;
   onDragStart?: (b: any, mode: DragMode, staffId: string, top: number, height: number, clientY: number) => void;
   onDragMove?: (e: React.PointerEvent) => void;
@@ -153,7 +153,7 @@ export function BookingCard({
             draggedRef.current = false;
             return;
           }
-          onSelect(b);
+          onSelect(b, ev.currentTarget);
         }}
         className={`group absolute rounded-2xl text-left overflow-hidden shadow-soft hover:shadow-elegant hover:-translate-y-0.5 active:scale-[0.99] transition-[left,width] duration-150 ${
           interactive ? "drag-lift touch-none" : "cursor-pointer"
@@ -283,7 +283,7 @@ export function OverflowChip({
   group: OverflowGroup;
   date: Date;
   bookings: any[];
-  onSelect: (b: any) => void;
+  onSelect: (b: any, trigger?: HTMLElement) => void;
 }) {
   const { START_HOUR } = useHours();
   const dayStart = new Date(date);
@@ -323,7 +323,7 @@ export function OverflowChip({
               <button
                 key={b.id}
                 type="button"
-                onClick={() => onSelect(b)}
+                onClick={(ev) => onSelect(b, ev.currentTarget)}
                 className="w-full flex items-center gap-2 rounded-xl px-2 py-1.5 text-left text-xs hover:bg-secondary/60 transition-colors"
               >
                 <span className="h-2 w-2 rounded-full shrink-0" style={{ background: colors.border }} />
@@ -340,13 +340,13 @@ export function OverflowChip({
 
 /* ===== BookingChip — Month view's compact flow-list entry ===== */
 
-export function BookingChip({ b, onSelect }: { b: any; onSelect: (b: any) => void }) {
+export function BookingChip({ b, onSelect }: { b: any; onSelect: (b: any, trigger?: HTMLElement) => void }) {
   const colors = bookingColors(b);
   return (
     <button
       onClick={(ev) => {
         ev.stopPropagation();
-        onSelect(b);
+        onSelect(b, ev.currentTarget);
       }}
       className="w-full flex items-center gap-1 text-left text-[10px] px-1.5 py-0.5 rounded-lg truncate transition-transform hover:translate-x-0.5"
       style={{
