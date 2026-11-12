@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import ts from 'typescript';
+import { createRequire } from 'node:module';
+const ts = createRequire(new URL('../mobile/package.json', import.meta.url))('typescript');
 
 const source = fs.readFileSync(new URL('../mobile/src/lib/secure-session-store.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;

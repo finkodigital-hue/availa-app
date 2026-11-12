@@ -10,7 +10,7 @@ type AuthClient = {
  * a late verification cannot undo an explicit sign-out. No JWT claim is trusted
  * as identity, and adoption never manufactures a new authentication timestamp.
  */
-export function createNativeSessionBridge(client: AuthClient, userId: string) {
+export function createNativeSessionBridge(client: AuthClient, userId: string, currentAccessToken: () => string | undefined = () => undefined) {
   let queue: Promise<unknown> = Promise.resolve();
   let closed = false;
   let revision = 0;
@@ -31,6 +31,16 @@ export function createNativeSessionBridge(client: AuthClient, userId: string) {
         if (closed || current !== revision || adoptedAccessToken === accessToken) return false;
         const verified = await client.getUser(accessToken);
         if (closed || current !== revision || verified.error || verified.data.user?.id !== userId) return false;
+        // This comparison only prevents replacing an existing SDK session with
+        // an older/lower-assurance copy. Identity was verified above.
+        const claims = (token: string | undefined) => {
+          try { return JSON.parse(atob((token ?? '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); }
+          catch { return {}; }
+        };
+        const existing = claims(currentAccessToken());
+        const incoming = claims(accessToken);
+        if (existing.exp > Date.now() / 1000 &&
+            (existing.iat > incoming.iat || (existing.aal === 'aal2' && incoming.aal !== 'aal2'))) return false;
         const result = await client.setSession({ access_token: accessToken, refresh_token: refreshToken });
         if (result.error || !result.data.session) return false;
         if (result.data.session.user.id !== userId) {

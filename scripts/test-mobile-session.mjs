@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import ts from 'typescript';
+import { createRequire } from 'node:module';
+const ts = createRequire(new URL('../mobile/package.json', import.meta.url))('typescript');
 import { createNativeSessionBridge } from '../mobile/src/lib/native-session-bridge.ts';
 
 const source = fs.readFileSync(new URL('../mobile/src/lib/workspace-session.ts', import.meta.url), 'utf8');
@@ -148,3 +149,7 @@ await Promise.all([write,finalSignOut]);
 assert.equal(nativeToken,null,'Sign-out is serialized after an in-flight credential write');
 assert.equal(nativeWrites.at(-1),'signout');
 console.log('Mobile MFA/refresh handover, provider identity verification and late-writer sign-out regressions passed.');
+const protectedBridge = createNativeSessionBridge(client, 'owner', () => mfa.access_token);
+const beforeDowngrade = nativeWrites.length;
+assert.equal(await protectedBridge.adopt(basic.access_token, basic.refresh_token), false);
+assert.equal(nativeWrites.length, beforeDowngrade, 'A delayed web AAL1 message cannot downgrade native MFA');

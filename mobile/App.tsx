@@ -36,6 +36,7 @@ import { DMSans_700Bold } from "@expo-google-fonts/dm-sans/700Bold";
 import { isSupabaseConfigured, supabase } from "./src/lib/supabase";
 import { WORKSPACE_AUTH_STORAGE_KEY, workspaceSessionScript, workspaceSignOutScript, recoverySessionFromDeepLink } from "./src/lib/workspace-session";
 import { createNativeSessionBridge } from "./src/lib/native-session-bridge";
+import { cleanWorkspaceExports, shareWorkspaceExport } from "./src/lib/workspace-export";
 
 type Tab = "Today" | "Calendar" | "Bookings" | "More";
 type Screen = Tab | "Clients" | "Staff" | "Professionals" | "Services" | "Payments" | "Settings" | "Page builder" | "Help centre" | "Reports" | "Stock" | "Assistant" | "Import data";
@@ -152,6 +153,7 @@ export default function App() {
   const [workspacePath, setWorkspacePath] = useState("/dashboard");
 
   useEffect(() => {
+    void cleanWorkspaceExports(FileSystem).catch(() => undefined);
     const client = supabase;
     if (!client) {
       setLoading(false);
@@ -208,8 +210,10 @@ export default function App() {
 }
 
 function WebWorkspace({ session, workspacePath }: { session: Session; workspacePath: string }) {
-  const nativeSessionBridge = useMemo(() => supabase ? createNativeSessionBridge(supabase.auth, session.user.id) : null, [session.user.id]);
-  const webViewRef = useRef<WebView>(null);
+  const currentNativeAccessToken = useRef(session.access_token);
+  currentNativeAccessToken.current = session.access_token;
+  const nativeSessionBridge = useMemo(() => supabase ? createNativeSessionBridge(supabase.auth, session.user.id, () => currentNativeAccessToken.current) : null, [session.user.id]);
+  const webViewRef = useRef<WebView<object>>(null);
   const appState = useRef(AppState.currentState);
   const returningFromExternalLink = useRef(false);
   const refreshingWorkspaceSession = useRef(false);
@@ -340,7 +344,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       // reliably present. Open the current report in the system browser so
       // the owner gets the standard iPhone share and Print actions.
       window.print = function () {
-        send(window.location.href);
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: "print-in-browser", url: window.location.href }));
       };
       document.addEventListener("click", function (event) {
         var target = event.target;
@@ -429,18 +433,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   };
 
   const saveWorkspaceDownload = async (filename: string, base64: string, mimeType: string) => {
-    const directory = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
-    if (!directory) throw new Error("No local file storage is available.");
-
-    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "-") || "bookzenvo-export.csv";
-    const uri = `${directory}${safeFilename}`;
-    await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
-
-    if (!(await Sharing.isAvailableAsync())) {
-      throw new Error("File sharing is not available on this device.");
-    }
-
-    await Sharing.shareAsync(uri, { mimeType, UTI: mimeType === "text/csv" ? "public.comma-separated-values-text" : undefined });
+    await shareWorkspaceExport(FileSystem, Sharing, filename, base64, mimeType);
   };
 
   const isOffline = networkState.isConnected === false || networkState.isInternetReachable === false;
@@ -462,7 +455,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   // status are immediately reflected in the app.
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      const wasAway = /inactive|background/.test(appState.current);
+      const wasAway = /inactive|background/.test(appState.current ?? "unknown");
       if (wasAway && nextState === "active" && returningFromExternalLink.current) {
         returningFromExternalLink.current = false;
         webViewRef.current?.reload();
@@ -486,6 +479,11 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     if (!isWorkspaceUrl(nativeEvent.url) || nativeEvent.data.length > 7 * 1024 * 1024) return;
     try {
       const message = JSON.parse(nativeEvent.data);
+      if (message?.type === "print-in-browser" && typeof message.url === "string" && isWorkspaceUrl(message.url)) {
+        // No tokens are passed to the browser; it uses its own normal sign-in.
+        await Linking.openURL(message.url);
+        return;
+      }
       if (message?.type === "workspace-signed-out") {
         await nativeSessionBridge?.signOut();
         return;
@@ -562,7 +560,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     <SafeAreaView style={styles.webSafeArea}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.webContainer}>
-        <WebView
+        <WebView<object>
           key={webViewKey}
           ref={webViewRef}
           source={{ uri: workspaceUrl }}
@@ -1156,7 +1154,7 @@ const styles = StyleSheet.create({
   webView: { flex: 1, backgroundColor: PALETTE.cream },
   offlineBanner: { position: "absolute", left: 16, right: 16, bottom: 18, minHeight: 44, borderRadius: 12, backgroundColor: PALETTE.ink, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: 16 },
   offlineBannerText: { color: PALETTE.white, fontFamily: "DMSans_600SemiBold", fontSize: 13 },
-  webLoading: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: PALETTE.ink },
+  webLoading: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", backgroundColor: PALETTE.ink },
   webLoadingWordmark: { color: PALETTE.white, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 31 },
   webError: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30, backgroundColor: PALETTE.cream },
   webErrorWordmark: { color: PALETTE.ink, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 31 },
