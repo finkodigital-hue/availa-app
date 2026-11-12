@@ -32,6 +32,7 @@ function BookingActionPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action, token }),
         });
+        if (!res.ok) throw new Error("Booking action could not be completed");
         const data = (await res.json()) as ActResult;
         if (cancelled) return;
         setResult(data);
