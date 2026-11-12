@@ -16,6 +16,9 @@ export const Route = createFileRoute("/api/booking-actions/reschedule-commit")({
           return new Response("Invalid request", { status: 400 });
         }
         const body = parsed.value;
+        if (!body || typeof body !== "object" || Array.isArray(body)) {
+          return new Response("Invalid request", { status: 400 });
+        }
         const { token, starts_at } = body;
         if (!token || typeof token !== "string" || !/^[0-9a-f]{64}$/i.test(token) || !starts_at || typeof starts_at !== "string" || !Number.isFinite(Date.parse(starts_at))) {
           return new Response("Invalid request", { status: 400 });

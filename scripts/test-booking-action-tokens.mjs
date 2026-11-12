@@ -155,4 +155,13 @@ await call({ action: 'cancel', token: raw }, { result: { ok: false, reason: 'win
 equal(apiState.emailIds.length, 0);
 await call({ action: 'confirm', token: raw }, { result: { ok: true, action: 'confirm', bookingId: id(4) } });
 equal(apiState.emailIds.length, 0);
+for (const route of ['reschedule-peek', 'reschedule-commit']) {
+  let source = fs.readFileSync(new URL(`../src/routes/api/booking-actions/${route}.ts`, import.meta.url), 'utf8');
+  source = source.replace(/^import[\s\S]*?from\s+"[^"]+";\s*/gm, '').replace('export const Route', 'const Route');
+  const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
+  const post = new Function('createFileRoute', 'consumePublicRequest', 'readJsonWithLimit', js + ';return Route.server.handlers.POST;')(() => value => value, async () => {}, readJsonWithLimit);
+  for (const body of [null, [], true, 'unexpected']) {
+    equal((await post({ request: new Request('https://example.invalid/test', { method: 'POST', body: JSON.stringify(body) }) })).status, 400);
+  }
+}
 console.log(`Atomic booking action tokens: ${checks} assertions passed (isolated database and actual API handler fixtures).`);

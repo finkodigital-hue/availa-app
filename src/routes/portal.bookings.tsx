@@ -512,7 +512,8 @@ function RescheduleDialog({
       // first segment. It also does the conflict check + advisory lock +
       // the update atomically, closing the race this dialog's separate
       // check-then-update calls used to leave open.
-      const { error } = await supabase.rpc("reschedule_booking", {
+      // The customer-scoped RPC preserves private base-table restrictions.
+      const { error } = await (supabase.rpc as any)("reschedule_portal_booking", {
         p_booking_id: booking.id,
         p_new_starts_at: picking,
       });
