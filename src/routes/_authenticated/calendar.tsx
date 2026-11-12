@@ -396,8 +396,10 @@ function CalendarPage() {
     qc.invalidateQueries({ queryKey: ["booking-stock-deductions", id] });
   };
 
-  const openNewBooking = (cell?: { staffId?: string; serviceId?: string; requestId?: string; customerId?: string; isoTime?: string; date?: Date }) => {
+  const openNewBooking = (cell?: { staffId?: string; serviceId?: string; requestId?: string; customerId?: string; isoTime?: string; date?: Date }, trigger?: HTMLElement) => {
     if (cell?.staffId && staff.find(s => s.id === cell.staffId)?._readOnly) { toast.info("Create this booking in the professional's own workspace."); return; }
+    bookingTriggerRef.current = trigger ?? (!cell && document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+      ? document.activeElement : null);
     setPrefill(cell);
     setNewOpen(true);
   };
@@ -661,7 +663,7 @@ function CalendarPage() {
               <Button variant="outline" onClick={() => openBlockTime()} className="h-10 px-4" data-calendar-block-time>
                 <CalendarOff className="h-4 w-4 mr-1.5" /> Block time
               </Button>
-              <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow" data-calendar-new-booking>
+              <Button onClick={(event) => openNewBooking(undefined, event.currentTarget)} className="h-10 px-4 shadow-glow" data-calendar-new-booking>
                 <Plus className="h-4 w-4 mr-1.5" /> New booking
               </Button>
             </div>
@@ -690,7 +692,7 @@ function CalendarPage() {
               <Button variant="outline" size="sm" onClick={() => openBlockTime()} className="h-9 px-3 shrink-0">
                 <CalendarOff className="h-4 w-4 mr-1.5" /> Block time
               </Button>
-              <Button size="sm" onClick={() => openNewBooking()} className="h-9 px-3 shrink-0 shadow-glow">
+              <Button size="sm" onClick={(event) => openNewBooking(undefined, event.currentTarget)} className="h-9 px-3 shrink-0 shadow-glow">
                 <Plus className="h-4 w-4 mr-1.5" /> New booking
               </Button>
             </>
@@ -901,6 +903,7 @@ function CalendarPage() {
         <NewBookingDialog
           open={newOpen}
           onOpenChange={setNewOpen}
+          onCloseAutoFocus={(event) => restoreCalendarDialogFocus(event, bookingTriggerRef.current, calendarRef.current)}
           businessId={bid}
           prefill={prefill}
           onCreated={() => qc.invalidateQueries({ queryKey: ["calendar"] })}

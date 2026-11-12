@@ -20,4 +20,5 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:balance-checkout-ui
       - run: node scripts/test-auth-session.mjs
+      - run: node scripts/test-calendar-dialog-flow.mjs
       - run: npm run build

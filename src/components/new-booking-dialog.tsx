@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Loader2,
@@ -80,12 +80,14 @@ const CUSTOM_COLORS = [
 export function NewBookingDialog({
   open,
   onOpenChange,
+  onCloseAutoFocus,
   businessId,
   prefill,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  onCloseAutoFocus?: ComponentProps<typeof DialogContent>["onCloseAutoFocus"];
   businessId: string;
   prefill?: Prefill;
   onCreated?: () => void;
@@ -467,7 +469,7 @@ export function NewBookingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-5 sm:p-6 gap-3 overflow-hidden">
+      <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="sm:max-w-2xl max-h-[90vh] flex flex-col p-5 sm:p-6 gap-3 overflow-hidden">
         <DialogHeader className="shrink-0 space-y-1">
           <DialogTitle className="font-display text-xl flex items-center gap-2">
             {isCustom ? (
