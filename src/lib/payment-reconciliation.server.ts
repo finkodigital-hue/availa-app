@@ -41,14 +41,15 @@ export async function reconcileFailedBookingPayments(dependencies?: {
     });
     if (!verified.ok) throw new Error("Could not verify booking refund status");
     const refund = await verified.json() as { status?: string };
+    const needsReview = ["failed", "canceled", "requires_action"].includes(refund.status ?? "");
     const { error: saveError } = await db.from("booking_payment_issues").update({
       refund_id: refundId,
-      manual_review: ["failed", "canceled"].includes(refund.status ?? ""),
+      manual_review: needsReview,
       ...(refund.status === "succeeded" ? { status: "refunded", resolved_at: new Date().toISOString() } : {}),
     }).eq("payment_intent_id", claim.payment_intent_id).eq("status", "refund_pending");
     if (saveError) throw saveError;
     if (refund.status === "succeeded") refunded++;
-    if (["failed", "canceled"].includes(refund.status ?? "")) {
+    if (needsReview) {
       throw new Error("Booking refund requires manual provider review");
     }
     } catch {

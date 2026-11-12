@@ -75,7 +75,11 @@ export async function runRetentionSweep(): Promise<RetentionStats> {
             messageType: "aftercare",
             idempotencyKey: `booking:${booking.id}:aftercare:v1`,
           });
-          await markBookingNotification(supabaseAdmin, booking.id, "aftercare_sent_at");
+          await markBookingNotification(
+            supabaseAdmin,
+            booking.id,
+            "aftercare_sent_at",
+          );
           stats.aftercareSent++;
         } catch (sendError) {
           stats.aftercareFailed++;
@@ -140,12 +144,28 @@ export async function runRetentionSweep(): Promise<RetentionStats> {
         const days = Number(booking.services?.rebooking_interval_days);
         const dueAt = Date.parse(booking.ends_at) + days * 86_400_000;
         if (!Number.isFinite(dueAt) || dueAt > Date.now()) continue;
-        const email = booking.customer_email || booking.customers?.email;
-        const token = consentByCustomer.get(booking.customer_id);
-        if (!email || !token) continue;
+        if (!consentByCustomer.has(booking.customer_id)) continue;
 
         processed++;
         try {
+          // Candidate selection may be stale by the time this send is reached.
+          // Re-check consent and use only the current linked customer's email,
+          // never an address copied onto a historical booking.
+          const { data: currentConsent, error: consentError } = await (
+            supabaseAdmin as any
+          )
+            .from("customer_marketing_preferences")
+            .select("unsubscribe_token,customers(email)")
+            .eq("business_id", business.id)
+            .eq("customer_id", booking.customer_id)
+            .eq("channel", "email")
+            .eq("status", "subscribed")
+            .maybeSingle();
+          if (consentError)
+            throw new Error("Current marketing consent could not be verified");
+          const email = currentConsent?.customers?.email;
+          const token = currentConsent?.unsubscribe_token;
+          if (!email || !token) continue;
           const { subject, html } = buildRebookingEmail({
             theme: parseTheme(business.page_theme),
             businessName: business.name,
@@ -163,7 +183,11 @@ export async function runRetentionSweep(): Promise<RetentionStats> {
             messageType: "rebooking_reminder",
             idempotencyKey: `booking:${booking.id}:rebooking:v1`,
           });
-          await markBookingNotification(supabaseAdmin, booking.id, "rebooking_reminder_sent_at");
+          await markBookingNotification(
+            supabaseAdmin,
+            booking.id,
+            "rebooking_reminder_sent_at",
+          );
           stats.rebookingSent++;
         } catch (sendError) {
           stats.rebookingFailed++;

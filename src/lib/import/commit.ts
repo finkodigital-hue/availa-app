@@ -676,36 +676,17 @@ export async function listImportBatches(businessId: string) {
   return data;
 }
 
-// Deletes everything tagged with this batch (bookings before staff/customers/
-// services, to respect FK ordering) and marks the batch rolled back. If other
-// data still references a row from this batch (e.g. a manually-created
-// booking against an imported customer), the delete is blocked by the
-// database — surfaced as a friendly error rather than a raw Postgres one.
+// Database transaction refuses edited rows and linked records before deleting
+// any part of an import. Older batches without fingerprints need manual review.
 export async function rollbackBatch(
   batchId: string,
   businessId: string,
 ): Promise<void> {
-  const { error: bookingsErr } = await supabase
-    .from("bookings")
-    .delete()
-    .eq("import_batch_id", batchId)
-    .eq("business_id", businessId);
-  if (bookingsErr) throw friendlyRollbackError(bookingsErr);
-
-  for (const table of ["customers", "services", "staff"] as const) {
-    const { error } = await supabase
-      .from(table)
-      .delete()
-      .eq("import_batch_id", batchId)
-      .eq("business_id", businessId);
-    if (error) throw friendlyRollbackError(error);
-  }
-
-  const { error } = await supabase
-    .from("import_batches")
-    .update({ status: "rolled_back", rolled_back_at: new Date().toISOString() })
-    .eq("id", batchId);
-  if (error) throw error;
+  const { error } = await (supabase as any).rpc("rollback_import_batch", {
+    p_batch_id: batchId,
+    p_business_id: businessId,
+  });
+  if (error) throw friendlyRollbackError(error);
 }
 
 function friendlyRollbackError(error: {

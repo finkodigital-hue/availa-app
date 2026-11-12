@@ -144,7 +144,7 @@ assert(
   gateway.includes('"email_suppressed"') &&
     gateway.includes('"sms_suppressed"') &&
     /rejectUnsafeRestWrite\([\s\S]*decodedPath/.test(gateway) &&
-    /new URL\(`\/\$\{decodedPath\}/.test(gateway),
+    gateway.includes('upstreamUrl.pathname = `/${decodedPath.split("/").map(encodeURIComponent).join("/")}`'),
   "The gateway must protect suppression switches after canonicalising encoded REST paths.",
 );
 assert(

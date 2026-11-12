@@ -18,6 +18,9 @@ export const Route = createFileRoute("/api/booking-actions/reschedule-peek")({
           return new Response("Invalid request", { status: 400 });
         }
         const body = parsed.value;
+        if (!body || typeof body !== "object" || Array.isArray(body)) {
+          return new Response("Invalid request", { status: 400 });
+        }
         const { token } = body;
         if (!token || typeof token !== "string") return new Response("Invalid request", { status: 400 });
 

@@ -1,0 +1,36 @@
+name: Mobile bundle checks
+on:
+  pull_request:
+    paths: ['mobile/**', 'scripts/test-mobile-*.mjs', '.github/workflows/mobile-checks.yml']
+  push:
+    branches: [main]
+    paths: ['mobile/**', 'scripts/test-mobile-*.mjs', '.github/workflows/mobile-checks.yml']
+permissions:
+  contents: read
+jobs:
+  mobile-bundles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npx expo-doctor
+      - run: npx tsc --noEmit
+      - run: npm audit --audit-level=moderate
+      - run: node ../scripts/test-mobile-session.mjs
+      - run: node ../scripts/test-mobile-secure-store.mjs
+      - run: node ../scripts/test-mobile-exports.mjs
+      - run: node ../scripts/test-mobile-shell.mjs
+      - run: node ../scripts/test-mobile-fingerprint.mjs
+      # Compile the native JavaScript/assets without credentials, EAS builds,
+      # store submission or connecting to a production account.
+      - run: npx expo export --platform ios --max-workers 2 --output-dir ../mobile-check-ios
+      - run: npx expo export --platform android --max-workers 2 --output-dir ../mobile-check-android

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { consumeBookingActionToken } from "@/lib/booking-tokens.server";
+import { sha256Hex } from "@/lib/booking-tokens.server";
 import { readJsonWithLimit } from "@/lib/request-limits";
 import { processBookingChangeEmails } from "@/lib/booking-change-email.server";
 import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
@@ -20,87 +20,29 @@ export const Route = createFileRoute("/api/booking-actions/act")({
           return new Response("Invalid request", { status: 400 });
         }
         const body = parsed.value;
+        if (!body || typeof body !== "object" || Array.isArray(body)) {
+          return new Response("Invalid request", { status: 400 });
+        }
         const { action, token } = body;
-        if ((action !== "confirm" && action !== "cancel") || !token || typeof token !== "string") {
+        if ((action !== "confirm" && action !== "cancel") || typeof token !== "string" || !/^[0-9a-f]{64}$/i.test(token)) {
           return new Response("Invalid request", { status: 400 });
         }
 
-        const result = await consumeBookingActionToken(token, action);
-        if (!result.ok) {
-          return Response.json({ ok: false, reason: result.reason }, { status: 200 });
+        const { data: result, error } = await (supabaseAdmin as any).rpc("apply_booking_action_token", {
+          p_token_hash: await sha256Hex(token),
+          p_action: action,
+        });
+        if (error || !result) {
+          // Failed mutation leaves the token usable. Do not label a database
+          // outage as a cancellation-window rejection or claim confirmation.
+          return Response.json({ error: "Could not update the booking. Please retry." }, { status: 503 });
         }
-
-        const { data: booking } = await (supabaseAdmin as any)
-          .from("bookings")
-          .select("id, business_id, status, starts_at, price_cents, customer_name, services(name), staff(name), businesses(name, timezone, currency, address, page_theme, cancellation_window_hours, phone, email)")
-          .eq("id", result.bookingId)
-          .maybeSingle();
-
-        if (!booking) {
-          return Response.json({ ok: false, reason: "invalid" }, { status: 200 });
+        if (result.ok && action === "cancel") {
+          try { await processBookingChangeEmails(result.bookingId); }
+          catch { console.error("[cancel] Customer email queued for cron retry"); }
         }
-
-        const business = booking.businesses;
-        const shared = {
-          businessName: business?.name ?? "",
-          theme: business?.page_theme ?? null,
-          serviceName: booking.services?.name ?? "Appointment",
-          staffName: booking.staff?.name ?? "the team",
-          startsAtIso: booking.starts_at,
-          timezone: business?.timezone || "UTC",
-          priceCents: booking.price_cents ?? 0,
-          currency: business?.currency || "GBP",
-          location: business?.address ?? null,
-        };
-
-        if (booking.status === "cancelled") {
-          return Response.json({ ok: false, reason: "already_cancelled", ...shared });
-        }
-
-        if (action === "confirm") {
-          await (supabaseAdmin as any)
-            .from("bookings")
-            .update({ client_confirmed_at: new Date().toISOString() })
-            .eq("id", booking.id);
-          return Response.json({ ok: true, action: "confirm", ...shared });
-        }
-
-        // action === "cancel" — respect the business's cancellation window,
-        // same rule the logged-in portal flow already enforces (and the
-        // enforce_booking_change_window() DB trigger enforces regardless of
-        // caller, as defense in depth).
-        const windowHours = business?.cancellation_window_hours ?? 24;
-        const withinWindow = new Date(booking.starts_at).getTime() < Date.now() + windowHours * 60 * 60 * 1000;
-        if (withinWindow) {
-          return Response.json({
-            ok: false,
-            reason: "window_passed",
-            windowHours,
-            contactPhone: business?.phone ?? null,
-            contactEmail: business?.email ?? null,
-            ...shared,
-          });
-        }
-
-        const { error: cancelErr } = await (supabaseAdmin as any)
-          .from("bookings")
-          .update({ status: "cancelled" })
-          .eq("id", booking.id);
-        if (cancelErr) {
-          return Response.json({
-            ok: false,
-            reason: "window_passed",
-            windowHours,
-            contactPhone: business?.phone ?? null,
-            contactEmail: business?.email ?? null,
-            ...shared,
-          });
-        }
-
-        try { await processBookingChangeEmails(booking.id); }
-        catch { console.error("[cancel] Customer email queued for cron retry"); }
-
-        return Response.json({ ok: true, action: "cancel", ...shared });
+        const { bookingId: _bookingId, ...receipt } = result;
+        return Response.json(receipt);
       },
     },
   },

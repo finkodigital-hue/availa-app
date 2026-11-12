@@ -14,8 +14,15 @@ saved=[];
 assert.deepEqual(await reconcileFailedBookingPayments({key:'fictional',database,stripeFetch:async(url)=>Response.json(url.endsWith('/refunds')?{id:'re_failed'}:{status:'failed'})}),{checked:1,refunded:0,failed:1});
 assert.equal(saved.at(-1).status,undefined);
 assert.equal(saved.at(-1).manual_review,true);
+for (const status of ['canceled', 'requires_action']) {
+ saved=[];
+ assert.deepEqual(await reconcileFailedBookingPayments({key:'fictional',database,stripeFetch:async(url)=>Response.json(url.endsWith('/refunds')?{id:'re_review'}:{status})}),{checked:1,refunded:0,failed:1});
+ assert.equal(saved.at(-1).status,undefined);
+ assert.equal(saved.at(-1).manual_review,true);
+ assert.equal(saved.at(-1).refund_id,'re_review');
+}
 calls=[];
 database.rpc=async()=>({data:{payment_intent_id:'pi_good',business_id:'fictional',stripe_account_id:'acct_fictional',refund_id:'re_already_recorded'}});
 await reconcileFailedBookingPayments({key:'fictional',database,stripeFetch:async(url)=>{calls.push(url);return Response.json({status:'succeeded'});}});
 assert.equal(calls.length,1);assert.ok(calls[0].endsWith('/refunds/re_already_recorded'));
-console.log('10 payment recovery regression checks passed (fictional provider/database).');
+console.log('18 payment recovery regression checks passed (fictional provider/database).');

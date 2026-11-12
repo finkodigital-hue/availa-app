@@ -18,7 +18,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { Session } from "@supabase/supabase-js";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
@@ -26,18 +26,17 @@ import { useNetworkState } from "expo-network";
 import * as Sharing from "expo-sharing";
 import { useFonts } from "expo-font";
 import { WebView } from "react-native-webview";
-import {
-  CormorantGaramond_500Medium,
-  CormorantGaramond_600SemiBold,
-} from "@expo-google-fonts/cormorant-garamond";
-import {
-  DMSans_400Regular,
-  DMSans_500Medium,
-  DMSans_600SemiBold,
-  DMSans_700Bold,
-} from "@expo-google-fonts/dm-sans";
+import { CormorantGaramond_500Medium } from "@expo-google-fonts/cormorant-garamond/500Medium";
+import { CormorantGaramond_600SemiBold } from "@expo-google-fonts/cormorant-garamond/600SemiBold";
+import { DMSans_400Regular } from "@expo-google-fonts/dm-sans/400Regular";
+import { DMSans_500Medium } from "@expo-google-fonts/dm-sans/500Medium";
+import { DMSans_600SemiBold } from "@expo-google-fonts/dm-sans/600SemiBold";
+import { DMSans_700Bold } from "@expo-google-fonts/dm-sans/700Bold";
 
 import { isSupabaseConfigured, supabase } from "./src/lib/supabase";
+import { WORKSPACE_AUTH_STORAGE_KEY, workspaceSessionScript, workspaceSignOutScript, recoverySessionFromDeepLink } from "./src/lib/workspace-session";
+import { createNativeSessionBridge } from "./src/lib/native-session-bridge";
+import { cleanWorkspaceExports, shareWorkspaceExport } from "./src/lib/workspace-export";
 
 type Tab = "Today" | "Calendar" | "Bookings" | "More";
 type Screen = Tab | "Clients" | "Staff" | "Professionals" | "Services" | "Payments" | "Settings" | "Page builder" | "Help centre" | "Reports" | "Stock" | "Assistant" | "Import data";
@@ -154,6 +153,7 @@ export default function App() {
   const [workspacePath, setWorkspacePath] = useState("/dashboard");
 
   useEffect(() => {
+    void cleanWorkspaceExports(FileSystem).catch(() => undefined);
     const client = supabase;
     if (!client) {
       setLoading(false);
@@ -173,13 +173,9 @@ export default function App() {
     const receiveAppLink = async (url: string | null) => {
       if (!url) return;
 
-      if (url.includes("type=recovery")) {
-        const fragment = url.split("#")[1] ?? "";
-        const params = new URLSearchParams(fragment);
-        const accessToken = params.get("access_token");
-        const refreshToken = params.get("refresh_token");
-        if (!accessToken || !refreshToken) return;
-        const { error } = await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      const recoverySession = recoverySessionFromDeepLink(url);
+      if (recoverySession) {
+        const { error } = await client.auth.setSession(recoverySession);
         if (!error) setResettingPassword(true);
         return;
       }
@@ -207,14 +203,17 @@ export default function App() {
     // Keep the mobile app on the same workspace as the website. This gives owners
     // the complete, live dashboard (including editing, payments, stock, reports,
     // settings and help) instead of a second, partial implementation.
-    content = <WebWorkspace session={session} workspacePath={workspacePath} />;
+    content = <WebWorkspace key={session.user.id} session={session} workspacePath={workspacePath} />;
   }
 
   return <SafeAreaProvider>{content}</SafeAreaProvider>;
 }
 
 function WebWorkspace({ session, workspacePath }: { session: Session; workspacePath: string }) {
-  const webViewRef = useRef<WebView>(null);
+  const currentNativeAccessToken = useRef(session.access_token);
+  currentNativeAccessToken.current = session.access_token;
+  const nativeSessionBridge = useMemo(() => supabase ? createNativeSessionBridge(supabase.auth, session.user.id, () => currentNativeAccessToken.current) : null, [session.user.id]);
+  const webViewRef = useRef<WebView<object>>(null);
   const appState = useRef(AppState.currentState);
   const returningFromExternalLink = useRef(false);
   const refreshingWorkspaceSession = useRef(false);
@@ -224,41 +223,9 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   const networkState = useNetworkState();
   const appUrl = process.env.EXPO_PUBLIC_APP_URL || "https://bookzenvo.com";
   const workspaceUrl = new URL(workspacePath, `${appUrl.replace(/\/$/, "")}/`).toString();
-  const projectRef = (process.env.EXPO_PUBLIC_SUPABASE_URL || "").match(/^https?:\/\/([^.]+)\./)?.[1] || "";
-  const storageKey = projectRef ? `sb-${projectRef}-auth-token` : "";
-  const sessionJson = JSON.stringify(session);
-  const syncWorkspaceSession = storageKey
-    ? `
-      (function () {
-        try {
-          var key = ${JSON.stringify(storageKey)};
-          var nextValue = ${JSON.stringify(sessionJson)};
-          window.__bookzenvoNativeAccessToken = ${JSON.stringify(session.access_token)};
-          var previousValue = localStorage.getItem(key);
-          localStorage.setItem(key, nextValue);
-
-          // A WebView is a separate browser context from the native app.
-          // Notify the website's Supabase client as well as updating storage,
-          // so an in-memory browser session is refreshed immediately.
-          if (previousValue !== nextValue && typeof StorageEvent !== "undefined") {
-            window.dispatchEvent(new StorageEvent("storage", {
-              key: key,
-              oldValue: previousValue,
-              newValue: nextValue,
-              storageArea: localStorage,
-              url: window.location.href,
-            }));
-          }
-        } catch (error) {
-          // The workspace will show its normal sign-in screen if web storage is unavailable.
-        }
-      })();
-      true;
-    `
-    : "true;";
-  const injectedJavaScriptBeforeContentLoaded = storageKey
-    ? syncWorkspaceSession
-    : "true;";
+  const storageKey = WORKSPACE_AUTH_STORAGE_KEY;
+  const syncWorkspaceSession = workspaceSessionScript(session, appUrl);
+  const injectedJavaScriptBeforeContentLoaded = syncWorkspaceSession;
 
   // The website intentionally opens Stripe Checkout in a new browser tab.
   // Native WebViews do not reliably create that tab, which used to make the
@@ -266,6 +233,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   // requests to the phone's secure browser instead.
   const injectedNavigationBridge = `
     (function () {
+      if (window.location.origin !== ${JSON.stringify(new URL(appUrl).origin)}) return true;
       if (window.__bookzenvoNativeBridge) return true;
       window.__bookzenvoNativeBridge = true;
 
@@ -376,7 +344,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       // reliably present. Open the current report in the system browser so
       // the owner gets the standard iPhone share and Print actions.
       window.print = function () {
-        send(window.location.href);
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: "print-in-browser", url: window.location.href }));
       };
       document.addEventListener("click", function (event) {
         var target = event.target;
@@ -418,27 +386,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
       // The workspace owns its own browser session. When its sign-out action
       // clears that session, sign out the native Supabase client too so the
       // phone cannot silently reopen an authenticated workspace.
-      var authStorageKey = ${storageKey ? JSON.stringify(storageKey) : "null"};
-      if (authStorageKey && typeof Storage !== "undefined") {
-        var notifyNativeSignOut = function () {
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: "workspace-signed-out" }));
-          }
-        };
-        var originalRemoveItem = Storage.prototype.removeItem;
-        Storage.prototype.removeItem = function (key) {
-          var result = originalRemoveItem.apply(this, arguments);
-          if (key === authStorageKey) notifyNativeSignOut();
-          return result;
-        };
-        var originalClear = Storage.prototype.clear;
-        Storage.prototype.clear = function () {
-          var hadWorkspaceSession = Boolean(this.getItem(authStorageKey));
-          var result = originalClear.apply(this, arguments);
-          if (hadWorkspaceSession) notifyNativeSignOut();
-          return result;
-        };
-      }
+      ${workspaceSignOutScript()}
 
       return true;
     })();
@@ -485,18 +433,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   };
 
   const saveWorkspaceDownload = async (filename: string, base64: string, mimeType: string) => {
-    const directory = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
-    if (!directory) throw new Error("No local file storage is available.");
-
-    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "-") || "bookzenvo-export.csv";
-    const uri = `${directory}${safeFilename}`;
-    await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
-
-    if (!(await Sharing.isAvailableAsync())) {
-      throw new Error("File sharing is not available on this device.");
-    }
-
-    await Sharing.shareAsync(uri, { mimeType, UTI: mimeType === "text/csv" ? "public.comma-separated-values-text" : undefined });
+    await shareWorkspaceExport(FileSystem, Sharing, filename, base64, mimeType);
   };
 
   const isOffline = networkState.isConnected === false || networkState.isInternetReachable === false;
@@ -518,7 +455,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   // status are immediately reflected in the app.
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      const wasAway = /inactive|background/.test(appState.current);
+      const wasAway = /inactive|background/.test(appState.current ?? "unknown");
       if (wasAway && nextState === "active" && returningFromExternalLink.current) {
         returningFromExternalLink.current = false;
         webViewRef.current?.reload();
@@ -537,23 +474,34 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     webViewRef.current?.injectJavaScript(syncWorkspaceSession);
   }, [storageKey, syncWorkspaceSession]);
 
-  const handleWebMessage = async ({ nativeEvent }: { nativeEvent: { data: string } }) => {
+  const handleWebMessage = async ({ nativeEvent }: { nativeEvent: { data: string; url: string } }) => {
+    // Only the configured workspace can request native auth or file actions.
+    if (!isWorkspaceUrl(nativeEvent.url) || nativeEvent.data.length > 7 * 1024 * 1024) return;
     try {
       const message = JSON.parse(nativeEvent.data);
+      if (message?.type === "print-in-browser" && typeof message.url === "string" && isWorkspaceUrl(message.url)) {
+        // No tokens are passed to the browser; it uses its own normal sign-in.
+        await Linking.openURL(message.url);
+        return;
+      }
       if (message?.type === "workspace-signed-out") {
-        await supabase?.auth.signOut();
+        await nativeSessionBridge?.signOut();
+        return;
+      }
+      if (message?.type === "workspace-session-updated") {
+        await nativeSessionBridge?.adopt(message.accessToken, message.refreshToken);
         return;
       }
       if (message?.type === "workspace-auth-required") {
         const client = supabase;
-        if (!client || refreshingWorkspaceSession.current) return;
+        if (!client || refreshingWorkspaceSession.current || nativeSessionBridge?.isClosed()) return;
 
         refreshingWorkspaceSession.current = true;
         try {
           const { data, error } = await client.auth.refreshSession();
           if (error || !data.session) {
             Alert.alert("Please sign in again", "Your Bookzenvo session has expired.");
-            await client.auth.signOut();
+            await nativeSessionBridge?.signOut();
             return;
           }
 
@@ -612,7 +560,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     <SafeAreaView style={styles.webSafeArea}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.webContainer}>
-        <WebView
+        <WebView<object>
           key={webViewKey}
           ref={webViewRef}
           source={{ uri: workspaceUrl }}
@@ -1206,7 +1154,7 @@ const styles = StyleSheet.create({
   webView: { flex: 1, backgroundColor: PALETTE.cream },
   offlineBanner: { position: "absolute", left: 16, right: 16, bottom: 18, minHeight: 44, borderRadius: 12, backgroundColor: PALETTE.ink, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: 16 },
   offlineBannerText: { color: PALETTE.white, fontFamily: "DMSans_600SemiBold", fontSize: 13 },
-  webLoading: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: PALETTE.ink },
+  webLoading: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", backgroundColor: PALETTE.ink },
   webLoadingWordmark: { color: PALETTE.white, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 31 },
   webError: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30, backgroundColor: PALETTE.cream },
   webErrorWordmark: { color: PALETTE.ink, fontFamily: "CormorantGaramond_600SemiBold", fontSize: 31 },

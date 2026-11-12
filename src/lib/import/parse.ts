@@ -13,7 +13,9 @@ export function normalizeName(raw: string | null | undefined): string {
 // Fresha's exports sometimes carry a literal backslash before a leading "+"
 // (e.g. `\+447827443224`) — an escaping artifact from whatever produced the
 // CSV, not a real character in the phone number.
-export function cleanPhoneDisplay(raw: string | null | undefined): string | null {
+export function cleanPhoneDisplay(
+  raw: string | null | undefined,
+): string | null {
   if (!raw) return null;
   const s = raw.replace(/\\/g, "").replace(/\s+/g, " ").trim();
   return s || null;
@@ -29,16 +31,24 @@ export function phoneDigits(raw: string | null | undefined): string | null {
   return digits || null;
 }
 
-const DURATION_RE = /^(?:(\d+)\s*h(?:ours?|rs?)?)?\s*(?:(\d+)\s*m(?:in(?:utes?)?)?)?\s*$/;
+const DURATION_RE =
+  /^(?:(\d+)\s*h(?:ours?|rs?)?)?\s*(?:(\d+)\s*m(?:in(?:utes?)?)?)?\s*$/;
 
 // Returns `ok: false` when it had to fall back to a default so callers can
 // surface "N rows had an unreadable duration" in a preview instead of
 // silently guessing.
-export function parseDuration(raw: string | null | undefined): { minutes: number; ok: boolean } {
+export function parseDuration(raw: string | null | undefined): {
+  minutes: number;
+  ok: boolean;
+} {
   const s = (raw ?? "").trim().toLowerCase();
   if (!s) return { minutes: 60, ok: false };
   const colon = s.match(/^(\d+):(\d{1,2})$/);
-  if (colon) return { minutes: parseInt(colon[1], 10) * 60 + parseInt(colon[2], 10), ok: true };
+  if (colon)
+    return {
+      minutes: parseInt(colon[1], 10) * 60 + parseInt(colon[2], 10),
+      ok: true,
+    };
   if (/^\d+$/.test(s)) return { minutes: parseInt(s, 10), ok: true };
   const hm = s.match(DURATION_RE);
   if (hm && (hm[1] || hm[2])) {
@@ -54,7 +64,10 @@ export function parseDuration(raw: string | null | undefined): { minutes: number
   return { minutes: 60, ok: false };
 }
 
-export function parsePrice(raw: string | null | undefined): { cents: number; ok: boolean } {
+export function parsePrice(raw: string | null | undefined): {
+  cents: number;
+  ok: boolean;
+} {
   let s = (raw ?? "").trim();
   if (!s) return { cents: 0, ok: true };
   s = s.replace(/[£$€\s]/g, "");
@@ -90,20 +103,55 @@ const MONTHS: Record<string, number> = {
   dec: 11,
 };
 
+function validLocalDate(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+): Date | null {
+  if (
+    month < 0 ||
+    month > 11 ||
+    day < 1 ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  )
+    return null;
+  const value = new Date(year, month, day, hour, minute, 0, 0);
+  // Date silently normalises invalid days and non-existent local clock times.
+  return value.getFullYear() === year &&
+    value.getMonth() === month &&
+    value.getDate() === day &&
+    value.getHours() === hour &&
+    value.getMinutes() === minute
+    ? value
+    : null;
+}
+
 // Parses Fresha's "17 Dec 2026, 11:30am" style timestamps.
-export function parseFreshaDateTime(raw: string | null | undefined): Date | null {
+export function parseFreshaDateTime(
+  raw: string | null | undefined,
+): Date | null {
   if (!raw) return null;
-  const m = raw.trim().match(/^(\d{1,2})\s+(\w{3})\w*\s+(\d{4}),?\s*(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  const m = raw
+    .trim()
+    .match(
+      /^(\d{1,2})\s+(\w{3})\w*\s+(\d{4}),?\s*(\d{1,2}):(\d{2})\s*(am|pm)$/i,
+    );
   if (!m) return null;
   const month = MONTHS[m[2].slice(0, 3).toLowerCase()];
   if (month === undefined) return null;
   const day = parseInt(m[1], 10);
   const year = parseInt(m[3], 10);
-  let hour = parseInt(m[4], 10) % 12;
+  const sourceHour = parseInt(m[4], 10);
+  if (sourceHour < 1 || sourceHour > 12) return null;
+  let hour = sourceHour % 12;
   const minute = parseInt(m[5], 10);
   if (m[6].toLowerCase() === "pm") hour += 12;
-  const d = new Date(year, month, day, hour, minute, 0, 0);
-  return isNaN(d.getTime()) ? null : d;
+  return validLocalDate(year, month, day, hour, minute);
 }
 
 // Parses Fresha's "11:30:00-12:20:00" appointment-slot column (24h, exact).
@@ -111,8 +159,17 @@ export function parseSlotTimes(
   raw: string | null | undefined,
 ): { start: [number, number]; end: [number, number] } | null {
   if (!raw) return null;
-  const m = raw.trim().match(/^(\d{1,2}):(\d{2}):\d{2}\s*-\s*(\d{1,2}):(\d{2}):\d{2}$/);
+  const m = raw
+    .trim()
+    .match(/^(\d{1,2}):(\d{2}):\d{2}\s*-\s*(\d{1,2}):(\d{2}):\d{2}$/);
   if (!m) return null;
+  const components = raw.match(/\d+/g)!.map(Number);
+  if (
+    components[0] > 23 ||
+    components[3] > 23 ||
+    [1, 2, 4, 5].some((index) => components[index] > 59)
+  )
+    return null;
   return {
     start: [parseInt(m[1], 10), parseInt(m[2], 10)],
     end: [parseInt(m[3], 10), parseInt(m[4], 10)],
@@ -132,15 +189,33 @@ function atTime(base: Date, hour: number, minute: number): Date {
 // month/day — if appointment dates come in shifted after an import, that's
 // the first thing to check, and the fix is to re-export with day/month
 // reversed or unambiguous (e.g. "05 Jan 2026") if the source system allows it.
-export function parseGenericDateTime(raw: string | null | undefined): Date | null {
+export function parseGenericDateTime(
+  raw: string | null | undefined,
+): Date | null {
   if (!raw) return null;
   const s = raw.trim();
   if (!s) return null;
 
   const fresha = parseFreshaDateTime(s);
   if (fresha) return fresha;
+  // Do not let native Date re-interpret an invalid recognised named format.
+  if (/^\d{1,2}\s+[a-z]{3}\w*\s+\d{4},?\s*\d{1,2}:\d{2}\s*(am|pm)$/i.test(s))
+    return null;
 
   if (/^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?/.test(s)) {
+    const parts = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/)!;
+    const [, year, month, day, hour = "0", minute = "0"] = parts;
+    const calendar = new Date(
+      Date.UTC(Number(year), Number(month) - 1, Number(day)),
+    );
+    if (
+      calendar.getUTCFullYear() !== Number(year) ||
+      calendar.getUTCMonth() !== Number(month) - 1 ||
+      calendar.getUTCDate() !== Number(day) ||
+      Number(hour) > 23 ||
+      Number(minute) > 59
+    )
+      return null;
     const iso = new Date(s.replace(" ", "T"));
     if (!isNaN(iso.getTime())) return iso;
   }
@@ -155,11 +230,12 @@ export function parseGenericDateTime(raw: string | null | undefined): Date | nul
     const first = parseInt(a, 10);
     const second = parseInt(b, 10);
     const [month, day] = first > 12 ? [second, first] : [first, second];
-    let hour = hRaw ? parseInt(hRaw, 10) % 12 : 0;
+    const sourceHour = hRaw ? parseInt(hRaw, 10) : 0;
+    if (ampm && (sourceHour < 1 || sourceHour > 12)) return null;
+    let hour = ampm ? sourceHour % 12 : sourceHour;
     const minute = mRaw ? parseInt(mRaw, 10) : 0;
     if (ampm?.toLowerCase() === "pm") hour += 12;
-    const d = new Date(year, month - 1, day, hour, minute, 0, 0);
-    if (!isNaN(d.getTime())) return d;
+    return validLocalDate(year, month - 1, day, hour, minute);
   }
 
   if (/\d{4}/.test(s)) {
@@ -181,10 +257,9 @@ export function resolveApptTimes(
 ): { startsAt: Date; endsAt: Date } | null {
   if (!scheduled) return null;
   if (slot) {
-    return {
-      startsAt: atTime(scheduled, slot.start[0], slot.start[1]),
-      endsAt: atTime(scheduled, slot.end[0], slot.end[1]),
-    };
+    const startsAt = atTime(scheduled, slot.start[0], slot.start[1]);
+    const endsAt = atTime(scheduled, slot.end[0], slot.end[1]);
+    return endsAt > startsAt ? { startsAt, endsAt } : null;
   }
   if (explicitEnd && explicitEnd.getTime() > scheduled.getTime()) {
     return { startsAt: scheduled, endsAt: explicitEnd };

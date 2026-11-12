@@ -20,12 +20,13 @@ export async function markBookingNotification(database: any, bookingId: string,
 /** A database lease serializes sends. Email retries reuse the exact original
  * request within the provider's 24-hour idempotency window. Ambiguous SMS
  * requests require provider reconciliation instead of automatic resubmission. */
-export async function deliverNotification({ database, deliveryId, channel, payload, send }: {
+export async function deliverNotification({ database, deliveryId, channel, payload, send, expectedRecipient }: {
   database: any;
   deliveryId: string;
   channel: "email" | "sms";
   payload: Record<string, unknown>;
   send: (snapshot: any) => Promise<string>;
+  expectedRecipient?: string;
 }): Promise<string | undefined> {
   const { data: claim, error } = await database.rpc("claim_notification_delivery", {
     p_id: deliveryId, p_payload: payload,
@@ -36,6 +37,12 @@ export async function deliverNotification({ database, deliveryId, channel, paylo
   if (claim.state !== "claimed") throw new DeliveryDeferredError("Delivery is in progress or waiting to retry");
   let providerId: string;
   try {
+    if (channel === "email" && expectedRecipient !== undefined &&
+      (!Array.isArray(claim.payload?.to) || claim.payload.to.length !== 1 ||
+       typeof claim.payload.to[0] !== "string" ||
+       claim.payload.to[0].trim().toLowerCase() !== expectedRecipient.trim().toLowerCase())) {
+      throw new ProviderDeliveryError("Marketing recipient changed; review the original delivery", false);
+    }
     providerId = await send(claim.payload);
     if (!providerId) throw new Error("Provider did not return a message identifier");
   } catch (cause) {

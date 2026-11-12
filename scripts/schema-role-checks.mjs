@@ -85,6 +85,14 @@ export async function checkSchemaRoles(db) {
  const portalBookings=await rows('select * from get_portal_bookings()');
  same(portalBookings.map(x=>x.id),[id(503),id(501)],'Portal customer receives only narrow booking records');
  same(Object.hasOwn(portalBookings[0],'notes'),false,'Portal booking records exclude internal notes');
+ await fail(`select reschedule_booking('${id(501)}',date_trunc('week',now())+interval '14 days 13 hours')`,/Booking not found/);
+ await fail(`select reschedule_portal_booking('${id(502)}',date_trunc('week',now())+interval '14 days 13 hours')`,/Booking not found/);
+ await fail(`select reschedule_portal_booking('${id(501)}',null)`,/Booking not found/);
+ await fail(`select reschedule_portal_booking('${id(501)}',date_trunc('week',now())+interval '14 days 03 hours')`,/hours/);
+ await rows(`select reschedule_portal_booking('${id(501)}',date_trunc('week',now())+interval '14 days 13 hours')`);
+ same((await rows(`select extract(hour from starts_at)::int as hour from get_portal_bookings() where id='${id(501)}'`))[0].hour,13,'Portal customer reschedules through narrow RPC');
+ same(await rows('select id from bookings'),[],'Successful reschedule does not restore private base-row access');
+ await rows(`select reschedule_portal_booking('${id(501)}',date_trunc('week',now())+interval '14 days 10 hours')`);
  same(await rows('select id from customers'),[],'Portal customer cannot read whole customer rows');
  same((await rows('select * from get_portal_customer_records()')).map(x=>x.id),[id(401)],'Portal customer receives only narrow profile records');
  await db.exec('reset role');
@@ -98,8 +106,11 @@ export async function checkSchemaRoles(db) {
  await db.exec('reset role');
  await db.exec(`insert into bookings(id,business_id,service_id,staff_id,customer_id,customer_name,customer_email,starts_at,ends_at)
   values('${id(599)}','${id(101)}','${id(301)}','${id(201)}','${id(401)}','Portal cancellation fixture','fixture7@example.invalid',date_trunc('week',now())+interval '15 days 15 hours',date_trunc('week',now())+interval '15 days 15 hours 30 minutes')`);
- await login(7);await rows(`select cancel_portal_booking('${id(599)}')`);
+ await login(7);
+ await fail(`select reschedule_portal_booking('${id(501)}',date_trunc('week',now())+interval '15 days 15 hours')`,/SLOT_TAKEN/);
+ await rows(`select cancel_portal_booking('${id(599)}')`);
  same((await rows(`select status from get_portal_bookings() where id='${id(599)}'`))[0].status,'cancelled','Portal cancellation uses the narrow RPC');
+ await fail(`select reschedule_portal_booking('${id(599)}',date_trunc('week',now())+interval '14 days 13 hours')`,/Only confirmed/);
  await db.exec('reset role');await db.exec(`delete from bookings where id='${id(599)}'`);await login(7);
  same((await rows(`select update_portal_customer_profile('Updated customer','07123456789') as changed`))[0].changed,2,'Portal profile update uses the narrow RPC');
  await db.exec('reset role');
@@ -206,11 +217,13 @@ export async function checkSchemaRoles(db) {
  await fail(`select assert_no_booking_conflict('${id(201)}',now()+interval '7 days',now()+interval '7 days 1 hour',null,null,null)`,/permission denied/);
  await fail('select * from balance_checkout_attempts',/permission denied/);
  await fail(`select claim_balance_checkout('${id(101)}','${id(501)}','https://example.invalid')`,/permission denied/);
+ await fail(`select reschedule_portal_booking('${id(501)}',now()+interval '7 days')`,/permission denied/);
  await db.exec('reset role');
  await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({role:'service_role'})]);
  await db.exec(`insert into bookings(id,business_id,service_id,staff_id,customer_id,customer_name,customer_email,starts_at,ends_at)
   values('${id(504)}','${id(101)}','${id(301)}','${id(201)}','${id(401)}','Customer A','fixture7@example.invalid',now()-interval '1 hour',now()-interval '30 minutes')`);
  await login(7);await fail(`select cancel_portal_booking('${id(504)}')`,/cancellation window/);
+ await fail(`select reschedule_portal_booking('${id(504)}',date_trunc('week',now())+interval '14 days 13 hours')`,/cancellation window/);
  await login(4);
  same((await rows(`update bookings set status='completed' where id='${id(504)}' returning status`))[0].status,'completed','Reception can complete current appointment');
  same((await rows(`update bookings set status='cancelled' where id='${id(504)}' returning status`))[0].status,'cancelled','Reception can cancel on customer behalf');

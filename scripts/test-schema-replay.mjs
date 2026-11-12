@@ -1,3 +1,4 @@
+import { checkChairRent } from './schema-chair-rent-checks.mjs';
 import { checkApprovedPlans } from './schema-plan-checks.mjs';
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
@@ -14,6 +15,7 @@ import { checkDailyTakings } from './schema-daily-takings-checks.mjs';
 import { checkStaffRemoval } from './schema-staff-removal-checks.mjs';
 import { checkAppointmentImports } from './schema-import-checks.mjs';
 import { checkBetterTimeOffers } from './schema-better-time-checks.mjs';
+import { checkBookingActions } from './schema-booking-action-checks.mjs';
 
 // Replay ALL application migrations. Supabase-owned Auth/Storage objects and
 // external cron/HTTP/Vault services are local fixtures, not a full Supabase stack.
@@ -140,5 +142,7 @@ try {
  await checkAppointmentImports(db);
  await checkBetterTimeOffers(db);
  await checkApprovedPlans(db);
+ await checkBookingActions(db);
+ await checkChairRent(db);
 } catch(error) {console.error(error);process.exitCode=1;}
 finally {await db.close();}
