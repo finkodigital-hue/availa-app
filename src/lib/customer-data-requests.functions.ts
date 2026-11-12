@@ -205,7 +205,7 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
     );
 
     const bookingIds = (bookings ?? []).map((b: any) => b.id);
-    let payments: ExportPayment[] = [];
+    const payments: ExportPayment[] = [];
     // Keep each encoded PostgREST URL bounded even for a long booking history.
     for (let offset = 0; offset < bookingIds.length; offset += 100) {
       const paymentRows = await fetchCustomerExportRows<ExportPayment>(() =>

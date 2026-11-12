@@ -155,7 +155,8 @@ async function proxySupabaseRequest(request: Request) {
   // upstream URL. Decoding an escaped ?/# or a second encoded dot segment
   // after the guard previously changed which resource received the write.
   if (
-    /[\\?#\u0000-\u001f\u007f]/.test(decodedPath) ||
+    /[\\?#]/.test(decodedPath) ||
+    [...decodedPath].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127) ||
     /%(?:2e|2f|5c|3f|23|25)/i.test(decodedPath) ||
     decodedPath
       .split("/")
