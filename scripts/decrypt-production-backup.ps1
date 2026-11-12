@@ -23,7 +23,8 @@ if ($RecoveryMetadata) {
 else {
   $keyPath = Join-Path $PrivateRoot 'backup-config\encryption-key.dpapi'
   if (-not (Test-Path -LiteralPath $keyPath)) { throw 'The protected backup key is missing.' }
-  $secure = Get-Content -LiteralPath $keyPath -Raw | ConvertTo-SecureString
+  # Set-Content adds a trailing newline; DPAPI parsing expects only ciphertext.
+  $secure = (Get-Content -LiteralPath $keyPath -Raw).Trim() | ConvertTo-SecureString
   $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
   try { $key = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer) }
   finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }

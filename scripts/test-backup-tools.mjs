@@ -65,6 +65,32 @@ try {
     throw new Error("Decrypted backup did not match its source.");
   }
 
+  // Exercise the Windows entry point with the newline written by setup.
+  // Only a randomly generated fixture key is passed to this isolated test.
+  if (process.platform === "win32") {
+    const windowsFixture = join(workspace, "windows-recovery.ps1");
+    const windowsOutput = join(workspace, "windows-decrypted.dump");
+    writeFileSync(windowsFixture, `
+param([string]$FixtureRoot, [string]$RecoveryScript)
+$ErrorActionPreference = 'Stop'
+# Avoid inheriting PowerShell 7 modules into Windows PowerShell 5.1.
+$env:PSModulePath = Join-Path $PSHOME 'Modules'
+$fixtureKey = [Console]::In.ReadToEnd().Trim()
+$config = New-Item -ItemType Directory -Path (Join-Path $FixtureRoot 'backup-config')
+$fixtureKey | ConvertTo-SecureString -AsPlainText -Force | ConvertFrom-SecureString | Set-Content -LiteralPath (Join-Path $config.FullName 'encryption-key.dpapi') -Encoding ASCII
+& $RecoveryScript -EncryptedFile (Join-Path $FixtureRoot 'input.dump.bzenc') -OutputFile (Join-Path $FixtureRoot 'windows-decrypted.dump') -PrivateRoot $FixtureRoot
+`);
+    const recovery = spawnSync("powershell.exe", [
+      "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+      "-File", windowsFixture, "-FixtureRoot", workspace,
+      "-RecoveryScript", join(process.cwd(), "scripts", "decrypt-production-backup.ps1"),
+    ], { input: `${key}\n`, encoding: "utf8" });
+    expectSuccess("Windows recovery with newline-terminated protected key", recovery);
+    if (!readFileSync(windowsOutput).equals(fixture)) {
+      throw new Error("Windows recovery did not reproduce the fixture backup.");
+    }
+  }
+
   const damaged = readFileSync(encrypted);
   damaged[Math.floor(damaged.length / 2)] ^= 0xff;
   writeFileSync(tampered, damaged);
