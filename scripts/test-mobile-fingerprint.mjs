@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+const require = createRequire(new URL('../mobile/package.json', import.meta.url));
+const fingerprint = require('@expo/fingerprint');
+const path = require('@expo/fingerprint/build/utils/Path.js');
+assert.equal(path.isIgnoredPath('node_modules/pkg/file.js', ['**/node_modules/**']), true);
+assert.equal(path.isIgnoredPath('src/App.tsx', ['**/node_modules/**']), false);
+assert.equal(path.isIgnoredPath('build/keep.json', ['build/**', '!build/keep.json']), false);
+assert.equal(path.isIgnoredPath('build/remove.json', ['build/**', '!build/keep.json']), true);
+assert.equal(path.isIgnoredPath('.expo/cache.json', ['**/.expo/**']), true);
+if (process.platform === 'win32') assert.equal(path.isIgnoredPath('node_modules\\pkg\\file.js', ['**/node_modules/**']), true);
+const directories = path.buildDirMatchObjects(path.buildPathMatchObjects(['build/**', 'dist/**/*']));
+assert.ok(directories.some(item => item.match('build')));
+assert.ok(directories.some(item => item.match('dist')));
+const result = await fingerprint.createFingerprintAsync(fileURLToPath(new URL('../mobile/', import.meta.url)));
+assert.ok(result.hash && result.sources.length > 10);
+console.log(JSON.stringify({ test:'Expo fingerprint compatibility', hash:result.hash, sources:result.sources.length, passed:true }));

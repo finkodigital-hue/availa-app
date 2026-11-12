@@ -24,14 +24,15 @@ The project is prepared for internal builds, but store submission stays blocked 
 - [ ] Apple Developer Program account is active.
 - [ ] Google Play Console developer account is active.
 - [ ] The Expo project is linked with `eas init` and its project ID is committed in the Expo config.
-- [ ] `bookzenvo://` is allowed in Supabase Authentication redirect URLs.
+- [ ] Exact `bookzenvo://auth/reset` callback is allowed and tested cold/warm in Supabase Authentication.
+- [ ] SDK 58 builds are tested on supported phones (iOS 16.4+), including MFA refresh, sign-out races, print/share sheets and temporary export cleanup.
 - [ ] A stable store-review account with representative test data exists.
 - [ ] In-app account deletion is verified and documented for reviewers.
 - [ ] Final screenshots contain no real customer or payment data.
 
 ## Internal testing
 
-1. Install dependencies in `mobile/` with `npm install`.
+1. Install locked dependencies in `mobile/` with `npm ci`.
 2. Run `npm run check`.
 3. Sign in to the Bookzenvo Expo organisation and run `eas init` once.
 4. Create an iPhone internal build with `npm run build:preview:ios`.

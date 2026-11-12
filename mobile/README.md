@@ -6,8 +6,10 @@ The Bookzenvo owner app for Android and iPhone. It uses the existing Bookzenvo S
 
 1. Copy `.env.example` to `.env`.
 2. Add the existing public Supabase URL and publishable key from the Bookzenvo website environment.
-3. In this `mobile` folder, run `npm start`.
-4. Install **Expo Go** from the App Store or Google Play and scan the QR code.
+3. In this `mobile` folder, run `npm ci`, then `npm start`.
+4. Use an SDK 58-compatible development build. Expo Go must match the SDK; do not assume the current store version is compatible. Production-like device testing needs an actual development/internal build.
+
+The current dependency baseline is Expo SDK 58 / React Native 0.88, requiring iOS 16.4 or later. Rebuild native binaries after upgrading; an older installed app cannot receive this SDK change as a JavaScript-only update. See [the audit](../docs/mobile-readiness-audit-2026-11-12.md) for exact validation and remaining gates.
 
 Never add a Supabase service-role key, Stripe secret key, Resend key, or webhook secret to the mobile app.
 
@@ -25,7 +27,7 @@ Never add a Supabase service-role key, Stripe secret key, Resend key, or webhook
 - A recovery screen if the live workspace cannot be loaded, plus Android back
   navigation and automatic recovery from a terminated WebView process
 
-Before publishing, configure `bookzenvo://` as an allowed redirect URL in Supabase Authentication and create the required Apple/Google developer accounts.
+Before publishing, verify the exact `bookzenvo://auth/reset` redirect in Supabase Authentication and create the required Apple/Google developer accounts.
 
 ## Release preparation
 
