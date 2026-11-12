@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { createNativeSessionBridge } from '../mobile/src/lib/native-session-bridge.ts';
 
 const source = fs.readFileSync(new URL('../mobile/src/lib/workspace-session.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
@@ -20,7 +21,7 @@ function browser(origin = 'https://bookzenvo.com', broadcast = true) {
   const events = [], messages = [];
   let reloads = 0, closed = 0;
   const window = { location: { origin, reload: () => reloads++ }, ReactNativeWebView: { postMessage: data => messages.push(JSON.parse(data)) } };
-  const context = vm.createContext({ window, Storage, localStorage: new Storage(), sessionStorage: new Storage(),
+  const context = vm.createContext({ window, Storage, localStorage: new Storage(), sessionStorage: new Storage(), atob: value => Buffer.from(value, 'base64').toString('binary'),
     BroadcastChannel: broadcast ? class {
       constructor(name) { assert.equal(name, key); }
       postMessage(data) { events.push(JSON.parse(JSON.stringify(data))); }
@@ -83,3 +84,67 @@ for (const url of [
   'not a URL',
 ]) assert.equal(recoverySessionFromDeepLink(url), null, 'Only the exact configured recovery callback can change the native session');
 console.log('Mobile session handover, refresh, origin isolation and sign-out regressions passed.');
+
+const jwt = claims => `fixture.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.signature`;
+const now = Math.floor(Date.now()/1000);
+const basic = { access_token: jwt({sub:'owner',aal:'aal1',iat:now-100,exp:now+3600}), refresh_token:'refresh-basic',user:{id:'owner'} };
+const mfa = { ...basic, access_token:jwt({sub:'owner',aal:'aal2',iat:now-50,exp:now+3600}),refresh_token:'refresh-mfa' };
+const active = browser();
+vm.runInContext(sync(basic),active.context);
+vm.runInContext(workspaceSignOutScript(),active.context);
+active.context.localStorage.setItem(key,JSON.stringify(mfa));
+assert.equal(active.messages.at(-1).type,'workspace-session-updated');
+assert.equal(active.messages.at(-1).accessToken,mfa.access_token);
+vm.runInContext(sync(basic),active.context);
+assert.equal(JSON.parse(active.context.localStorage.getItem(key)).access_token,mfa.access_token,'Late native AAL1 must not replace verified browser MFA session');
+vm.runInContext(sync(mfa),active.context);
+assert.equal(active.window.__bookzenvoPendingWebAccessToken,undefined,'Native acknowledgement clears the pending handover');
+const rotated={...mfa,access_token:jwt({sub:'owner',aal:'aal2',iat:now,exp:now+7200}),refresh_token:'refresh-rotated'};
+active.context.localStorage.setItem(key,JSON.stringify(rotated));
+vm.runInContext(sync(mfa),active.context);
+assert.equal(JSON.parse(active.context.localStorage.getItem(key)).refresh_token,'refresh-rotated','Old native refresh token cannot overwrite browser rotation');
+active.context.localStorage.removeItem(key);
+active.context.localStorage.setItem(key,JSON.stringify(rotated));
+assert.equal(active.context.localStorage.getItem(key),null,'Late browser refresh cannot restore signed-out storage');
+const reload = browser();
+reload.context.localStorage.setItem(key,JSON.stringify(mfa));
+vm.runInContext(sync(basic),reload.context);
+assert.equal(JSON.parse(reload.context.localStorage.getItem(key)).access_token,mfa.access_token,'A fresh WebView also preserves stored MFA');
+assert.equal(reload.messages.at(-1).type,'workspace-session-updated');
+vm.runInContext(sync({...basic,user:{id:'another-owner'}}),reload.context);
+assert.equal(JSON.parse(reload.context.localStorage.getItem(key)).user.id,'another-owner','An explicit native user switch replaces the previous user');
+assert.equal(reload.events.at(-1).event,'SIGNED_IN');
+
+let nativeToken=null, verifiedTokens=[], nativeWrites=[];
+let releaseVerification;
+const client={
+ async getUser(token){ verifiedTokens.push(token);return {data:{user:{id:token==='different'?'other':'owner'}},error:token==='invalid'?new Error('Invalid token'):null}; },
+ async setSession(tokens){nativeWrites.push(tokens);nativeToken=tokens.access_token;return {data:{session:{user:{id:'owner'}}},error:null};},
+ async signOut(){nativeWrites.push('signout');nativeToken=null;},
+};
+const bridge=createNativeSessionBridge(client,'owner');
+assert.equal(await bridge.adopt(mfa.access_token,mfa.refresh_token),true);
+assert.equal(nativeWrites[0].access_token,mfa.access_token,'Actual provider-verified token is retained, not rewritten');
+assert.equal(await bridge.adopt('different','refresh'),false);
+assert.equal(await bridge.adopt('invalid','refresh'),false);
+assert.equal(nativeWrites.length,1,'Invalid and other-user tokens never reach native setSession');
+await bridge.signOut();
+assert.equal(await bridge.adopt(rotated.access_token,rotated.refresh_token),false);
+assert.equal(nativeToken,null);
+const pendingClient={...client,getUser:async()=>{await new Promise(r=>releaseVerification=r);return {data:{user:{id:'owner'}},error:null};}};
+const pending=createNativeSessionBridge(pendingClient,'owner');
+const adopting=pending.adopt('pending-access','pending-refresh');
+await new Promise(r=>setImmediate(r));
+const signingOut=pending.signOut();releaseVerification();
+await Promise.all([adopting,signingOut]);
+assert.equal(nativeToken,null,'Sign-out wins when verification finishes late');
+assert.equal(nativeWrites.at(-1),'signout');
+let releaseWrite;
+const duringWrite=createNativeSessionBridge({...client,setSession:async tokens=>{await new Promise(r=>releaseWrite=r);return client.setSession(tokens);}},'owner');
+const write=duringWrite.adopt('late-write','late-refresh');
+await new Promise(r=>setImmediate(r));
+const finalSignOut=duringWrite.signOut();releaseWrite();
+await Promise.all([write,finalSignOut]);
+assert.equal(nativeToken,null,'Sign-out is serialized after an in-flight credential write');
+assert.equal(nativeWrites.at(-1),'signout');
+console.log('Mobile MFA/refresh handover, provider identity verification and late-writer sign-out regressions passed.');

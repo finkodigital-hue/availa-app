@@ -1,7 +1,7 @@
 // Must match the same-origin website client's stable auth storage key.
 export const WORKSPACE_AUTH_STORAGE_KEY = "bookzenvo-auth";
 
-type WorkspaceSession = { access_token: string };
+type WorkspaceSession = { access_token: string; refresh_token?: string; user?: { id: string } };
 
 export function recoverySessionFromDeepLink(value: string) {
   try {
@@ -28,14 +28,41 @@ export function workspaceSessionScript(session: WorkspaceSession, appUrl: string
         var session = ${JSON.stringify(session)};
         var nextValue = JSON.stringify(session);
         var previousValue = localStorage.getItem(key);
+        var previous = null;
+        try { previous = JSON.parse(previousValue); } catch (_) {}
+        var sameUser = previous && previous.user && session.user && previous.user.id === session.user.id;
+        var claims = function (token) {
+          try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); }
+          catch (_) { return {}; }
+        };
+        var previousClaims = claims(previous && previous.access_token || '');
+        var nextClaims = claims(session.access_token);
+        // Claims here decide which local copy to preserve, never authorisation.
+        // Native verifies the preserved token with Supabase before adopting it.
+        var pendingWebUpdate = sameUser && window.__bookzenvoPendingWebAccessToken &&
+          window.__bookzenvoPendingWebAccessToken !== session.access_token;
+        var fresherWebSession = sameUser && previous.access_token !== session.access_token &&
+          previousClaims.exp > Date.now() / 1000 &&
+          (previousClaims.iat > nextClaims.iat || (previousClaims.aal === 'aal2' && nextClaims.aal !== 'aal2'));
+        if ((pendingWebUpdate || fresherWebSession) && previous.refresh_token) {
+          window.__bookzenvoNativeAccessToken = previous.access_token;
+          window.__bookzenvoPendingWebAccessToken = previous.access_token;
+          if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'workspace-session-updated', accessToken: previous.access_token, refreshToken: previous.refresh_token
+          }));
+          return;
+        }
+        delete window.__bookzenvoPendingWebAccessToken;
         window.__bookzenvoNativeAccessToken = session.access_token;
-        localStorage.setItem(key, nextValue);
+        window.__bookzenvoApplyingNativeSession = true;
+        try { localStorage.setItem(key, nextValue); }
+        finally { window.__bookzenvoApplyingNativeSession = false; }
         if (previousValue !== nextValue) {
           // Supabase listens on BroadcastChannel, not StorageEvent. Notify a
           // client that has already initialised as well as seeding first load.
           if (typeof BroadcastChannel !== "undefined") {
             var channel = new BroadcastChannel(key);
-            channel.postMessage({ event: previousValue ? "TOKEN_REFRESHED" : "SIGNED_IN", session: session });
+            channel.postMessage({ event: previousValue && sameUser ? "TOKEN_REFRESHED" : "SIGNED_IN", session: session });
             channel.close();
           } else if (previousValue === null) {
             // Older WebViews can initialise before onLoadEnd seeds storage.
@@ -58,9 +85,29 @@ export function workspaceSignOutScript() {
       var notifyNativeSignOut = function () {
         window.__bookzenvoNativeSignedOut = true;
         delete window.__bookzenvoNativeAccessToken;
+        delete window.__bookzenvoPendingWebAccessToken;
         if (window.ReactNativeWebView) {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: "workspace-signed-out" }));
         }
+      };
+      var originalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        // A late browser refresh must not recreate auth after explicit sign-out.
+        if (this === localStorage && key === authStorageKey && window.__bookzenvoNativeSignedOut) return;
+        var result = originalSetItem.apply(this, arguments);
+        if (this === localStorage && key === authStorageKey && !window.__bookzenvoApplyingNativeSession) {
+          try {
+            var session = JSON.parse(value);
+            if (session && typeof session.access_token === 'string' && typeof session.refresh_token === 'string') {
+              window.__bookzenvoNativeAccessToken = session.access_token;
+              window.__bookzenvoPendingWebAccessToken = session.access_token;
+              if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'workspace-session-updated', accessToken: session.access_token, refreshToken: session.refresh_token
+              }));
+            }
+          } catch (_) {}
+        }
+        return result;
       };
       var originalRemoveItem = Storage.prototype.removeItem;
       Storage.prototype.removeItem = function (key) {

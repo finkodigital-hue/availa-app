@@ -35,6 +35,7 @@ import { DMSans_700Bold } from "@expo-google-fonts/dm-sans/700Bold";
 
 import { isSupabaseConfigured, supabase } from "./src/lib/supabase";
 import { WORKSPACE_AUTH_STORAGE_KEY, workspaceSessionScript, workspaceSignOutScript, recoverySessionFromDeepLink } from "./src/lib/workspace-session";
+import { createNativeSessionBridge } from "./src/lib/native-session-bridge";
 
 type Tab = "Today" | "Calendar" | "Bookings" | "More";
 type Screen = Tab | "Clients" | "Staff" | "Professionals" | "Services" | "Payments" | "Settings" | "Page builder" | "Help centre" | "Reports" | "Stock" | "Assistant" | "Import data";
@@ -200,13 +201,14 @@ export default function App() {
     // Keep the mobile app on the same workspace as the website. This gives owners
     // the complete, live dashboard (including editing, payments, stock, reports,
     // settings and help) instead of a second, partial implementation.
-    content = <WebWorkspace session={session} workspacePath={workspacePath} />;
+    content = <WebWorkspace key={session.user.id} session={session} workspacePath={workspacePath} />;
   }
 
   return <SafeAreaProvider>{content}</SafeAreaProvider>;
 }
 
 function WebWorkspace({ session, workspacePath }: { session: Session; workspacePath: string }) {
+  const nativeSessionBridge = useMemo(() => supabase ? createNativeSessionBridge(supabase.auth, session.user.id) : null, [session.user.id]);
   const webViewRef = useRef<WebView>(null);
   const appState = useRef(AppState.currentState);
   const returningFromExternalLink = useRef(false);
@@ -485,19 +487,23 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     try {
       const message = JSON.parse(nativeEvent.data);
       if (message?.type === "workspace-signed-out") {
-        await supabase?.auth.signOut();
+        await nativeSessionBridge?.signOut();
+        return;
+      }
+      if (message?.type === "workspace-session-updated") {
+        await nativeSessionBridge?.adopt(message.accessToken, message.refreshToken);
         return;
       }
       if (message?.type === "workspace-auth-required") {
         const client = supabase;
-        if (!client || refreshingWorkspaceSession.current) return;
+        if (!client || refreshingWorkspaceSession.current || nativeSessionBridge?.isClosed()) return;
 
         refreshingWorkspaceSession.current = true;
         try {
           const { data, error } = await client.auth.refreshSession();
           if (error || !data.session) {
             Alert.alert("Please sign in again", "Your Bookzenvo session has expired.");
-            await client.auth.signOut();
+            await nativeSessionBridge?.signOut();
             return;
           }
 
