@@ -67,6 +67,7 @@ declare
  v_start date; v_end date; v_anchor date; v_today date; v_month date; v_id uuid;
  v_zone text; v_last_start date; v_due date;
 begin
+ if _request_id is null then raise exception 'Refresh Bookzenvo before generating rent: a request ID is required'; end if;
  select * into v_link from public.salon_professionals where id=_link_id for update;
  if v_link.id is null then raise exception 'Professional link not found'; end if;
  if not public.is_business_owner(v_link.salon_business_id) then raise exception 'Not authorized'; end if;
@@ -100,8 +101,10 @@ revoke all on function public.generate_rent_payment(uuid,uuid) from public,anon;
 grant execute on function public.generate_rent_payment(uuid,uuid) to authenticated,service_role;
 
 create or replace function public.generate_rent_payment(_link_id uuid)
-returns uuid language sql security invoker set search_path=public as $$
- select public.generate_rent_payment(_link_id,null::uuid);
+returns uuid language plpgsql security invoker set search_path=public as $$
+begin
+ raise exception 'Refresh Bookzenvo before generating rent: this version of the page is out of date';
+end;
 $$;
 revoke all on function public.generate_rent_payment(uuid) from public,anon;
 grant execute on function public.generate_rent_payment(uuid) to authenticated,service_role;

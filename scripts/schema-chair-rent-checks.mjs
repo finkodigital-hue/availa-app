@@ -141,6 +141,9 @@ export async function checkChairRent(db) {
     `update salon_professionals set agreement_start='2026-12-01',agreement_end='2026-11-01' where id='${id(201)}'`,
     /end must not precede/,
   );
+  await reject(`select generate_rent_payment('${id(201)}')`,/Refresh Bookzenvo/);
+  await reject(`select generate_rent_payment('${id(201)}',null::uuid)`,/request ID is required/);
+  same((await rows('select count(*)::int n from rent_payments'))[0].n,0,'Legacy or null-key callers cannot create rent entries');
   const first = (
     await rows(`select generate_rent_payment('${id(201)}','${id(401)}') as id`)
   )[0].id;
