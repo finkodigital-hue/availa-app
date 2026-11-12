@@ -528,7 +528,7 @@ function AddRentPaymentDialog({ link, currency, timeZone, onOpenChange, onSaved 
     setBusy(true);
     try {
       const headers = await getServerFnAuthHeaders();
-      await addRentPayment({
+      const result = await addRentPayment({
         data: {
           linkId: link.id,
           requestId: requestId.current,
@@ -540,7 +540,11 @@ function AddRentPaymentDialog({ link, currency, timeZone, onOpenChange, onSaved 
         },
         headers,
       });
-      toast.success("Payment added");
+      if (result.alreadyRecorded) {
+        toast.info(`This rent entry was already recorded and is currently ${result.status}. Check the ledger before changing its status.`);
+      } else {
+        toast.success("Payment added");
+      }
       onSaved();
       reset();
       onOpenChange(false);

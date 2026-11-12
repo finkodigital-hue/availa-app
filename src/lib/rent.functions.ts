@@ -128,7 +128,7 @@ export const addRentPayment = createServerFn({ method: "POST" })
       const { data: existing, error: lookupError } = await context.supabase
         .from("rent_payments")
         .select(
-          "id,salon_professional_id,period_start,period_end,due_date,amount_cents",
+          "id,salon_professional_id,period_start,period_end,due_date,amount_cents,status",
         )
         .eq("id", data.requestId)
         .maybeSingle();
@@ -146,6 +146,9 @@ export const addRentPayment = createServerFn({ method: "POST" })
         throw new Error(
           "This request was already used for different rent details. Refresh the ledger.",
         );
+      // A lost response must not overwrite a later status update, or claim the
+      // caller's changed alreadyPaid value was applied to an existing record.
+      return { ok: true, alreadyRecorded: true, status: existing.status };
     } else if (error) throw error;
-    return { ok: true };
+    return { ok: true, alreadyRecorded: false, status: record.status };
   });

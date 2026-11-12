@@ -189,6 +189,7 @@ const existing = {
   period_end: input.periodEnd,
   due_date: input.dueDate,
   amount_cents: input.amountCents,
+  status: "due",
 };
 reset([
   business,
@@ -196,7 +197,55 @@ reset([
   { error: { code: "23505" } },
   { data: existing, error: null },
 ]);
-same(await exports.addRentPayment({ context, data: input }), { ok: true });
+same(await exports.addRentPayment({ context, data: input }), {
+  ok: true,
+  alreadyRecorded: true,
+  status: "due",
+});
+// Changing the checkbox after an uncertain result does not rewrite an existing
+// record. The caller receives the actual status and explicit retry feedback.
+reset([
+  business,
+  link,
+  { error: { code: "23505" } },
+  { data: existing, error: null },
+]);
+same(
+  await exports.addRentPayment({
+    context,
+    data: { ...input, alreadyPaid: true },
+  }),
+  { ok: true, alreadyRecorded: true, status: "due" },
+);
+same(
+  calls.some((c) => c.steps?.some((s) => s[0] === "update")),
+  false,
+);
+// Another operation may have marked the same row paid/waived since its insert.
+// An identical original request remains idempotent and preserves that change.
+for (const status of ["paid", "waived"]) {
+  reset([
+    business,
+    link,
+    { error: { code: "23505" } },
+    { data: { ...existing, status }, error: null },
+  ]);
+  same(await exports.addRentPayment({ context, data: input }), {
+    ok: true,
+    alreadyRecorded: true,
+    status,
+  });
+  same(
+    calls.some((c) => c.steps?.some((s) => s[0] === "update")),
+    false,
+  );
+}
+reset([business, link, { error: null }]);
+same(await exports.addRentPayment({ context, data: input }), {
+  ok: true,
+  alreadyRecorded: false,
+  status: "due",
+});
 reset([
   business,
   link,
