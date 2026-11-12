@@ -15,6 +15,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
 import { sharedCalendarKey, visibleSharedCalendar } from "@/lib/shared-calendar";
+import { restoreCalendarDialogFocus } from "@/lib/calendar-dialog-focus";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +83,7 @@ function CalendarPage() {
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockPrefill, setBlockPrefill] = useState<{ staffId?: string; date?: Date; isoTime?: string } | undefined>(undefined);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const bookingTriggerRef = useRef<HTMLElement | null>(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const calendarIsExpanded = isFocusMode;
 
@@ -245,8 +247,9 @@ function CalendarPage() {
   });
 
   const blocked = useMemo(() => [...(ownBlocked ?? []), ...visibleShared.busy.filter(b => b.kind === "block").map(b => ({...b, reason: "Unavailable"}))], [ownBlocked, visibleShared]);
-  const selectBooking = (booking: any) => {
+  const selectBooking = (booking: any, trigger?: HTMLElement) => {
     if (booking._readOnly) { toast.info("This professional shares busy times only. Manage their bookings in their own workspace."); return; }
+    bookingTriggerRef.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     setSelected(booking);
   };
 
@@ -393,8 +396,10 @@ function CalendarPage() {
     qc.invalidateQueries({ queryKey: ["booking-stock-deductions", id] });
   };
 
-  const openNewBooking = (cell?: { staffId?: string; serviceId?: string; requestId?: string; customerId?: string; isoTime?: string; date?: Date }) => {
+  const openNewBooking = (cell?: { staffId?: string; serviceId?: string; requestId?: string; customerId?: string; isoTime?: string; date?: Date }, trigger?: HTMLElement) => {
     if (cell?.staffId && staff.find(s => s.id === cell.staffId)?._readOnly) { toast.info("Create this booking in the professional's own workspace."); return; }
+    bookingTriggerRef.current = trigger ?? (!cell && document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+      ? document.activeElement : null);
     setPrefill(cell);
     setNewOpen(true);
   };
@@ -625,6 +630,7 @@ function CalendarPage() {
     <HoursContext.Provider value={hoursWindow}>
     <div
       ref={calendarRef}
+      tabIndex={-1}
       data-calendar-page
       data-calendar-expanded={calendarIsExpanded ? "true" : "false"}
       data-calendar-view={view}
@@ -657,7 +663,7 @@ function CalendarPage() {
               <Button variant="outline" onClick={() => openBlockTime()} className="h-10 px-4" data-calendar-block-time>
                 <CalendarOff className="h-4 w-4 mr-1.5" /> Block time
               </Button>
-              <Button onClick={() => openNewBooking()} className="h-10 px-4 shadow-glow" data-calendar-new-booking>
+              <Button onClick={(event) => openNewBooking(undefined, event.currentTarget)} className="h-10 px-4 shadow-glow" data-calendar-new-booking>
                 <Plus className="h-4 w-4 mr-1.5" /> New booking
               </Button>
             </div>
@@ -668,7 +674,7 @@ function CalendarPage() {
       {biz?.plan === "studio" && linkedProBusinessIds.length > 0 && <p className="px-3 text-sm text-muted-foreground">Independent professionals share busy times only. Create and change their bookings in their own workspace.</p>}
         {(sharedCalendarError || linkedProsError) && <p role="alert" className="px-3 text-sm text-destructive">Shared availability could not load. Do not assume these professionals are free.</p>}
       {!calendarIsExpanded && view === "day" && (
-        <TodayStrip bookings={ownBookings ?? []} staff={ownStaff ?? []} date={anchor} />
+        <TodayStrip bookings={ownBookings ?? []} staff={ownStaff ?? []} date={anchor} currency={biz?.currency ?? "GBP"} />
       )}
 
       <CalendarToolbar
@@ -686,7 +692,7 @@ function CalendarPage() {
               <Button variant="outline" size="sm" onClick={() => openBlockTime()} className="h-9 px-3 shrink-0">
                 <CalendarOff className="h-4 w-4 mr-1.5" /> Block time
               </Button>
-              <Button size="sm" onClick={() => openNewBooking()} className="h-9 px-3 shrink-0 shadow-glow">
+              <Button size="sm" onClick={(event) => openNewBooking(undefined, event.currentTarget)} className="h-9 px-3 shrink-0 shadow-glow">
                 <Plus className="h-4 w-4 mr-1.5" /> New booking
               </Button>
             </>
@@ -741,6 +747,7 @@ function CalendarPage() {
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent
           className="sm:max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto"
+          onCloseAutoFocus={(event) => restoreCalendarDialogFocus(event, bookingTriggerRef.current, calendarRef.current, newOpen)}
           onOpenAutoFocus={(event) => {
             // Start at the appointment heading, rather than scrolling down
             // to the first status/payment control when the dialog opens.
@@ -896,6 +903,7 @@ function CalendarPage() {
         <NewBookingDialog
           open={newOpen}
           onOpenChange={setNewOpen}
+          onCloseAutoFocus={(event) => restoreCalendarDialogFocus(event, bookingTriggerRef.current, calendarRef.current)}
           businessId={bid}
           prefill={prefill}
           onCreated={() => qc.invalidateQueries({ queryKey: ["calendar"] })}

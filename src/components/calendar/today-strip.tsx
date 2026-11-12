@@ -4,17 +4,14 @@ import { fmtMoney } from "@/lib/format";
 import { useHours } from "./hours-context";
 import { useNow } from "./use-now";
 
-export function TodayStrip({ bookings, staff, date }: { bookings: any[]; staff: any[]; date: Date }) {
+export function TodayStrip({ bookings, staff, date, currency = "GBP" }: { bookings: any[]; staff: any[]; date: Date; currency?: string }) {
   const { START_HOUR, END_HOUR } = useHours();
   const now = useNow();
   const isToday = date.toDateString() === now.toDateString();
   const active = bookings.filter((b) => b.status !== "cancelled");
-  const revenue = active.reduce((sum, b) => sum + (b.price_cents ?? 0), 0);
+  const bookedValue = active.reduce((sum, b) => sum + (b.price_cents ?? 0), 0);
   const cancellations = bookings.filter((b) => b.status === "cancelled").length;
-  // "Checked in"/"In progress" were retired from the status list, so this
-  // tile now reports what it can actually count: finished appointments.
-  // Legacy rows still holding those statuses count as done too.
-  const completed = bookings.filter((b) => ["checked_in", "in_progress", "completed"].includes(b.status)).length;
+  const completed = bookings.filter((b) => b.status === "completed").length;
 
   // Free time across all staff between START and END
   const totalMinutes = staff.length * (END_HOUR - START_HOUR) * 60;
@@ -23,9 +20,9 @@ export function TodayStrip({ bookings, staff, date }: { bookings: any[]; staff: 
   const freeHours = (freeMinutes / 60).toFixed(1);
 
   const cards = [
-    { label: isToday ? "Today's revenue" : "Day revenue", value: fmtMoney(revenue), icon: CircleDollarSign, tint: "var(--confirmed-bg)", ink: "var(--confirmed)" },
+    { label: isToday ? "Today's booked value" : "Booked value", value: fmtMoney(bookedValue, currency), description: "Prices of non-cancelled bookings. See Daily takings for payments received.", icon: CircleDollarSign, tint: "var(--confirmed-bg)", ink: "var(--confirmed)" },
     { label: "Bookings", value: String(active.length), icon: CalendarDays, tint: "var(--gold-wash)", ink: "var(--gold-deep)" },
-    { label: "Free time", value: `${freeHours}h`, icon: TimerReset, tint: "#F3F1EB", ink: "var(--charcoal-soft)" },
+    { label: "Estimated unbooked", value: `${freeHours}h`, description: "Staff window less appointment durations. Breaks, time off and individual hours aren't included.", icon: TimerReset, tint: "#F3F1EB", ink: "var(--charcoal-soft)" },
     { label: "Completed", value: String(completed), icon: CheckCircle2, tint: "var(--pending-bg)", ink: "var(--pending)" },
     { label: "Cancellations", value: String(cancellations), icon: Ban, tint: "#F5E5E1", ink: "#A8503E" },
   ];
@@ -43,6 +40,7 @@ export function TodayStrip({ bookings, staff, date }: { bookings: any[]; staff: 
               <span className="truncate">{c.label}</span>
             </div>
             <div className="mt-2 font-display text-xl sm:text-2xl tabular-nums tracking-tight" data-calendar-stat-value>{c.value}</div>
+            {c.description && <p className="mt-1 text-xs text-muted-foreground">{c.description}</p>}
           </div>
         );
       })}
