@@ -29,6 +29,7 @@ export const Route = createFileRoute("/api/page-ai-suggest")({
           if ("error" in parsed) return parsed.error;
           const body = parsed.value;
           if (
+            !body || typeof body !== "object" || Array.isArray(body) ||
             !body.businessId ||
             !UUID_PATTERN.test(body.businessId) ||
             typeof body.prompt !== "string" ||

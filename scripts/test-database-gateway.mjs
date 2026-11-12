@@ -51,6 +51,13 @@ async function request(
   });
 }
 assert.equal((await request("rest/v1/businesses")).status, 403);
+for (const field of ["email_suppressed", "sms_suppressed"]) {
+  for (const path of ["rest/v1/businesses", "rest/v1/%62usinesses", "rest/v1/businesses%3Fid=eq.fixture"]) {
+    const response = await request(path, {body: JSON.stringify({[field]: false})});
+    assert.ok([400, 403].includes(response.status));
+    assert.equal(calls.length, 0, "suppression changes must never reach upstream");
+  }
+}
 for (const path of [
   "rest/v1/businesses%3Fid=eq.fixture",
   "rest/v1/businesses%23ignored",
