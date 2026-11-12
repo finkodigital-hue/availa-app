@@ -45,7 +45,7 @@ export function BookingCard({
   onDragEnd,
 }: BookingCardProps) {
   const { START_HOUR } = useHours();
-  const interactive = variant === "day";
+  const interactive = variant === "day" && !b._readOnly;
   const s = new Date(b.starts_at);
   const e = new Date(b.ends_at);
   const dayStart = new Date(date);

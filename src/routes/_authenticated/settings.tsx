@@ -1,3 +1,5 @@
+import { ProfessionalRentHistory } from "@/components/professional-rent-history";
+import { rentSummary } from "@/lib/rent";
 import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
@@ -7,6 +9,7 @@ import {
   useEffect,
   useState,
   useId,
+  useRef,
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -137,11 +140,11 @@ function SettingsPage() {
       const salonIds = Array.from(
         new Set(data.map((d) => d.salon_business_id)),
       );
-      let salons: Record<string, { name: string }> = {};
+      let salons: Record<string, { name: string; currency?: string; timezone?: string }> = {};
       if (salonIds.length > 0) {
         const { data: bizRows } = await (supabase as any)
           .from("public_businesses")
-          .select("id, name")
+          .select("id, name, currency, timezone")
           .in("id", salonIds);
         salons = Object.fromEntries((bizRows ?? []).map((b: any) => [b.id, b]));
       }
@@ -1214,7 +1217,7 @@ type SalonLink = {
   rent_amount_cents: number | null;
   commission_percent: number | null;
   rent_due_day: number | null;
-  salon?: { name: string };
+  salon?: { name: string; currency?: string; timezone?: string };
 };
 
 const PRO_PERMISSIONS: {
@@ -1227,7 +1230,7 @@ const PRO_PERMISSIONS: {
     key: "salon_can_view_calendar",
     label: "Show me on their calendar",
     description:
-      "The salon sees your bookings and staff column on their internal calendar.",
+      "The salon sees busy times and staff names, without client details or prices.",
     icon: Eye,
   },
   {
@@ -1241,37 +1244,16 @@ const PRO_PERMISSIONS: {
     key: "salon_can_book",
     label: "Let them create bookings for me",
     description:
-      "The salon can add new bookings on your calendar, e.g. for walk-ins.",
+      "Not currently available. Create bookings in your own workspace.",
     icon: CalendarCheck,
   },
   {
     key: "salon_can_move",
     label: "Let them reschedule my bookings",
-    description: "The salon can drag/move or resize your existing bookings.",
+    description: "Not currently available. Change bookings in your own workspace.",
     icon: Move,
   },
 ];
-
-function rentSummaryFor(l: {
-  rent_mode: string;
-  rent_amount_cents: number | null;
-  commission_percent: number | null;
-}) {
-  const money = (c: number | null) =>
-    c == null ? "—" : `$${(c / 100).toFixed(2)}`;
-  switch (l.rent_mode) {
-    case "weekly":
-      return `${money(l.rent_amount_cents)} / week`;
-    case "monthly":
-      return `${money(l.rent_amount_cents)} / month`;
-    case "percentage":
-      return `${l.commission_percent ?? 0}% commission`;
-    case "fixed_commission":
-      return `${money(l.rent_amount_cents)} per booking`;
-    default:
-      return "No rent agreement";
-  }
-}
 
 function ChairRentalsEditor({
   businessId,
@@ -1282,29 +1264,32 @@ function ChairRentalsEditor({
 }) {
   const qc = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
+  const permissionLock = useRef(false);
 
   const togglePermission = async (
     link: SalonLink,
     key: string,
     value: boolean,
   ) => {
+    if (permissionLock.current) return;
+    permissionLock.current = true;
     const next = { ...link.permissions, [key]: value };
     setPending(`${link.id}:${key}`);
     // Optimistic update so the switch responds instantly.
     qc.setQueryData<SalonLink[]>(["my-salon-links", businessId], (old) =>
       old?.map((l) => (l.id === link.id ? { ...l, permissions: next } : l)),
     );
-    const { error } = await supabase
-      .from("salon_professionals")
-      .update({ permissions: next })
-      .eq("id", link.id);
-    setPending(null);
-    if (error) {
-      toast.error(error.message);
+    try {
+      const { data, error } = await supabase.from("salon_professionals").update({ permissions: next }).eq("id", link.id).select("id").maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("This professional link is no longer available.");
+      toast.success("Saved");
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setPending(null); permissionLock.current = false;
       qc.invalidateQueries({ queryKey: ["my-salon-links", businessId] });
-      return;
     }
-    toast.success("Saved");
   };
 
   if (links.length === 0) return null;
@@ -1319,7 +1304,7 @@ function ChairRentalsEditor({
       </p>
       {links.map((l) => (
         <Section key={l.id}>
-          <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-3 mb-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <h3 className="font-display text-lg truncate">
@@ -1348,7 +1333,7 @@ function ChairRentalsEditor({
             <div className="text-xs text-muted-foreground text-right shrink-0">
               <div className="uppercase tracking-wide text-[10px]">You pay</div>
               <div className="font-medium text-foreground">
-                {rentSummaryFor(l)}
+                {rentSummary(l, l.salon?.currency ?? "GBP")}
               </div>
             </div>
           </div>
@@ -1368,14 +1353,15 @@ function ChairRentalsEditor({
                   </div>
                 </div>
                 <Switch
-                  checked={l.permissions?.[key] ?? true}
-                  disabled={pending === `${l.id}:${key}`}
+                  checked={key === "salon_can_book" || key === "salon_can_move" ? false : l.permissions?.[key] ?? true}
+                  disabled={pending !== null || key === "salon_can_book" || key === "salon_can_move"}
                   onCheckedChange={(v) => togglePermission(l, key, v)}
                   className="shrink-0"
                 />
               </div>
             ))}
           </div>
+          <ProfessionalRentHistory linkId={l.id} timeZone={l.salon?.timezone ?? "Europe/London"} />
         </Section>
       ))}
     </div>

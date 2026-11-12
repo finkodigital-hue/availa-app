@@ -1,3 +1,4 @@
+import { rentSummary } from "@/lib/rent";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -178,7 +179,7 @@ function InviteAcceptPage() {
             {invite.rent_mode !== "none" && (
               <div className="text-sm flex items-center gap-2">
                 <Wallet className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span>{rentSummary(invite)}</span>
+                <span>{rentSummary(invite, invite.salon_currency ?? "GBP")}</span>
               </div>
             )}
           </div>
@@ -274,16 +275,7 @@ function InviteAcceptPage() {
   );
 }
 
-function rentSummary(l: { rent_mode: string; rent_amount_cents: number | null; commission_percent: number | null }) {
-  const money = (c: number | null) => (c == null ? "—" : `$${(c / 100).toFixed(2)}`);
-  switch (l.rent_mode) {
-    case "weekly": return `${money(l.rent_amount_cents)} / week`;
-    case "monthly": return `${money(l.rent_amount_cents)} / month`;
-    case "percentage": return `${l.commission_percent ?? 0}% commission`;
-    case "fixed_commission": return `${money(l.rent_amount_cents)} per booking`;
-    default: return "None";
-  }
-}
+
 
 function Centered({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen grid place-items-center px-6">{children}</div>;

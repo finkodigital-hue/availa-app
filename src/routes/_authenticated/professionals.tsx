@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { fmtMoney } from "@/lib/format";
+import { rentSummary, rentToday, rentDateLabel as fmtDate, rentStatus, rentOutstanding } from "@/lib/rent";
 import { Plus, Copy, Trash2, Mail, Check, Armchair, Wallet, CircleDollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyBusiness } from "@/lib/business";
@@ -55,21 +57,25 @@ function ProfessionalsPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const isStudio = biz?.plan === "studio";
 
-  const { data: links, isLoading: linksLoading } = useQuery({
+  const { data: links, isLoading: linksLoading, error: linksError } = useQuery({
     queryKey: ["salon-professionals", biz?.id],
     enabled: !!biz?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("salon_professionals")
-        .select("*, pro:pro_business_id(id,name,slug,email)")
+        .select("*")
         .eq("salon_business_id", biz!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as any[];
+      const ids = [...new Set((data ?? []).map(row => row.pro_business_id))];
+      const {data: profiles, error: profileError} = ids.length ? await supabase.from("public_businesses").select("id,name,slug").in("id",ids) : {data: [], error: null};
+      if (profileError) throw profileError;
+      const byId = new Map((profiles ?? []).map(row => [row.id,row]));
+      return (data ?? []).map(row => ({...row, pro:byId.get(row.pro_business_id)})) as any[];
     },
   });
 
-  const { data: invites, isLoading: invLoading } = useQuery({
+  const { data: invites, isLoading: invLoading, error: invitesError } = useQuery({
     queryKey: ["professional-invitations", biz?.id],
     enabled: !!biz?.id,
     queryFn: async () => {
@@ -115,8 +121,8 @@ function ProfessionalsPage() {
   };
 
   const removeLink = async (id: string) => {
-    const { error } = await supabase.from("salon_professionals").delete().eq("id", id);
-    if (error) return toast.error("Could not unlink this professional. The link is still in place; try again.");
+    const { data, error } = await supabase.from("salon_professionals").update({ status: "ended" }).eq("id", id).select("id").maybeSingle();
+    if (error || !data) return toast.error("Could not unlink this professional. The link is still in place; try again.");
     toast.success("Professional unlinked");
     qc.invalidateQueries({ queryKey: ["salon-professionals", biz?.id] });
   };
@@ -132,7 +138,7 @@ function ProfessionalsPage() {
       <PageHeader
         eyebrow="Team"
         title="Independent Professionals"
-        subtitle="Invite self-employed people who rent a chair or room. Their bookings appear on your calendar."
+        subtitle="Invite self-employed people who rent a chair or room. They can share busy times with your calendar."
         action={
           <Button
             onClick={() => setInviteOpen(true)}
@@ -152,7 +158,7 @@ function ProfessionalsPage() {
         </TabsList>
 
         <TabsContent value="team">
-      {isLoading ? (
+      {linksError || invitesError ? <p role="alert" className="text-destructive">Professional links or invitations could not load. Please refresh.</p> : isLoading ? (
         <div className="grid sm:grid-cols-2 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-32 rounded-2xl" />
@@ -174,7 +180,7 @@ function ProfessionalsPage() {
           {(links?.length ?? 0) > 0 && (
             <section>
               <h2 className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-3">
-                Active · {links!.length}
+                Professional links · {links!.length}
               </h2>
               <div className="grid sm:grid-cols-2 gap-4">
                 {links!.map((l: any, i: number) => {
@@ -195,7 +201,7 @@ function ProfessionalsPage() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <h3 className="font-medium truncate">{name}</h3>
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" title="Active" />
+                              <Badge variant="outline">{l.status}</Badge>
                             </div>
                             {l.chair_label && (
                               <p className="text-xs text-muted-foreground mt-0.5 inline-flex items-center gap-1 truncate">
@@ -204,7 +210,7 @@ function ProfessionalsPage() {
                             )}
                           </div>
                         </div>
-                        <ConfirmDialog
+                        {l.status !== "ended" && <ConfirmDialog
                           trigger={
                             <button
                               className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary shrink-0"
@@ -214,14 +220,14 @@ function ProfessionalsPage() {
                             </button>
                           }
                           title="Unlink this professional?"
-                          description="Their bookings, customers and data stay with them. They will no longer appear on your calendar or booking page."
+                          description="Their bookings, customers and data stay with them. They will no longer appear on your calendar or booking page. Rent history is kept."
                           confirmLabel="Unlink"
                           onConfirm={async () => { await removeLink(l.id); }}
-                        />
+                        />}
                       </div>
                       {isStudio && <div className="mt-4 pt-3 border-t flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Wallet className="h-3.5 w-3.5 shrink-0" />
-                        {rentSummary(l)}
+                        {rentSummary(l, biz?.currency)}
                       </div>}
                     </div>
                   );
@@ -259,7 +265,7 @@ function ProfessionalsPage() {
                     </div>
                     {isStudio && <div className="mt-4 pt-3 border-t flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Wallet className="h-3.5 w-3.5 shrink-0" />
-                      {rentSummary(inv)}
+                      {rentSummary(inv, biz?.currency)}
                       <span className="ml-auto">Expires {new Date(inv.expires_at).toLocaleDateString()}</span>
                     </div>}
                     <div className="flex gap-2 mt-3">
@@ -288,7 +294,7 @@ function ProfessionalsPage() {
 
         <TabsContent value="rent">
           {isStudio ? (
-            <RentLedger businessId={biz?.id} links={(links ?? []).filter((l: any) => l.status === "active")} />
+            <RentLedger businessId={biz?.id} links={links ?? []} currency={biz?.currency || "GBP"} timeZone={biz?.timezone || "Europe/London"} />
           ) : (
             <StudioUpgradePanel
               title="Rent and commission tracking are a Studio feature"
@@ -304,31 +310,11 @@ function ProfessionalsPage() {
         salonBusinessId={biz?.id}
         invitedBy={user?.id}
         isStudio={isStudio}
+        currency={biz?.currency || "GBP"}
         onCreated={() => qc.invalidateQueries({ queryKey: ["professional-invitations", biz?.id] })}
       />
     </div>
   );
-}
-
-function rentSummary(l: {
-  rent_mode: RentMode;
-  rent_amount_cents: number | null;
-  commission_percent: number | null;
-}) {
-  const money = (c: number | null) =>
-    c == null ? "—" : `$${(c / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-  switch (l.rent_mode) {
-    case "weekly":
-      return `${money(l.rent_amount_cents)} / week`;
-    case "monthly":
-      return `${money(l.rent_amount_cents)} / month`;
-    case "percentage":
-      return `${l.commission_percent ?? 0}% commission`;
-    case "fixed_commission":
-      return `${money(l.rent_amount_cents)} per booking`;
-    default:
-      return "No rent agreement";
-  }
 }
 
 type RentRow = {
@@ -337,22 +323,15 @@ type RentRow = {
   period_start: string;
   period_end: string;
   amount_cents: number;
+  currency?: string | null;
   status: "due" | "paid" | "waived" | "overdue";
   due_date: string | null;
   paid_at: string | null;
   notes: string | null;
 };
 
-function money(c: number) {
-  return `$${(c / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-}
-
-function fmtDate(d: string | null) {
-  return d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—";
-}
-
-function rentStatusBadge(row: RentRow) {
-  const effective = row.status === "due" && row.due_date && new Date(row.due_date) < new Date() ? "overdue" : row.status;
+function rentStatusBadge(row: RentRow, today: string) {
+  const effective = rentStatus(row, today);
   const styles: Record<string, string> = {
     due: "bg-secondary text-secondary-foreground",
     overdue: "bg-destructive/15 text-destructive",
@@ -363,12 +342,17 @@ function rentStatusBadge(row: RentRow) {
   return <Badge variant="outline" className={`border-transparent text-[10px] ${styles[effective]}`}>{label[effective]}</Badge>;
 }
 
-function RentLedger({ businessId, links }: { businessId: string | undefined; links: any[] }) {
+function RentLedger({ businessId, links, currency, timeZone }: { businessId: string | undefined; links: any[]; currency: string; timeZone: string }) {
+
+  const today = rentToday(timeZone);
+  const generationRequests = useRef<Record<string,string>>({});
+  const generatingLock = useRef(false);
+  const statusLock = useRef(new Set<string>());
   const qc = useQueryClient();
   const [addFor, setAddFor] = useState<any | null>(null);
   const [generating, setGenerating] = useState<string | null>(null);
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, error: rentError } = useQuery({
     queryKey: ["rent-payments", businessId, links.map((l) => l.id).join(",")],
     enabled: !!businessId && links.length > 0,
     queryFn: async () => {
@@ -380,21 +364,27 @@ function RentLedger({ businessId, links }: { businessId: string | undefined; lin
   const invalidate = () => qc.invalidateQueries({ queryKey: ["rent-payments", businessId] });
 
   const markStatus = async (row: RentRow, status: "paid" | "waived" | "due") => {
+    if (statusLock.current.has(row.id)) return;
+    statusLock.current.add(row.id);
     try {
       const headers = await getServerFnAuthHeaders();
       await setRentPaymentStatus({ data: { id: row.id, linkId: row.salon_professional_id, status }, headers });
     } catch (error) {
       return toast.error((error as Error).message);
-    }
+    } finally { statusLock.current.delete(row.id); }
     toast.success(status === "paid" ? "Marked paid" : status === "waived" ? "Waived" : "Reopened");
     invalidate();
   };
 
   const generateNext = async (link: any) => {
+    if (generatingLock.current) return;
+    generatingLock.current = true;
+    generationRequests.current[link.id] ??= crypto.randomUUID();
     setGenerating(link.id);
     try {
       const headers = await getServerFnAuthHeaders();
-      await generateNextRentPayment({ data: { linkId: link.id }, headers });
+      await generateNextRentPayment({ data: { linkId: link.id, requestId: generationRequests.current[link.id] }, headers });
+      delete generationRequests.current[link.id];
       toast.success("Generated next period");
       invalidate();
     } catch (e: any) {
@@ -405,6 +395,7 @@ function RentLedger({ businessId, links }: { businessId: string | undefined; lin
       }
     } finally {
       setGenerating(null);
+      generatingLock.current = false;
     }
   };
 
@@ -418,37 +409,41 @@ function RentLedger({ businessId, links }: { businessId: string | undefined; lin
     );
   }
 
-  const outstanding = (rows ?? []).filter((r) => r.status === "due").reduce((a, r) => a + r.amount_cents, 0);
+  const outstandingByCurrency = (rows ?? []).reduce<Record<string,RentRow[]>>((groups,row) => { (groups[row.currency ?? "unrecorded"] ??= []).push(row); return groups; }, {});
+  const outstanding = Object.entries(outstandingByCurrency).map(([code, records]) => ({code, amount: rentOutstanding(records ?? [])})).filter(total => total.amount > 0);
+  const recordMoney = (amount: number, code?: string | null) => code ? fmtMoney(amount, code) : (amount / 100).toFixed(2) + " (currency not recorded)";
 
   return (
     <div className="space-y-6">
-      {outstanding > 0 && (
+      <p className="text-sm text-muted-foreground">Record rent paid outside Bookzenvo. This ledger does not collect money or calculate commission automatically. Period end dates are not included in the rent period.</p>
+      {outstanding.length > 0 && (
         <div className="rounded-2xl border bg-card p-5 flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400 grid place-items-center shrink-0">
             <CircleDollarSign className="h-5 w-5" />
           </div>
           <div>
             <div className="text-xs uppercase tracking-wide text-muted-foreground">Outstanding</div>
-            <div className="font-display text-xl">{money(outstanding)}</div>
+            <div className="font-display text-xl">{outstanding.map(total => <div key={total.code}>{recordMoney(total.amount, total.code === "unrecorded" ? null : total.code)}</div>)}</div>
           </div>
         </div>
       )}
 
+      {rentError && <p role="alert" className="text-sm text-destructive">Rent history could not load. Refresh before recording another payment.</p>}
       {links.map((link) => {
         const linkRows = (rows ?? []).filter((r) => r.salon_professional_id === link.id);
         return (
           <section key={link.id} className="rounded-2xl border bg-card p-5">
-            <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
               <div className="min-w-0">
                 <h3 className="font-medium truncate">{link.pro?.name ?? "Professional"}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{rentSummary(link)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{rentSummary(link, currency)} · {link.status}</p>
               </div>
-              <div className="flex gap-2 shrink-0">
-                {(link.rent_mode === "weekly" || link.rent_mode === "monthly") && (
+              <div className="flex flex-wrap gap-2">
+                {link.status === "active" && (link.rent_mode === "weekly" || link.rent_mode === "monthly") && (
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={generating === link.id}
+                    disabled={!!generating}
                     onClick={() => generateNext(link)}
                   >
                     {generating === link.id ? "Generating…" : "Generate next period"}
@@ -465,20 +460,20 @@ function RentLedger({ businessId, links }: { businessId: string | undefined; lin
             ) : (
               <div className="rounded-xl border overflow-hidden divide-y">
                 {linkRows.map((row) => (
-                  <div key={row.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3.5 py-2.5 text-sm">
+                  <div key={row.id} className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-3.5 py-2.5 text-sm">
                     <div className="min-w-0">
                       <div className="truncate">{fmtDate(row.period_start)} – {fmtDate(row.period_end)}</div>
                       <div className="text-xs text-muted-foreground">Due {fmtDate(row.due_date)}</div>
                     </div>
-                    <div className="tabular-nums font-medium">{money(row.amount_cents)}</div>
-                    {rentStatusBadge(row)}
-                    <div className="flex gap-1 justify-end">
+                    <div className="tabular-nums font-medium">{recordMoney(row.amount_cents, row.currency)}</div>
+                    {rentStatusBadge(row, today)}
+                    <div className="flex flex-wrap gap-1 justify-end">
                       {row.status !== "paid" && (
                         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => markStatus(row, "paid")}>
                           Mark paid
                         </Button>
                       )}
-                      {row.status === "due" && (
+                      {(row.status === "due" || row.status === "overdue") && (
                         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => markStatus(row, "waived")}>
                           Waive
                         </Button>
@@ -499,35 +494,42 @@ function RentLedger({ businessId, links }: { businessId: string | undefined; lin
 
       {isLoading && <Skeleton className="h-24 rounded-2xl" />}
 
-      <AddRentPaymentDialog link={addFor} onOpenChange={(o) => !o && setAddFor(null)} onSaved={invalidate} />
+      <AddRentPaymentDialog link={addFor} currency={currency} timeZone={timeZone} onOpenChange={(o) => !o && setAddFor(null)} onSaved={invalidate} />
     </div>
   );
 }
 
-function AddRentPaymentDialog({ link, onOpenChange, onSaved }: { link: any | null; onOpenChange: (v: boolean) => void; onSaved: () => void }) {
-  const today = new Date().toISOString().slice(0, 10);
+function AddRentPaymentDialog({ link, currency, timeZone, onOpenChange, onSaved }: { link: any | null; currency: string; timeZone: string; onOpenChange: (v: boolean) => void; onSaved: () => void }) {
+  const today = rentToday(timeZone);
+  const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 86400000).toISOString().slice(0,10);
+  const requestId = useRef<string | null>(null);
+  const saveLock = useRef(false);
   const [periodStart, setPeriodStart] = useState(today);
-  const [periodEnd, setPeriodEnd] = useState(today);
+  const [periodEnd, setPeriodEnd] = useState(tomorrow);
   const [dueDate, setDueDate] = useState(today);
   const [amount, setAmount] = useState("");
   const [alreadyPaid, setAlreadyPaid] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const reset = () => {
-    setPeriodStart(today); setPeriodEnd(today); setDueDate(today); setAmount(""); setAlreadyPaid(false);
+    setPeriodStart(today); setPeriodEnd(tomorrow); setDueDate(today); requestId.current = null; setAmount(""); setAlreadyPaid(false);
   };
 
   const submit = async () => {
-    if (!link) return;
-    const cents = Math.round(parseFloat(amount || "0") * 100);
-    if (!(cents > 0)) return toast.error("Enter an amount greater than $0");
-    if (periodEnd < periodStart) return toast.error("Period end must be on or after period start");
+    if (!link || saveLock.current) return;
+    if (!/^\d+(?:\.\d{1,2})?$/.test(amount.trim())) return toast.error("Enter a positive amount with at most two decimal places");
+    const cents = Math.round(Number(amount) * 100);
+    if (!(cents > 0)) return toast.error(`Enter an amount greater than ${fmtMoney(0, currency)}`);
+    if (periodEnd <= periodStart) return toast.error("Period end must be after the start; the end date is not included");
+    saveLock.current = true;
+    requestId.current ??= crypto.randomUUID();
     setBusy(true);
     try {
       const headers = await getServerFnAuthHeaders();
       await addRentPayment({
         data: {
           linkId: link.id,
+          requestId: requestId.current,
           periodStart,
           periodEnd,
           dueDate,
@@ -543,12 +545,13 @@ function AddRentPaymentDialog({ link, onOpenChange, onSaved }: { link: any | nul
     } catch (e: any) {
       toast.error(e.message ?? "Could not add payment");
     } finally {
+      saveLock.current = false;
       setBusy(false);
     }
   };
 
   return (
-    <Dialog open={!!link} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
+    <Dialog open={!!link} onOpenChange={(o) => { if (busy) return; if (!o) reset(); onOpenChange(o); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">Add a rent payment</DialogTitle>
@@ -557,22 +560,22 @@ function AddRentPaymentDialog({ link, onOpenChange, onSaved }: { link: any | nul
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Period start</Label>
-              <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} className="mt-1.5 h-10" />
+              <Label htmlFor="rent-start" className="text-xs uppercase tracking-wide text-muted-foreground">Period start</Label>
+              <Input id="rent-start" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} className="mt-1.5 h-10" />
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Period end</Label>
-              <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} className="mt-1.5 h-10" />
+              <Label htmlFor="rent-end" className="text-xs uppercase tracking-wide text-muted-foreground">Period end (not included)</Label>
+              <Input id="rent-end" type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} className="mt-1.5 h-10" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Amount</Label>
-              <Input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5 h-10" />
+              <Label htmlFor="rent-amount" className="text-xs uppercase tracking-wide text-muted-foreground">Amount</Label>
+              <Input id="rent-amount" type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5 h-10" />
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Due date</Label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1.5 h-10" />
+              <Label htmlFor="rent-due" className="text-xs uppercase tracking-wide text-muted-foreground">Due date</Label>
+              <Input id="rent-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1.5 h-10" />
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -581,7 +584,7 @@ function AddRentPaymentDialog({ link, onOpenChange, onSaved }: { link: any | nul
           </label>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
+          <Button variant="ghost" onClick={() => { reset(); onOpenChange(false); }} disabled={busy}>Cancel</Button>
           <Button onClick={submit} disabled={busy}>{busy ? "Saving…" : "Add payment"}</Button>
         </DialogFooter>
       </DialogContent>
@@ -595,6 +598,7 @@ function InviteDialog({
   salonBusinessId,
   invitedBy,
   isStudio,
+  currency,
   onCreated,
 }: {
   open: boolean;
@@ -602,6 +606,7 @@ function InviteDialog({
   salonBusinessId: string | undefined;
   invitedBy: string | undefined;
   isStudio: boolean;
+  currency: string;
   onCreated: () => void;
 }) {
   const [email, setEmail] = useState("");
@@ -621,12 +626,12 @@ function InviteDialog({
   const submit = async () => {
     if (!salonBusinessId || !invitedBy) return;
     if (!email.trim()) return toast.error("Email is required");
-    if (isStudio && (mode === "weekly" || mode === "monthly" || mode === "fixed_commission") && !(parseFloat(amount || "0") > 0)) {
-      return toast.error("Enter an amount greater than $0");
+    if (isStudio && (mode === "weekly" || mode === "monthly" || mode === "fixed_commission") && (!/^\d+(?:\.\d{1,2})?$/.test(amount.trim()) || !(Number(amount) > 0))) {
+      return toast.error(`Enter an amount greater than ${fmtMoney(0, currency)}`);
     }
     if (isStudio && mode === "percentage") {
-      const pct = parseFloat(percent || "0");
-      if (!(pct > 0) || pct > 100) return toast.error("Enter a percentage between 0 and 100");
+      const pct = Number(percent);
+      if (!/^\d+(?:\.\d{1,2})?$/.test(percent.trim()) || pct < 0 || pct > 100) return toast.error("Enter a percentage between 0 and 100");
     }
     setBusy(true);
     try {

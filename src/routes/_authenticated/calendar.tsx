@@ -157,14 +157,26 @@ function CalendarPage() {
     [bid, linkedBizKey, range.start, range.end],
   );
 
-  const { data: staff } = useQuery({
+  const { data: sharedCalendar, error: sharedCalendarError } = useQuery({
+    queryKey: ["shared-calendar", bid, range.start.toISOString(), range.end.toISOString()],
+    enabled: !!bid && biz?.plan === "studio" && linkedProBusinessIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("get_linked_professional_busy_times", {
+        _salon_id: bid, _starts_at: range.start.toISOString(), _ends_at: range.end.toISOString(),
+      });
+      if (error) throw error;
+      return data as { staff: any[]; busy: any[] };
+    },
+  });
+
+  const { data: ownStaff } = useQuery({
     queryKey: ["calendar-staff", bid, linkedBizKey],
     enabled: !!bid && linkedPros !== undefined,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff")
         .select("id, name, role, photo_url, business_id")
-        .in("business_id", allBizIds)
+        .eq("business_id", bid!)
         .eq("active", true)
         .order("name");
       if (error) throw error;
@@ -176,14 +188,18 @@ function CalendarPage() {
     },
   });
 
-  const { data: bookings, isLoading } = useQuery({
+  const staff = useMemo(() => [
+    ...(ownStaff ?? []),
+    ...(biz?.plan === "studio" ? sharedCalendar?.staff ?? [] : []).map(s => ({...s, is_independent: true, _readOnly: true, chair_label: chairLabelByBizId.get(s.business_id) ?? null})),
+  ], [ownStaff, sharedCalendar, chairLabelByBizId, biz?.plan]);
+  const { data: ownBookings, isLoading } = useQuery({
     queryKey: calendarQueryKey,
     enabled: !!bid && linkedPros !== undefined,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
         .select("*, services(id, name, color, duration_minutes), staff(id, name, photo_url, business_id)")
-        .in("business_id", allBizIds)
+        .eq("business_id", bid!)
         .gte("starts_at", range.start.toISOString())
         .lt("starts_at", range.end.toISOString())
         .order("starts_at");
@@ -192,20 +208,33 @@ function CalendarPage() {
     },
   });
 
-  const { data: blocked } = useQuery({
+  const bookings = useMemo(() => [
+    ...(ownBookings ?? []),
+    ...(biz?.plan === "studio" ? sharedCalendar?.busy ?? [] : []).filter(b => b.kind === "booking").map(b => ({
+      ...b, _readOnly: true, customer_name: "Reserved", status: "confirmed", services: null,
+      staff: staff.find(s => s.id === b.staff_id),
+    })),
+  ], [ownBookings, sharedCalendar, staff, biz?.plan]);
+  const { data: ownBlocked } = useQuery({
     queryKey: ["calendar-blocked", bid, linkedBizKey, range.start.toISOString(), range.end.toISOString()],
     enabled: !!bid && linkedPros !== undefined,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("blocked_dates")
         .select("*")
-        .in("business_id", allBizIds)
+        .eq("business_id", bid!)
         .lt("starts_at", range.end.toISOString())
         .gt("ends_at", range.start.toISOString());
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const blocked = useMemo(() => [...(ownBlocked ?? []), ...(sharedCalendar?.busy ?? []).filter(b => b.kind === "block").map(b => ({...b, reason: "Unavailable"}))], [ownBlocked, sharedCalendar, biz?.plan]);
+  const selectBooking = (booking: any) => {
+    if (booking._readOnly) { toast.info("This professional shares busy times only. Manage their bookings in their own workspace."); return; }
+    setSelected(booking);
+  };
 
   // Day view renders one column per staff member here. `staff` above is
   // active-only (correct for "who can take a new booking today"), but an
@@ -351,6 +380,7 @@ function CalendarPage() {
   };
 
   const openNewBooking = (cell?: { staffId?: string; serviceId?: string; requestId?: string; customerId?: string; isoTime?: string; date?: Date }) => {
+    if (cell?.staffId && staff.find(s => s.id === cell.staffId)?._readOnly) { toast.info("Create this booking in the professional's own workspace."); return; }
     setPrefill(cell);
     setNewOpen(true);
   };
@@ -401,7 +431,7 @@ function CalendarPage() {
 
   const dropMove = async (bookingId: string, newStaffId: string, newStart: Date) => {
     const b = (bookings ?? []).find((x: any) => x.id === bookingId);
-    if (!b) return;
+    if (!b || b._readOnly) return;
     const destinationStaff = (staff ?? []).find((x: any) => x.id === newStaffId);
     if (destinationStaff?.business_id && b.business_id && destinationStaff.business_id !== b.business_id) {
       toast.error("Move this booking within the same business calendar.");
@@ -470,7 +500,7 @@ function CalendarPage() {
 
   const resizeBooking = async (bookingId: string, edge: "start" | "end", newIso: string) => {
     const b = (bookings ?? []).find((x: any) => x.id === bookingId);
-    if (!b) return;
+    if (!b || b._readOnly) return;
     const prev = { starts_at: b.starts_at, ends_at: b.ends_at };
     const next = edge === "start" ? { starts_at: newIso, ends_at: b.ends_at } : { starts_at: b.starts_at, ends_at: newIso };
     if (new Date(next.ends_at).getTime() - new Date(next.starts_at).getTime() < SLOT_MIN * 60000) return;
@@ -621,8 +651,10 @@ function CalendarPage() {
         />
       )}
 
+      {biz?.plan === "studio" && linkedProBusinessIds.length > 0 && <p className="px-3 text-sm text-muted-foreground">Independent professionals share busy times only. Create and change their bookings in their own workspace.</p>}
+        {sharedCalendarError && <p role="alert" className="px-3 text-sm text-destructive">Shared availability could not load. Do not assume these professionals are free.</p>}
       {!calendarIsExpanded && view === "day" && (
-        <TodayStrip bookings={bookings ?? []} staff={staff ?? []} date={anchor} />
+        <TodayStrip bookings={ownBookings ?? []} staff={ownStaff ?? []} date={anchor} />
       )}
 
       <CalendarToolbar
@@ -661,7 +693,7 @@ function CalendarPage() {
             blocked={blocked ?? []}
             date={anchor}
             isLoading={isLoading}
-            onSelect={setSelected}
+            onSelect={selectBooking}
             onCellClick={(staffId, isoTime) => openNewBooking({ staffId, isoTime, date: anchor })}
             onCellBlock={(staffId, isoTime) => openBlockTime({ staffId, isoTime, date: anchor })}
             onMove={dropMove}
@@ -676,7 +708,7 @@ function CalendarPage() {
             bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
             weekStart={range.start}
             isLoading={isLoading}
-            onSelect={setSelected}
+            onSelect={selectBooking}
             onCellClick={(date, isoTime) => openNewBooking({ isoTime, date })}
             fullscreen={calendarIsExpanded}
           />
@@ -686,7 +718,7 @@ function CalendarPage() {
           <MonthView
             bookings={(bookings ?? []).filter((b: any) => b.status !== "cancelled")}
             monthStart={range.start}
-            onSelect={setSelected}
+            onSelect={selectBooking}
             onDayClick={(date) => { setAnchor(date); setView("day"); }}
           />
         )}
