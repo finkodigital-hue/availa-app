@@ -115,6 +115,8 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
  WHERE sp.pro_business_id=_pro_business_id AND sp.status='active' AND b.owner_id=auth.uid() AND b.plan='studio'
  AND COALESCE(sp.permissions->>'salon_can_view_calendar','true')='true');
 $$;
+REVOKE ALL ON FUNCTION private.salon_pro_permission(uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.salon_pro_permission(uuid,text) TO authenticated,service_role;
 -- The retired public helper is still called by legacy booking triggers.
 CREATE OR REPLACE FUNCTION public.salon_pro_permission(_pro_business_id uuid,_perm text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$

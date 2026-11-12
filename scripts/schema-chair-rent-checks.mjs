@@ -29,6 +29,7 @@ export async function checkChairRent(db) {
     );
   };
   await admin();
+  same((await rows("select has_function_privilege('anon','private.salon_pro_permission(uuid,text)','EXECUTE') as anon,has_function_privilege('authenticated','private.salon_pro_permission(uuid,text)','EXECUTE') as authenticated,has_function_privilege('service_role','private.salon_pro_permission(uuid,text)','EXECUTE') as service"))[0], {anon:false,authenticated:true,service:true}, 'Private sharing helper has explicit minimal execute grants');
   await db.exec(`insert into auth.users(id,email,email_confirmed_at) values('${id(1)}','rent1@example.invalid',now()),('${id(2)}','rent2@example.invalid',now()),('${id(3)}','rent3@example.invalid',now());
  insert into businesses(id,owner_id,name,slug,plan,timezone) values('${id(101)}','${id(1)}','Rent salon','rent-salon-fixture','studio','Europe/London'),('${id(102)}','${id(2)}','Rent pro','rent-pro-fixture','studio','Europe/London'),('${id(103)}','${id(3)}','Unrelated','rent-other-fixture','studio','Europe/London');
  insert into salon_professionals(id,salon_business_id,pro_business_id,rent_mode,rent_amount_cents,created_at) values('${id(201)}','${id(101)}','${id(102)}','weekly',12345,now()-interval '30 days');`);
