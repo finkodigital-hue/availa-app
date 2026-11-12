@@ -37,7 +37,7 @@ export function TodayStrip({ bookings, staff, date, currency = "GBP" }: { bookin
               <span className="h-6 w-6 rounded-full grid place-items-center" style={{ background: c.tint, color: c.ink }} data-calendar-stat-icon>
                 <Icon className="h-3.5 w-3.5" />
               </span>
-              <span className="truncate">{c.label}</span>
+              <span className="min-w-0 whitespace-normal break-words leading-snug">{c.label}</span>
             </div>
             <div className="mt-2 font-display text-xl sm:text-2xl tabular-nums tracking-tight" data-calendar-stat-value>{c.value}</div>
             {c.description && <p className="mt-1 text-xs text-muted-foreground">{c.description}</p>}
