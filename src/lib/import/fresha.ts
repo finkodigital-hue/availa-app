@@ -172,7 +172,13 @@ export function mapApptRow(
   const slot = parseSlotTimes(r.apptSlot);
   const explicitEnd = parseGenericDateTime(r.endDateTime);
   const dur = parseDuration(r.duration);
-  const times = resolveApptTimes(scheduled, slot, explicitEnd, dur.minutes);
+  const invalidExplicitTime =
+    (!!r.apptSlot?.trim() && !slot) ||
+    (!!r.endDateTime?.trim() && !explicitEnd) ||
+    (!slot && !!explicitEnd && !!scheduled && explicitEnd <= scheduled);
+  const times = invalidExplicitTime
+    ? null
+    : resolveApptTimes(scheduled, slot, explicitEnd, dur.minutes);
   const price = parsePrice(r.price);
   const prepayment = parsePrice(r.prepayment);
   // Keep no-ID bookings distinct within a file and stable across re-uploads,

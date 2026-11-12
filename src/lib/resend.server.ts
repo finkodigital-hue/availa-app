@@ -243,6 +243,7 @@ export async function sendEmail({
     mode === "redirected" ? `[DEV → ${to}] ${subject}` : subject;
   const providerMessageId = await deliverNotification({
     database: supabaseAdmin, deliveryId: existing.id, channel: "email",
+    expectedRecipient: messageType === "rebooking_reminder" ? resolvedTo : undefined,
     payload: {
       from: "Bookzenvo <notifications@bookzenvo.com>",
       to: [resolvedTo], subject: effectiveSubject, html,

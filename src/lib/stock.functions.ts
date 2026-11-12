@@ -23,6 +23,13 @@ async function ownedStudioBusiness(context: any) {
   return businessId;
 }
 
+function stockNumber(value: unknown, label: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error(label + " must be a valid number, zero or greater.");
+  }
+  return value;
+}
+
 function cleanItem(input: StockItemInput) {
   const name = input.name?.trim().slice(0, 150);
   if (!name) throw new Error("Add an item name.");
@@ -31,15 +38,15 @@ function cleanItem(input: StockItemInput) {
     brand: input.brand?.trim().slice(0, 100) || null,
     category: input.category?.trim().slice(0, 80) || "Other",
     unit: input.unit?.trim().slice(0, 40) || "unit",
-    current_stock: Math.max(0, Number(input.current_stock) || 0),
+    current_stock: stockNumber(input.current_stock, "Stock quantity"),
     low_stock_threshold:
       input.low_stock_threshold == null
         ? null
-        : Math.max(0, Number(input.low_stock_threshold) || 0),
+        : stockNumber(input.low_stock_threshold, "Low stock threshold"),
     cost_cents:
       input.cost_cents == null
         ? null
-        : Math.max(0, Math.round(Number(input.cost_cents) || 0)),
+        : Math.round(stockNumber(input.cost_cents, "Cost")),
   };
 }
 
@@ -80,7 +87,7 @@ export const setStockQuantity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data: { id: string; quantity: number }) => ({
     id: data.id,
-    quantity: Math.max(0, Number(data.quantity) || 0),
+    quantity: stockNumber(data.quantity, "Stock quantity"),
   }))
   .handler(async ({ data, context }) => {
     const businessId = await ownedStudioBusiness(context);
