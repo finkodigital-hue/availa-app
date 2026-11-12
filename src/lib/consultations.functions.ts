@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertStudio } from "@/lib/plan.server";
+import { fetchCustomerExportRows } from "@/lib/customer-export";
 
 export type ConsultationQuestionType = "yes_no" | "text" | "long_text" | "date" | "select";
 
@@ -172,9 +173,14 @@ export const startConsultationSubmission = createServerFn({ method: "POST" })
       customer = selected;
     }
     if (!customer && data.customerEmail) {
-      const { data: matches, error } = await db.from("customers").select("id").eq("business_id", business.id).ilike("email", data.customerEmail).limit(1);
-      if (error) throw error;
-      customer = matches?.[0] ?? null;
+      // ILIKE treats % and _ as wildcards; PostgREST also aliases * to %.
+      // Escape literal SQL wildcards, use one character for *, then verify
+      // literal email equality before attaching sensitive health records.
+      const emailPattern = data.customerEmail.replace(/[\\%_]/g, (character) => "\\" + character).replace(/\*/g, "_");
+      const matches = await fetchCustomerExportRows<{ id: string; email: string | null }>(() =>
+        db.from("customers").select("id,email").eq("business_id", business.id).ilike("email", emailPattern),
+      );
+      customer = matches.find((row) => row.email?.toLowerCase() === data.customerEmail) ?? null;
     }
     if (!customer && data.customerPhone) {
       const { data: matches, error } = await db.from("customers").select("id").eq("business_id", business.id).eq("phone", data.customerPhone).limit(1);
@@ -369,8 +375,8 @@ export const signConsultationSubmission = createServerFn({ method: "POST" })
   .validator((data: { id: string; answers: Record<string, unknown>; signerName: string; signatureData: string; explicitHealthConsent: boolean; adultConfirmed: boolean }) => {
     if (!validUuid(data.id) || !data.id) throw new Error("That form could not be found.");
     const signerName = text(data.signerName, 150, true);
-    if (!data.explicitHealthConsent) throw new Error("Explicit consent is required before this form can be signed.");
-    if (!data.adultConfirmed) throw new Error("Digital consultation signing is currently available only to clients aged 18 or over.");
+    if (data.explicitHealthConsent !== true) throw new Error("Explicit consent is required before this form can be signed.");
+    if (data.adultConfirmed !== true) throw new Error("Digital consultation signing is currently available only to clients aged 18 or over.");
     if (typeof data.signatureData !== "string" || !data.signatureData.startsWith("data:image/png;base64,") || data.signatureData.length > 180000) {
       throw new Error("Please add a valid signature.");
     }

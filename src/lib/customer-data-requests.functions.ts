@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireRecentSensitiveSession } from "@/lib/verified-identity.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
+import { fetchCustomerExportRows } from "@/lib/customer-export";
 
 type RequestInput = {
   requestId: string;
@@ -193,42 +194,39 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
         "This customer's record could not be found. It may have already been merged or removed.",
       );
 
-    const { data: bookings, error: bookingsError } = await context.supabase
-      .from("bookings")
-      .select(
-        "id, starts_at, ends_at, price_cents, amount_paid_cents, amount_refunded_cents, payment_status, status, services(name)",
-      )
-      .eq("customer_id", customer.id)
-      .eq("business_id", business.id)
-      .order("starts_at", { ascending: false });
-    if (bookingsError) throw bookingsError;
+    const bookings = await fetchCustomerExportRows<ExportBooking>(() =>
+      (context.supabase as any)
+        .from("bookings")
+        .select(
+          "id, starts_at, ends_at, price_cents, amount_paid_cents, amount_refunded_cents, payment_status, status, services(name)",
+        )
+        .eq("customer_id", customer.id)
+        .eq("business_id", business.id),
+    );
 
     const bookingIds = (bookings ?? []).map((b: any) => b.id);
     let payments: ExportPayment[] = [];
-    if (bookingIds.length > 0) {
-      const { data: paymentRows, error: paymentsError } = await (
-        context.supabase as any
-      )
-        .from("payments")
-        .select(
-          "id, booking_id, type, status, amount_cents, currency, created_at",
-        )
-        .in("booking_id", bookingIds)
-        .eq("business_id", business.id)
-        .order("created_at", { ascending: false });
-      if (paymentsError) throw paymentsError;
-      payments = paymentRows ?? [];
+    // Keep each encoded PostgREST URL bounded even for a long booking history.
+    for (let offset = 0; offset < bookingIds.length; offset += 100) {
+      const paymentRows = await fetchCustomerExportRows<ExportPayment>(() =>
+        (context.supabase as any)
+          .from("payments")
+          .select(
+            "id, booking_id, type, status, amount_cents, currency, created_at",
+          )
+          .in("booking_id", bookingIds.slice(offset, offset + 100))
+          .eq("business_id", business.id),
+      );
+      payments.push(...paymentRows);
     }
 
-    const { data: reviews, error: reviewsError } = await (
-      context.supabase as any
-    )
-      .from("customer_reviews")
-      .select("id, booking_id, rating, body, status, submitted_at")
-      .eq("customer_id", customer.id)
-      .eq("business_id", business.id)
-      .order("submitted_at", { ascending: false });
-    if (reviewsError) throw reviewsError;
+    const reviews = await fetchCustomerExportRows<ExportReview>(() =>
+      (context.supabase as any)
+        .from("customer_reviews")
+        .select("id, booking_id, rating, body, status, submitted_at")
+        .eq("customer_id", customer.id)
+        .eq("business_id", business.id),
+    );
 
     // Consultation answers and signatures are deliberately unavailable to the
     // browser client. The server has already proved that the caller owns this
@@ -236,17 +234,16 @@ export const generateCustomerDataExport = createServerFn({ method: "POST" })
     // client with both tenant and customer predicates.
     const { supabaseAdmin } =
       await import("@/integrations/supabase/client.server");
-    const { data: consultations, error: consultationsError } = await (
-      supabaseAdmin as any
-    )
-      .from("consultation_submissions")
-      .select(
-        "id, booking_id, status, template_snapshot, answers, explicit_health_consent, signer_name, signature_data, signed_at, expires_at, withdrawn_at, withdrawal_reason, patch_test_outcome, patch_tested_at, patch_tested_by, staff_notes, created_at",
-      )
-      .eq("business_id", business.id)
-      .eq("customer_id", customer.id)
-      .order("created_at", { ascending: false });
-    if (consultationsError) throw consultationsError;
+    const consultations = await fetchCustomerExportRows<ExportConsultation>(
+      () =>
+        (supabaseAdmin as any)
+          .from("consultation_submissions")
+          .select(
+            "id, booking_id, status, template_snapshot, answers, explicit_health_consent, signer_name, signature_data, signed_at, expires_at, withdrawn_at, withdrawal_reason, patch_test_outcome, patch_tested_at, patch_tested_by, staff_notes, created_at",
+          )
+          .eq("business_id", business.id)
+          .eq("customer_id", customer.id),
+    );
 
     const { data: waitlistExport, error: waitlistError } = await (
       supabaseAdmin as any
@@ -420,14 +417,21 @@ export const eraseCustomer = createServerFn({ method: "POST" })
           .from("customer_erasure_storage_jobs")
           .update({
             attempts: 1,
-            last_error: String(removeError.message ?? "Storage removal failed").slice(0, 500),
+            last_error: String(
+              removeError.message ?? "Storage removal failed",
+            ).slice(0, 500),
           })
           .eq("request_id", request.id);
       } else {
         photosDeleted = photoPaths.length;
         await (supabaseAdmin as any)
           .from("customer_erasure_storage_jobs")
-          .update({ status: "completed", attempts: 1, last_error: null, completed_at: new Date().toISOString() })
+          .update({
+            status: "completed",
+            attempts: 1,
+            last_error: null,
+            completed_at: new Date().toISOString(),
+          })
           .eq("request_id", request.id);
       }
     }
@@ -451,8 +455,12 @@ export const eraseCustomer = createServerFn({ method: "POST" })
       consultationsDeleted: result.consultations_deleted ?? 0,
       appointmentRequestsDeleted: result.appointment_requests_deleted ?? 0,
       authAccountStatus,
-      manualCheckNotice: photosDeleted < photoPaths.length
-        ? [...NOT_COVERED_NOTICE, "Customer photo removal is queued for an automatic retry."]
-        : NOT_COVERED_NOTICE,
+      manualCheckNotice:
+        photosDeleted < photoPaths.length
+          ? [
+              ...NOT_COVERED_NOTICE,
+              "Customer photo removal is queued for an automatic retry.",
+            ]
+          : NOT_COVERED_NOTICE,
     };
   });

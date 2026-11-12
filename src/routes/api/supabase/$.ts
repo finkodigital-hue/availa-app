@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { readBodyWithLimit } from "@/lib/request-limits";
-import { consumePublicRequest, publicRequestLimitResponse } from "@/lib/public-request-limit.server";
+import {
+  consumePublicRequest,
+  publicRequestLimitResponse,
+} from "@/lib/public-request-limit.server";
 
 const PROXY_PREFIX = "/api/supabase/";
 const ALLOWED_SERVICES = new Set(["auth", "rest", "storage", "functions"]);
@@ -54,7 +57,11 @@ const PROTECTED_REST_FIELDS: Record<string, ReadonlySet<string>> = {
     "deletion_requested_at",
     "deletion_scheduled_for",
   ]),
-  bookings: new Set(["stripe_payment_intent_id", "stripe_charge_id", "amount_refunded_cents"]),
+  bookings: new Set([
+    "stripe_payment_intent_id",
+    "stripe_charge_id",
+    "amount_refunded_cents",
+  ]),
   customers: new Set(["stripe_customer_id", "auth_user_id"]),
 };
 
@@ -70,13 +77,18 @@ async function rejectUnsafeRestWrite(
   if (method === "GET" || method === "HEAD") return null;
 
   const [service, version, resource] = upstreamPath.split("/");
-  if (service !== "rest" || version !== "v1" || !resource || resource === "rpc") return null;
+  if (service !== "rest" || version !== "v1" || !resource || resource === "rpc")
+    return null;
 
   if (resource === "payments") {
-    return new Response("Verified payment records are server-managed", { status: 403 });
+    return new Response("Verified payment records are server-managed", {
+      status: 403,
+    });
   }
   if (resource === "businesses" && method === "DELETE") {
-    return new Response("Business deletion must use the verified account API", { status: 403 });
+    return new Response("Business deletion must use the verified account API", {
+      status: 403,
+    });
   }
 
   const protectedFields = PROTECTED_REST_FIELDS[resource];
@@ -86,7 +98,9 @@ async function rejectUnsafeRestWrite(
   try {
     payload = JSON.parse(new TextDecoder().decode(body));
   } catch {
-    return new Response("Database writes must use a valid JSON body", { status: 400 });
+    return new Response("Database writes must use a valid JSON body", {
+      status: 400,
+    });
   }
 
   const rows = Array.isArray(payload) ? payload : [payload];
@@ -97,9 +111,12 @@ async function rejectUnsafeRestWrite(
       Object.keys(row).some((field) => protectedFields.has(field)),
   );
   if (containsProtectedField) {
-    return new Response("This field can only be changed by Bookzenvo's verified server API", {
-      status: 403,
-    });
+    return new Response(
+      "This field can only be changed by Bookzenvo's verified server API",
+      {
+        status: 403,
+      },
+    );
   }
   return null;
 }
@@ -126,22 +143,43 @@ async function proxySupabaseRequest(request: Request) {
     request.method === "GET" || request.method === "HEAD"
       ? undefined
       : await readBodyWithLimit(request, maxBytes);
-  if (body === null) return new Response("Request body is too large", { status: 413 });
+  if (body === null)
+    return new Response("Request body is too large", { status: 413 });
   let decodedPath: string;
   try {
     decodedPath = decodeURIComponent(upstreamPath);
   } catch {
     return new Response("Invalid database gateway path", { status: 400 });
   }
-  if (decodedPath.includes("\\") || decodedPath.split("/").includes("..")) {
+  // Validate the same unambiguous path used by both the resource guard and
+  // upstream URL. Decoding an escaped ?/# or a second encoded dot segment
+  // after the guard previously changed which resource received the write.
+  if (
+    /[\\?#\u0000-\u001f\u007f]/.test(decodedPath) ||
+    /%(?:2e|2f|5c|3f|23|25)/i.test(decodedPath) ||
+    decodedPath
+      .split("/")
+      .some((segment) => segment === "." || segment === "..")
+  ) {
     return new Response("Invalid database gateway path", { status: 400 });
   }
 
   // Refreshing an already-issued session is not a new credential attempt.
   // Supabase still applies its native limits to refresh and direct auth access.
-  if (service === "auth" && request.method === "POST" && decodedPath !== "auth/v1/logout" && !(decodedPath === "auth/v1/token" && incomingUrl.searchParams.get("grant_type") === "refresh_token")) {
-    try { await consumePublicRequest("auth", { headers: request.headers }); }
-    catch (error) { return publicRequestLimitResponse(error); }
+  if (
+    service === "auth" &&
+    request.method === "POST" &&
+    decodedPath !== "auth/v1/logout" &&
+    !(
+      decodedPath === "auth/v1/token" &&
+      incomingUrl.searchParams.get("grant_type") === "refresh_token"
+    )
+  ) {
+    try {
+      await consumePublicRequest("auth", { headers: request.headers });
+    } catch (error) {
+      return publicRequestLimitResponse(error);
+    }
   }
 
   const unsafeWrite = await rejectUnsafeRestWrite(
@@ -152,7 +190,9 @@ async function proxySupabaseRequest(request: Request) {
   if (unsafeWrite) return unsafeWrite;
 
   const upstreamBase = new URL(supabaseUrl);
-  const upstreamUrl = new URL(`/${decodedPath}${incomingUrl.search}`, upstreamBase);
+  const upstreamUrl = new URL(upstreamBase.origin);
+  upstreamUrl.pathname = `/${decodedPath.split("/").map(encodeURIComponent).join("/")}`;
+  upstreamUrl.search = incomingUrl.search;
   const headers = new Headers();
   for (const name of FORWARDED_REQUEST_HEADERS) {
     const value = request.headers.get(name);
