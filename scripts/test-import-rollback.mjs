@@ -174,6 +174,24 @@ await db.query(
 await db.query("update import_batches set status='completed' where id=$1", [
   b.batchId,
 ]);
+await login();
+for (const table of ["bookings", "customers", "services", "staff"]) {
+  await assert.rejects(
+    db.query(`delete from ${table} where import_batch_id=$1`, [b.batchId]),
+    /cannot be deleted directly/,
+  );
+  assert.equal(
+    (
+      await db.query(
+        `select count(*)::int n from ${table} where import_batch_id=$1`,
+        [b.batchId],
+      )
+    ).rows[0].n,
+    1,
+  );
+  checks++;
+}
+await admin();
 await db.exec(
   "create function reject_test_delete() returns trigger language plpgsql as $$begin raise exception 'injected late delete failure';end$$;create trigger reject_test_delete before delete on staff for each row execute function reject_test_delete();",
 );
@@ -252,6 +270,86 @@ assert.equal(
   ).rows[0].n,
   0,
 );
+checks++;
+// Cached versions used direct deletes. They must fail before even the first
+// imported row is removed, and may not launder provenance by deleting a batch.
+b = await batch();
+await login();
+await assert.rejects(
+  db.query("delete from customers where import_batch_id=$1", [b.batchId]),
+  /cannot be deleted directly/,
+);
+checks++;
+await assert.rejects(
+  db.query("update customers set import_batch_id=null where id=$1", [
+    b.customer,
+  ]),
+  /provenance/,
+);
+checks++;
+await assert.rejects(
+  db.query("delete from import_batches where id=$1", [b.batchId]),
+  /history cannot be deleted/,
+);
+checks++;
+// Neither an arbitrary application flag nor a forged role claim grants access.
+await db.query("select set_config('app.safe_import_undo','true',false)");
+await db.query(
+  "select set_config('request.jwt.claim.role','service_role',false)",
+);
+await assert.rejects(
+  db.query("delete from customers where id=$1", [b.customer]),
+  /cannot be deleted directly/,
+);
+checks++;
+assert.equal(await exists(b.customer), 1);
+await undo(b);
+assert.equal(await exists(b.customer), 0);
+checks++;
+// Ordinary unimported records are unaffected; authorised erasure still works
+// on imported customer records and discards their undo fingerprint.
+b = await batch();
+await login();
+await db.query(
+  "update customers set notes='Ordinary permitted edit' where id=$1",
+  [b.customer],
+);
+checks++;
+await admin();
+const eraseRequest = id(n++);
+await db.query(
+  "insert into customer_data_requests(id,business_id,customer_id,email,kind) values($1,$2,$3,'fixture@example.invalid','deletion')",
+  [eraseRequest, business, b.customer],
+);
+await db.exec("set role service_role");
+await db.query(
+  "select erase_customer_with_storage_job($1,$2,$3,$4,'{}'::text[])",
+  [business, b.customer, eraseRequest, owner],
+);
+await admin();
+assert.equal(
+  (await db.query("select name from customers where id=$1", [b.customer]))
+    .rows[0].name,
+  "Deleted customer",
+);
+assert.equal(
+  (
+    await db.query(
+      "select count(*)::int n from import_row_fingerprints where row_id=$1",
+      [b.customer],
+    )
+  ).rows[0].n,
+  0,
+);
+checks++;
+const ordinary = id(n++);
+await db.query(
+  "insert into customers(id,business_id,name) values($1,$2,'Ordinary fixture')",
+  [ordinary, business],
+);
+await login();
+await db.query("delete from customers where id=$1", [ordinary]);
+assert.equal(await exists(ordinary), 0);
 checks++;
 await db.close();
 console.log(
