@@ -4,6 +4,8 @@ export const MAX_AGE_MS = 720_000;
 const LEASE_MS = 90_000;
 const HISTORY_LIMIT = 288;
 export const DRILL_EXPIRY_MS = 30 * 60_000;
+export const BACKUP_MAX_AGE_MS = 25 * 60 * 60_000;
+const BACKUP_MAX_DURATION_MS = 6 * 60 * 60_000;
 const COUNT_FIELDS = [
   "count",
   "unresolvedDeliveries",
@@ -90,7 +92,8 @@ async function request(fetcher, path, secret, kind, options) {
       timeout,
       (async () => {
         const response = await fetcher(url.href, {
-          redirect: "error",
+          // Workers supports manual/follow only. Never forward credentials on redirects.
+          redirect: "manual",
           signal: controller.signal,
           headers: {
             "user-agent": "Bookzenvo-independent-monitor",
@@ -99,6 +102,7 @@ async function request(fetcher, path, secret, kind, options) {
           },
         });
         if (
+          (response.status >= 300 && response.status < 400) ||
           response.redirected ||
           (response.url && response.url !== url.href)
         ) {
@@ -288,7 +292,7 @@ function drillHealth(record, now) {
   );
 }
 
-async function parseDrill(request) {
+async function parseSmallJson(request) {
   if (
     request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !==
     "application/json"
@@ -314,21 +318,13 @@ async function parseDrill(request) {
     try {
       value = JSON.parse(text);
     } catch {
-      return { error: json({ error: "invalid_drill" }, 400) };
+      return { error: json({ error: "invalid_payload" }, 400) };
     }
-    if (
-      !value ||
-      Array.isArray(value) ||
-      typeof value !== "object" ||
-      Object.keys(value).length !== 1 ||
-      !["down", "up"].includes(value.status)
-    )
-      return { error: json({ error: "invalid_drill" }, 400) };
-    return { status: value.status };
+    return { value };
   } catch (error) {
     return {
       error: json(
-        { error: "invalid_drill" },
+        { error: "invalid_payload" },
         error instanceof ProbeFailure && error.code === "oversize"
           ? 413
           : error instanceof ProbeFailure && error.code === "timeout"
@@ -340,6 +336,84 @@ async function parseDrill(request) {
     clearTimeout(timer);
     controller.abort();
   }
+}
+
+async function parseDrill(request) {
+  const parsed = await parseSmallJson(request);
+  if (parsed.error) return parsed;
+  const value = parsed.value;
+  if (
+    !value ||
+    Array.isArray(value) ||
+    typeof value !== "object" ||
+    Object.keys(value).length !== 1 ||
+    !["down", "up"].includes(value.status)
+  )
+    return { error: json({ error: "invalid_drill" }, 400) };
+  return { status: value.status };
+}
+
+function backupValues(value) {
+  if (
+    !value ||
+    typeof value.completedAt !== "string" ||
+    typeof value.generation !== "string"
+  )
+    return null;
+  const completion =
+    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.\d{1,7})?Z$/.exec(
+      value.completedAt,
+    );
+  const generation = /^(\d{4}-\d{2}-\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(
+    value.generation,
+  );
+  if (!completion || !generation) return null;
+  const completedAt = Date.parse(value.completedAt);
+  const generationText = `${generation[1]}T${generation[2]}:${generation[3]}:${generation[4]}`;
+  const generationAt = Date.parse(`${generationText}Z`);
+  if (
+    !Number.isFinite(completedAt) ||
+    !Number.isFinite(generationAt) ||
+    new Date(completedAt).toISOString().slice(0, 19) !== completion[1] ||
+    new Date(generationAt).toISOString().slice(0, 19) !== generationText ||
+    completedAt - generationAt < -30_000 ||
+    completedAt - generationAt > BACKUP_MAX_DURATION_MS
+  )
+    return null;
+  return { completedAt, generationAt };
+}
+
+async function parseBackup(request) {
+  const parsed = await parseSmallJson(request);
+  if (parsed.error) return parsed;
+  const value = parsed.value;
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).length !== 2 ||
+    !backupValues(value)
+  )
+    return { error: json({ error: "invalid_backup" }, 400) };
+  return {
+    value: { completedAt: value.completedAt, generation: value.generation },
+  };
+}
+
+function backupHealth(record, now) {
+  const values = backupValues(record);
+  const healthy =
+    values &&
+    values.generationAt <= now + 30_000 &&
+    values.completedAt <= now + 30_000 &&
+    now - values.completedAt <= BACKUP_MAX_AGE_MS;
+  return json(
+    {
+      status: healthy ? "ok" : "unhealthy",
+      lastBackupAt: values ? new Date(values.completedAt).toISOString() : null,
+    },
+    healthy ? 200 : 503,
+  );
 }
 
 // A single named object serialises claims/completions; network requests run outside its storage lock.
@@ -355,6 +429,41 @@ export class MonitorState {
   async fetch(request) {
     try {
       const path = new URL(request.url).pathname;
+      if (request.method === "GET" && path === "/backup-health")
+        return backupHealth(await this.state.storage.get("backup"), this.now());
+      if (request.method === "POST" && path === "/backup") {
+        const parsed = await parseBackup(request);
+        if (parsed.error) return parsed.error;
+        const values = backupValues(parsed.value);
+        if (
+          values.completedAt > this.now() + 30_000 ||
+          values.generationAt > this.now() + 30_000
+        )
+          return json({ error: "future_backup" }, 400);
+        return await this.state.blockConcurrencyWhile(async () => {
+          const previous = await this.state.storage.get("backup");
+          const prior = backupValues(previous);
+          if (previous && !prior) return json({ status: "unavailable" }, 503);
+          if (prior) {
+            if (
+              values.generationAt === prior.generationAt &&
+              values.completedAt === prior.completedAt
+            )
+              return json({ status: "recorded", duplicate: true });
+            if (
+              values.generationAt <= prior.generationAt ||
+              values.completedAt <= prior.completedAt
+            )
+              return json({ error: "older_or_conflicting_backup" }, 409);
+          }
+          await this.state.storage.put("backup", {
+            generation: parsed.value.generation,
+            completedAt: new Date(values.completedAt).toISOString(),
+            reportedAt: this.now(),
+          });
+          return json({ status: "recorded", duplicate: false });
+        });
+      }
       if (request.method === "GET" && path === "/drill")
         return drillHealth(await this.state.storage.get("drill"), this.now());
       if (request.method === "POST" && path === "/drill") {
@@ -506,7 +615,7 @@ export default {
         );
       if (
         ["GET", "HEAD"].includes(request.method) &&
-        ["/health", "/drill"].includes(url.pathname)
+        ["/health", "/drill", "/backup-health"].includes(url.pathname)
       )
         return await responseForMethod(
           request,
@@ -519,6 +628,17 @@ export default {
           request,
           json({ error: "not_found" }, 404),
         );
+      if (request.method === "POST" && url.pathname === "/backup") {
+        const parsed = await parseBackup(request);
+        if (parsed.error) return parsed.error;
+        return await object(env).fetch(
+          new Request("https://monitor.internal/backup", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(parsed.value),
+          }),
+        );
+      }
       if (request.method === "POST" && url.pathname === "/drill") {
         const value = await parseDrill(request);
         if (value.error) return value.error;

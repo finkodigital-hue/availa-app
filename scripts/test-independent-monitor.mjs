@@ -6,6 +6,7 @@ import worker, {
   INTERVAL_MS,
   MAX_AGE_MS,
   DRILL_EXPIRY_MS,
+  BACKUP_MAX_AGE_MS,
 } from "../monitoring/worker.mjs";
 
 const now = Date.parse("2026-11-13T12:00:00Z");
@@ -43,7 +44,7 @@ function fixture(transform = () => undefined, calls = []) {
   return async (url, init) => {
     calls.push({ url, init });
     assert.equal(new URL(url).origin, "https://bookzenvo.com");
-    assert.equal(init.redirect, "error");
+    assert.equal(init.redirect, "manual");
     const path = new URL(url).pathname;
     assert.equal(
       init.headers.authorization,
@@ -93,22 +94,53 @@ await test("missing secret fails incident probe without issuing privileged reque
   );
   assert.equal(calls.length, 3);
 });
-await test("redirect rejected and no follow-up request", async () => {
-  const calls = [];
-  const result = await probeSuite(
-    fixture(
-      (path) =>
-        path === "/api/monitoring/client-errors"
-          ? Response.redirect("https://attacker.invalid/", 302)
-          : undefined,
-      calls,
+await test("302 and307 redirects rejected without follow-up or secret forwarding", async () => {
+  for (const status of [302, 307]) {
+    const calls = [];
+    const result = await probeSuite(
+      fixture(
+        (path) =>
+          path === "/api/monitoring/client-errors"
+            ? Response.redirect("https://attacker.invalid/", status)
+            : undefined,
+        calls,
+      ),
+      secret,
+      now,
+      options,
+    );
+    failed(result, "incidents", "redirect");
+    assert.equal(calls.length, 4);
+    assert.ok(
+      calls.every(
+        (call) => new URL(call.url).origin === "https://bookzenvo.com",
+      ),
+    );
+    assert.equal(
+      calls.filter((call) => call.init.headers.authorization).length,
+      1,
+    );
+  }
+});
+await test("redirect response stream is cancelled and never fetched at Location", async () => {
+  let cancelled = false;
+  failed(
+    await resultFor((path) =>
+      path === "/api/monitoring/client-errors"
+        ? new Response(
+            new ReadableStream({
+              cancel() {
+                cancelled = true;
+              },
+            }),
+            { status: 307, headers: { location: "https://attacker.invalid/" } },
+          )
+        : undefined,
     ),
-    secret,
-    now,
-    options,
+    "incidents",
+    "redirect",
   );
-  failed(result, "incidents", "http");
-  assert.equal(calls.length, 4);
+  assert.equal(cancelled, true);
 });
 await test("already-followed response is rejected defensively", async () => {
   failed(
@@ -882,6 +914,240 @@ await test("HEAD failures are uncached and bodyless; other methods remain protec
     assert.equal(response.headers.get("cache-control"), "no-store");
     assert.equal(await response.text(), "");
   }
+});
+const backupReport = (generationTime = now - 60_000, completedTime = now) => ({
+  generation:
+    new Date(generationTime).toISOString().slice(0, 19).replaceAll(":", "") +
+    "Z",
+  completedAt: new Date(completedTime).toISOString(),
+});
+function backupFixture() {
+  const fixture = drillFixture();
+  return {
+    ...fixture,
+    get: (method) =>
+      worker.fetch(
+        new Request("https://monitor.example/backup-health", {
+          method: method ?? "GET",
+        }),
+        fixture.env,
+      ),
+    post: (value, headers = {}) =>
+      worker.fetch(
+        new Request("https://monitor.example/backup", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${secret}`,
+            "content-type": "application/json",
+            ...headers,
+          },
+          body: typeof value === "string" ? value : JSON.stringify(value),
+        }),
+        fixture.env,
+      ),
+  };
+}
+await test("backup health starts failed, records genuine completion and supports bodylessHEAD", async () => {
+  const fixture = backupFixture();
+  const missing = await fixture.get();
+  assert.equal(missing.status, 503);
+  assert.deepEqual(await missing.json(), {
+    status: "unhealthy",
+    lastBackupAt: null,
+  });
+  assert.equal(await (await fixture.get("HEAD")).text(), "");
+  const response = await fixture.post(backupReport());
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    status: "recorded",
+    duplicate: false,
+  });
+  const healthy = await fixture.get();
+  assert.equal(healthy.status, 200);
+  assert.deepEqual(await healthy.json(), {
+    status: "ok",
+    lastBackupAt: new Date(now).toISOString(),
+  });
+  assert.equal((await fixture.get("HEAD")).status, 200);
+});
+await test("backup25h boundary, stale original timestamp, and reads/replays cannot renew", async () => {
+  const fixture = backupFixture();
+  const report = backupReport();
+  await fixture.post(report);
+  const recorded = await fixture.state.storage.get("backup");
+  fixture.advance(BACKUP_MAX_AGE_MS);
+  assert.equal((await fixture.get()).status, 200);
+  fixture.advance(1);
+  assert.equal((await fixture.get()).status, 503);
+  assert.equal((await fixture.get("HEAD")).status, 503);
+  const repeat = await fixture.post(report);
+  assert.deepEqual(await repeat.json(), {
+    status: "recorded",
+    duplicate: true,
+  });
+  assert.equal((await fixture.get()).status, 503);
+  assert.deepEqual(await fixture.state.storage.get("backup"), recorded);
+  const aged = backupFixture();
+  assert.equal(
+    (
+      await aged.post(
+        backupReport(
+          now - BACKUP_MAX_AGE_MS - 120_000,
+          now - BACKUP_MAX_AGE_MS - 60_000,
+        ),
+      )
+    ).status,
+    200,
+  );
+  assert.equal((await aged.get()).status, 503);
+});
+await test("backup supports UTC PowerShell seven-digit fractional metadata", async () => {
+  const fixture = backupFixture();
+  assert.equal(
+    (
+      await fixture.post({
+        ...backupReport(),
+        completedAt: new Date(now).toISOString().replace(".000Z", ".1234567Z"),
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await fixture.get()).status, 200);
+  assert.equal(
+    (await (await fixture.get()).json()).lastBackupAt,
+    new Date(now + 123).toISOString(),
+  );
+});
+await test("backup future timestamps, invalid dates, suspicious generation paths and durations rejected", async () => {
+  const fixture = backupFixture();
+  for (const value of [
+    backupReport(now + 31_000, now + 31_000),
+    backupReport(now, now + 31_000),
+    backupReport(now - 7 * 60 * 60_000, now),
+    backupReport(now, now - 31_000),
+    { ...backupReport(), generation: "../2026-11-13T120000Z" },
+    { ...backupReport(), generation: "2026-02-30T120000Z" },
+    { ...backupReport(), completedAt: "2026-02-30T12:00:00Z" },
+    { ...backupReport(), completedAt: "2026-11-13T12:00:00+00:00" },
+    { ...backupReport(), generation: "2026-11-13T250000Z" },
+    { ...backupReport(), completedAt: 123 },
+  ])
+    assert.equal((await fixture.post(value)).status, 400);
+  assert.equal(await fixture.state.storage.get("backup"), undefined);
+});
+await test("backup older generation or altered same-generation report cannot replace evidence", async () => {
+  const fixture = backupFixture();
+  const report = backupReport();
+  await fixture.post(report);
+  const original = await fixture.state.storage.get("backup");
+  for (const value of [
+    backupReport(now - 120_000, now - 60_000),
+    backupReport(now - 120_000, now + 10_000),
+    { ...report, completedAt: new Date(now + 10_000).toISOString() },
+    backupReport(now - 30_000, now - 10_000),
+  ])
+    assert.equal((await fixture.post(value)).status, 409);
+  assert.deepEqual(await fixture.state.storage.get("backup"), original);
+  fixture.advance(60_000);
+  assert.equal(
+    (await fixture.post(backupReport(now + 30_000, now + 60_000))).status,
+    200,
+  );
+  assert.equal(
+    (await (await fixture.get()).json()).lastBackupAt,
+    new Date(now + 60_000).toISOString(),
+  );
+});
+await test("concurrent backup reports preserve newest generation", async () => {
+  const fixture = backupFixture();
+  const first = backupReport(now - 120_000, now - 60_000);
+  const second = backupReport(now - 60_000, now);
+  await Promise.all([fixture.post(second), fixture.post(first)]);
+  assert.equal(
+    (await fixture.state.storage.get("backup")).generation,
+    second.generation,
+  );
+});
+await test("backup authentication, strictbody and size protections", async () => {
+  const fixture = backupFixture();
+  for (const authorization of ["", "Bearer incorrect"])
+    assert.equal(
+      (await fixture.post(backupReport(), { authorization })).status,
+      404,
+    );
+  for (const value of [
+    "null",
+    "[]",
+    "{}",
+    "{",
+    { ...backupReport(), status: "ok" },
+    { generation: backupReport().generation },
+  ])
+    assert.equal((await fixture.post(value)).status, 400);
+  assert.equal((await fixture.post(" ".repeat(257))).status, 413);
+  assert.equal(
+    (await fixture.post(backupReport(), { "content-type": "text/plain" }))
+      .status,
+    415,
+  );
+  assert.equal(
+    (
+      await worker.fetch(
+        new Request("https://monitor.example/backup-health?completedAt=now"),
+        fixture.env,
+      )
+    ).status,
+    404,
+  );
+  assert.equal(await fixture.state.storage.get("backup"), undefined);
+});
+await test("backup record cannot alter actual monitor or drill; public result contains no generation", async () => {
+  const fixture = backupFixture();
+  const real = {
+    history: [{ ...successful, completedAt: now }],
+    lastScheduledCompletedAt: now,
+    lease: { id: "running" },
+  };
+  const drill = {
+    status: "down",
+    changedAt: now,
+    expiresAt: now + DRILL_EXPIRY_MS,
+    changeId: "test",
+  };
+  await fixture.state.storage.put("monitor", real);
+  await fixture.state.storage.put("drill", drill);
+  await fixture.post(backupReport());
+  assert.deepEqual(await fixture.state.storage.get("monitor"), real);
+  assert.deepEqual(await fixture.state.storage.get("drill"), drill);
+  assert.deepEqual(Object.keys(await (await fixture.get()).json()).sort(), [
+    "lastBackupAt",
+    "status",
+  ]);
+});
+await test("unreadable/corrupt/future backup state fails closed", async () => {
+  const fixture = backupFixture();
+  for (const record of [
+    { completedAt: "bad", generation: "bad" },
+    backupReport(now + 60_000, now + 60_000),
+  ]) {
+    await fixture.state.storage.put("backup", record);
+    assert.equal((await fixture.get()).status, 503);
+  }
+  const response = await worker.fetch(
+    new Request("https://monitor.example/backup-health"),
+    {
+      MONITOR_STATE: {
+        idFromName: (value) => value,
+        get: () => ({
+          fetch: async () => {
+            throw new Error("private");
+          },
+        }),
+      },
+    },
+  );
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get("cache-control"), "no-store");
 });
 console.log(
   `Independent monitor: ${total} behavioural suites passed; no external requests.`,
