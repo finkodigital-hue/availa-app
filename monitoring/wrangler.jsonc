@@ -1,0 +1,13 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "bookzenvo-monitor",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-13",
+  "workers_dev": true,
+  "keep_vars": true,
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "durable_objects": {
+    "bindings": [{ "name": "MONITOR_STATE", "class_name": "MonitorState" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MonitorState"] }],
+}

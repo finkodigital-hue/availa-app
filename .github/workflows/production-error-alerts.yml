@@ -30,11 +30,46 @@ jobs:
         run: |
           node --input-type=module <<'EOF'
           const endpoint = "https://bookzenvo.com/api/monitoring/client-errors";
-          let lastError;
+          const maxBytes = 16 * 1024;
+          const counterFields = ["count", "unresolvedDeliveries", "unresolvedChangeEmails", "unresolvedPayments", "unresolvedBalanceCheckouts", "unresolvedGiftRefunds", "unresolvedRefunds", "unresolvedErasureStorageJobs", "stalledErasureStorageJobs"];
+          const failureReasons = new Set(["Unexpected incident response origin", "Incident response too large", "Invalid incident response", "Invalid incident timestamp", "Incident endpoint reported an error", "Incident endpoint reports a problem"]);
+          let lastReason = "Incident request failed";
+          function validTime(value, now) {
+            if (value === null) return true;
+            if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value)) return false;
+            const day = Date.parse(`${value.slice(0, 10)}T00:00:00Z`);
+            const parsed = Date.parse(value);
+            return Number.isFinite(day) && new Date(day).toISOString().slice(0, 10) === value.slice(0, 10) && Number.isFinite(parsed) && parsed <= now;
+          }
+          async function readBoundedJson(response) {
+            if (Number(response.headers.get("content-length")) > maxBytes) {
+              void response.body?.cancel().catch(() => {});
+              throw new Error("Incident response too large");
+            }
+            if (!response.body) throw new Error("Invalid incident response");
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            const parts = [];
+            let size = 0;
+            try {
+              while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                size += value.byteLength;
+                if (size > maxBytes) {
+                  void reader.cancel().catch(() => {});
+                  throw new Error("Incident response too large");
+                }
+                parts.push(decoder.decode(value, {stream: true}));
+              }
+            } finally { reader.releaseLock(); }
+            try { return JSON.parse(parts.join("") + decoder.decode()); }
+            catch { throw new Error("Invalid incident response"); }
+          }
           for (let attempt = 1; attempt <= 3; attempt += 1) {
             try {
               const response = await fetch(endpoint, {
-                redirect: "follow",
+                redirect: "error",
                 headers: {
                   authorization: `Bearer ${process.env.MONITORING_SECRET}`,
                   "user-agent": "Bookzenvo-incident-check",
@@ -43,47 +78,37 @@ jobs:
               });
               const finalUrl = new URL(response.url);
               if (finalUrl.protocol !== "https:" || finalUrl.hostname !== "bookzenvo.com") {
-                throw new Error(`Unexpected redirect target: ${response.url}`);
+                throw new Error("Unexpected incident response origin");
               }
-              const body = await response.text();
-              let result;
-              try {
-                result = JSON.parse(body);
-              } catch {
-                throw new Error(`Expected JSON but received HTTP ${response.status}`);
-              }
-              if (!response.ok || result?.status !== "ok") {
-                // Report only the endpoint's aggregate incident counters. Never
-                // print response bodies, request headers or customer records.
-                const fields = [
-                  "count",
-                  "unresolvedDeliveries",
-                  "unresolvedChangeEmails",
-                  "unresolvedPayments",
-                  "unresolvedBalanceCheckouts",
-                  "unresolvedGiftRefunds",
-                  "unresolvedRefunds",
-                  "unresolvedErasureStorageJobs",
-                  "stalledErasureStorageJobs",
-                  "reminderCronStale",
-                  "reminderCronLastSuccessAt",
-                ];
-                const summary = Object.fromEntries(
-                  fields.map((field) => [field, result?.[field] ?? null]),
-                );
+              const result = await readBoundedJson(response);
+              if (!result || typeof result !== "object" || Array.isArray(result) || !["ok", "alert", "error"].includes(result.status)) throw new Error("Invalid incident response");
+              const now = Date.now();
+              if (typeof result.checkedAt !== "string" || !validTime(result.checkedAt, now) || now - Date.parse(result.checkedAt) > 5 * 60_000) throw new Error("Invalid incident timestamp");
+              if (result.status === "error") throw new Error("Incident endpoint reported an error");
+              if (counterFields.some(field => typeof result[field] !== "number" || !Number.isSafeInteger(result[field]) || result[field] < 0)
+                || !Number.isSafeInteger(result.windowMinutes) || result.windowMinutes <= 0 || result.windowMinutes > 1440
+                || !Number.isSafeInteger(result.threshold) || result.threshold <= 0 || result.threshold > 1_000_000
+                || typeof result.reminderCronStale !== "boolean") throw new Error("Invalid incident response");
+              if (["reminderCronLastStartedAt", "reminderCronLastCompletedAt", "reminderCronLastSuccessAt"].some(field => !Object.hasOwn(result, field) || !validTime(result[field], now))) throw new Error("Invalid incident timestamp");
+              const actuallyHealthy = result.count < result.threshold
+                && counterFields.slice(1).every(field => result[field] === 0)
+                && !result.reminderCronStale && result.reminderCronLastSuccessAt !== null
+                && now - Date.parse(result.reminderCronLastSuccessAt) <= 40 * 60_000;
+              if (!response.ok || result.status !== "ok" || !actuallyHealthy) {
+                // Only validated aggregate numbers/booleans may reach logs.
                 if (attempt === 3) {
+                  const summary = Object.fromEntries(counterFields.map(field => [field, result[field]]));
+                  summary.reminderCronStale = result.reminderCronStale;
                   console.error(`Incident summary: ${JSON.stringify(summary)}`);
                 }
-                throw new Error(
-                  `Incident endpoint failed: HTTP ${response.status}, status ${result?.status ?? "missing"}`,
-                );
+                throw new Error("Incident endpoint reports a problem");
               }
               console.log("Production incident endpoint is healthy.");
               process.exit(0);
             } catch (error) {
-              lastError = error;
+              lastReason = failureReasons.has(error?.message) ? error.message : "Incident request failed";
               if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 2_000));
             }
           }
-          throw lastError;
+          throw new Error(lastReason);
           EOF
