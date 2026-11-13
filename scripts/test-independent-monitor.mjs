@@ -44,7 +44,7 @@ function fixture(transform = () => undefined, calls = []) {
   return async (url, init) => {
     calls.push({ url, init });
     assert.equal(new URL(url).origin, "https://bookzenvo.com");
-    assert.equal(init.redirect, "error");
+    assert.equal(init.redirect, "manual");
     const path = new URL(url).pathname;
     assert.equal(
       init.headers.authorization,
@@ -94,22 +94,53 @@ await test("missing secret fails incident probe without issuing privileged reque
   );
   assert.equal(calls.length, 3);
 });
-await test("redirect rejected and no follow-up request", async () => {
-  const calls = [];
-  const result = await probeSuite(
-    fixture(
-      (path) =>
-        path === "/api/monitoring/client-errors"
-          ? Response.redirect("https://attacker.invalid/", 302)
-          : undefined,
-      calls,
+await test("302 and307 redirects rejected without follow-up or secret forwarding", async () => {
+  for (const status of [302, 307]) {
+    const calls = [];
+    const result = await probeSuite(
+      fixture(
+        (path) =>
+          path === "/api/monitoring/client-errors"
+            ? Response.redirect("https://attacker.invalid/", status)
+            : undefined,
+        calls,
+      ),
+      secret,
+      now,
+      options,
+    );
+    failed(result, "incidents", "redirect");
+    assert.equal(calls.length, 4);
+    assert.ok(
+      calls.every(
+        (call) => new URL(call.url).origin === "https://bookzenvo.com",
+      ),
+    );
+    assert.equal(
+      calls.filter((call) => call.init.headers.authorization).length,
+      1,
+    );
+  }
+});
+await test("redirect response stream is cancelled and never fetched at Location", async () => {
+  let cancelled = false;
+  failed(
+    await resultFor((path) =>
+      path === "/api/monitoring/client-errors"
+        ? new Response(
+            new ReadableStream({
+              cancel() {
+                cancelled = true;
+              },
+            }),
+            { status: 307, headers: { location: "https://attacker.invalid/" } },
+          )
+        : undefined,
     ),
-    secret,
-    now,
-    options,
+    "incidents",
+    "redirect",
   );
-  failed(result, "incidents", "http");
-  assert.equal(calls.length, 4);
+  assert.equal(cancelled, true);
 });
 await test("already-followed response is rejected defensively", async () => {
   failed(

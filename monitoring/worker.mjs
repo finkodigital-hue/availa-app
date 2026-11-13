@@ -92,7 +92,8 @@ async function request(fetcher, path, secret, kind, options) {
       timeout,
       (async () => {
         const response = await fetcher(url.href, {
-          redirect: "error",
+          // Workers supports manual/follow only. Never forward credentials on redirects.
+          redirect: "manual",
           signal: controller.signal,
           headers: {
             "user-agent": "Bookzenvo-independent-monitor",
@@ -101,6 +102,7 @@ async function request(fetcher, path, secret, kind, options) {
           },
         });
         if (
+          (response.status >= 300 && response.status < 400) ||
           response.redirected ||
           (response.url && response.url !== url.href)
         ) {

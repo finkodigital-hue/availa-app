@@ -6,6 +6,8 @@ Separate Worker `bookzenvo-monitor`, scheduled every five minutes, with one SQLi
 
 Each run checks fixed `https://bookzenvo.com` HTML, its same-origin fingerprinted entry bundle, public `/api/health` and private `/api/monitoring/client-errors`. Requests reject redirects, use ten-second deadlines (including body reads), bounded HTML/JSON bodies and at most two attempts. The private probe alone carries `MONITORING_CRON_SECRET`. A healthy response requires valid, fresh timestamps and expected health/count fields, not merely an HTTP 200.
 
+Redirects use Cloudflare-supported `redirect: "manual"`; any 3xx response is cancelled and rejected without fetching its Location. Do not change this to `follow` (which can forward credentials) or `error` (unsupported by the Workers runtime).
+
 Results contain only check names, booleans, fixed reason codes and run timestamps. No response bodies, tokens, customer data or private incident counts are stored. History retains the last 288 completed runs (approximately 24 hours with uninterrupted five-minute execution, not a time-based retention guarantee).
 
 One storage-serialised lease prevents overlapping cron/manual probes. The lease lasts 90 seconds; stale workers cannot overwrite a newer run or publish success after their own lease expires. Duplicate completed slots are skipped. A failed probe is a completed **unhealthy** run; the next successful run can recover it.
