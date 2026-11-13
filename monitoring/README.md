@@ -12,6 +12,8 @@ One storage-serialised lease prevents overlapping cron/manual probes. The lease 
 
 ## Endpoints
 
+Public `/health` and `/drill` also support `HEAD`: the same status and cache headers as `GET`, with an empty body and no state changes. This supports HTTP monitors whose default request method is HEAD. Keyword/body checks must use GET. Other unsupported methods remain rejected.
+
 - `GET /health`: public, no-store, only overall status and recent completion timestamp. Returns 200 only when the latest completed run is healthy and no older than 12 minutes, and an actual scheduled run also completed within 12 minutes. Manual runs cannot conceal a stopped schedule. Never-run, stale, invalid or unreadable state returns 503. Reads do not run probes or refresh the heartbeat.
 - `GET /status`: operator-only bearer authentication; returns bounded internal run history and any current lease.
 - `POST /run`: operator-only bearer authentication; runs the current five-minute slot unless already running/completed. Its 200 means the run was recorded, **not** that the website passed; check `/health` or `/status`. Duplicate/in-progress returns 202, superseded/expired completion 409.

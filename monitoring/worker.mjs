@@ -475,6 +475,14 @@ function authorised(request, secret) {
 function object(env) {
   return env.MONITOR_STATE.get(env.MONITOR_STATE.idFromName("production"));
 }
+async function responseForMethod(request, response) {
+  if (request.method !== "HEAD") return response;
+  await response.body?.cancel().catch(() => {});
+  return new Response(null, {
+    status: response.status,
+    headers: response.headers,
+  });
+}
 export default {
   async scheduled(controller, env) {
     const response = await object(env).fetch(
@@ -491,17 +499,26 @@ export default {
   async fetch(request, env) {
     try {
       const url = new URL(request.url);
-      if (url.search) return json({ error: "not_found" }, 404);
-      if (request.method === "GET" && url.pathname === "/health")
-        return await object(env).fetch(
-          new Request("https://monitor.internal/health"),
+      if (url.search)
+        return await responseForMethod(
+          request,
+          json({ error: "not_found" }, 404),
         );
-      if (request.method === "GET" && url.pathname === "/drill")
-        return await object(env).fetch(
-          new Request("https://monitor.internal/drill"),
+      if (
+        ["GET", "HEAD"].includes(request.method) &&
+        ["/health", "/drill"].includes(url.pathname)
+      )
+        return await responseForMethod(
+          request,
+          await object(env).fetch(
+            new Request(`https://monitor.internal${url.pathname}`),
+          ),
         );
       if (!authorised(request, env.MONITORING_CRON_SECRET))
-        return json({ error: "not_found" }, 404);
+        return await responseForMethod(
+          request,
+          json({ error: "not_found" }, 404),
+        );
       if (request.method === "POST" && url.pathname === "/drill") {
         const value = await parseDrill(request);
         if (value.error) return value.error;
@@ -527,9 +544,15 @@ export default {
             },
           }),
         );
-      return json({ error: "not_found" }, 404);
+      return await responseForMethod(
+        request,
+        json({ error: "not_found" }, 404),
+      );
     } catch {
-      return json({ status: "unavailable" }, 503);
+      return await responseForMethod(
+        request,
+        json({ status: "unavailable" }, 503),
+      );
     }
   },
 };

@@ -802,6 +802,87 @@ await test("drill GET and duplicate POST do not rewrite change metadata or exten
     original.changeId,
   );
 });
+await test("HEAD health/drill mirror GET status and headers without body or mutations", async () => {
+  const fixture = drillFixture();
+  async function compare(path, expected) {
+    const before = [
+      await fixture.state.storage.get("monitor"),
+      await fixture.state.storage.get("drill"),
+    ];
+    const get = await worker.fetch(
+      new Request(`https://monitor.example${path}`),
+      fixture.env,
+    );
+    const head = await worker.fetch(
+      new Request(`https://monitor.example${path}`, { method: "HEAD" }),
+      fixture.env,
+    );
+    assert.equal(get.status, expected);
+    assert.equal(head.status, get.status);
+    assert.deepEqual([...head.headers], [...get.headers]);
+    assert.equal(await head.text(), "");
+    assert.deepEqual(
+      [
+        await fixture.state.storage.get("monitor"),
+        await fixture.state.storage.get("drill"),
+      ],
+      before,
+    );
+  }
+  await compare("/health", 503);
+  await compare("/drill", 200);
+  await fixture.state.storage.put("monitor", {
+    lastScheduledCompletedAt: now,
+    history: [{ ...successful, completedAt: now }],
+  });
+  await fixture.post('{"status":"down"}');
+  await compare("/health", 200);
+  await compare("/drill", 503);
+  fixture.advance(MAX_AGE_MS + 1);
+  await compare("/health", 503);
+});
+await test("HEAD failures are uncached and bodyless; other methods remain protected", async () => {
+  const fixture = drillFixture();
+  for (const method of ["POST", "PUT", "DELETE", "PATCH", "OPTIONS"]) {
+    for (const path of ["/health", "/drill"])
+      assert.equal(
+        (
+          await worker.fetch(
+            new Request(`https://monitor.example${path}`, { method }),
+            fixture.env,
+          )
+        ).status,
+        404,
+      );
+  }
+  for (const path of ["/status", "/run", "/drill?status=down"]) {
+    const response = await worker.fetch(
+      new Request(`https://monitor.example${path}`, { method: "HEAD" }),
+      fixture.env,
+    );
+    assert.equal(response.status, 404);
+    assert.equal(await response.text(), "");
+  }
+  const broken = {
+    MONITOR_STATE: {
+      idFromName: (value) => value,
+      get: () => ({
+        fetch: async () => {
+          throw new Error("internal");
+        },
+      }),
+    },
+  };
+  for (const path of ["/health", "/drill"]) {
+    const response = await worker.fetch(
+      new Request(`https://monitor.example${path}`, { method: "HEAD" }),
+      broken,
+    );
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal(await response.text(), "");
+  }
+});
 console.log(
   `Independent monitor: ${total} behavioural suites passed; no external requests.`,
 );
