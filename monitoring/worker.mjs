@@ -3,6 +3,7 @@ export const INTERVAL_MS = 300_000;
 export const MAX_AGE_MS = 720_000;
 const LEASE_MS = 90_000;
 const HISTORY_LIMIT = 288;
+export const DRILL_EXPIRY_MS = 30 * 60_000;
 const COUNT_FIELDS = [
   "count",
   "unresolvedDeliveries",
@@ -270,6 +271,77 @@ export function publicHealth(record, now = Date.now()) {
   );
 }
 
+function drillHealth(record, now) {
+  const invalid =
+    record &&
+    (!["down", "up"].includes(record.status) ||
+      !Number.isFinite(record.changedAt) ||
+      (record.status === "down" && !Number.isFinite(record.expiresAt)));
+  const down = record?.status === "down" && now < record.expiresAt;
+  return json(
+    {
+      testOnly: true,
+      status: invalid ? "test_unavailable" : down ? "test_down" : "test_up",
+      message: "Alert delivery drill only; not production health.",
+    },
+    invalid || down ? 503 : 200,
+  );
+}
+
+async function parseDrill(request) {
+  if (
+    request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !==
+    "application/json"
+  )
+    return { error: json({ error: "json_required" }, 415) };
+  const controller = new AbortController();
+  let timer;
+  try {
+    const text = await Promise.race([
+      boundedText(
+        new Response(request.body, { headers: request.headers }),
+        256,
+        controller.signal,
+      ),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new ProbeFailure("timeout"));
+        }, 2000);
+      }),
+    ]);
+    let value;
+    try {
+      value = JSON.parse(text);
+    } catch {
+      return { error: json({ error: "invalid_drill" }, 400) };
+    }
+    if (
+      !value ||
+      Array.isArray(value) ||
+      typeof value !== "object" ||
+      Object.keys(value).length !== 1 ||
+      !["down", "up"].includes(value.status)
+    )
+      return { error: json({ error: "invalid_drill" }, 400) };
+    return { status: value.status };
+  } catch (error) {
+    return {
+      error: json(
+        { error: "invalid_drill" },
+        error instanceof ProbeFailure && error.code === "oversize"
+          ? 413
+          : error instanceof ProbeFailure && error.code === "timeout"
+            ? 408
+            : 400,
+      ),
+    };
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+}
+
 // A single named object serialises claims/completions; network requests run outside its storage lock.
 export class MonitorState {
   constructor(state, env, dependencies = {}) {
@@ -283,6 +355,28 @@ export class MonitorState {
   async fetch(request) {
     try {
       const path = new URL(request.url).pathname;
+      if (request.method === "GET" && path === "/drill")
+        return drillHealth(await this.state.storage.get("drill"), this.now());
+      if (request.method === "POST" && path === "/drill") {
+        const value = await parseDrill(request);
+        if (value.error) return value.error;
+        const record = await this.state.blockConcurrencyWhile(async () => {
+          const previous = await this.state.storage.get("drill");
+          // An idempotent retry does not extend a down drill or rewrite its change metadata.
+          if (previous?.status === value.status) return previous;
+          const changedAt = this.now();
+          const next = {
+            status: value.status,
+            changeId: crypto.randomUUID(),
+            changedAt,
+            expiresAt:
+              value.status === "down" ? changedAt + DRILL_EXPIRY_MS : null,
+          };
+          await this.state.storage.put("drill", next);
+          return next;
+        });
+        return json({ testOnly: true, ...record });
+      }
       if (request.method === "GET" && path === "/health")
         return publicHealth(
           await this.state.storage.get("monitor"),
@@ -402,8 +496,23 @@ export default {
         return await object(env).fetch(
           new Request("https://monitor.internal/health"),
         );
+      if (request.method === "GET" && url.pathname === "/drill")
+        return await object(env).fetch(
+          new Request("https://monitor.internal/drill"),
+        );
       if (!authorised(request, env.MONITORING_CRON_SECRET))
         return json({ error: "not_found" }, 404);
+      if (request.method === "POST" && url.pathname === "/drill") {
+        const value = await parseDrill(request);
+        if (value.error) return value.error;
+        return await object(env).fetch(
+          new Request("https://monitor.internal/drill", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ status: value.status }),
+          }),
+        );
+      }
       if (request.method === "GET" && url.pathname === "/status")
         return await object(env).fetch(
           new Request("https://monitor.internal/status"),

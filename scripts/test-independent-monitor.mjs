@@ -5,6 +5,7 @@ import worker, {
   publicHealth,
   INTERVAL_MS,
   MAX_AGE_MS,
+  DRILL_EXPIRY_MS,
 } from "../monitoring/worker.mjs";
 
 const now = Date.parse("2026-11-13T12:00:00Z");
@@ -338,15 +339,15 @@ await test("empty bundle without content-length is unhealthy", async () => {
 });
 
 function stateFixture() {
-  let record;
+  const records = new Map();
   let lock = Promise.resolve();
   return {
     storage: {
-      async get() {
-        return structuredClone(record);
+      async get(key = "monitor") {
+        return structuredClone(records.get(key));
       },
-      async put(_, value) {
-        record = structuredClone(value);
+      async put(key, value) {
+        records.set(key, structuredClone(value));
       },
     },
     blockConcurrencyWhile(fn) {
@@ -630,6 +631,176 @@ await test("Durable Object network rejection yields uncached503", async () => {
   );
   assert.equal(response.status, 503);
   assert.equal(response.headers.get("cache-control"), "no-store");
+});
+function drillFixture() {
+  const state = stateFixture();
+  let time = now;
+  const monitor = new MonitorState(
+    state,
+    {},
+    {
+      now: () => time,
+      probe: async () => {
+        throw new Error("Drill must not invoke probes");
+      },
+    },
+  );
+  const env = {
+    MONITORING_CRON_SECRET: secret,
+    MONITOR_STATE: { idFromName: (name) => name, get: () => monitor },
+  };
+  const get = () =>
+    worker.fetch(new Request("https://monitor.example/drill"), env);
+  const post = (body, headers = {}) =>
+    worker.fetch(
+      new Request("https://monitor.example/drill", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${secret}`,
+          "content-type": "application/json",
+          ...headers,
+        },
+        body,
+      }),
+      env,
+    );
+  return {
+    state,
+    monitor,
+    env,
+    get,
+    post,
+    advance: (ms) => {
+      time += ms;
+    },
+  };
+}
+await test("drill defaults up and is explicitly test-only without a heartbeat timestamp", async () => {
+  const fixture = drillFixture();
+  const response = await fixture.get();
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await response.json(), {
+    testOnly: true,
+    status: "test_up",
+    message: "Alert delivery drill only; not production health.",
+  });
+  assert.equal(await fixture.state.storage.get("drill"), undefined);
+  assert.equal(
+    (await fixture.monitor.fetch(new Request("https://internal/health")))
+      .status,
+    503,
+  );
+});
+await test("drill changes require correct bearer; query or extra JSON fields cannot change targets", async () => {
+  const fixture = drillFixture();
+  for (const authorization of ["", "Bearer wrong"])
+    assert.equal(
+      (await fixture.post('{"status":"down"}', { authorization })).status,
+      404,
+    );
+  assert.equal(
+    (
+      await worker.fetch(
+        new Request(
+          "https://monitor.example/drill?target=https://other.invalid",
+        ),
+        fixture.env,
+      )
+    ).status,
+    404,
+  );
+  for (const body of [
+    "null",
+    "[]",
+    "{}",
+    "{",
+    '{"status":"invalid"}',
+    '{"status":true}',
+    '{"status":"down","target":"https://other.invalid"}',
+    '{"status":"up","expiresAt":0}',
+  ])
+    assert.equal((await fixture.post(body)).status, 400);
+  assert.equal(
+    (await fixture.post('{"status":"down"}', { "content-type": "text/plain" }))
+      .status,
+    415,
+  );
+  assert.equal(await fixture.state.storage.get("drill"), undefined);
+});
+await test("drill streamed and declared body-size limits are enforced", async () => {
+  const fixture = drillFixture();
+  assert.equal((await fixture.post(" ".repeat(257))).status, 413);
+  assert.equal(
+    (await fixture.post('{"status":"down"}', { "content-length": "1000" }))
+      .status,
+    413,
+  );
+});
+await test("drill body timeout cancels stalled upload without persisting", async () => {
+  const fixture = drillFixture();
+  let cancelled = false;
+  const request = new Request("https://monitor.example/drill", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${secret}`,
+      "content-type": "application/json",
+    },
+    body: new ReadableStream({
+      cancel() {
+        cancelled = true;
+      },
+    }),
+    duplex: "half",
+  });
+  assert.equal((await worker.fetch(request, fixture.env)).status, 408);
+  assert.equal(cancelled, true);
+  assert.equal(await fixture.state.storage.get("drill"), undefined);
+});
+await test("down/up drill leaves actual checks, history, leases and scheduled timestamp unchanged", async () => {
+  const fixture = drillFixture();
+  const real = {
+    history: [{ ...successful, completedAt: now }],
+    lastScheduledCompletedAt: now,
+    highestCompletedSlot: 123,
+    lease: { id: "actual-run", until: now + 60_000 },
+  };
+  await fixture.state.storage.put("monitor", real);
+  const down = await fixture.post('{"status":"down"}');
+  assert.equal(down.status, 200);
+  assert.equal((await fixture.get()).status, 503);
+  assert.equal(
+    (await fixture.monitor.fetch(new Request("https://internal/health")))
+      .status,
+    200,
+  );
+  assert.deepEqual(await fixture.state.storage.get("monitor"), real);
+  fixture.advance(1000);
+  assert.equal((await fixture.post('{"status":"up"}')).status, 200);
+  assert.equal((await fixture.get()).status, 200);
+  assert.deepEqual(await fixture.state.storage.get("monitor"), real);
+});
+await test("drill GET and duplicate POST do not rewrite change metadata or extend expiry", async () => {
+  const fixture = drillFixture();
+  await fixture.post('{"status":"down"}');
+  const original = await fixture.state.storage.get("drill");
+  fixture.advance(1000);
+  await fixture.get();
+  await fixture.post('{"status":"down"}');
+  assert.deepEqual(await fixture.state.storage.get("drill"), original);
+  assert.equal(original.expiresAt - original.changedAt, DRILL_EXPIRY_MS);
+  fixture.advance(DRILL_EXPIRY_MS);
+  assert.equal((await fixture.get()).status, 200);
+  assert.deepEqual(await fixture.state.storage.get("drill"), original);
+  await fixture.post('{"status":"down"}');
+  assert.equal((await fixture.get()).status, 200);
+  await fixture.post('{"status":"up"}');
+  await fixture.post('{"status":"down"}');
+  assert.equal((await fixture.get()).status, 503);
+  assert.notEqual(
+    (await fixture.state.storage.get("drill")).changeId,
+    original.changeId,
+  );
 });
 console.log(
   `Independent monitor: ${total} behavioural suites passed; no external requests.`,
