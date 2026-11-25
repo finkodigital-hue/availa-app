@@ -39,6 +39,19 @@ config.name = "availa-app";
 // compatibility date for reliable manual and Git deployments.
 config.compatibility_date = "2026-07-23";
 config.keep_vars = true;
+// Status-aware caching needs the Worker to see these responses. A broad
+// immutable _headers rule also caches missing assets; static assets otherwise
+// bypass our ASSETS response guard. Preserve any existing routing choices.
+const existingWorkerFirst = config.assets?.run_worker_first;
+config.assets = {
+  ...(config.assets ?? {}),
+  run_worker_first: existingWorkerFirst === true
+    ? true
+    : [...new Set([
+      ...(Array.isArray(existingWorkerFirst) ? existingWorkerFirst : []),
+      "/assets/*", "/client-entry.js",
+    ])],
+};
 // A Git build does not have the local .env file. When values are available,
 // include them for a local/manual deployment; when they are not, keep_vars
 // preserves the production bindings managed in the Cloudflare dashboard.
@@ -92,8 +105,9 @@ await writeFile(
 // Cloudflare serves files such as robots.txt, sitemap.xml and deployment.json
 // directly from its static-asset binding, so they do not pass through the
 // TanStack middleware in src/start.ts. Give those responses the same browser
-// security baseline as dynamic routes. Narrower rules add cache behaviour
-// without removing the headers from this catch-all rule.
+// security baseline as dynamic routes. _headers cannot distinguish successful
+// files from missing/error responses, so its safe default is no-store. The
+// Worker grants immutable caching only to successful fingerprinted assets.
 await writeFile(
   fileURLToPath(new URL("../.output/public/_headers", import.meta.url)),
   `/*
@@ -103,11 +117,14 @@ await writeFile(
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), geolocation=(), microphone=()
   Strict-Transport-Security: max-age=31536000
-
-/deployment.json
   Cache-Control: no-store
 
-/assets/*
-  Cache-Control: public, max-age=31536000, immutable
+/deployment.json
+  ! Cache-Control
+  Cache-Control: no-store
+
+/client-entry.js
+  ! Cache-Control
+  Cache-Control: no-store
 `,
 );

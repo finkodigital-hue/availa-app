@@ -28,6 +28,8 @@ const countKeys = [
   "stripe_refund_reviews",
   "customer_erasure_storage_jobs:failed",
   "customer_erasure_storage_jobs:pending",
+  "account_deletion_requests:review_due_at",
+  "account_deletion_requests:completion_target_at",
 ];
 let overrides = {},
   rejected = new Set(),
@@ -48,7 +50,9 @@ const db = {
         const key =
           table === "customer_erasure_storage_jobs"
             ? `${table}:${status}`
-            : table;
+            : table === "account_deletion_requests"
+              ? `${table}:${filters.find((f) => f[0] === "lt")?.[1]}`
+              : table;
         calls.push({ table, key, filters });
         if (rejected.has(key))
           return Promise.reject(new Error("PRIVATE_DB_FAILURE_BODY")).then(
@@ -204,6 +208,8 @@ for (const key of [
   "client_errors",
   "notification_deliveries",
   "operational_job_heartbeats",
+  "account_deletion_requests:review_due_at",
+  "account_deletion_requests:completion_target_at",
 ]) {
   rejected = new Set([key]);
   await check(503, "error");
@@ -220,6 +226,30 @@ const healthy = await check(200, "ok");
 assert.equal(healthy.count, 4);
 assert.equal(healthy.threshold, 5);
 assert.equal(healthy.windowMinutes, 20);
+assert.equal(healthy.overdueAccountDeletionReviews, 0);
+assert.equal(healthy.overdueAccountDeletionCompletions, 0);
+const reviewCall = calls.find(
+  (c) => c.key === "account_deletion_requests:review_due_at",
+);
+assert.deepEqual(
+  reviewCall.filters.map((f) => JSON.parse(JSON.stringify(f))),
+  [
+    ["select", "id", { count: "exact", head: true }],
+    ["eq", "status", "requested"],
+    ["lt", "review_due_at", new Date(now).toISOString()],
+  ],
+);
+const completionCall = calls.find(
+  (c) => c.key === "account_deletion_requests:completion_target_at",
+);
+assert.deepEqual(
+  completionCall.filters.map((f) => JSON.parse(JSON.stringify(f))),
+  [
+    ["select", "id", { count: "exact", head: true }],
+    ["in", "status", ["requested", "in_review"]],
+    ["lt", "completion_target_at", new Date(now).toISOString()],
+  ],
+);
 assert.equal(logged.length, 0, "No raw provider/database failure is logged");
 console.log(
   `${checks} actual monitoring handler scenarios passed: both tokens, no-store, invalid counters/dates, exceptions, stale alerts and healthy aggregates.`,

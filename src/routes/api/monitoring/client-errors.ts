@@ -80,6 +80,8 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
             refundIssues,
             erasureStorageIssues,
             stalledErasureStorageJobs,
+            overdueAccountDeletionReviews,
+            overdueAccountDeletionCompletions,
             reminderCron,
           ] = await Promise.all([
             db
@@ -125,6 +127,16 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
                 ).toISOString(),
               ),
             db
+              .from("account_deletion_requests")
+              .select("id", { count: "exact", head: true })
+              .eq("status", "requested")
+              .lt("review_due_at", new Date().toISOString()),
+            db
+              .from("account_deletion_requests")
+              .select("id", { count: "exact", head: true })
+              .in("status", ["requested", "in_review"])
+              .lt("completion_target_at", new Date().toISOString()),
+            db
               .from("operational_job_heartbeats")
               .select("last_started_at,last_completed_at,last_success_at")
               .eq("job_name", "send-reminders")
@@ -139,6 +151,8 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
             refundIssues.error ||
             erasureStorageIssues.error ||
             stalledErasureStorageJobs.error ||
+            overdueAccountDeletionReviews.error ||
+            overdueAccountDeletionCompletions.error ||
             reminderCron.error
           )
             return monitoringError();
@@ -151,6 +165,8 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
             refundIssues,
             erasureStorageIssues,
             stalledErasureStorageJobs,
+            overdueAccountDeletionReviews,
+            overdueAccountDeletionCompletions,
           ];
           if (counts.some((result) => !validCount(result.count)))
             return monitoringError();
@@ -196,6 +212,8 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
             !unresolvedRefunds &&
             !unresolvedErasureStorageJobs &&
             !stalledErasureStorageJobCount &&
+            !overdueAccountDeletionReviews.count &&
+            !overdueAccountDeletionCompletions.count &&
             !reminderCronStale;
           return Response.json(
             {
@@ -212,6 +230,10 @@ export const Route = createFileRoute("/api/monitoring/client-errors")({
               unresolvedRefunds,
               unresolvedErasureStorageJobs,
               stalledErasureStorageJobs: stalledErasureStorageJobCount,
+              overdueAccountDeletionReviews:
+                overdueAccountDeletionReviews.count,
+              overdueAccountDeletionCompletions:
+                overdueAccountDeletionCompletions.count,
               reminderCronStale,
               reminderCronLastStartedAt:
                 reminderCron.data?.last_started_at ?? null,

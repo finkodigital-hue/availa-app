@@ -22,6 +22,7 @@ export function workspaceSessionScript(session: WorkspaceSession, appUrl: string
   const origin = new URL(appUrl).origin;
   return `
     (function () {
+      var applySession = function () {
       if (window.location.origin !== ${JSON.stringify(origin)} || window.__bookzenvoNativeSignedOut) return;
       try {
         var key = ${JSON.stringify(WORKSPACE_AUTH_STORAGE_KEY)};
@@ -72,6 +73,18 @@ export function workspaceSessionScript(session: WorkspaceSession, appUrl: string
         }
       } catch (error) {
         // Normal web sign-in remains available when storage is unavailable.
+      }
+      };
+      var commit = window.__bookzenvoAuthCommit;
+      if (commit && typeof commit.run === 'function') {
+        // After website bootstrap, native and browser authentication share the
+        // same write boundary. The full decision is synchronous inside it so
+        // an MFA commit cannot race a native refresh, account switch or sign-out.
+        Promise.resolve(commit.run(applySession)).catch(function () {});
+      } else {
+        // Seed storage synchronously before this page's website client starts
+        // and performs its first session read.
+        applySession();
       }
     })();
     true;

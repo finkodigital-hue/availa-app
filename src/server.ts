@@ -64,6 +64,46 @@ async function installRuntimeEnvironment(env: unknown) {
   }
 }
 
+function withCacheControl(response: Response, value: string): Response {
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", value);
+  // Do not let a more-specific shared-cache directive defeat no-store.
+  headers.delete("CDN-Cache-Control");
+  headers.delete("Cloudflare-CDN-Cache-Control");
+  headers.delete("Expires");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function isFingerprintedAsset(pathname: string, response: Response): boolean {
+  const extension = /^\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(js|mjs|css|woff2?|png|jpe?g|gif|svg|webp|avif|ico)$/.exec(pathname)?.[1];
+  const type = (response.headers.get("content-type") ?? "").split(";", 1)[0].trim().toLowerCase();
+  if (extension === "js" || extension === "mjs") return /^(?:text|application)\/javascript$/.test(type);
+  if (extension === "css") return type === "text/css";
+  if (extension === "woff") return type === "font/woff" || type === "application/font-woff";
+  if (extension === "woff2") return type === "font/woff2";
+  if (extension === "svg") return type === "image/svg+xml";
+  if (extension === "jpg" || extension === "jpeg") return type === "image/jpeg";
+  if (extension === "ico") return type === "image/x-icon" || type === "image/vnd.microsoft.icon";
+  return Boolean(extension && type === `image/${extension}`);
+}
+
+function preventBootstrapCaching(request: Request, response: Response): Response {
+  const path = new URL(request.url).pathname;
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  const isDocumentRequest = !path.startsWith("/api/") &&
+    (request.headers.get("accept") ?? "").includes("text/html");
+  if (response.status >= 400 || contentType.includes("text/html") ||
+      contentType.includes("application/xhtml+xml") || isDocumentRequest ||
+      path.startsWith("/assets/") || path === "/client-entry.js" || path === "/deployment.json") {
+    return withCacheControl(response, "no-store");
+  }
+  return response;
+}
+
 /**
  * Nitro's generated public-asset manifest only includes files copied from
  * `public/`; Vite's built `/assets/*` files are not included in that map.
@@ -77,7 +117,11 @@ async function serveBuiltAsset(request: Request, env: unknown): Promise<Response
   const assets = bindings.ASSETS as { fetch?: (request: Request) => Promise<Response> } | undefined;
   if (!assets?.fetch) return undefined;
 
-  return assets.fetch(request);
+  const response = await assets.fetch(request);
+  const immutable = (request.method === "GET" || request.method === "HEAD") &&
+    (response.status === 200 || response.status === 206) &&
+    isFingerprintedAsset(pathname, response);
+  return withCacheControl(response, immutable ? "public, max-age=31536000, immutable" : "no-store");
 }
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -161,12 +205,12 @@ export default {
       await installRuntimeEnvironment(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(request, response, env);
+      return preventBootstrapCaching(request, await normalizeCatastrophicSsrResponse(request, response, env));
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
         status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
       });
     }
   },

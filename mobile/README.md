@@ -1,6 +1,6 @@
 # Bookzenvo mobile
 
-The Bookzenvo owner app for Android and iPhone. It uses the existing Bookzenvo Supabase project, so bookings and sign-ins are shared with the website.
+The Bookzenvo companion app for business owners and their teams on Android and iPhone. The website is live; the mobile app still needs signed installation and physical-device acceptance. It uses the existing Bookzenvo Supabase project, so bookings and sign-ins are shared with the website.
 
 ## Run it on a phone
 
@@ -17,6 +17,7 @@ Never add a Supabase service-role key, Stripe secret key, Resend key, or webhook
 
 - Secure Supabase session storage
 - Sign in, password-reset request and sign out
+- An always-visible Account & data button for signed-in users, including staff and accounts without a workspace. It opens `/account-data` to request whole-account deletion, view the request status or cancel a pending request. The request is reviewed and processed by the operator; submitting it does not immediately delete data.
 - Google sign-in prepared behind a disabled build flag; see [Google setup](./store/google-sign-in.md) before enabling it
 - The live Bookzenvo workspace, loaded inside the app so it has the same
   bookings, clients, staff, services, stock, reports, page builder, settings,
@@ -34,9 +35,9 @@ The current app uses native sign-in followed by the website's actual workspace s
 
 ## Release preparation
 
-- Run `npm run check` before every preview or production build. It includes actual-code offline regressions for startup, OAuth, session/MFA handover, encrypted storage, exports and WebView behaviour.
+- Run `npm run check` before every preview or production build. It includes actual-code offline regressions for startup, OAuth, session/MFA handover, encrypted storage, exports, account-page access and WebView behaviour.
 - Use `npm run build:preview:ios` and `npm run build:preview:android` for internal testing.
 - Read the drafts in [`store/`](./store/) before creating either store listing.
-- Do not submit the app until live Stripe is stable and the complete iPhone and Android QA checklist has passed.
+- Do not submit a store version until live Stripe is stable and the shared release checks plus that platform's signing and physical-device QA have passed.
 
 Jakob and Finlay currently have iPhones for acceptance testing. Prioritise a signed iPhone internal build, then TestFlight; Android JavaScript/configuration checks do not replace Android device acceptance. USB access is not needed for an EAS internal iPhone build, but an existing Expo project, Apple signing/account setup and a registered test device are required. No cloud build or store submission is started by the checks above.

@@ -1,4 +1,5 @@
 import { checkChairRent } from './schema-chair-rent-checks.mjs';
+import { checkAccountDeletionRequests } from './schema-account-deletion-checks.mjs';
 import { checkCustomerDirectory } from './schema-customer-directory-checks.mjs';
 import { checkApprovedPlans } from './schema-plan-checks.mjs';
 import { PGlite } from '@electric-sql/pglite';
@@ -146,5 +147,6 @@ try {
  await checkApprovedPlans(db);
  await checkBookingActions(db);
  await checkChairRent(db);
+ await checkAccountDeletionRequests(db);
 } catch(error) {console.error(error);process.exitCode=1;}
 finally {await db.close();}

@@ -35,7 +35,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "check": "npx expo-doctor && tsc --noEmit && npm test",
-    "test": "node tests/release-readiness.cjs && node tests/google-sign-in.cjs && node ../scripts/test-mobile-session.mjs && node ../scripts/test-mobile-secure-store.mjs && node ../scripts/test-mobile-exports.mjs && node ../scripts/test-mobile-shell.mjs && node ../scripts/test-mobile-fingerprint.mjs",
+    "test": "node tests/release-readiness.cjs && node tests/google-sign-in.cjs && node tests/account-data-entry.cjs && node tests/native-session-commit.cjs && node ../scripts/test-mobile-session.mjs && node ../scripts/test-mobile-secure-store.mjs && node ../scripts/test-mobile-exports.mjs && node ../scripts/test-mobile-shell.mjs && node ../scripts/test-mobile-fingerprint.mjs",
     "build:preview:ios": "npx eas-cli build --profile preview --platform ios",
     "build:preview:android": "npx eas-cli build --profile preview --platform android",
     "build:production": "npx eas-cli build --profile production --platform all"

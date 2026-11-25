@@ -1,0 +1,13 @@
+# Browser and native session commits
+
+The website's Supabase storage adapter serialises primary session writes and removals with the origin-scoped Web Lock `bookzenvo-auth:commit`. Each attempt replaces `bookzenvo-auth:epoch` with a random, nonsecret revision. This detects signing out and adding the same token again; no token or identity is stored in the revision.
+
+MFA challenge and verification use a separate SDK client with persistence, refresh and URL detection disabled. Its provider response cannot save a website session or broadcast an auth event. The result must contain the expected subject, AAL2 and a valid access token with at least a minute remaining. The ordinary shared client's final `setSession` validates that token with the provider. Its actual storage write, inside the shared lock, must still match the original session and revision and have an active view. A stale attempt fails without signing out or removing any newer account. Provider/storage errors are replaced with safe messages.
+
+AuthProvider accepts auth notifications only when their token and identity match committed storage; the same rule rejects a delayed sign-out after a newer sign-in. Rejected notifications do not suppress valid initial loading. An initial storage/provider failure finishes in a signed-out state.
+
+The native WebView session injection calls `window.__bookzenvoAuthCommit.run` once installed. Its entire preserve/write/broadcast decision runs synchronously inside that boundary. Before website initialisation, native can seed storage synchronously; MFA cannot yet be running. The adapter calls normal localStorage methods so native sign-out and session-update hooks remain active. A native hook that rejects a late write cannot be mistaken for a successful commit.
+
+This protocol protects current participating website tabs and the updated native bridge. Already-open older website versions and older native bundles do not participate; reload website tabs after deployment and test the distributed native build before release. MFA fails safely when Web Locks are unavailable. Normal sign-in and refresh keep their existing provider behaviour; this change does not claim to solve every unrelated SDK sign-in/refresh race.
+
+Validation uses the installed SDK, inert provider responses, two Chromium tabs with real Web Locks/localStorage/BroadcastChannel, and independent native bridge tests. No real account or provider requests are made. Run `node scripts/test-mfa-session-commit.mjs`, `node scripts/test-auth-session.mjs`, `node scripts/test-mfa-challenge.mjs`, and the mobile test suite. Physical-device WebView verification, sign-out and account-switch checks remain a release gate.

@@ -24,9 +24,9 @@ Highlights include:
 - Staff, professional and service management
 - Stock and business reporting
 - Booking payment status and Stripe-powered payment flows
-- Notifications, page controls, workspace settings and help
+- Booking-page controls, workspace settings and help
 
-An existing Bookzenvo business account is required. Payment card details are handled securely by Stripe and are not stored in the Bookzenvo app.
+An existing Bookzenvo account is required. Workspace features depend on your business access and permissions. Payment card details are handled securely by Stripe and are not stored in the Bookzenvo app.
 
 ## Store URLs
 
@@ -51,4 +51,4 @@ Use real-looking test data only. Do not expose real customer names, contact deta
 
 Bookzenvo is a companion app for business owners and their teams. Sign-in is required. Supply Apple and Google with a stable review account containing representative test data. Keep Stripe in the appropriate test or review-safe state and explain any feature that cannot be exercised without a connected Stripe account.
 
-For the current iPhone build, use email/password review access. Google is disabled until its provider/device and Apple login-service gates are complete. Phone Tap to Pay is not part of this release. Workspace export and closure are reached at Settings → Data & privacy; verify the final account-deletion requirement before submission. Follow the [iPhone review handoff](./iphone-preview.md) for permissions, safe test data and the exact installation/acceptance steps.
+For the prepared iPhone app, use email/password review access. Google is disabled until its provider/device and Apple login-service gates are complete. Phone Tap to Pay is not part of this release. Native companion mode does not offer SaaS subscription purchase, upgrade or billing-portal steering; existing merchant/customer-service payment functions remain available. The native Account & data button opens the whole-account deletion-request page for all signed-in users, including those without a workspace. Requests require operator processing; verify completion handling before submission. Owner workspace export and recoverable closure remain at Settings → Data & privacy. Follow the [iPhone review handoff](./iphone-preview.md) for permissions, safe test data and the exact installation/acceptance steps. A successful JavaScript export is not a signed, installable iPhone build.
