@@ -382,6 +382,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="truncate text-sm">{user?.email}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <a href="/account-data"><UserCircle className="h-4 w-4 mr-2" /> Account &amp; data</a>
+            </DropdownMenuItem>
             {access.isOwner && (
               <DropdownMenuItem asChild>
                 <Link to="/settings">

@@ -2,6 +2,8 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { getPublicSupabaseEnvironment } from "@/lib/public-runtime-env";
+import { getBrowserAuthStorage } from "@/lib/auth-session-storage";
+import { verifyMfaSession, type MfaVerification } from "@/lib/mfa-session";
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
@@ -10,11 +12,15 @@ function isNewSupabaseApiKey(value: string): boolean {
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(
-      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
+      typeof Request !== "undefined" && input instanceof Request
+        ? input.headers
+        : undefined,
     );
 
     if (init?.headers) {
-      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+      new Headers(init.headers).forEach((value, key) =>
+        headers.set(key, value),
+      );
     }
 
     // New Supabase API keys are opaque strings, not bearer JWTs.
@@ -33,8 +39,10 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  const { supabaseUrl: SUPABASE_URL, supabasePublishableKey: SUPABASE_PUBLISHABLE_KEY } =
-    getPublicSupabaseEnvironment();
+  const {
+    supabaseUrl: SUPABASE_URL,
+    supabasePublishableKey: SUPABASE_PUBLISHABLE_KEY,
+  } = getPublicSupabaseEnvironment();
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
@@ -51,7 +59,7 @@ function createSupabaseClient() {
       fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
     },
     auth: {
-      storage: typeof window !== "undefined" ? localStorage : undefined,
+      storage: getBrowserAuthStorage(),
       // Keep the session name stable now that browser traffic uses our
       // same-origin gateway instead of the project URL directly.
       storageKey: "bookzenvo-auth",
@@ -63,11 +71,38 @@ function createSupabaseClient() {
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
 
+export async function verifyCurrentSessionMfa(
+  input: MfaVerification,
+): Promise<void> {
+  const storage = getBrowserAuthStorage();
+  if (!storage)
+    throw new Error("Please open this security check in your browser.");
+  const { supabaseUrl, supabasePublishableKey } =
+    getPublicSupabaseEnvironment();
+  if (!supabaseUrl || !supabasePublishableKey)
+    throw new Error(
+      "This security check is unavailable. Please refresh the page and try again.",
+    );
+  const isolated = createClient(supabaseUrl, supabasePublishableKey, {
+    global: { fetch: createSupabaseFetch(supabasePublishableKey) },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey: `bookzenvo-mfa-${crypto.randomUUID()}`,
+    },
+  });
+  await verifyMfaSession(input, supabase.auth, isolated.auth, storage);
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
-export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
-  get(_, prop, receiver) {
-    if (!_supabase) _supabase = createSupabaseClient();
-    return Reflect.get(_supabase, prop, receiver);
+export const supabase = new Proxy(
+  {} as ReturnType<typeof createSupabaseClient>,
+  {
+    get(_, prop, receiver) {
+      if (!_supabase) _supabase = createSupabaseClient();
+      return Reflect.get(_supabase, prop, receiver);
+    },
   },
-});
+);

@@ -939,7 +939,7 @@ function DeleteAccountSection({
       setOpen(false);
       setTimeout(() => window.location.reload(), 800);
     } catch (error: any) {
-      toast.error(error.message ?? "Could not delete the account");
+      toast.error(error.message ?? "Could not close the workspace");
       setDeleting(false);
     }
   };
@@ -1024,13 +1024,13 @@ function DeleteAccountSection({
             variant="outline"
             className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
           >
-            <Trash2 className="h-4 w-4 mr-2" /> Delete account
+            <Trash2 className="h-4 w-4 mr-2" /> Close workspace
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display text-2xl">
-              Delete {biz.name}?
+              Close {biz.name}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               This closes the public workspace and cancels any active
@@ -1070,6 +1070,7 @@ function DeleteAccountSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <p className="mt-4 text-xs text-muted-foreground">Closing a workspace keeps your sign-in account. To request deletion of your whole account, open <a href="/account-data" className="underline">Account &amp; data</a>.</p>
     </div>
   );
 }

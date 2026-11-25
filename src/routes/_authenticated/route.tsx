@@ -90,6 +90,7 @@ function Layout() {
           <p>
             {isNativeCompanion() ? "Staff access is not included in this workspace's current plan. Contact the owner if you need help with access." : "This workspace is on the Free plan. Ask the owner to upgrade to restore staff access."}
           </p>
+          <a href="/account-data" className="inline-block text-sm underline">Account &amp; data</a>
         </div>
       </main>
     );

@@ -1,6 +1,6 @@
 # iPhone preview and review handoff
 
-Current source is prepared for an internal preview, not submitted to Apple. The automated JavaScript export is not an installable IPA. Jakob and Finlay currently have iPhones; Android device acceptance is still outstanding. USB access is not required for the route below.
+The Bookzenvo website is live. The mobile source is prepared for an internal preview, not submitted to Apple. The automated JavaScript export is not an installable IPA. A physical iPhone, an authorised Apple Developer team and valid signing are still needed for the signed installation and acceptance checks. Jakob and Finlay currently have iPhones; Android device acceptance is still outstanding. USB access is not required for the route below.
 
 ## Current account evidence, 25 November 2026
 
@@ -10,7 +10,7 @@ Current source is prepared for an internal preview, not submitted to Apple. The 
 
 ## Free development preview
 
-From the release checkout's `mobile` directory, the following starts a local preview without buying or submitting anything:
+No running development preview or scan-ready QR code is supplied with this handoff. From the release checkout's `mobile` directory, the following is the command to start one locally without buying or submitting anything:
 
 ```powershell
 $env:EXPO_NO_DOTENV = '1'
@@ -47,13 +47,13 @@ Use representative review data and approved test provider accounts. Record actua
 | Files | CSV/JSON/PDF exports open the native share sheet; cancellation/unavailable sharing recovers; printing opens the system browser without credentials in URLs; temporary export cleanup works after later activity. |
 | Photos | User-selected branding/gallery/staff/customer uploads work. Stock camera capture displays the camera purpose text; photo selection displays appropriate system UI; denied camera/photo access recovers without a crash. |
 | Network and lifecycle | Background/foreground, airplane mode/reconnect, interrupted WebView process and Android-equivalent back behaviour where applicable. |
-| Data rights | On a disposable owner workspace: Settings → Data & privacy → Export workspace, Delete account and recoverable closure match current website behaviour. Do not execute against a live business. Verify eventual deletion/server retention separately. |
+| Data rights | Using approved disposable accounts, open the native Account & data button as an owner, staff member and user without a workspace, including after a workspace load failure. Request deletion, view its status and cancel a pending request; a fresh sign-in and existing MFA are required for changes. Verify operator processing, completion confirmation and retained-data reporting separately. Owner-only workspace export and recoverable closure remain at Settings → Data & privacy. Do not execute against a live business. |
 
 ## Store-review preparation
 
 - Existing account required. Provide Apple with a dedicated review account and representative data through App Store Connect's private review fields, including a usable MFA review arrangement where required. Do not put those credentials in these documents.
 - Reviewer support: [Help](https://bookzenvo.com/help). Public [Privacy](https://bookzenvo.com/privacy), [Terms](https://bookzenvo.com/terms) and [marketing](https://bookzenvo.com) URLs must remain reachable and accurate. Check final privacy disclosures against the signed binary and website uploads/consultation flows.
-- Account/workspace closure is reached in Settings → Data & privacy. Verify whether user-account erasure and the current recoverable workspace-closure flow satisfy the actual App Store account-deletion requirements before claiming the submission gate is complete.
+- Whole-account deletion starts from the native Account & data button → Request account deletion. This authenticated page is independent of workspace/owner access and remains reachable from the native workspace error screen. Requests are processed by the operator; a successful request is not completed erasure. Verify deployed queue permissions, operator handling, completion/retention confirmation and the actual App Store requirement before claiming the submission gate is complete. Settings → Data & privacy closes an owner's workspace and keeps the sign-in account.
 - Use fictional customer data in screenshots. Explain review-safe customer payment behaviour and do not claim phone Tap to Pay. Google remains hidden unless the provider/device gates and Apple 4.8 login-service requirement are satisfied.
 - After internal acceptance and owner approval, build the iOS production profile and distribute through TestFlight. Store submission and public release are separate actions; neither has been performed here.
 

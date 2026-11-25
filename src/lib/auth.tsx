@@ -13,6 +13,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isCurrentBrowserAuthSession } from "@/lib/auth-session-storage";
 
 interface AuthCtx {
   user: User | null;
@@ -50,8 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void client.cancelQueries().catch(() => {});
       client.clear();
     };
-    const accept = (nextSession: Session | null) => {
-      if (!active) return;
+    const accept = (nextSession: Session | null, failedInitialRead = false) => {
+      // SDK notifications can arrive after another tab/native commit. Neither
+      // stale sign-in nor stale sign-out may replace the committed identity.
+      if (
+        !active ||
+        (!isCurrentBrowserAuthSession(nextSession) &&
+          !(failedInitialRead && nextSession === null))
+      )
+        return false;
       const nextIdentity = nextSession?.user.id ?? null;
       if (identity !== nextIdentity) {
         retire(currentClient);
@@ -69,23 +77,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient: currentClient,
         identityEpoch: epoch,
       });
+      return true;
     };
     const { data: sub } = supabase.auth.onAuthStateChange(
       (event, nextSession) => {
         if (!active || (event === "INITIAL_SESSION" && sawLiveEvent)) return;
-        sawEvent = true;
-        if (event !== "INITIAL_SESSION") sawLiveEvent = true;
         // Do not await Supabase calls inside its auth callback.
-        accept(nextSession);
+        if (accept(nextSession)) {
+          sawEvent = true;
+          if (event !== "INITIAL_SESSION") sawLiveEvent = true;
+        }
       },
     );
     supabase.auth
       .getSession()
       .then(({ data }) => {
-        if (!sawEvent) accept(data.session);
+        if (!sawEvent && !accept(data.session)) accept(null, true);
       })
       .catch(() => {
-        if (!sawEvent) accept(null);
+        // Block private content but finish loading when storage/provider is
+        // unavailable. Only initial failure can bypass equality, only to null.
+        if (!sawEvent) accept(null, true);
       });
     return () => {
       active = false;

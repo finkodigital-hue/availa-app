@@ -7,6 +7,7 @@ This document is a working source for the Apple App Privacy and Google Play Data
 | Data | Why it is used | Notes |
 | --- | --- | --- |
 | Account name and email address | Sign-in, account management and support | Authentication is provided by Supabase. |
+| Account-deletion request and status | Review, process and confirm a person's deletion request | Includes the verified request-time contact, request/review/completion dates and retention explanation. The operator processes requests manually; queue and confirmation records need an agreed retention policy. Submission alone does not erase the account. |
 | Business profile and settings | Provide and personalise the business workspace | Includes branding, booking-page and operating settings. |
 | Customer contact details and booking notes | Manage customers and appointments | Business users must only enter information they are authorised to use. |
 | User-selected photos and consultation answers | Business/gallery/profile uploads, stock scanning and the business's consultation workflow | Consultation forms may contain health-related information depending on the business's questions; reflect the actual enabled production forms and processing in the final disclosures. |
@@ -33,7 +34,7 @@ Native Google sign-in, when the gated feature is enabled after verification, use
 ## Submission checks
 
 - Confirm the privacy policy at https://bookzenvo.com/privacy matches the production app.
-- Verify that account deletion is available in the product and document the exact path for reviewers.
+- Verify the native Account & data → Request account deletion path on the signed build, including staff and accounts without a workspace, and document it for reviewers.
 - Confirm data-retention and deletion handling with the production database configuration.
 - Verify that analytics, crash reporting or advertising SDKs have not been added without updating this document.
 - Complete the Apple and Google forms from observed production behaviour, not from this draft alone.

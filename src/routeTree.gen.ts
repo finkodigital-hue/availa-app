@@ -9,129 +9,94 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as StatusRouteImport } from './routes/status'
-import { Route as SoftwareNoticesRouteImport } from './routes/software-notices'
-import { Route as ReviewPolicyRouteImport } from './routes/review-policy'
-import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as PortalRouteImport } from './routes/portal'
-import { Route as HelpRouteImport } from './routes/help'
-import { Route as FaqRouteImport } from './routes/faq'
-import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PortalIndexRouteImport } from './routes/portal.index'
-import { Route as HelpIndexRouteImport } from './routes/help.index'
-import { Route as StaffInviteTokenRouteImport } from './routes/staff-invite.$token'
-import { Route as ReviewTokenRouteImport } from './routes/review.$token'
-import { Route as PortalProfileRouteImport } from './routes/portal.profile'
-import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
-import { Route as InviteTokenRouteImport } from './routes/invite.$token'
-import { Route as HelpSlugRouteImport } from './routes/help.$slug'
-import { Route as GiftSlugRouteImport } from './routes/gift.$slug'
-import { Route as BookSlugRouteImport } from './routes/book.$slug'
-import { Route as ApiWaitlistRouteImport } from './routes/api/waitlist'
-import { Route as ApiTwilioSmsWebhookRouteImport } from './routes/api.twilio-sms-webhook'
-import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
-import { Route as ApiStockScanRouteImport } from './routes/api/stock-scan'
-import { Route as ApiResendWebhookRouteImport } from './routes/api.resend-webhook'
-import { Route as ApiPublicReviewsRouteImport } from './routes/api/public-reviews'
-import { Route as ApiPublicGalleryRouteImport } from './routes/api/public-gallery'
-import { Route as ApiPublicBookingStaffRouteImport } from './routes/api/public-booking-staff'
-import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-suggest'
-import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as ApiClientErrorsRouteImport } from './routes/api/client-errors'
-import { Route as ApiChatRouteImport } from './routes/api/chat'
-import { Route as ApiBetterTimeOfferRouteImport } from './routes/api/better-time-offer'
-import { Route as ApiAppointmentWaitlistRouteImport } from './routes/api/appointment-waitlist'
-import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
-import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
-import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
-import { Route as AuthenticatedProfessionalsRouteImport } from './routes/_authenticated/professionals'
-import { Route as AuthenticatedPreviewRouteImport } from './routes/_authenticated/preview'
-import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
-import { Route as AuthenticatedPageBuilderRouteImport } from './routes/_authenticated/page-builder'
-import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
-import { Route as AuthenticatedGiftCardsRouteImport } from './routes/_authenticated/gift-cards'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
-import { Route as AuthenticatedConsultationsRouteImport } from './routes/_authenticated/consultations'
-import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
-import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
-import { Route as AuthenticatedBlockPreviewRouteImport } from './routes/_authenticated/block-preview'
-import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AccountDataRouteImport } from './routes/account-data'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
+import { Route as FaqRouteImport } from './routes/faq'
+import { Route as HelpRouteImport } from './routes/help'
+import { Route as PortalRouteImport } from './routes/portal'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
+import { Route as ReviewPolicyRouteImport } from './routes/review-policy'
+import { Route as SoftwareNoticesRouteImport } from './routes/software-notices'
+import { Route as StatusRouteImport } from './routes/status'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AuthenticatedAppointmentWaitlistRouteImport } from './routes/_authenticated/appointment-waitlist'
-import { Route as BookingActionRescheduleTokenRouteImport } from './routes/booking-action.reschedule.$token'
-import { Route as BookingActionActionTokenRouteImport } from './routes/booking-action.$action.$token'
-import { Route as BookSlugWaitlistRouteImport } from './routes/book.$slug_.waitlist'
-import { Route as BookSlugOfferRouteImport } from './routes/book.$slug_.offer'
-import { Route as ApiSupabaseSplatRouteImport } from './routes/api/supabase/$'
-import { Route as ApiReviewsSubmitRouteImport } from './routes/api/reviews/submit'
-import { Route as ApiReviewsPeekRouteImport } from './routes/api/reviews/peek'
-import { Route as ApiMonitoringClientErrorsRouteImport } from './routes/api/monitoring/client-errors'
-import { Route as ApiMarketingUnsubscribeTokenRouteImport } from './routes/api.marketing-unsubscribe.$token'
-import { Route as ApiInternalCalendarSyncRouteImport } from './routes/api/internal/calendar-sync'
-import { Route as ApiCronSendRemindersRouteImport } from './routes/api/cron/send-reminders'
-import { Route as ApiBookingsSendConfirmationRouteImport } from './routes/api/bookings/send-confirmation'
-import { Route as ApiBookingActionsReschedulePeekRouteImport } from './routes/api/booking-actions/reschedule-peek'
-import { Route as ApiBookingActionsRescheduleCommitRouteImport } from './routes/api/booking-actions/reschedule-commit'
+import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
+import { Route as AuthenticatedBlockPreviewRouteImport } from './routes/_authenticated/block-preview'
+import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedConsultationsRouteImport } from './routes/_authenticated/consultations'
+import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedGiftCardsRouteImport } from './routes/_authenticated/gift-cards'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedPageBuilderRouteImport } from './routes/_authenticated/page-builder'
+import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
+import { Route as AuthenticatedPreviewRouteImport } from './routes/_authenticated/preview'
+import { Route as AuthenticatedProfessionalsRouteImport } from './routes/_authenticated/professionals'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
+import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
+import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
+import { Route as ApiAppointmentWaitlistRouteImport } from './routes/api/appointment-waitlist'
+import { Route as ApiBetterTimeOfferRouteImport } from './routes/api/better-time-offer'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiClientErrorsRouteImport } from './routes/api/client-errors'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiPageAiSuggestRouteImport } from './routes/api/page-ai-suggest'
+import { Route as ApiPublicBookingStaffRouteImport } from './routes/api/public-booking-staff'
+import { Route as ApiPublicGalleryRouteImport } from './routes/api/public-gallery'
+import { Route as ApiPublicReviewsRouteImport } from './routes/api/public-reviews'
+import { Route as ApiResendWebhookRouteImport } from './routes/api.resend-webhook'
+import { Route as ApiStockScanRouteImport } from './routes/api/stock-scan'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
+import { Route as ApiTwilioSmsWebhookRouteImport } from './routes/api.twilio-sms-webhook'
+import { Route as ApiWaitlistRouteImport } from './routes/api/waitlist'
+import { Route as BookSlugRouteImport } from './routes/book.$slug'
+import { Route as GiftSlugRouteImport } from './routes/gift.$slug'
+import { Route as HelpIndexRouteImport } from './routes/help.index'
+import { Route as HelpSlugRouteImport } from './routes/help.$slug'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as PortalIndexRouteImport } from './routes/portal.index'
+import { Route as PortalBookingsRouteImport } from './routes/portal.bookings'
+import { Route as PortalProfileRouteImport } from './routes/portal.profile'
+import { Route as ReviewTokenRouteImport } from './routes/review.$token'
+import { Route as StaffInviteTokenRouteImport } from './routes/staff-invite.$token'
 import { Route as ApiBookingActionsActRouteImport } from './routes/api/booking-actions/act'
-import { Route as ApiCalendarProviderConnectRouteImport } from './routes/api/calendar/$provider/connect'
+import { Route as ApiBookingActionsRescheduleCommitRouteImport } from './routes/api/booking-actions/reschedule-commit'
+import { Route as ApiBookingActionsReschedulePeekRouteImport } from './routes/api/booking-actions/reschedule-peek'
+import { Route as ApiBookingsSendConfirmationRouteImport } from './routes/api/bookings/send-confirmation'
+import { Route as ApiCronSendRemindersRouteImport } from './routes/api/cron/send-reminders'
+import { Route as ApiInternalCalendarSyncRouteImport } from './routes/api/internal/calendar-sync'
+import { Route as ApiMarketingUnsubscribeTokenRouteImport } from './routes/api.marketing-unsubscribe.$token'
+import { Route as ApiMonitoringClientErrorsRouteImport } from './routes/api/monitoring/client-errors'
+import { Route as ApiReviewsPeekRouteImport } from './routes/api/reviews/peek'
+import { Route as ApiReviewsSubmitRouteImport } from './routes/api/reviews/submit'
+import { Route as ApiSupabaseSplatRouteImport } from './routes/api/supabase/$'
+import { Route as BookSlugOfferRouteImport } from './routes/book.$slug_.offer'
+import { Route as BookSlugWaitlistRouteImport } from './routes/book.$slug_.waitlist'
+import { Route as BookingActionActionTokenRouteImport } from './routes/booking-action.$action.$token'
+import { Route as BookingActionRescheduleTokenRouteImport } from './routes/booking-action.reschedule.$token'
 import { Route as ApiCalendarProviderCallbackRouteImport } from './routes/api/calendar/$provider/callback'
+import { Route as ApiCalendarProviderConnectRouteImport } from './routes/api/calendar/$provider/connect'
 
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StatusRoute = StatusRouteImport.update({
-  id: '/status',
-  path: '/status',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SoftwareNoticesRoute = SoftwareNoticesRouteImport.update({
-  id: '/software-notices',
-  path: '/software-notices',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReviewPolicyRoute = ReviewPolicyRouteImport.update({
-  id: '/review-policy',
-  path: '/review-policy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RefundPolicyRoute = RefundPolicyRouteImport.update({
-  id: '/refund-policy',
-  path: '/refund-policy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PortalRoute = PortalRouteImport.update({
-  id: '/portal',
-  path: '/portal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HelpRoute = HelpRouteImport.update({
-  id: '/help',
-  path: '/help',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FaqRoute = FaqRouteImport.update({
-  id: '/faq',
-  path: '/faq',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CookiePolicyRoute = CookiePolicyRouteImport.update({
-  id: '/cookie-policy',
-  path: '/cookie-policy',
+const AccountDataRoute = AccountDataRouteImport.update({
+  id: '/account-data',
+  path: '/account-data',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -139,221 +104,65 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const CookiePolicyRoute = CookiePolicyRouteImport.update({
+  id: '/cookie-policy',
+  path: '/cookie-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PortalIndexRoute = PortalIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PortalRoute,
-} as any)
-const HelpIndexRoute = HelpIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => HelpRoute,
-} as any)
-const StaffInviteTokenRoute = StaffInviteTokenRouteImport.update({
-  id: '/staff-invite/$token',
-  path: '/staff-invite/$token',
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ReviewTokenRoute = ReviewTokenRouteImport.update({
-  id: '/review/$token',
-  path: '/review/$token',
+const PortalRoute = PortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PortalProfileRoute = PortalProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => PortalRoute,
-} as any)
-const PortalBookingsRoute = PortalBookingsRouteImport.update({
-  id: '/bookings',
-  path: '/bookings',
-  getParentRoute: () => PortalRoute,
-} as any)
-const InviteTokenRoute = InviteTokenRouteImport.update({
-  id: '/invite/$token',
-  path: '/invite/$token',
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HelpSlugRoute = HelpSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => HelpRoute,
-} as any)
-const GiftSlugRoute = GiftSlugRouteImport.update({
-  id: '/gift/$slug',
-  path: '/gift/$slug',
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BookSlugRoute = BookSlugRouteImport.update({
-  id: '/book/$slug',
-  path: '/book/$slug',
+const ReviewPolicyRoute = ReviewPolicyRouteImport.update({
+  id: '/review-policy',
+  path: '/review-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWaitlistRoute = ApiWaitlistRouteImport.update({
-  id: '/api/waitlist',
-  path: '/api/waitlist',
+const SoftwareNoticesRoute = SoftwareNoticesRouteImport.update({
+  id: '/software-notices',
+  path: '/software-notices',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTwilioSmsWebhookRoute = ApiTwilioSmsWebhookRouteImport.update({
-  id: '/api/twilio-sms-webhook',
-  path: '/api/twilio-sms-webhook',
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
-  id: '/api/stripe-webhook',
-  path: '/api/stripe-webhook',
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiStockScanRoute = ApiStockScanRouteImport.update({
-  id: '/api/stock-scan',
-  path: '/api/stock-scan',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiResendWebhookRoute = ApiResendWebhookRouteImport.update({
-  id: '/api/resend-webhook',
-  path: '/api/resend-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicReviewsRoute = ApiPublicReviewsRouteImport.update({
-  id: '/api/public-reviews',
-  path: '/api/public-reviews',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicGalleryRoute = ApiPublicGalleryRouteImport.update({
-  id: '/api/public-gallery',
-  path: '/api/public-gallery',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicBookingStaffRoute = ApiPublicBookingStaffRouteImport.update({
-  id: '/api/public-booking-staff',
-  path: '/api/public-booking-staff',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPageAiSuggestRoute = ApiPageAiSuggestRouteImport.update({
-  id: '/api/page-ai-suggest',
-  path: '/api/page-ai-suggest',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiHealthRoute = ApiHealthRouteImport.update({
-  id: '/api/health',
-  path: '/api/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiClientErrorsRoute = ApiClientErrorsRouteImport.update({
-  id: '/api/client-errors',
-  path: '/api/client-errors',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBetterTimeOfferRoute = ApiBetterTimeOfferRouteImport.update({
-  id: '/api/better-time-offer',
-  path: '/api/better-time-offer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAppointmentWaitlistRoute = ApiAppointmentWaitlistRouteImport.update({
-  id: '/api/appointment-waitlist',
-  path: '/api/appointment-waitlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedStockRoute = AuthenticatedStockRouteImport.update({
-  id: '/stock',
-  path: '/stock',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
-  id: '/staff',
-  path: '/staff',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedServicesRoute = AuthenticatedServicesRouteImport.update({
-  id: '/services',
-  path: '/services',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedProfessionalsRoute =
-  AuthenticatedProfessionalsRouteImport.update({
-    id: '/professionals',
-    path: '/professionals',
+const AuthenticatedAppointmentWaitlistRoute =
+  AuthenticatedAppointmentWaitlistRouteImport.update({
+    id: '/appointment-waitlist',
+    path: '/appointment-waitlist',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedPreviewRoute = AuthenticatedPreviewRouteImport.update({
-  id: '/preview',
-  path: '/preview',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
-  id: '/payments',
-  path: '/payments',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPageBuilderRoute =
-  AuthenticatedPageBuilderRouteImport.update({
-    id: '/page-builder',
-    path: '/page-builder',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
-  id: '/import',
-  path: '/import',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedGiftCardsRoute = AuthenticatedGiftCardsRouteImport.update({
-  id: '/gift-cards',
-  path: '/gift-cards',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCustomersRoute = AuthenticatedCustomersRouteImport.update({
-  id: '/customers',
-  path: '/customers',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedConsultationsRoute =
-  AuthenticatedConsultationsRouteImport.update({
-    id: '/consultations',
-    path: '/consultations',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
-  id: '/bookings',
-  path: '/bookings',
+const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBlockPreviewRoute =
@@ -362,80 +171,223 @@ const AuthenticatedBlockPreviewRoute =
     path: '/block-preview',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
-  id: '/assistant',
-  path: '/assistant',
+const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAppointmentWaitlistRoute =
-  AuthenticatedAppointmentWaitlistRouteImport.update({
-    id: '/appointment-waitlist',
-    path: '/appointment-waitlist',
+const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedConsultationsRoute =
+  AuthenticatedConsultationsRouteImport.update({
+    id: '/consultations',
+    path: '/consultations',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const BookingActionRescheduleTokenRoute =
-  BookingActionRescheduleTokenRouteImport.update({
-    id: '/booking-action/reschedule/$token',
-    path: '/booking-action/reschedule/$token',
-    getParentRoute: () => rootRouteImport,
+const AuthenticatedCustomersRoute = AuthenticatedCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedGiftCardsRoute = AuthenticatedGiftCardsRouteImport.update({
+  id: '/gift-cards',
+  path: '/gift-cards',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPageBuilderRoute =
+  AuthenticatedPageBuilderRouteImport.update({
+    id: '/page-builder',
+    path: '/page-builder',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const BookingActionActionTokenRoute =
-  BookingActionActionTokenRouteImport.update({
-    id: '/booking-action/$action/$token',
-    path: '/booking-action/$action/$token',
-    getParentRoute: () => rootRouteImport,
+const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPreviewRoute = AuthenticatedPreviewRouteImport.update({
+  id: '/preview',
+  path: '/preview',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProfessionalsRoute =
+  AuthenticatedProfessionalsRouteImport.update({
+    id: '/professionals',
+    path: '/professionals',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const BookSlugWaitlistRoute = BookSlugWaitlistRouteImport.update({
-  id: '/book/$slug_/waitlist',
-  path: '/book/$slug/waitlist',
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedServicesRoute = AuthenticatedServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStockRoute = AuthenticatedStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiAppointmentWaitlistRoute = ApiAppointmentWaitlistRouteImport.update({
+  id: '/api/appointment-waitlist',
+  path: '/api/appointment-waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BookSlugOfferRoute = BookSlugOfferRouteImport.update({
-  id: '/book/$slug_/offer',
-  path: '/book/$slug/offer',
+const ApiBetterTimeOfferRoute = ApiBetterTimeOfferRouteImport.update({
+  id: '/api/better-time-offer',
+  path: '/api/better-time-offer',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSupabaseSplatRoute = ApiSupabaseSplatRouteImport.update({
-  id: '/api/supabase/$',
-  path: '/api/supabase/$',
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiReviewsSubmitRoute = ApiReviewsSubmitRouteImport.update({
-  id: '/api/reviews/submit',
-  path: '/api/reviews/submit',
+const ApiClientErrorsRoute = ApiClientErrorsRouteImport.update({
+  id: '/api/client-errors',
+  path: '/api/client-errors',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiReviewsPeekRoute = ApiReviewsPeekRouteImport.update({
-  id: '/api/reviews/peek',
-  path: '/api/reviews/peek',
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiMonitoringClientErrorsRoute =
-  ApiMonitoringClientErrorsRouteImport.update({
-    id: '/api/monitoring/client-errors',
-    path: '/api/monitoring/client-errors',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiMarketingUnsubscribeTokenRoute =
-  ApiMarketingUnsubscribeTokenRouteImport.update({
-    id: '/api/marketing-unsubscribe/$token',
-    path: '/api/marketing-unsubscribe/$token',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalCalendarSyncRoute = ApiInternalCalendarSyncRouteImport.update({
-  id: '/api/internal/calendar-sync',
-  path: '/api/internal/calendar-sync',
+const ApiPageAiSuggestRoute = ApiPageAiSuggestRouteImport.update({
+  id: '/api/page-ai-suggest',
+  path: '/api/page-ai-suggest',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCronSendRemindersRoute = ApiCronSendRemindersRouteImport.update({
-  id: '/api/cron/send-reminders',
-  path: '/api/cron/send-reminders',
+const ApiPublicBookingStaffRoute = ApiPublicBookingStaffRouteImport.update({
+  id: '/api/public-booking-staff',
+  path: '/api/public-booking-staff',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBookingsSendConfirmationRoute =
-  ApiBookingsSendConfirmationRouteImport.update({
-    id: '/api/bookings/send-confirmation',
-    path: '/api/bookings/send-confirmation',
+const ApiPublicGalleryRoute = ApiPublicGalleryRouteImport.update({
+  id: '/api/public-gallery',
+  path: '/api/public-gallery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicReviewsRoute = ApiPublicReviewsRouteImport.update({
+  id: '/api/public-reviews',
+  path: '/api/public-reviews',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiResendWebhookRoute = ApiResendWebhookRouteImport.update({
+  id: '/api/resend-webhook',
+  path: '/api/resend-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStockScanRoute = ApiStockScanRouteImport.update({
+  id: '/api/stock-scan',
+  path: '/api/stock-scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTwilioSmsWebhookRoute = ApiTwilioSmsWebhookRouteImport.update({
+  id: '/api/twilio-sms-webhook',
+  path: '/api/twilio-sms-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWaitlistRoute = ApiWaitlistRouteImport.update({
+  id: '/api/waitlist',
+  path: '/api/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookSlugRoute = BookSlugRouteImport.update({
+  id: '/book/$slug',
+  path: '/book/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GiftSlugRoute = GiftSlugRouteImport.update({
+  id: '/gift/$slug',
+  path: '/gift/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpIndexRoute = HelpIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => HelpRoute,
+} as any)
+const HelpSlugRoute = HelpSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => HelpRoute,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalIndexRoute = PortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalBookingsRoute = PortalBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalProfileRoute = PortalProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => PortalRoute,
+} as any)
+const ReviewTokenRoute = ReviewTokenRouteImport.update({
+  id: '/review/$token',
+  path: '/review/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffInviteTokenRoute = StaffInviteTokenRouteImport.update({
+  id: '/staff-invite/$token',
+  path: '/staff-invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBookingActionsActRoute = ApiBookingActionsActRouteImport.update({
+  id: '/api/booking-actions/act',
+  path: '/api/booking-actions/act',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBookingActionsRescheduleCommitRoute =
+  ApiBookingActionsRescheduleCommitRouteImport.update({
+    id: '/api/booking-actions/reschedule-commit',
+    path: '/api/booking-actions/reschedule-commit',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiBookingActionsReschedulePeekRoute =
@@ -444,21 +396,69 @@ const ApiBookingActionsReschedulePeekRoute =
     path: '/api/booking-actions/reschedule-peek',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiBookingActionsRescheduleCommitRoute =
-  ApiBookingActionsRescheduleCommitRouteImport.update({
-    id: '/api/booking-actions/reschedule-commit',
-    path: '/api/booking-actions/reschedule-commit',
+const ApiBookingsSendConfirmationRoute =
+  ApiBookingsSendConfirmationRouteImport.update({
+    id: '/api/bookings/send-confirmation',
+    path: '/api/bookings/send-confirmation',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiBookingActionsActRoute = ApiBookingActionsActRouteImport.update({
-  id: '/api/booking-actions/act',
-  path: '/api/booking-actions/act',
+const ApiCronSendRemindersRoute = ApiCronSendRemindersRouteImport.update({
+  id: '/api/cron/send-reminders',
+  path: '/api/cron/send-reminders',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCalendarProviderConnectRoute =
-  ApiCalendarProviderConnectRouteImport.update({
-    id: '/api/calendar/$provider/connect',
-    path: '/api/calendar/$provider/connect',
+const ApiInternalCalendarSyncRoute = ApiInternalCalendarSyncRouteImport.update({
+  id: '/api/internal/calendar-sync',
+  path: '/api/internal/calendar-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMarketingUnsubscribeTokenRoute =
+  ApiMarketingUnsubscribeTokenRouteImport.update({
+    id: '/api/marketing-unsubscribe/$token',
+    path: '/api/marketing-unsubscribe/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiMonitoringClientErrorsRoute =
+  ApiMonitoringClientErrorsRouteImport.update({
+    id: '/api/monitoring/client-errors',
+    path: '/api/monitoring/client-errors',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiReviewsPeekRoute = ApiReviewsPeekRouteImport.update({
+  id: '/api/reviews/peek',
+  path: '/api/reviews/peek',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReviewsSubmitRoute = ApiReviewsSubmitRouteImport.update({
+  id: '/api/reviews/submit',
+  path: '/api/reviews/submit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSupabaseSplatRoute = ApiSupabaseSplatRouteImport.update({
+  id: '/api/supabase/$',
+  path: '/api/supabase/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookSlugOfferRoute = BookSlugOfferRouteImport.update({
+  id: '/book/$slug_/offer',
+  path: '/book/$slug/offer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookSlugWaitlistRoute = BookSlugWaitlistRouteImport.update({
+  id: '/book/$slug_/waitlist',
+  path: '/book/$slug/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingActionActionTokenRoute =
+  BookingActionActionTokenRouteImport.update({
+    id: '/booking-action/$action/$token',
+    path: '/booking-action/$action/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BookingActionRescheduleTokenRoute =
+  BookingActionRescheduleTokenRouteImport.update({
+    id: '/booking-action/reschedule/$token',
+    path: '/booking-action/reschedule/$token',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiCalendarProviderCallbackRoute =
@@ -467,9 +467,16 @@ const ApiCalendarProviderCallbackRoute =
     path: '/api/calendar/$provider/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiCalendarProviderConnectRoute =
+  ApiCalendarProviderConnectRouteImport.update({
+    id: '/api/calendar/$provider/connect',
+    path: '/api/calendar/$provider/connect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account-data': typeof AccountDataRoute
   '/auth': typeof AuthRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/faq': typeof FaqRoute
@@ -545,6 +552,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account-data': typeof AccountDataRoute
   '/auth': typeof AuthRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/faq': typeof FaqRoute
@@ -620,6 +628,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/account-data': typeof AccountDataRoute
   '/auth': typeof AuthRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/faq': typeof FaqRoute
@@ -697,6 +706,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account-data'
     | '/auth'
     | '/cookie-policy'
     | '/faq'
@@ -772,6 +782,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account-data'
     | '/auth'
     | '/cookie-policy'
     | '/faq'
@@ -846,6 +857,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/account-data'
     | '/auth'
     | '/cookie-policy'
     | '/faq'
@@ -923,6 +935,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AccountDataRoute: typeof AccountDataRoute
   AuthRoute: typeof AuthRoute
   CookiePolicyRoute: typeof CookiePolicyRoute
   FaqRoute: typeof FaqRoute
@@ -974,81 +987,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: typeof StatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/software-notices': {
-      id: '/software-notices'
-      path: '/software-notices'
-      fullPath: '/software-notices'
-      preLoaderRoute: typeof SoftwareNoticesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/review-policy': {
-      id: '/review-policy'
-      path: '/review-policy'
-      fullPath: '/review-policy'
-      preLoaderRoute: typeof ReviewPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/refund-policy': {
-      id: '/refund-policy'
-      path: '/refund-policy'
-      fullPath: '/refund-policy'
-      preLoaderRoute: typeof RefundPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/portal': {
-      id: '/portal'
-      path: '/portal'
-      fullPath: '/portal'
-      preLoaderRoute: typeof PortalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/help': {
-      id: '/help'
-      path: '/help'
-      fullPath: '/help'
-      preLoaderRoute: typeof HelpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/faq': {
-      id: '/faq'
-      path: '/faq'
-      fullPath: '/faq'
-      preLoaderRoute: typeof FaqRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cookie-policy': {
-      id: '/cookie-policy'
-      path: '/cookie-policy'
-      fullPath: '/cookie-policy'
-      preLoaderRoute: typeof CookiePolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -1058,305 +1001,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/account-data': {
+      id: '/account-data'
+      path: '/account-data'
+      fullPath: '/account-data'
+      preLoaderRoute: typeof AccountDataRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/portal/': {
-      id: '/portal/'
-      path: '/'
-      fullPath: '/portal/'
-      preLoaderRoute: typeof PortalIndexRouteImport
-      parentRoute: typeof PortalRoute
-    }
-    '/help/': {
-      id: '/help/'
-      path: '/'
-      fullPath: '/help/'
-      preLoaderRoute: typeof HelpIndexRouteImport
-      parentRoute: typeof HelpRoute
-    }
-    '/staff-invite/$token': {
-      id: '/staff-invite/$token'
-      path: '/staff-invite/$token'
-      fullPath: '/staff-invite/$token'
-      preLoaderRoute: typeof StaffInviteTokenRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/review/$token': {
-      id: '/review/$token'
-      path: '/review/$token'
-      fullPath: '/review/$token'
-      preLoaderRoute: typeof ReviewTokenRouteImport
+    '/cookie-policy': {
+      id: '/cookie-policy'
+      path: '/cookie-policy'
+      fullPath: '/cookie-policy'
+      preLoaderRoute: typeof CookiePolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/portal/profile': {
-      id: '/portal/profile'
-      path: '/profile'
-      fullPath: '/portal/profile'
-      preLoaderRoute: typeof PortalProfileRouteImport
-      parentRoute: typeof PortalRoute
-    }
-    '/portal/bookings': {
-      id: '/portal/bookings'
-      path: '/bookings'
-      fullPath: '/portal/bookings'
-      preLoaderRoute: typeof PortalBookingsRouteImport
-      parentRoute: typeof PortalRoute
-    }
-    '/invite/$token': {
-      id: '/invite/$token'
-      path: '/invite/$token'
-      fullPath: '/invite/$token'
-      preLoaderRoute: typeof InviteTokenRouteImport
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/help/$slug': {
-      id: '/help/$slug'
-      path: '/$slug'
-      fullPath: '/help/$slug'
-      preLoaderRoute: typeof HelpSlugRouteImport
-      parentRoute: typeof HelpRoute
-    }
-    '/gift/$slug': {
-      id: '/gift/$slug'
-      path: '/gift/$slug'
-      fullPath: '/gift/$slug'
-      preLoaderRoute: typeof GiftSlugRouteImport
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/book/$slug': {
-      id: '/book/$slug'
-      path: '/book/$slug'
-      fullPath: '/book/$slug'
-      preLoaderRoute: typeof BookSlugRouteImport
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/waitlist': {
-      id: '/api/waitlist'
-      path: '/api/waitlist'
-      fullPath: '/api/waitlist'
-      preLoaderRoute: typeof ApiWaitlistRouteImport
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/twilio-sms-webhook': {
-      id: '/api/twilio-sms-webhook'
-      path: '/api/twilio-sms-webhook'
-      fullPath: '/api/twilio-sms-webhook'
-      preLoaderRoute: typeof ApiTwilioSmsWebhookRouteImport
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/stripe-webhook': {
-      id: '/api/stripe-webhook'
-      path: '/api/stripe-webhook'
-      fullPath: '/api/stripe-webhook'
-      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+    '/review-policy': {
+      id: '/review-policy'
+      path: '/review-policy'
+      fullPath: '/review-policy'
+      preLoaderRoute: typeof ReviewPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/stock-scan': {
-      id: '/api/stock-scan'
-      path: '/api/stock-scan'
-      fullPath: '/api/stock-scan'
-      preLoaderRoute: typeof ApiStockScanRouteImport
+    '/software-notices': {
+      id: '/software-notices'
+      path: '/software-notices'
+      fullPath: '/software-notices'
+      preLoaderRoute: typeof SoftwareNoticesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/resend-webhook': {
-      id: '/api/resend-webhook'
-      path: '/api/resend-webhook'
-      fullPath: '/api/resend-webhook'
-      preLoaderRoute: typeof ApiResendWebhookRouteImport
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public-reviews': {
-      id: '/api/public-reviews'
-      path: '/api/public-reviews'
-      fullPath: '/api/public-reviews'
-      preLoaderRoute: typeof ApiPublicReviewsRouteImport
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public-gallery': {
-      id: '/api/public-gallery'
-      path: '/api/public-gallery'
-      fullPath: '/api/public-gallery'
-      preLoaderRoute: typeof ApiPublicGalleryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public-booking-staff': {
-      id: '/api/public-booking-staff'
-      path: '/api/public-booking-staff'
-      fullPath: '/api/public-booking-staff'
-      preLoaderRoute: typeof ApiPublicBookingStaffRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/page-ai-suggest': {
-      id: '/api/page-ai-suggest'
-      path: '/api/page-ai-suggest'
-      fullPath: '/api/page-ai-suggest'
-      preLoaderRoute: typeof ApiPageAiSuggestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/health': {
-      id: '/api/health'
-      path: '/api/health'
-      fullPath: '/api/health'
-      preLoaderRoute: typeof ApiHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/client-errors': {
-      id: '/api/client-errors'
-      path: '/api/client-errors'
-      fullPath: '/api/client-errors'
-      preLoaderRoute: typeof ApiClientErrorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/better-time-offer': {
-      id: '/api/better-time-offer'
-      path: '/api/better-time-offer'
-      fullPath: '/api/better-time-offer'
-      preLoaderRoute: typeof ApiBetterTimeOfferRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/appointment-waitlist': {
-      id: '/api/appointment-waitlist'
-      path: '/api/appointment-waitlist'
-      fullPath: '/api/appointment-waitlist'
-      preLoaderRoute: typeof ApiAppointmentWaitlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/stock': {
-      id: '/_authenticated/stock'
-      path: '/stock'
-      fullPath: '/stock'
-      preLoaderRoute: typeof AuthenticatedStockRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/staff': {
-      id: '/_authenticated/staff'
-      path: '/staff'
-      fullPath: '/staff'
-      preLoaderRoute: typeof AuthenticatedStaffRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/services': {
-      id: '/_authenticated/services'
-      path: '/services'
-      fullPath: '/services'
-      preLoaderRoute: typeof AuthenticatedServicesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports': {
-      id: '/_authenticated/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof AuthenticatedReportsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/professionals': {
-      id: '/_authenticated/professionals'
-      path: '/professionals'
-      fullPath: '/professionals'
-      preLoaderRoute: typeof AuthenticatedProfessionalsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/preview': {
-      id: '/_authenticated/preview'
-      path: '/preview'
-      fullPath: '/preview'
-      preLoaderRoute: typeof AuthenticatedPreviewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/payments': {
-      id: '/_authenticated/payments'
-      path: '/payments'
-      fullPath: '/payments'
-      preLoaderRoute: typeof AuthenticatedPaymentsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/page-builder': {
-      id: '/_authenticated/page-builder'
-      path: '/page-builder'
-      fullPath: '/page-builder'
-      preLoaderRoute: typeof AuthenticatedPageBuilderRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/onboarding': {
-      id: '/_authenticated/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/import': {
-      id: '/_authenticated/import'
-      path: '/import'
-      fullPath: '/import'
-      preLoaderRoute: typeof AuthenticatedImportRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/gift-cards': {
-      id: '/_authenticated/gift-cards'
-      path: '/gift-cards'
-      fullPath: '/gift-cards'
-      preLoaderRoute: typeof AuthenticatedGiftCardsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/customers': {
-      id: '/_authenticated/customers'
-      path: '/customers'
-      fullPath: '/customers'
-      preLoaderRoute: typeof AuthenticatedCustomersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/consultations': {
-      id: '/_authenticated/consultations'
-      path: '/consultations'
-      fullPath: '/consultations'
-      preLoaderRoute: typeof AuthenticatedConsultationsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/calendar': {
-      id: '/_authenticated/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof AuthenticatedCalendarRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/bookings': {
-      id: '/_authenticated/bookings'
-      path: '/bookings'
-      fullPath: '/bookings'
-      preLoaderRoute: typeof AuthenticatedBookingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/block-preview': {
-      id: '/_authenticated/block-preview'
-      path: '/block-preview'
-      fullPath: '/block-preview'
-      preLoaderRoute: typeof AuthenticatedBlockPreviewRouteImport
+    '/_authenticated/appointment-waitlist': {
+      id: '/_authenticated/appointment-waitlist'
+      path: '/appointment-waitlist'
+      fullPath: '/appointment-waitlist'
+      preLoaderRoute: typeof AuthenticatedAppointmentWaitlistRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/assistant': {
@@ -1366,109 +1099,298 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssistantRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/appointment-waitlist': {
-      id: '/_authenticated/appointment-waitlist'
-      path: '/appointment-waitlist'
-      fullPath: '/appointment-waitlist'
-      preLoaderRoute: typeof AuthenticatedAppointmentWaitlistRouteImport
+    '/_authenticated/block-preview': {
+      id: '/_authenticated/block-preview'
+      path: '/block-preview'
+      fullPath: '/block-preview'
+      preLoaderRoute: typeof AuthenticatedBlockPreviewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/booking-action/reschedule/$token': {
-      id: '/booking-action/reschedule/$token'
-      path: '/booking-action/reschedule/$token'
-      fullPath: '/booking-action/reschedule/$token'
-      preLoaderRoute: typeof BookingActionRescheduleTokenRouteImport
+    '/_authenticated/bookings': {
+      id: '/_authenticated/bookings'
+      path: '/bookings'
+      fullPath: '/bookings'
+      preLoaderRoute: typeof AuthenticatedBookingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/calendar': {
+      id: '/_authenticated/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AuthenticatedCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/consultations': {
+      id: '/_authenticated/consultations'
+      path: '/consultations'
+      fullPath: '/consultations'
+      preLoaderRoute: typeof AuthenticatedConsultationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/customers': {
+      id: '/_authenticated/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof AuthenticatedCustomersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/gift-cards': {
+      id: '/_authenticated/gift-cards'
+      path: '/gift-cards'
+      fullPath: '/gift-cards'
+      preLoaderRoute: typeof AuthenticatedGiftCardsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/page-builder': {
+      id: '/_authenticated/page-builder'
+      path: '/page-builder'
+      fullPath: '/page-builder'
+      preLoaderRoute: typeof AuthenticatedPageBuilderRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/payments': {
+      id: '/_authenticated/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AuthenticatedPaymentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/preview': {
+      id: '/_authenticated/preview'
+      path: '/preview'
+      fullPath: '/preview'
+      preLoaderRoute: typeof AuthenticatedPreviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/professionals': {
+      id: '/_authenticated/professionals'
+      path: '/professionals'
+      fullPath: '/professionals'
+      preLoaderRoute: typeof AuthenticatedProfessionalsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/services': {
+      id: '/_authenticated/services'
+      path: '/services'
+      fullPath: '/services'
+      preLoaderRoute: typeof AuthenticatedServicesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/staff': {
+      id: '/_authenticated/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof AuthenticatedStaffRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/stock': {
+      id: '/_authenticated/stock'
+      path: '/stock'
+      fullPath: '/stock'
+      preLoaderRoute: typeof AuthenticatedStockRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/appointment-waitlist': {
+      id: '/api/appointment-waitlist'
+      path: '/api/appointment-waitlist'
+      fullPath: '/api/appointment-waitlist'
+      preLoaderRoute: typeof ApiAppointmentWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/booking-action/$action/$token': {
-      id: '/booking-action/$action/$token'
-      path: '/booking-action/$action/$token'
-      fullPath: '/booking-action/$action/$token'
-      preLoaderRoute: typeof BookingActionActionTokenRouteImport
+    '/api/better-time-offer': {
+      id: '/api/better-time-offer'
+      path: '/api/better-time-offer'
+      fullPath: '/api/better-time-offer'
+      preLoaderRoute: typeof ApiBetterTimeOfferRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/book/$slug_/waitlist': {
-      id: '/book/$slug_/waitlist'
-      path: '/book/$slug/waitlist'
-      fullPath: '/book/$slug/waitlist'
-      preLoaderRoute: typeof BookSlugWaitlistRouteImport
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/book/$slug_/offer': {
-      id: '/book/$slug_/offer'
-      path: '/book/$slug/offer'
-      fullPath: '/book/$slug/offer'
-      preLoaderRoute: typeof BookSlugOfferRouteImport
+    '/api/client-errors': {
+      id: '/api/client-errors'
+      path: '/api/client-errors'
+      fullPath: '/api/client-errors'
+      preLoaderRoute: typeof ApiClientErrorsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/supabase/$': {
-      id: '/api/supabase/$'
-      path: '/api/supabase/$'
-      fullPath: '/api/supabase/$'
-      preLoaderRoute: typeof ApiSupabaseSplatRouteImport
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/reviews/submit': {
-      id: '/api/reviews/submit'
-      path: '/api/reviews/submit'
-      fullPath: '/api/reviews/submit'
-      preLoaderRoute: typeof ApiReviewsSubmitRouteImport
+    '/api/page-ai-suggest': {
+      id: '/api/page-ai-suggest'
+      path: '/api/page-ai-suggest'
+      fullPath: '/api/page-ai-suggest'
+      preLoaderRoute: typeof ApiPageAiSuggestRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/reviews/peek': {
-      id: '/api/reviews/peek'
-      path: '/api/reviews/peek'
-      fullPath: '/api/reviews/peek'
-      preLoaderRoute: typeof ApiReviewsPeekRouteImport
+    '/api/public-booking-staff': {
+      id: '/api/public-booking-staff'
+      path: '/api/public-booking-staff'
+      fullPath: '/api/public-booking-staff'
+      preLoaderRoute: typeof ApiPublicBookingStaffRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/monitoring/client-errors': {
-      id: '/api/monitoring/client-errors'
-      path: '/api/monitoring/client-errors'
-      fullPath: '/api/monitoring/client-errors'
-      preLoaderRoute: typeof ApiMonitoringClientErrorsRouteImport
+    '/api/public-gallery': {
+      id: '/api/public-gallery'
+      path: '/api/public-gallery'
+      fullPath: '/api/public-gallery'
+      preLoaderRoute: typeof ApiPublicGalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/marketing-unsubscribe/$token': {
-      id: '/api/marketing-unsubscribe/$token'
-      path: '/api/marketing-unsubscribe/$token'
-      fullPath: '/api/marketing-unsubscribe/$token'
-      preLoaderRoute: typeof ApiMarketingUnsubscribeTokenRouteImport
+    '/api/public-reviews': {
+      id: '/api/public-reviews'
+      path: '/api/public-reviews'
+      fullPath: '/api/public-reviews'
+      preLoaderRoute: typeof ApiPublicReviewsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/internal/calendar-sync': {
-      id: '/api/internal/calendar-sync'
-      path: '/api/internal/calendar-sync'
-      fullPath: '/api/internal/calendar-sync'
-      preLoaderRoute: typeof ApiInternalCalendarSyncRouteImport
+    '/api/resend-webhook': {
+      id: '/api/resend-webhook'
+      path: '/api/resend-webhook'
+      fullPath: '/api/resend-webhook'
+      preLoaderRoute: typeof ApiResendWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cron/send-reminders': {
-      id: '/api/cron/send-reminders'
-      path: '/api/cron/send-reminders'
-      fullPath: '/api/cron/send-reminders'
-      preLoaderRoute: typeof ApiCronSendRemindersRouteImport
+    '/api/stock-scan': {
+      id: '/api/stock-scan'
+      path: '/api/stock-scan'
+      fullPath: '/api/stock-scan'
+      preLoaderRoute: typeof ApiStockScanRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/bookings/send-confirmation': {
-      id: '/api/bookings/send-confirmation'
-      path: '/api/bookings/send-confirmation'
-      fullPath: '/api/bookings/send-confirmation'
-      preLoaderRoute: typeof ApiBookingsSendConfirmationRouteImport
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/booking-actions/reschedule-peek': {
-      id: '/api/booking-actions/reschedule-peek'
-      path: '/api/booking-actions/reschedule-peek'
-      fullPath: '/api/booking-actions/reschedule-peek'
-      preLoaderRoute: typeof ApiBookingActionsReschedulePeekRouteImport
+    '/api/twilio-sms-webhook': {
+      id: '/api/twilio-sms-webhook'
+      path: '/api/twilio-sms-webhook'
+      fullPath: '/api/twilio-sms-webhook'
+      preLoaderRoute: typeof ApiTwilioSmsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/booking-actions/reschedule-commit': {
-      id: '/api/booking-actions/reschedule-commit'
-      path: '/api/booking-actions/reschedule-commit'
-      fullPath: '/api/booking-actions/reschedule-commit'
-      preLoaderRoute: typeof ApiBookingActionsRescheduleCommitRouteImport
+    '/api/waitlist': {
+      id: '/api/waitlist'
+      path: '/api/waitlist'
+      fullPath: '/api/waitlist'
+      preLoaderRoute: typeof ApiWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$slug': {
+      id: '/book/$slug'
+      path: '/book/$slug'
+      fullPath: '/book/$slug'
+      preLoaderRoute: typeof BookSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gift/$slug': {
+      id: '/gift/$slug'
+      path: '/gift/$slug'
+      fullPath: '/gift/$slug'
+      preLoaderRoute: typeof GiftSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/': {
+      id: '/help/'
+      path: '/'
+      fullPath: '/help/'
+      preLoaderRoute: typeof HelpIndexRouteImport
+      parentRoute: typeof HelpRoute
+    }
+    '/help/$slug': {
+      id: '/help/$slug'
+      path: '/$slug'
+      fullPath: '/help/$slug'
+      preLoaderRoute: typeof HelpSlugRouteImport
+      parentRoute: typeof HelpRoute
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/': {
+      id: '/portal/'
+      path: '/'
+      fullPath: '/portal/'
+      preLoaderRoute: typeof PortalIndexRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/bookings': {
+      id: '/portal/bookings'
+      path: '/bookings'
+      fullPath: '/portal/bookings'
+      preLoaderRoute: typeof PortalBookingsRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/profile': {
+      id: '/portal/profile'
+      path: '/profile'
+      fullPath: '/portal/profile'
+      preLoaderRoute: typeof PortalProfileRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/review/$token': {
+      id: '/review/$token'
+      path: '/review/$token'
+      fullPath: '/review/$token'
+      preLoaderRoute: typeof ReviewTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff-invite/$token': {
+      id: '/staff-invite/$token'
+      path: '/staff-invite/$token'
+      fullPath: '/staff-invite/$token'
+      preLoaderRoute: typeof StaffInviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/booking-actions/act': {
@@ -1478,11 +1400,102 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBookingActionsActRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/calendar/$provider/connect': {
-      id: '/api/calendar/$provider/connect'
-      path: '/api/calendar/$provider/connect'
-      fullPath: '/api/calendar/$provider/connect'
-      preLoaderRoute: typeof ApiCalendarProviderConnectRouteImport
+    '/api/booking-actions/reschedule-commit': {
+      id: '/api/booking-actions/reschedule-commit'
+      path: '/api/booking-actions/reschedule-commit'
+      fullPath: '/api/booking-actions/reschedule-commit'
+      preLoaderRoute: typeof ApiBookingActionsRescheduleCommitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/booking-actions/reschedule-peek': {
+      id: '/api/booking-actions/reschedule-peek'
+      path: '/api/booking-actions/reschedule-peek'
+      fullPath: '/api/booking-actions/reschedule-peek'
+      preLoaderRoute: typeof ApiBookingActionsReschedulePeekRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/bookings/send-confirmation': {
+      id: '/api/bookings/send-confirmation'
+      path: '/api/bookings/send-confirmation'
+      fullPath: '/api/bookings/send-confirmation'
+      preLoaderRoute: typeof ApiBookingsSendConfirmationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/send-reminders': {
+      id: '/api/cron/send-reminders'
+      path: '/api/cron/send-reminders'
+      fullPath: '/api/cron/send-reminders'
+      preLoaderRoute: typeof ApiCronSendRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/calendar-sync': {
+      id: '/api/internal/calendar-sync'
+      path: '/api/internal/calendar-sync'
+      fullPath: '/api/internal/calendar-sync'
+      preLoaderRoute: typeof ApiInternalCalendarSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/marketing-unsubscribe/$token': {
+      id: '/api/marketing-unsubscribe/$token'
+      path: '/api/marketing-unsubscribe/$token'
+      fullPath: '/api/marketing-unsubscribe/$token'
+      preLoaderRoute: typeof ApiMarketingUnsubscribeTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/monitoring/client-errors': {
+      id: '/api/monitoring/client-errors'
+      path: '/api/monitoring/client-errors'
+      fullPath: '/api/monitoring/client-errors'
+      preLoaderRoute: typeof ApiMonitoringClientErrorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reviews/peek': {
+      id: '/api/reviews/peek'
+      path: '/api/reviews/peek'
+      fullPath: '/api/reviews/peek'
+      preLoaderRoute: typeof ApiReviewsPeekRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reviews/submit': {
+      id: '/api/reviews/submit'
+      path: '/api/reviews/submit'
+      fullPath: '/api/reviews/submit'
+      preLoaderRoute: typeof ApiReviewsSubmitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/supabase/$': {
+      id: '/api/supabase/$'
+      path: '/api/supabase/$'
+      fullPath: '/api/supabase/$'
+      preLoaderRoute: typeof ApiSupabaseSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$slug_/offer': {
+      id: '/book/$slug_/offer'
+      path: '/book/$slug/offer'
+      fullPath: '/book/$slug/offer'
+      preLoaderRoute: typeof BookSlugOfferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$slug_/waitlist': {
+      id: '/book/$slug_/waitlist'
+      path: '/book/$slug/waitlist'
+      fullPath: '/book/$slug/waitlist'
+      preLoaderRoute: typeof BookSlugWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking-action/$action/$token': {
+      id: '/booking-action/$action/$token'
+      path: '/booking-action/$action/$token'
+      fullPath: '/booking-action/$action/$token'
+      preLoaderRoute: typeof BookingActionActionTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking-action/reschedule/$token': {
+      id: '/booking-action/reschedule/$token'
+      path: '/booking-action/reschedule/$token'
+      fullPath: '/booking-action/reschedule/$token'
+      preLoaderRoute: typeof BookingActionRescheduleTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/calendar/$provider/callback': {
@@ -1490,6 +1503,13 @@ declare module '@tanstack/react-router' {
       path: '/api/calendar/$provider/callback'
       fullPath: '/api/calendar/$provider/callback'
       preLoaderRoute: typeof ApiCalendarProviderCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/calendar/$provider/connect': {
+      id: '/api/calendar/$provider/connect'
+      path: '/api/calendar/$provider/connect'
+      fullPath: '/api/calendar/$provider/connect'
+      preLoaderRoute: typeof ApiCalendarProviderConnectRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -1574,6 +1594,7 @@ const PortalRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AccountDataRoute: AccountDataRoute,
   AuthRoute: AuthRoute,
   CookiePolicyRoute: CookiePolicyRoute,
   FaqRoute: FaqRoute,

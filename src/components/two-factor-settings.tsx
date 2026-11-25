@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ShieldCheck, ShieldOff, Loader2, Copy, Check } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  supabase,
+  verifyCurrentSessionMfa,
+} from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,83 +33,111 @@ export function TwoFactorSettings() {
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [copied, setCopied] = useState(false);
+  const verifyLock = useRef(false);
+  const mounted = useRef(false);
+  const verification = useRef<AbortController | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
     try {
       const { data, error } = await supabase.auth.mfa.listFactors();
       if (error) throw error;
+      if (!mounted.current) return;
       setFactors((data?.totp ?? []) as Factor[]);
       await qc.invalidateQueries({ queryKey: ["settings-mfa-summary"] });
-    } catch (error) {
+    } catch {
+      if (!mounted.current) return;
       setLoadError(true);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not load sign-in protection",
-      );
+      toast.error("Could not load sign-in protection. Please try again.");
     } finally {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
-  };
+  }, [qc]);
 
   useEffect(() => {
+    mounted.current = true;
     refresh();
-  }, []);
+    return () => {
+      mounted.current = false;
+      verification.current?.abort();
+    };
+  }, [refresh]);
 
   const verified = factors.find((f) => f.status === "verified");
 
   const startEnroll = async () => {
+    if (verifyLock.current) return;
+    verifyLock.current = true;
     setEnrolling(true);
     try {
       // Clear out any stale unverified factor from an abandoned attempt
       // before starting a fresh one — Supabase caps factors per user.
       const stale = factors.filter((f) => f.status === "unverified");
       for (const f of stale) {
-        await supabase.auth.mfa.unenroll({ factorId: f.id });
+        const { error } = await supabase.auth.mfa.unenroll({ factorId: f.id });
+        if (error) throw error;
       }
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
       });
       if (error) throw error;
+      if (!mounted.current) return;
       setPendingFactorId(data.id);
       setQr(data.totp.qr_code);
       setSecret(data.totp.secret);
-    } catch (error: unknown) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not start enrollment",
-      );
-      setEnrolling(false);
+    } catch {
+      if (mounted.current) {
+        toast.error("Could not start authenticator setup. Please try again.");
+        setEnrolling(false);
+      }
+    } finally {
+      verifyLock.current = false;
     }
   };
 
   const cancelEnroll = async () => {
-    if (pendingFactorId) {
-      await supabase.auth.mfa.unenroll({ factorId: pendingFactorId });
+    if (verifyLock.current) return;
+    verifyLock.current = true;
+    setVerifying(true);
+    try {
+      if (pendingFactorId) {
+        const { error } = await supabase.auth.mfa.unenroll({
+          factorId: pendingFactorId,
+        });
+        if (error) throw error;
+      }
+      if (!mounted.current) return;
+      setEnrolling(false);
+      setQr(null);
+      setSecret(null);
+      setPendingFactorId(null);
+      setCode("");
+      void refresh();
+    } catch {
+      if (mounted.current)
+        toast.error("Could not cancel authenticator setup. Please try again.");
+    } finally {
+      verifyLock.current = false;
+      if (mounted.current) setVerifying(false);
     }
-    setEnrolling(false);
-    setQr(null);
-    setSecret(null);
-    setPendingFactorId(null);
-    setCode("");
-    refresh();
   };
 
   const confirmEnroll = async () => {
+    if (verifyLock.current) return;
     if (!pendingFactorId || !/^\d{6}$/.test(code.trim()))
       return toast.error("Enter the 6-digit code");
+    verifyLock.current = true;
     setVerifying(true);
+    const controller = new AbortController();
+    verification.current = controller;
     try {
-      const { data: challenge, error: challengeErr } =
-        await supabase.auth.mfa.challenge({ factorId: pendingFactorId });
-      if (challengeErr) throw challengeErr;
-      const { error: verifyErr } = await supabase.auth.mfa.verify({
+      await verifyCurrentSessionMfa({
         factorId: pendingFactorId,
-        challengeId: challenge.id,
         code: code.trim(),
+        signal: controller.signal,
       });
-      if (verifyErr) throw verifyErr;
+      if (!mounted.current) return;
       toast.success("Two-factor authentication enabled");
       setEnrolling(false);
       setQr(null);
@@ -115,9 +146,12 @@ export function TwoFactorSettings() {
       setCode("");
       refresh();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Invalid code");
+      if (mounted.current)
+        toast.error(error instanceof Error ? error.message : "Invalid code");
     } finally {
-      setVerifying(false);
+      verifyLock.current = false;
+      if (verification.current === controller) verification.current = null;
+      if (mounted.current) setVerifying(false);
     }
   };
 
@@ -128,11 +162,19 @@ export function TwoFactorSettings() {
     refresh();
   };
 
-  const copySecret = () => {
+  const copySecret = async () => {
     if (!secret) return;
-    navigator.clipboard.writeText(secret);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(secret);
+      if (!mounted.current) return;
+      setCopied(true);
+      setTimeout(() => {
+        if (mounted.current) setCopied(false);
+      }, 1500);
+    } catch {
+      if (mounted.current)
+        toast.error("Could not copy the setup key. Enter it manually instead.");
+    }
   };
 
   if (loading) {
@@ -156,12 +198,12 @@ export function TwoFactorSettings() {
             <ShieldCheck className="h-4.5 w-4.5" />
           </span>
           <div>
-            <p className="text-sm font-medium flex items-center gap-2">
+            <div className="text-sm font-medium flex items-center gap-2">
               Two-factor authentication{" "}
               <Badge variant="secondary" className="text-[10px]">
                 Enabled
               </Badge>
-            </p>
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               You'll be asked for a code from your authenticator app when
               signing in.
@@ -235,6 +277,8 @@ export function TwoFactorSettings() {
             6-digit code
           </Label>
           <Input
+            aria-label="Six-digit setup code"
+            disabled={verifying}
             value={code}
             onChange={(e) =>
               setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
@@ -249,6 +293,7 @@ export function TwoFactorSettings() {
             type="button"
             variant="ghost"
             onClick={cancelEnroll}
+            disabled={verifying}
             className="w-full sm:w-auto"
           >
             Cancel

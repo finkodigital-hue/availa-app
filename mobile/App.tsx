@@ -92,6 +92,7 @@ const MOBILE_WORKSPACE_ROUTES = new Set([
   "gift-cards",
   "consultations",
   "appointment-waitlist",
+  "account-data",
   "payments",
   "reports",
   "settings",
@@ -106,6 +107,7 @@ const MOBILE_WORKSPACE_ROUTES = new Set([
 
 function workspacePathFromDeepLink(url: string) {
   try {
+    if (url.length > 4096) return null;
     const address = new URL(url);
     if (address.protocol !== "bookzenvo:" || address.username || address.password || address.port || address.hash) return null;
     const parsed = Linking.parse(url);
@@ -294,9 +296,26 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   const [failed, setFailed] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
   const [canGoBack, setCanGoBack] = useState(false);
+  const [nativePath, setNativePath] = useState<string | null>(null);
   const networkState = useNetworkState();
   const appUrl = mobileConfiguration?.appUrl || "https://bookzenvo.com";
-  const workspaceUrl = new URL(workspacePath, `${appUrl.replace(/\/$/, "")}/`).toString();
+  // Native controls accept only bounded root-relative paths. A malformed deep
+  // link or caller cannot turn an authenticated WebView into an external page.
+  const workspaceUrlForPath = (path: string) => {
+    const fallback = new URL("/dashboard", appUrl).href;
+    try {
+      if (path.length > 2048 || !path.startsWith("/") || path.startsWith("//") || /[\\\u0000-\u001f\u007f#]/.test(path)) return fallback;
+      const url = new URL(path, appUrl);
+      if (url.origin !== new URL(appUrl).origin || url.username || url.password) return fallback;
+      for (const key of [...url.searchParams.keys()]) {
+        if (/^(?:access_token|refresh_token|id_token|provider_token|provider_refresh_token|token|token_hash|code)$/i.test(key)) url.searchParams.delete(key);
+      }
+      return url.href;
+    } catch {
+      return fallback;
+    }
+  };
+  const workspaceUrl = workspaceUrlForPath(nativePath ?? workspacePath);
   const storageKey = WORKSPACE_AUTH_STORAGE_KEY;
   const syncWorkspaceSession = workspaceSessionScript(session, appUrl);
   const injectedJavaScriptBeforeContentLoaded = `
@@ -510,6 +529,31 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     setWebViewKey((value) => value + 1);
   };
 
+  const openAccountData = () => {
+    setNativePath("/account-data");
+    // Remount even if this was the last native-selected page: the website may
+    // since have navigated elsewhere, redirected to onboarding or failed.
+    retryWorkspace();
+  };
+  const accountEntry = (
+    <View style={styles.nativeAccountBar}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Account and data"
+        accessibilityHint="Open account details and request account deletion"
+        style={styles.nativeAccountButton}
+        onPress={openAccountData}
+      >
+        <Ionicons name="person-circle-outline" size={20} color={PALETTE.ink} />
+        <Text style={styles.nativeAccountText}>Account &amp; data</Text>
+      </Pressable>
+    </View>
+  );
+
+  useEffect(() => {
+    setNativePath(null);
+  }, [workspacePath]);
+
   const saveWorkspaceDownload = async (filename: string, base64: string, mimeType: string) => {
     await shareWorkspaceExport(FileSystem, Sharing, filename, base64, mimeType);
   };
@@ -619,6 +663,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" />
+        {accountEntry}
         <View style={styles.webError}>
           <Text style={styles.webErrorWordmark}>Bookzenvo.</Text>
           <Text style={styles.webErrorTitle}>Bookzenvo could not load</Text>
@@ -637,6 +682,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   return (
     <SafeAreaView style={styles.webSafeArea}>
       <StatusBar barStyle="dark-content" />
+      {accountEntry}
       <View style={styles.webContainer}>
         <WebView<object>
           key={webViewKey}
@@ -1286,6 +1332,9 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => voi
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: PALETTE.cream },
   webSafeArea: { flex: 1, backgroundColor: PALETTE.cream },
+  nativeAccountBar: { alignItems: "flex-end", paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: PALETTE.line, backgroundColor: PALETTE.cream },
+  nativeAccountButton: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 8 },
+  nativeAccountText: { color: PALETTE.ink, fontFamily: "DMSans_600SemiBold", fontSize: 13 },
   webContainer: { flex: 1 },
   webView: { flex: 1, backgroundColor: PALETTE.cream },
   offlineBanner: { position: "absolute", left: 16, right: 16, bottom: 18, minHeight: 44, borderRadius: 12, backgroundColor: PALETTE.ink, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: 16 },

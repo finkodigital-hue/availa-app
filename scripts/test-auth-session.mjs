@@ -6,15 +6,24 @@ import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
 
-const mock = `export const supabase={auth:{onAuthStateChange(callback){window.authCallback=callback;window.subscriptions=(window.subscriptions??0)+1;return {data:{subscription:{unsubscribe(){window.unsubscribed=(window.unsubscribed??0)+1;if(window.authCallback===callback)window.authCallback=null}}}}},getSession(){return new Promise((resolve,reject)=>{window.resolveSnapshot=(id)=>resolve({data:{session:id?{user:{id},access_token:'fictional'}:null}});window.rejectSnapshot=reject})}}};`;
+const mock = `
+window.fixtureSession=id=>id?{user:{id},access_token:'fictional:'+id,refresh_token:'fictional-refresh:'+id}:null;
+window.commitFixture=id=>{const session=window.fixtureSession(id);if(session)localStorage.setItem('bookzenvo-auth',JSON.stringify(session));else localStorage.removeItem('bookzenvo-auth');return session};
+export const supabase={auth:{onAuthStateChange(callback){window.authCallback=callback;window.subscriptions=(window.subscriptions??0)+1;return {data:{subscription:{unsubscribe(){window.unsubscribed=(window.unsubscribed??0)+1;if(window.authCallback===callback)window.authCallback=null}}}}},getSession(){return new Promise((resolve,reject)=>{window.resolveSnapshot=(id)=>resolve({data:{session:window.fixtureSession(id)}});window.rejectSnapshot=reject})}}};`;
 const server = await createServer({
   configFile: false,
+  cacheDir: resolve(`node_modules/.vite-auth-session-${process.pid}`),
   plugins: [
     {
       name: "auth-fixture",
       enforce: "pre",
       resolveId(id) {
-        if (id === "@/integrations/supabase/client") return "\0fixture-auth";
+        if (
+          id === "@/integrations/supabase/client" ||
+          id.replaceAll("\\", "/") ===
+            resolve("src/integrations/supabase/client").replaceAll("\\", "/")
+        )
+          return "\0fixture-auth";
       },
       load(id) {
         if (id === "\0fixture-auth") return mock;
@@ -28,6 +37,9 @@ const server = await createServer({
     fs: { allow: [resolve("."), realpathSync("node_modules")] },
   },
   optimizeDeps: { entries: ["tests/fixtures/auth-session.html"] },
+  resolve: {
+    alias: [{ find: /^@\/(.*)$/, replacement: resolve("src") + "/$1" }],
+  },
 });
 await server.listen();
 let browser;
@@ -46,14 +58,14 @@ try {
   const ready = () =>
     page.waitForFunction(() => window.authCallback && window.resolveSnapshot);
   const text = () => page.locator("output").innerText();
-  const emit = async (event, id) => {
+  const emit = async (event, id, commit = true) => {
     await page.evaluate(
-      ({ event, id }) =>
+      ({ event, id, commit }) =>
         window.authCallback(
           event,
-          id ? { user: { id }, access_token: "fictional" } : null,
+          commit ? window.commitFixture(id) : window.fixtureSession(id),
         ),
-      { event, id },
+      { event, id, commit },
     );
   };
   await page.goto(url);
@@ -78,7 +90,7 @@ try {
     "new identity takes precedence over initial snapshot",
   );
   checks++;
-  await emit("INITIAL_SESSION", "old-owner");
+  await emit("INITIAL_SESSION", "old-owner", false);
   assert.equal(
     await text(),
     "staff|empty",
@@ -203,8 +215,8 @@ try {
     window.changeDraft("private draft");
   });
   await page.evaluate(() => {
-    window.authCallback("SIGNED_OUT", null);
-    window.authCallback("SIGNED_IN", { user: { id: "same-user" } });
+    window.authCallback("SIGNED_OUT", window.commitFixture(null));
+    window.authCallback("SIGNED_IN", window.commitFixture("same-user"));
   });
   assert.equal(await text(), "same-user|empty");
   assert.equal(
@@ -236,6 +248,57 @@ try {
   await page.evaluate(() =>
     window.rejectSnapshot(new Error("fictional session unavailable")),
   );
+  await page.waitForFunction(
+    () => document.querySelector("output")?.textContent === "signed-out|empty",
+  );
+  checks++;
+  await page.reload();
+  await ready();
+  await page.evaluate(() => window.commitFixture("current-owner"));
+  await emit("SIGNED_IN", "stale-owner", false);
+  await emit("INITIAL_SESSION", "current-owner", false);
+  assert.equal(
+    await text(),
+    "current-owner|empty",
+    "rejected stale events must not suppress valid initialization",
+  );
+  checks++;
+  await emit("SIGNED_OUT", null, false);
+  assert.equal(
+    await text(),
+    "current-owner|empty",
+    "late sign-out cannot replace a committed identity",
+  );
+  checks++;
+  await emit("SIGNED_IN", "stale-owner", false);
+  assert.equal(
+    await text(),
+    "current-owner|empty",
+    "late sign-in cannot replace a committed identity",
+  );
+  checks++;
+  await page.evaluate(() =>
+    window.authCallback("TOKEN_REFRESHED", {
+      ...window.fixtureSession("current-owner"),
+      access_token: "old-same-user-token",
+    }),
+  );
+  assert.equal(
+    await text(),
+    "current-owner|empty",
+    "stale same-user tokens are rejected",
+  );
+  checks++;
+  await page.reload();
+  await ready();
+  await page.evaluate(() => {
+    const read = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key) {
+      if (key === "bookzenvo-auth") throw new Error("Storage unavailable");
+      return read.call(this, key);
+    };
+    window.rejectSnapshot(new Error("Provider unavailable"));
+  });
   await page.waitForFunction(
     () => document.querySelector("output")?.textContent === "signed-out|empty",
   );

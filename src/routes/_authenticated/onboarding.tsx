@@ -155,6 +155,7 @@ function Onboarding() {
             )}
           </Button>
         </form>
+        <p className="mt-5 text-center text-sm"><a href="/account-data" className="underline">Account &amp; data</a></p>
       </div>
     </div>
   );
