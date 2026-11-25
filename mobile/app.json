@@ -11,7 +11,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.finkodigital.bookzenvo",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Use your camera to photograph stock or add business, staff and customer photos you choose to upload.",
+        "NSPhotoLibraryUsageDescription": "Choose photos to upload to your Bookzenvo business, staff, customers or booking page."
       }
     },
     "android": {
@@ -22,7 +24,11 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -41,6 +47,12 @@
       ],
       "expo-sharing",
       "expo-status-bar"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "29705a11-9f04-4a4c-90b2-991f3a39077a"
+      }
+    },
+    "owner": "jakobfinklers-team"
   }
 }

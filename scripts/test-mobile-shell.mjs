@@ -13,6 +13,7 @@ const context = vm.createContext({
   useRef:value=>({current:value}), useMemo:fn=>fn(), useState:value=>[value,()=>{}],useEffect:()=>{},
   supabase:null, AppState:{currentState:'active'},useNetworkState:()=>({isConnected:true}),
   process:{env:{}},URL,JSON,Date,setTimeout:()=>{},
+  mobileConfiguration:{appUrl:'https://bookzenvo.com'},
   WORKSPACE_AUTH_STORAGE_KEY:'bookzenvo-auth',workspaceSessionScript:()=>'',workspaceSignOutScript:()=>'',
   SafeAreaView:'SafeAreaView',View:'View',Text:'Text',Pressable:'Pressable',StatusBar:'StatusBar',
   WebView:'WebView',ActivityIndicator:'ActivityIndicator',Ionicons:'Ionicons',
@@ -42,7 +43,13 @@ const window = {location:{origin:'https://bookzenvo.com',href:'https://bookzenvo
 const element = {setAttribute(){},appendChild(){}};
 const page = vm.createContext({window,XMLHttpRequest:Xhr,Request,Headers,URL,JSON,
  document:{querySelector:()=>element,createElement:()=>({...element}),head:element,addEventListener(){}}});
+vm.runInContext(view.props.injectedJavaScriptBeforeContentLoaded,page);
+assert.equal(window.__bookzenvoNativeBridge,true,'Companion mode is marked before the website renders');
+const foreignWindow={location:{origin:'https://external.example'}};
+vm.runInNewContext(view.props.injectedJavaScriptBeforeContentLoaded,{window:foreignWindow});
+assert.equal(foreignWindow.__bookzenvoNativeBridge,undefined,'Early native marker is scoped to the trusted origin');
 vm.runInContext(view.props.injectedJavaScript,page);
+assert.equal(window.__bookzenvoNavigationBridgeInstalled,true,'Early companion marker must not disable navigation/auth/export bridges');
 window.print();
 assert.deepEqual(sent.at(-1),{type:'print-in-browser',url:'https://bookzenvo.com/reports'});
 await window.fetch('/api/check');

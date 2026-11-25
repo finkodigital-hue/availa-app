@@ -33,10 +33,11 @@ import { DMSans_500Medium } from "@expo-google-fonts/dm-sans/500Medium";
 import { DMSans_600SemiBold } from "@expo-google-fonts/dm-sans/600SemiBold";
 import { DMSans_700Bold } from "@expo-google-fonts/dm-sans/700Bold";
 
-import { isSupabaseConfigured, supabase } from "./src/lib/supabase";
+import { isSupabaseConfigured, mobileConfiguration, supabase } from "./src/lib/supabase";
 import { WORKSPACE_AUTH_STORAGE_KEY, workspaceSessionScript, workspaceSignOutScript, recoverySessionFromDeepLink } from "./src/lib/workspace-session";
 import { createNativeSessionBridge } from "./src/lib/native-session-bridge";
 import { cleanWorkspaceExports, shareWorkspaceExport } from "./src/lib/workspace-export";
+import { googleSignInEnabled, nativeGoogleSignIn } from "./src/lib/native-google-sign-in";
 
 type Tab = "Today" | "Calendar" | "Bookings" | "More";
 type Screen = Tab | "Clients" | "Staff" | "Professionals" | "Services" | "Payments" | "Settings" | "Page builder" | "Help centre" | "Reports" | "Stock" | "Assistant" | "Import data";
@@ -88,6 +89,9 @@ const MOBILE_WORKSPACE_ROUTES = new Set([
   "professionals",
   "services",
   "stock",
+  "gift-cards",
+  "consultations",
+  "appointment-waitlist",
   "payments",
   "reports",
   "settings",
@@ -101,24 +105,31 @@ const MOBILE_WORKSPACE_ROUTES = new Set([
 ]);
 
 function workspacePathFromDeepLink(url: string) {
-  const parsed = Linking.parse(url);
-  if (parsed.scheme !== "bookzenvo") return null;
+  try {
+    const address = new URL(url);
+    if (address.protocol !== "bookzenvo:" || address.username || address.password || address.port || address.hash) return null;
+    const parsed = Linking.parse(url);
+    if (parsed.scheme !== "bookzenvo") return null;
 
-  // Expo treats the first part after bookzenvo:// as the hostname, so support
-  // both bookzenvo://calendar and bookzenvo://workspace/calendar.
-  const pathParts = [parsed.hostname, parsed.path]
-    .filter((part): part is string => Boolean(part))
-    .flatMap((part) => part.split("/").filter(Boolean));
-  const route = pathParts[0] === "workspace" ? pathParts[1] : pathParts[0];
+    // Expo treats the first part after bookzenvo:// as the hostname, so support
+    // both bookzenvo://calendar and bookzenvo://workspace/calendar.
+    const pathParts = [parsed.hostname, parsed.path]
+      .filter((part): part is string => Boolean(part))
+      .flatMap((part) => part.split("/").filter(Boolean));
+    const route = pathParts[0] === "workspace" ? pathParts[1] : pathParts[0];
 
-  if (!route || !MOBILE_WORKSPACE_ROUTES.has(route)) return null;
+    if (!route || !MOBILE_WORKSPACE_ROUTES.has(route) || pathParts.length !== (pathParts[0] === "workspace" ? 2 : 1)) return null;
 
-  const query = new URLSearchParams();
-  Object.entries(parsed.queryParams ?? {}).forEach(([key, value]) => {
-    if (typeof value === "string") query.set(key, value);
-  });
-  const search = query.toString();
-  return `/${route}${search ? `?${search}` : ""}`;
+    const query = new URLSearchParams();
+    Object.entries(parsed.queryParams ?? {}).forEach(([key, value]) => {
+      // Recovery/OAuth credentials never enter website navigation URLs.
+      if (typeof value === "string" && !/^(?:access_token|refresh_token|id_token|provider_token|provider_refresh_token|token|token_hash|code)$/i.test(key)) query.set(key, value);
+    });
+    const search = query.toString();
+    return `/${route}${search ? `?${search}` : ""}`;
+  } catch {
+    return null;
+  }
 }
 
 function formatMoney(cents: number, currency = "GBP") {
@@ -139,7 +150,7 @@ function isSameDay(iso: string, date = new Date()) {
 }
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     CormorantGaramond_500Medium,
     CormorantGaramond_600SemiBold,
     DMSans_400Regular,
@@ -151,6 +162,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [workspacePath, setWorkspacePath] = useState("/dashboard");
+  const [startupError, setStartupError] = useState(false);
+  const [startupAttempt, setStartupAttempt] = useState(0);
 
   useEffect(() => {
     void cleanWorkspaceExports(FileSystem).catch(() => undefined);
@@ -159,24 +172,79 @@ export default function App() {
       setLoading(false);
       return;
     }
-
-    client.auth.getSession().then(({ data }) => {
+    let alive = true;
+    let revision = 0;
+    let recoveryRevision = 0;
+    let activeRecoveryRevision: number | null = null;
+    let recoveryQueue: Promise<void> = Promise.resolve();
+    setLoading(true);
+    setStartupError(false);
+    const initialRevision = revision;
+    const failedStartup = () => {
+      if (!alive || revision !== initialRevision) return;
+      revision++;
+      setStartupError(true);
+      setLoading(false);
+    };
+    const startupTimer = setTimeout(failedStartup, 20_000);
+    void client.auth.getSession().then(({ data, error }) => {
+      if (!alive || revision !== initialRevision) return;
+      if (error) { failedStartup(); return; }
       setSession(data.session);
       setLoading(false);
-    });
+    }).catch(failedStartup).finally(() => clearTimeout(startupTimer));
 
-    const { data } = client.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = client.auth.onAuthStateChange((event, nextSession) => {
+      if (!alive) return;
+      // Supabase may finish a recovery write after sign-out while it was
+      // verifying the user. Do not expose that stale session before cleanup.
+      if (nextSession && activeRecoveryRevision !== null && activeRecoveryRevision !== recoveryRevision) return;
+      revision++;
+      clearTimeout(startupTimer);
       setSession(nextSession);
       setLoading(false);
+      setStartupError(false);
+      if (event === "PASSWORD_RECOVERY") setResettingPassword(true);
+      if (event === "SIGNED_OUT") {
+        void nativeGoogleSignIn?.cancel().catch(() => undefined);
+        recoveryRevision++;
+        setResettingPassword(false);
+        setWorkspacePath("/dashboard");
+      }
     });
 
     const receiveAppLink = async (url: string | null) => {
-      if (!url) return;
+      if (!url || !alive) return;
+
+      if (new URL(url).protocol === "bookzenvo:" && new URL(url).hostname === "auth" && new URL(url).pathname === "/google") {
+        await nativeGoogleSignIn?.handleColdCallback(url);
+        return;
+      }
 
       const recoverySession = recoverySessionFromDeepLink(url);
       if (recoverySession) {
-        const { error } = await client.auth.setSession(recoverySession);
-        if (!error) setResettingPassword(true);
+        const requestRevision = ++recoveryRevision;
+        recoveryQueue = recoveryQueue.catch(() => undefined).then(async () => {
+          if (!alive || recoveryRevision !== requestRevision) return;
+          await nativeGoogleSignIn?.cancel();
+          if (!alive || recoveryRevision !== requestRevision) return;
+          activeRecoveryRevision = requestRevision;
+          try {
+            const { error } = await client.auth.setSession(recoverySession);
+            if (!alive || recoveryRevision !== requestRevision) return;
+            if (error) throw error;
+            setResettingPassword(true);
+          } finally {
+            try {
+              // The final write must remove a session whose verification was
+              // already running when sign-out or effect cleanup happened.
+              if (!alive || recoveryRevision !== requestRevision) await client.auth.signOut({ scope: "local" });
+            } finally {
+              activeRecoveryRevision = null;
+            }
+          }
+        });
+        await recoveryQueue;
         return;
       }
 
@@ -184,18 +252,24 @@ export default function App() {
       if (path) setWorkspacePath(path);
     };
 
-    Linking.getInitialURL().then(receiveAppLink);
-    const linkingSubscription = Linking.addEventListener("url", ({ url }) => receiveAppLink(url));
+    const failedLink = () => {
+      if (alive) Alert.alert("Could not open link", "Check your connection and request a new password-reset link if this one has expired.");
+    };
+    void Linking.getInitialURL().then(receiveAppLink).catch(failedLink);
+    const linkingSubscription = Linking.addEventListener("url", ({ url }) => { void receiveAppLink(url).catch(failedLink); });
 
     return () => {
+      alive = false;
+      clearTimeout(startupTimer);
       data.subscription.unsubscribe();
       linkingSubscription.remove();
     };
-  }, []);
+  }, [startupAttempt]);
 
   let content: ReactNode;
-  if (!fontsLoaded) content = <LoadingScreen label="Opening Bookzenvo" />;
+  if (!fontsLoaded && !fontError) content = <LoadingScreen label="Opening Bookzenvo" />;
   else if (!isSupabaseConfigured) content = <ConfigurationRequired />;
+  else if (startupError) content = <StartupUnavailable retry={() => setStartupAttempt(value => value + 1)} />;
   else if (loading) content = <LoadingScreen label="Opening Bookzenvo" />;
   else if (resettingPassword) content = <NewPasswordScreen onComplete={() => setResettingPassword(false)} />;
   else if (!session) content = <SignInScreen />;
@@ -221,11 +295,14 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   const [webViewKey, setWebViewKey] = useState(0);
   const [canGoBack, setCanGoBack] = useState(false);
   const networkState = useNetworkState();
-  const appUrl = process.env.EXPO_PUBLIC_APP_URL || "https://bookzenvo.com";
+  const appUrl = mobileConfiguration?.appUrl || "https://bookzenvo.com";
   const workspaceUrl = new URL(workspacePath, `${appUrl.replace(/\/$/, "")}/`).toString();
   const storageKey = WORKSPACE_AUTH_STORAGE_KEY;
   const syncWorkspaceSession = workspaceSessionScript(session, appUrl);
-  const injectedJavaScriptBeforeContentLoaded = syncWorkspaceSession;
+  const injectedJavaScriptBeforeContentLoaded = `
+    if (window.location.origin === ${JSON.stringify(new URL(appUrl).origin)}) window.__bookzenvoNativeBridge = true;
+    ${syncWorkspaceSession}
+  `;
 
   // The website intentionally opens Stripe Checkout in a new browser tab.
   // Native WebViews do not reliably create that tab, which used to make the
@@ -234,7 +311,8 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
   const injectedNavigationBridge = `
     (function () {
       if (window.location.origin !== ${JSON.stringify(new URL(appUrl).origin)}) return true;
-      if (window.__bookzenvoNativeBridge) return true;
+      if (window.__bookzenvoNavigationBridgeInstalled) return true;
+      window.__bookzenvoNavigationBridgeInstalled = true;
       window.__bookzenvoNativeBridge = true;
 
       // Keep the workspace locked to the phone viewport. This prevents iOS
@@ -548,7 +626,7 @@ function WebWorkspace({ session, workspacePath }: { session: Session; workspaceP
           <Pressable style={styles.webRetry} onPress={retryWorkspace}>
             <Text style={styles.primaryButtonText}>Try again</Text>
           </Pressable>
-          <Pressable style={styles.webBrowserFallback} onPress={() => void Linking.openURL(workspaceUrl)}>
+          <Pressable style={styles.webBrowserFallback} onPress={() => { void Linking.openURL(workspaceUrl).catch(() => Alert.alert("Could not open browser", "Please try opening Bookzenvo in your browser.")); }}>
             <Text style={styles.webBrowserFallbackText}>Open in browser</Text>
           </Pressable>
         </View>
@@ -627,9 +705,10 @@ function NewPasswordScreen({ onComplete }: { onComplete: () => void }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [working, setWorking] = useState(false);
+  const submitting = useRef(false);
 
   const updatePassword = async () => {
-    if (!supabase) return;
+    if (!supabase || submitting.current) return;
     if (password.length < 8) {
       Alert.alert("Use at least 8 characters");
       return;
@@ -638,14 +717,23 @@ function NewPasswordScreen({ onComplete }: { onComplete: () => void }) {
       Alert.alert("Passwords do not match");
       return;
     }
+    submitting.current = true;
     setWorking(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setWorking(false);
-    if (error) Alert.alert("Could not update password", error.message);
-    else {
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) { Alert.alert("Could not update password", error.message); return; }
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        Alert.alert("Password saved", "Your password was updated, but we could not finish signing out. Check your connection and reopen the app.");
+        return;
+      }
       Alert.alert("Password updated", "You can now sign in with your new password.");
-      await supabase.auth.signOut();
       onComplete();
+    } catch {
+      Alert.alert("Could not finish updating password", "Check your connection and try again.");
+    } finally {
+      submitting.current = false;
+      setWorking(false);
     }
   };
 
@@ -679,14 +767,25 @@ function ConfigurationRequired() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.centered}>
         <Wordmark />
-        <Text style={styles.setupTitle}>Connect Bookzenvo</Text>
+        <Text style={styles.setupTitle}>Bookzenvo needs an update</Text>
         <Text style={styles.setupText}>
-          Add the public Supabase URL and publishable key to mobile/.env, then restart the app.
+          This app's connection settings are unavailable. Please install the latest build or contact Bookzenvo support.
         </Text>
-        <View style={styles.codeCard}>
-          <Text style={styles.codeText}>EXPO_PUBLIC_SUPABASE_URL=...</Text>
-          <Text style={styles.codeText}>EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...</Text>
-        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function StartupUnavailable({ retry }: { retry: () => void }) {
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.webError}>
+        <Wordmark />
+        <Text style={styles.webErrorTitle}>Could not restore your sign-in</Text>
+        <Text style={styles.webErrorText}>Check your connection, unlock your phone, then try again.</Text>
+        <Pressable accessibilityRole="button" style={styles.webRetry} onPress={retry}>
+          <Text style={styles.primaryButtonText}>Try again</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -727,32 +826,64 @@ function SignInScreen() {
   const [password, setPassword] = useState("");
   const [working, setWorking] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const submitting = useRef(false);
 
   const signIn = async () => {
-    if (!supabase) return;
+    if (!supabase || submitting.current) return;
     if (!email.trim() || !password) {
       Alert.alert("Enter your email and password");
       return;
     }
+    submitting.current = true;
     setWorking(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setWorking(false);
-    if (error) Alert.alert("Could not sign in", error.message);
+    try {
+      await nativeGoogleSignIn?.cancel();
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) Alert.alert("Could not sign in", error.message);
+    } catch {
+      Alert.alert("Could not sign in", "Check your connection and try again.");
+    } finally {
+      submitting.current = false;
+      setWorking(false);
+    }
   };
 
   const resetPassword = async () => {
-    if (!supabase) return;
+    if (!supabase || submitting.current) return;
     if (!email.trim()) {
       Alert.alert("Enter your email first", "We will send the reset link to that address.");
       return;
     }
+    submitting.current = true;
     setWorking(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: "bookzenvo://auth/reset",
-    });
-    setWorking(false);
-    if (error) Alert.alert("Could not send reset link", error.message);
-    else setResetSent(true);
+    setResetSent(false);
+    try {
+      await nativeGoogleSignIn?.cancel();
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: "bookzenvo://auth/reset",
+      });
+      if (error) Alert.alert("Could not send reset link", error.message);
+      else setResetSent(true);
+    } catch {
+      Alert.alert("Could not send reset link", "Check your connection and try again.");
+    } finally {
+      submitting.current = false;
+      setWorking(false);
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    if (!googleSignInEnabled || !nativeGoogleSignIn || submitting.current) return;
+    submitting.current = true;
+    setWorking(true);
+    try {
+      await nativeGoogleSignIn.start();
+    } catch {
+      Alert.alert("Could not sign in with Google", "Please try again. If the sign-in window did not return to Bookzenvo, use your email and password or contact support.");
+    } finally {
+      submitting.current = false;
+      setWorking(false);
+    }
   };
 
   return (
@@ -803,6 +934,11 @@ function SignInScreen() {
           <Pressable style={[styles.primaryButton, working && styles.dimmed]} onPress={signIn} disabled={working}>
             {working ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.primaryButtonText}>Sign in</Text>}
           </Pressable>
+          {googleSignInEnabled && (
+            <Pressable accessibilityRole="button" style={[styles.primaryButton, working && styles.dimmed]} onPress={signInWithGoogle} disabled={working}>
+              <Text style={styles.primaryButtonText}>Continue with Google</Text>
+            </Pressable>
+          )}
           <Text style={styles.authFootnote}>New studios are set up on bookzenvo.com.</Text>
         </View>
         </ScrollView>

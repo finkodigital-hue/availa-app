@@ -19,6 +19,8 @@ jobs:
       - run: npx --yes npm@10.9.2 ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:balance-checkout-ui
+      - run: npm run test:customer-requests-ui
+      - run: node scripts/test-native-companion-ui.mjs
       - run: node scripts/test-auth-session.mjs
       - run: node scripts/test-calendar-dialog-flow.mjs
       - run: npm run build

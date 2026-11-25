@@ -2,6 +2,8 @@
 
 The project is prepared for internal builds, but store submission stays blocked until the website, live Stripe and real-device QA are stable.
 
+Use the [iPhone preview and reviewer handoff](./iphone-preview.md) for the checked account state, executable installation steps, account-deletion path and device acceptance matrix.
+
 ## Already configured
 
 - [x] App name and slug are set to Bookzenvo.
@@ -23,8 +25,9 @@ The project is prepared for internal builds, but store submission stays blocked 
 - [ ] Full Android QA passes on a production-like build.
 - [ ] Apple Developer Program account is active.
 - [ ] Google Play Console developer account is active.
-- [ ] The Expo project is linked with `eas init` and its project ID is committed in the Expo config.
+- [x] The Expo project is linked in the release checkout: `@jakobfinklers-team/bookzenvo`, `29705a11-9f04-4a4c-90b2-991f3a39077a`. Source changes still require the normal repository review/commit process.
 - [ ] Exact `bookzenvo://auth/reset` callback is allowed and tested cold/warm in Supabase Authentication.
+- [ ] If Google sign-in is offered, [its callback and signed-device tests](./google-sign-in.md) pass before setting `EXPO_PUBLIC_GOOGLE_AUTH_ENABLED=true`. It is disabled by default.
 - [ ] SDK 58 builds are tested on supported phones (iOS 16.4+), including MFA refresh, sign-out races, print/share sheets and temporary export cleanup.
 - [ ] A stable store-review account with representative test data exists.
 - [ ] In-app account deletion is verified and documented for reviewers.
@@ -34,11 +37,11 @@ The project is prepared for internal builds, but store submission stays blocked 
 
 1. Install locked dependencies in `mobile/` with `npm ci`.
 2. Run `npm run check`.
-3. Sign in to the Bookzenvo Expo organisation and run `eas init` once.
-4. Create an iPhone internal build with `npm run build:preview:ios`.
+3. Verify `eas project:info` points to the linked Bookzenvo team project; do not create another project.
+4. Create an iPhone internal build with `npm run build:preview:ios`. Jakob and Finlay currently have iPhones; register the intended test device for internal distribution and verify Apple signing first. This uses the build service, not USB access.
 5. Create an installable Android APK with `npm run build:preview:android`.
 6. Test sign-in, password recovery, deep links, every workspace page, booking changes, payments, external links, offline recovery and sign-out on both platforms.
-7. Record every device, operating-system version and result in the real-device QA checklist.
+7. Record every device, operating-system version and result in the real-device QA checklist. Android stays unverified until an actual Android phone is tested. JavaScript exports are not installable IPA/APK files.
 
 ## Apple App Store
 

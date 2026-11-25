@@ -1,4 +1,5 @@
 import { checkChairRent } from './schema-chair-rent-checks.mjs';
+import { checkCustomerDirectory } from './schema-customer-directory-checks.mjs';
 import { checkApprovedPlans } from './schema-plan-checks.mjs';
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
@@ -131,6 +132,7 @@ try {
  await db.exec("delete from businesses where slug='change-fixture';delete from auth.users where email='change-fixture@example.invalid'");
  console.log(`Replayed ${replayed} application migrations; ${tables} public tables; metadata, reminder-reset and booking-change assertions passed. ${fixtures} external extension declarations use inert local fixtures.`);
  await checkSchemaRoles(db);
+ await checkCustomerDirectory(db);
  await checkSchemaPaymentLedger(db);
  await checkGiftRefunds(db);
  await checkGiftPurchases(db);

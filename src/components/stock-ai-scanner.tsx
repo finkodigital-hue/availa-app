@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { isNativeCompanion } from "@/lib/native-companion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
@@ -227,14 +228,13 @@ export function StockAiScanner({
                 </div>
                 <h3 className="mt-4 font-display text-xl">AI stock scanning is a Studio feature</h3>
                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-                  Upgrade to photograph a shelf, review the detected products and update stock in
-                  one go.
+                  {isNativeCompanion() ? "This feature is not included in the current workspace plan." : "Upgrade to photograph a shelf, review the detected products and update stock in one go."}
                 </p>
-                <Button asChild className="mt-5">
+                {!isNativeCompanion() && <Button asChild className="mt-5">
                   <Link to="/settings" search={{ tab: "plan" } as never}>
                     View Studio plan
                   </Link>
-                </Button>
+                </Button>}
               </div>
             ) : rows.length ? (
               <ReviewTable

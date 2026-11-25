@@ -13,9 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   refreshStripeAccount,
+  getStripeEnvironment,
   saveNoShowPolicy,
   startStripeOnboarding,
 } from "@/lib/stripe-connect.functions";
@@ -58,6 +59,13 @@ export function StripeSettings({ business }: { business: Business }) {
 
   const connected = !!business.stripe_account_id;
   const ready = !!business.stripe_charges_enabled;
+  const environment = useQuery({
+    queryKey: ["stripe-environment", business.id],
+    queryFn: async () =>
+      getStripeEnvironment({ headers: await getServerFnAuthHeaders() }),
+    staleTime: 60_000,
+  });
+  const testMode = environment.data?.mode === "test";
 
   const connect = async () => {
     setConnecting(true);
@@ -76,10 +84,15 @@ export function StripeSettings({ business }: { business: Business }) {
     try {
       const headers = await getServerFnAuthHeaders();
       const result = await refreshStripeAccount({ headers });
+      const currentEnvironment = await environment.refetch();
       await queryClient.invalidateQueries({ queryKey: ["my-business"] });
       toast.success(
         result.chargesEnabled
-          ? "Stripe is ready to take payments"
+          ? currentEnvironment.data?.mode === "test"
+            ? "Stripe is ready for test payments. No real money moves."
+            : currentEnvironment.data?.mode === "live"
+              ? "Stripe is ready to take payments"
+              : "Stripe account refreshed. Payment mode could not be confirmed."
           : "Stripe setup still needs a little more information",
       );
     } catch (error: any) {
@@ -131,7 +144,12 @@ export function StripeSettings({ business }: { business: Business }) {
             <p className="font-medium">Stripe</p>
             {ready ? (
               <Badge className="gap-1">
-                <CheckCircle2 className="h-3 w-3" /> Ready
+                <CheckCircle2 className="h-3 w-3" />
+                {testMode
+                  ? "Ready for test payments"
+                  : environment.data?.mode === "live"
+                    ? "Ready"
+                    : "Account connected"}
               </Badge>
             ) : connected ? (
               <Badge variant="secondary">Setup needed</Badge>
@@ -139,6 +157,11 @@ export function StripeSettings({ business }: { business: Business }) {
               <Badge variant="outline">Not connected</Badge>
             )}
           </div>
+          {testMode && (
+            <p className="mt-2 text-sm font-medium" role="status">
+              Test payments only. No real money moves.
+            </p>
+          )}
           <p className="text-sm text-muted-foreground mt-1">
             Customers pay you directly. Stripe securely verifies your business
             and sends your payouts.

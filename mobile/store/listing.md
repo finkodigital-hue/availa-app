@@ -50,3 +50,5 @@ Use real-looking test data only. Do not expose real customer names, contact deta
 ## Reviewer notes
 
 Bookzenvo is a companion app for business owners and their teams. Sign-in is required. Supply Apple and Google with a stable review account containing representative test data. Keep Stripe in the appropriate test or review-safe state and explain any feature that cannot be exercised without a connected Stripe account.
+
+For the current iPhone build, use email/password review access. Google is disabled until its provider/device and Apple login-service gates are complete. Phone Tap to Pay is not part of this release. Workspace export and closure are reached at Settings → Data & privacy; verify the final account-deletion requirement before submission. Follow the [iPhone review handoff](./iphone-preview.md) for permissions, safe test data and the exact installation/acceptance steps.

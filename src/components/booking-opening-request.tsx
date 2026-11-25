@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { requestDateBounds } from "@/lib/appointment-waitlist";
 
 function dateValue(date: Date) {
   const year = date.getFullYear();
@@ -14,6 +15,7 @@ export function BookingOpeningRequest({
   staffId,
   staffName,
   selectedDate,
+  timeZone,
 }: {
   businessId: string;
   serviceId: string;
@@ -21,6 +23,7 @@ export function BookingOpeningRequest({
   staffId: string;
   staffName: string;
   selectedDate: Date;
+  timeZone: string;
 }) {
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState(() => dateValue(selectedDate));
@@ -35,7 +38,8 @@ export function BookingOpeningRequest({
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState("");
-  const lastAllowedDate = dateValue(new Date(Date.now() + 60 * 86_400_000));
+  const bounds = requestDateBounds(timeZone);
+  const lastAllowedDate = bounds.last;
 
   useEffect(() => {
     fetch("/api/appointment-waitlist", { cache: "no-store" })
@@ -100,8 +104,17 @@ export function BookingOpeningRequest({
         <button
           type="button"
           onClick={() => {
-            setFrom(dateValue(selectedDate));
-            setThrough(dateValue(selectedDate));
+            // The picker represents a calendar day, not a UTC instant. Clamp
+            // that day to the same salon-local window enforced by the API.
+            const selected = dateValue(selectedDate);
+            const allowed =
+              selected < bounds.first
+                ? bounds.first
+                : selected > bounds.last
+                  ? bounds.last
+                  : selected;
+            setFrom(allowed);
+            setThrough(allowed);
             setOpen(true);
           }}
           className="mt-4 min-h-11 rounded-xl border px-4 text-sm font-semibold hover:bg-muted"
@@ -142,7 +155,7 @@ export function BookingOpeningRequest({
                 required
                 type="date"
                 value={from}
-                min={dateValue(new Date())}
+                min={bounds.first}
                 max={lastAllowedDate}
                 onChange={(event) => {
                   setFrom(event.target.value);

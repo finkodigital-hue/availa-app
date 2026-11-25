@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isNativeCompanion } from "@/lib/native-companion";
 import { Link } from "@tanstack/react-router";
 import { Sparkles, Loader2, ChevronDown, Crown, Palette } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -104,13 +105,13 @@ export function AskClaudeSection({
               <p className="text-xs text-muted-foreground mt-2">
                 Describing changes in plain English is a Studio feature.
               </p>
-              <Link
+              {!isNativeCompanion() && <Link
                 to="/settings"
                 search={{ tab: "plan" } as any}
                 className="inline-flex items-center gap-1.5 mt-3 rounded-[6px] bg-primary text-primary-foreground font-semibold text-xs px-4 py-2 hover:-translate-y-px transition-all"
               >
                 Upgrade to Studio
-              </Link>
+              </Link>}
             </div>
           ) : (
             <div className="space-y-3">

@@ -47,7 +47,7 @@ function secretKey() {
 }
 
 export function isStripeTestMode() {
-  return secretKey().startsWith("sk_test_");
+  return /^(?:sk|rk)_test_/.test(secretKey());
 }
 
 function body(values: Record<string, string>) {

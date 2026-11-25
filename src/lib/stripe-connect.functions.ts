@@ -9,6 +9,12 @@ type StripeAccount = {
   id: string;
   charges_enabled: boolean;
   details_submitted: boolean;
+  controller?: {
+    fees?: { payer?: string };
+    losses?: { payments?: string };
+    requirement_collection?: string;
+    stripe_dashboard?: { type?: string };
+  };
 };
 
 type CheckoutInput = {
@@ -201,41 +207,78 @@ export const startStripeOnboarding = createServerFn({ method: "POST" })
     if (!business)
       throw new Error("Only the business owner can connect Stripe.");
 
+    const {
+      requireConnectOnboardingMode,
+      stripeManagedAccountParameters,
+      requireStripeManagedAccount,
+    } = await import("@/lib/stripe-connect-policy.server");
+    const mode = requireConnectOnboardingMode(
+      stripeSecretKey(),
+      process.env.ENABLE_STRIPE_LIVE_ONBOARDING,
+    );
     let accountId = business.stripe_account_id;
     if (!accountId) {
       const account = await stripeRequest<StripeAccount>("/v1/accounts", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "Idempotency-Key": `bookzenvo-connect-account-${business.id}`,
+          "Idempotency-Key": `bookzenvo-connect-stripe-managed-${business.id}`,
         },
-        body: formBody({
-          country: "GB",
-          "capabilities[card_payments][requested]": "true",
-          "capabilities[transfers][requested]": "true",
-          "controller[fees][payer]": "application",
-          "controller[losses][payments]": "application",
-          "controller[stripe_dashboard][type]": "express",
-          "metadata[business_id]": business.id,
-        }),
+        body: formBody(stripeManagedAccountParameters(business.id)),
       });
+      requireStripeManagedAccount(account);
       accountId = account.id;
       const { supabaseAdmin } =
         await import("@/integrations/supabase/client.server");
-      const { error: updateError } = await supabaseAdmin
+      const { data: savedAccount, error: updateError } = await supabaseAdmin
         .from("businesses")
         .update({
           stripe_account_id: account.id,
           stripe_charges_enabled: account.charges_enabled,
           stripe_details_submitted: account.details_submitted,
         })
-        .eq("id", business.id);
+        .eq("id", business.id)
+        .eq("owner_id", context.userId)
+        .is("stripe_account_id", null)
+        .select("id")
+        .maybeSingle();
       if (updateError) throw updateError;
+      if (!savedAccount)
+        throw new Error("Your payment setup changed. Refresh and try again.");
+    } else if (mode === "live") {
+      // Controller properties cannot simply be changed on legacy Express accounts.
+      // Preserve their ledger/account link and require a deliberate migration plan.
+      const account = await stripeRequest<StripeAccount>(
+        `/v1/accounts/${accountId}`,
+      );
+      requireStripeManagedAccount(account);
     }
 
     const link = await createOnboardingLink(accountId);
     return { url: link.url };
   });
+
+export const getStripeEnvironment = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    async ({
+      context,
+    }): Promise<{ mode: "test" | "live" | "unconfigured" }> => {
+      const { data: business, error } = await context.supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_id", context.userId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!business)
+        throw new Error("Only the business owner can view payment setup.");
+      const key = process.env.STRIPE_SECRET_KEY ?? "";
+      const mode = /^(?:sk|rk)_(test|live)_/.exec(key)?.[1];
+      return {
+        mode: mode === "test" || mode === "live" ? mode : "unconfigured",
+      };
+    },
+  );
 
 export const refreshStripeAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -255,16 +298,28 @@ export const refreshStripeAccount = createServerFn({ method: "POST" })
       const account = await stripeRequest<StripeAccount>(
         `/v1/accounts/${business.stripe_account_id}`,
       );
+      if (
+        account.id !== business.stripe_account_id ||
+        typeof account.charges_enabled !== "boolean" ||
+        typeof account.details_submitted !== "boolean"
+      )
+        throw new Error("Stripe account status could not be verified.");
       const { supabaseAdmin } =
         await import("@/integrations/supabase/client.server");
-      const { error: updateError } = await supabaseAdmin
+      const { data: savedAccount, error: updateError } = await supabaseAdmin
         .from("businesses")
         .update({
           stripe_charges_enabled: account.charges_enabled,
           stripe_details_submitted: account.details_submitted,
         })
-        .eq("id", business.id);
+        .eq("id", business.id)
+        .eq("owner_id", context.userId)
+        .eq("stripe_account_id", business.stripe_account_id)
+        .select("id")
+        .maybeSingle();
       if (updateError) throw updateError;
+      if (!savedAccount)
+        throw new Error("Your payment setup changed. Refresh and try again.");
       return {
         chargesEnabled: account.charges_enabled,
         detailsSubmitted: account.details_submitted,

@@ -23,6 +23,7 @@ import {
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 
 import { FREE_FEATURES, STUDIO_FEATURES } from "@/lib/plan-features";
+import { isNativeCompanion } from "@/lib/native-companion";
 
 type PlanBusiness = {
   id: string;
@@ -34,6 +35,7 @@ type PlanBusiness = {
 };
 
 export function PlanSettings({ business }: { business: PlanBusiness }) {
+  const companion = isNativeCompanion();
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
@@ -44,6 +46,7 @@ export function PlanSettings({ business }: { business: PlanBusiness }) {
   );
 
   const switchToSolo = async () => {
+    if (isNativeCompanion()) return;
     setBusy(true);
     try {
       const headers = await getServerFnAuthHeaders();
@@ -64,6 +67,7 @@ export function PlanSettings({ business }: { business: PlanBusiness }) {
   // confirm the subscription server-side (never trust the URL alone), flip
   // the plan, then clean the query string so refreshes don't re-run it.
   useEffect(() => {
+    if (companion) return;
     const params = new URLSearchParams(window.location.search);
     const billing = params.get("billing");
     const sessionId = params.get("session_id");
@@ -97,9 +101,10 @@ export function PlanSettings({ business }: { business: PlanBusiness }) {
         setFinalizing(false);
         window.history.replaceState({}, "", "/settings?tab=plan");
       });
-  }, [qc]);
+  }, [qc, companion]);
 
   const upgrade = async () => {
+    if (isNativeCompanion()) return;
     setBusy(true);
     try {
       const headers = await getServerFnAuthHeaders();
@@ -112,6 +117,7 @@ export function PlanSettings({ business }: { business: PlanBusiness }) {
   };
 
   const manageBilling = async () => {
+    if (isNativeCompanion()) return;
     setBusy(true);
     try {
       const headers = await getServerFnAuthHeaders();
@@ -122,6 +128,37 @@ export function PlanSettings({ business }: { business: PlanBusiness }) {
       setBusy(false);
     }
   };
+
+  if (companion)
+    return (
+      <div className="space-y-4 rounded-2xl border bg-card p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-display text-lg">{isFree ? "Solo" : "Studio"}</h3>
+          <Badge>Current plan</Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Your workspace includes the features available on this plan.
+        </p>
+        {business.stripe_subscription_status && (
+          <p className="text-sm">
+            Account status:{" "}
+            <span className="capitalize">
+              {business.stripe_subscription_status.replaceAll("_", " ")}
+            </span>
+          </p>
+        )}
+        <p className="text-sm text-muted-foreground">
+          For account or cancellation support,{" "}
+          <a
+            href="mailto:help@bookzenvo.com?subject=Account%20support"
+            className="font-medium underline"
+          >
+            contact support
+          </a>
+          .
+        </p>
+      </div>
+    );
 
   return (
     <div className="space-y-4">

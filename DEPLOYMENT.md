@@ -87,6 +87,17 @@ registration have been verified.
 
 ## Normal release
 
+For the 25 November customer-directory change, apply
+`supabase/migrations/20261125010000_align_customer_summary_permissions.sql`
+before the website release. It aligns the two existing customer-summary RPCs
+with the existing `customers.manage` permission; no customer rows are changed.
+The complete local schema replay includes cross-tenant and role tests.
+
+Keep Stripe in test mode. New Connect account configuration and the separate,
+default-off live onboarding flag are documented in
+[Stripe Connect launch gate](docs/stripe-connect-launch-gate.md). Do not enable
+live onboarding or replace account IDs as part of a routine deployment.
+
 Merge the approved pull request into `main`. Cloudflare will build and deploy
 the new commit automatically. Confirm the deployment shows the intended commit,
 then run:

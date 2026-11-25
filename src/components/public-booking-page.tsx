@@ -127,6 +127,7 @@ type PublicReview = {
 type PublicBookingPolicy = Pick<
   PublicBookingBusiness,
   | "id"
+  | "timezone"
   | "payment_mode"
   | "deposit_percent"
   | "cancellation_window_hours"
@@ -407,7 +408,7 @@ export function PublicBookingPage({
       const { data, error } = await (supabase as any)
         .from("public_businesses")
         .select(
-          "id, payment_mode, deposit_percent, cancellation_window_hours, cancellation_policy, reminder_hours_before",
+          "id, timezone, payment_mode, deposit_percent, cancellation_window_hours, cancellation_policy, reminder_hours_before",
         )
         .in("id", bizIds);
       if (error) throw error;
@@ -1666,6 +1667,7 @@ export function PublicBookingPage({
                     staffId={staff.id}
                     staffName={staff.name}
                     selectedDate={date}
+                    timeZone={selectedPolicy.timezone || "UTC"}
                   />
                 )}
               </div>

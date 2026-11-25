@@ -1,4 +1,5 @@
 import { ProfessionalRentHistory } from "@/components/professional-rent-history";
+import { isNativeCompanion } from "@/lib/native-companion";
 import { rentSummary } from "@/lib/rent";
 import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -532,7 +533,7 @@ function SettingsPage() {
         <Section
           icon={Sparkles}
           title="Plan"
-          description="Free for one staff member — upgrade to Studio for unlimited staff and AI features."
+          description={isNativeCompanion() ? "Your workspace's current plan and account status." : "Free for one staff member — upgrade to Studio for unlimited staff and AI features."}
         >
           <PlanSettings business={biz} />
         </Section>
@@ -1539,6 +1540,8 @@ function ProfileEditor({ biz }: { biz: any }) {
               className="h-10 max-w-[140px]"
             />
           </Field>
+        ) : isNativeCompanion() ? (
+          <p className="text-xs text-muted-foreground">Reminder emails are not included in the current workspace plan.</p>
         ) : (
           <Button
             variant="outline"
