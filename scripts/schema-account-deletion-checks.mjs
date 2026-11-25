@@ -67,7 +67,7 @@ export async function checkAccountDeletionRequests(db) {
   safe(first);
   same(first.status, 'requested');
   same(Date.parse(first.review_due_at) - Date.parse(first.requested_at), 24 * 3600_000);
-  same(Date.parse(first.completion_target_at) - Date.parse(first.requested_at), 30 * 24 * 3600_000);
+  same(Date.parse(first.completion_target_at) - Date.parse(first.requested_at), 27 * 24 * 3600_000);
   same(await request(), first);
   same(await request(id(1), ' DELETE-ONE@example.invalid ', id(12)), first);
   same(await status(id(2)), null);
