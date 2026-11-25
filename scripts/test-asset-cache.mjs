@@ -5,6 +5,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { execFileSync } from 'node:child_process';
 import ts from 'typescript';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 let checks = 0;
 const same = (actual, expected, message) => { assert.deepEqual(actual, expected, message); checks++; };
@@ -14,6 +15,12 @@ const serverSource = fs.readFileSync(new URL('../src/server.ts', import.meta.url
 const compiled = ts.transpileModule(serverSource, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
+const cacheModule = { exports: {} };
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(new URL('../src/lib/response-cache.server.ts', import.meta.url), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, { module: cacheModule, exports: cacheModule.exports, Headers, Response, URL });
+const upgrade = { status: 101, headers: new Headers(), webSocket: {} };
+same(cacheModule.exports.applyResponseCachePolicy(new Request('https://fixture.invalid/api/socket'), upgrade), upgrade);
 
 function server(handler) {
   const module = { exports: {} };
@@ -23,6 +30,7 @@ function server(handler) {
     require(name) {
       if (name === './lib/error-capture') return { consumeLastCapturedError: () => undefined };
       if (name === './lib/error-page') return { renderErrorPage: () => '<!doctype html><body>Error</body>' };
+      if (name === './lib/response-cache.server') return cacheModule.exports;
       if (name === 'cloudflare:workers') return { env: {} };
       if (name === '@tanstack/react-start/server-entry') return { default: { fetch: handler } };
       throw new Error(`Unexpected module: ${name}`);
@@ -112,19 +120,45 @@ try {
   fs.mkdirSync(path.join(temp, 'scripts'));
   fs.mkdirSync(path.join(temp, '.output', 'server'), { recursive: true });
   fs.mkdirSync(path.join(temp, '.output', 'public', 'assets'), { recursive: true });
+  fs.mkdirSync(path.join(temp, 'src', 'lib'), { recursive: true });
+  fs.copyFileSync(new URL('../src/lib/response-cache.server.ts', import.meta.url), path.join(temp, 'src', 'lib', 'response-cache.server.ts'));
   fs.copyFileSync(new URL('./prepare-cloudflare-deploy.mjs', import.meta.url), path.join(temp, 'scripts', 'prepare-cloudflare-deploy.mjs'));
+  fs.writeFileSync(path.join(temp, '.output', 'server', 'index.mjs'), `export const namedFixture = "preserved";
+export default { fetch(request, env) { return env.ASSETS.fetch(request); }, scheduled() { return "scheduled"; }, queue() { return "queue"; } };\n`);
   fs.writeFileSync(path.join(temp, '.output', 'public', 'assets', 'index-AbCd1234.js'), '/* fixture */');
   for (let n = 0; n < 205; n++) fs.writeFileSync(path.join(temp, '.output', 'public', 'assets', `chunk-${n}-AbCd1234.js`), '/* fixture */');
   const configPath = path.join(temp, '.output', 'server', 'wrangler.json');
   for (const existing of [undefined, false, ['/api/*', '!/api/docs/*'], true]) {
     fs.writeFileSync(configPath, JSON.stringify({ assets: { binding: 'ASSETS', directory: '../public', run_worker_first: existing } }));
     execFileSync(process.execPath, [path.join(temp, 'scripts', 'prepare-cloudflare-deploy.mjs')], {
-      cwd: temp, env: { SystemRoot: process.env.SystemRoot ?? '', GITHUB_SHA: 'a'.repeat(40) }, stdio: 'pipe',
+      cwd: temp, env: { SystemRoot: process.env.SystemRoot ?? '', GITHUB_SHA: 'a'.repeat(40), NODE_PATH: fileURLToPath(new URL('../node_modules/', import.meta.url)) }, stdio: 'pipe',
     });
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     same(config.assets.run_worker_first, existing === true ? true : [...(Array.isArray(existing) ? existing : []), '/assets/*', '/client-entry.js']);
     same(config.assets.binding, 'ASSETS');
     same(config.assets.directory, '../public');
+    same(config.main, 'bookzenvo-cache-entry.mjs');
+  }
+  // A repeated preparation must still import index.mjs, never its own wrapper.
+  execFileSync(process.execPath, [path.join(temp, 'scripts', 'prepare-cloudflare-deploy.mjs')], {
+    cwd: temp, env: { SystemRoot: process.env.SystemRoot ?? '', GITHUB_SHA: 'a'.repeat(40), NODE_PATH: fileURLToPath(new URL('../node_modules/', import.meta.url)) }, stdio: 'pipe',
+  });
+  const original = await import(pathToFileURL(path.join(temp, '.output', 'server', 'index.mjs')).href);
+  const wrapped = await import(pathToFileURL(path.join(temp, '.output', 'server', 'bookzenvo-cache-entry.mjs')).href);
+  same(wrapped.namedFixture, original.namedFixture);
+  same(wrapped.default.scheduled, original.default.scheduled);
+  same(wrapped.default.queue, original.default.queue);
+  for (const [pathname, type, status, expected] of [
+    ['/assets/index-AbCd1234.js', 'text/javascript', 200, immutable],
+    ['/assets/index-AbCd1234.js', 'text/javascript', 404, 'no-store'],
+    ['/client-entry.js', 'text/javascript', 200, 'no-store'],
+    ['/', 'text/html', 200, 'no-store'],
+  ]) {
+    const response = await wrapped.default.fetch(new Request(`https://fixture.invalid${pathname}`), {
+      ASSETS: { fetch: async () => new Response('fixture', { status, headers: { 'content-type': type, 'cache-control': 'no-store' } }) },
+    }, {});
+    same(response.status, status);
+    same(response.headers.get('cache-control'), expected);
   }
   const headers = fs.readFileSync(path.join(temp, '.output', 'public', '_headers'), 'utf8');
   const blocks = headers.trim().split(/\n\s*\n/).map(block => block.split('\n'));

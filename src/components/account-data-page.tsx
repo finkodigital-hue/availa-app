@@ -165,7 +165,7 @@ function SignedInAccountData({
           a business or have not finished setup.
         </p>
         <p className="text-sm text-muted-foreground">
-          We review requests manually and aim to complete them within 30 days.
+          We review requests manually and aim to complete them within 27 days.
           We will confirm completion by email. If required records or other
           retention obligations affect the timing, we will explain what must be
           kept and why.
@@ -206,7 +206,8 @@ function SignedInAccountData({
             {active && (
               <p className="text-sm">
                 Target completion: {date(request.completion_target_at)}. This is
-                a target, not an automatic deletion date.
+                our operational target, not an automatic deletion date or the
+                legal response deadline.
               </p>
             )}
             {request.status_message && (
