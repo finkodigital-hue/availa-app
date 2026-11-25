@@ -7,6 +7,7 @@ import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { EmailVerifyGate } from "@/components/email-verify-gate";
 import { MfaChallengeGate } from "@/components/mfa-challenge-gate";
+import { isNativeCompanion } from "@/lib/native-companion";
 
 export const Route = createFileRoute("/_authenticated")({
     ssr: false,
@@ -87,8 +88,7 @@ function Layout() {
         <div className="max-w-sm text-center space-y-3">
           <h1 className="font-display text-2xl">Staff access needs Studio</h1>
           <p>
-            This workspace is on the Free plan. Ask the owner to upgrade to
-            restore staff access.
+            {isNativeCompanion() ? "Staff access is not included in this workspace's current plan. Contact the owner if you need help with access." : "This workspace is on the Free plan. Ask the owner to upgrade to restore staff access."}
           </p>
         </div>
       </main>

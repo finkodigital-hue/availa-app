@@ -30,6 +30,8 @@ jobs:
       - run: node ../scripts/test-mobile-exports.mjs
       - run: node ../scripts/test-mobile-shell.mjs
       - run: node ../scripts/test-mobile-fingerprint.mjs
+      - run: node tests/release-readiness.cjs
+      - run: node tests/google-sign-in.cjs
       # Compile the native JavaScript/assets without credentials, EAS builds,
       # store submission or connecting to a production account.
       - run: npx expo export --platform ios --max-workers 2 --output-dir ../mobile-check-ios

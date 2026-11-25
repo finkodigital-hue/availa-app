@@ -67,11 +67,10 @@ import {
 import { getServerFnAuthHeaders } from "@/lib/server-fn-auth";
 import { toast } from "sonner";
 import { CustomerConsultationSummary } from "@/components/customer-consultation-summary";
-
-// PostgREST caps any single response at 1000 rows regardless of .limit() —
-// a business the size of a real Fresha import (~1,000+ customers) needs
-// this paginated, same reasoning as src/lib/import/commit.ts's PAGE_SIZE.
-const EXPORT_PAGE_SIZE = 1000;
+import {
+  collectCustomerPages,
+  customerMatchesSearch,
+} from "@/lib/customer-directory";
 
 function isoDateOnly(d: string | null | undefined): string {
   return d ? new Date(d).toISOString().slice(0, 10) : "";
@@ -94,8 +93,11 @@ function relativeVisit(value: string | null | undefined): string {
 }
 
 export const Route = createFileRoute("/_authenticated/customers")({
-  validateSearch: (search: Record<string, unknown>): { customerId?: string } => ({
-    customerId: typeof search.customerId === "string" ? search.customerId : undefined,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { customerId?: string } => ({
+    customerId:
+      typeof search.customerId === "string" ? search.customerId : undefined,
   }),
   component: CustomersPage,
 });
@@ -130,78 +132,87 @@ function CustomersPage() {
   const [mergeFor, setMergeFor] = useState<any | null>(null);
   const [editing, setEditing] = useState<Partial<Customer> | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [bookingFor, setBookingFor] = useState<CustomerBookingPrefill | null>(null);
+  const [bookingFor, setBookingFor] = useState<CustomerBookingPrefill | null>(
+    null,
+  );
   const [exporting, setExporting] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(100);
   const [customerView, setCustomerView] = useState<
     "all" | "recent" | "regulars"
   >("all");
 
-  const { data: customers, isLoading } = useQuery({
-    queryKey: ["customers", bid, q],
+  const {
+    data: customers,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["customers", bid],
     enabled: !!bid,
     queryFn: async () => {
-      let req = supabase
-        .from("customers")
-        .select(
-          "id, name, email, phone, address, avatar_url, notes, created_at",
-        )
-        .eq("business_id", bid!)
-        .order("created_at", { ascending: false })
-        .limit(200);
-      if (q) {
-        const term = q.trim();
-        req = req.or(
-          `name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`,
-        );
-      }
+      const customerPages = collectCustomerPages((from, to) =>
+        supabase
+          .from("customers")
+          .select("id, name, email, phone, avatar_url, created_at")
+          .eq("business_id", bid!)
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(from, to),
+      );
       // A per-customer embedded booking count runs as a correlated subquery
       // under RLS (is_business_owner() re-evaluated per booking row scanned)
       // and times out once a business has real appointment history — and a
       // client-side fetch-and-count doesn't scale either once a business has
       // tens of thousands of bookings. Aggregate server-side instead.
-      const [
-        { data, error },
-        { data: visitRows, error: visitErr },
-        { data: customerStats, error: statsErr },
-      ] = await Promise.all([
-        req,
-        supabase.rpc("customer_visit_counts", { _business_id: bid! }),
-        (supabase as any).rpc("customer_export_stats", { _business_id: bid! }),
+      const [data, customerStats] = await Promise.all([
+        customerPages,
+        collectCustomerPages<{
+          customer_id: string;
+          visits: number;
+          last_visit: string | null;
+          total_spent_cents: number;
+        }>((from, to) =>
+          (supabase as any)
+            .rpc("customer_export_stats", { _business_id: bid! })
+            .order("customer_id")
+            .range(from, to),
+        ),
       ]);
-      if (error) throw error;
-      if (visitErr) throw visitErr;
-      if (statsErr) throw statsErr;
-      const visitCounts = new Map<string, number>();
-      for (const v of visitRows ?? []) {
-        visitCounts.set(v.customer_id, Number(v.visits));
-      }
       const statsByCustomer = new Map<
         string,
-        { lastVisit: string | null; totalSpent: number }
+        { visits: number; lastVisit: string | null; totalSpent: number }
       >();
       for (const row of customerStats ?? []) {
         statsByCustomer.set(row.customer_id, {
+          visits: Number(row.visits ?? 0),
           lastVisit: row.last_visit,
           totalSpent: Number(row.total_spent_cents ?? 0),
         });
       }
       return (data ?? []).map((c) => ({
         ...c,
-        visits: visitCounts.get(c.id) ?? 0,
+        visits: statsByCustomer.get(c.id)?.visits ?? 0,
         lastVisit: statsByCustomer.get(c.id)?.lastVisit ?? null,
         totalSpent: statsByCustomer.get(c.id)?.totalSpent ?? 0,
       }));
     },
   });
 
-  // The list is capped for speed, but a link must still reach any customer.
-  const { data: linkedCustomer, isFetched: linkedCustomerFetched } = useQuery({
+  // A deep link also has its own lookup so failures can be retried explicitly.
+  const {
+    data: linkedCustomer,
+    isSuccess: linkedCustomerFetched,
+    isError: linkedCustomerError,
+    refetch: retryLinkedCustomer,
+  } = useQuery({
     queryKey: ["linked-customer", bid, linkedCustomerId],
     enabled: !!bid && !!linkedCustomerId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("id, name, email, phone, address, avatar_url, notes, created_at")
+        .select(
+          "id, name, email, phone, address, avatar_url, notes, created_at",
+        )
         .eq("business_id", bid!)
         .eq("id", linkedCustomerId!)
         .maybeSingle();
@@ -212,7 +223,10 @@ function CustomersPage() {
 
   const listedCustomers = useMemo(() => {
     if (!customers) return [];
-    if (!linkedCustomer || customers.some((customer) => customer.id === linkedCustomer.id))
+    if (
+      !linkedCustomer ||
+      customers.some((customer) => customer.id === linkedCustomer.id)
+    )
       return customers;
     return [
       { ...linkedCustomer, visits: -1, lastVisit: null, totalSpent: 0 },
@@ -222,18 +236,27 @@ function CustomersPage() {
 
   const visibleCustomers = useMemo(() => {
     if (!customers) return [];
+    const matchingCustomers = listedCustomers.filter((customer) =>
+      customerMatchesSearch(customer, q),
+    );
     if (customerView === "regulars")
-      return listedCustomers.filter((customer) => customer.visits >= 3);
+      return matchingCustomers.filter((customer) => customer.visits >= 3);
     if (customerView === "recent") {
       const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
-      return listedCustomers.filter(
+      return matchingCustomers.filter(
         (customer) =>
           customer.lastVisit &&
           new Date(customer.lastVisit).getTime() >= cutoff,
       );
     }
-    return listedCustomers;
-  }, [customerView, customers, listedCustomers]);
+    return matchingCustomers;
+  }, [customerView, customers, listedCustomers, q]);
+
+  // Keep rendering bounded even for large imported lists. Search and filters
+  // still cover the complete directory rather than just the visible rows.
+  useEffect(() => {
+    setDisplayLimit(100);
+  }, [q, customerView, bid]);
 
   useEffect(() => {
     if (!linkedCustomerId) return;
@@ -251,7 +274,9 @@ function CustomersPage() {
     if (!linkedCustomer || linkedCustomer.id !== linkedCustomerId) return;
     if (!window.matchMedia("(max-width: 1279px)").matches) return;
     const timeout = window.setTimeout(() => {
-      document.getElementById("customer-profile")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document
+        .getElementById("customer-profile")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [linkedCustomer, linkedCustomerId]);
@@ -272,7 +297,8 @@ function CustomersPage() {
 
   const selectCustomer = (customerId: string) => {
     setOpenId(customerId);
-    if (linkedCustomerId) navigate({ search: { customerId: undefined }, replace: true });
+    if (linkedCustomerId)
+      navigate({ search: { customerId: undefined }, replace: true });
     if (window.matchMedia("(max-width: 1279px)").matches) {
       window.setTimeout(() => {
         document
@@ -284,16 +310,15 @@ function CustomersPage() {
 
   // Not plan-gated on purpose — being able to take your client list with
   // you works identically on Free and Studio. Exports whatever the current
-  // search matches (unpaginated — the on-screen table caps at 200 rows,
-  // this must not inherit that cap), never testshop-scale data structures
-  // left unhandled.
+  // search matches. Fetch every page so imports larger than the gateway's
+  // response cap remain complete; search punctuation is literal text.
   const exportClients = async () => {
     if (!bid) return;
     setExporting(true);
     try {
       const term = q.trim();
 
-      const allCustomers: {
+      const allCustomers = await collectCustomerPages<{
         id: string;
         name: string;
         email: string | null;
@@ -301,23 +326,15 @@ function CustomersPage() {
         address: string | null;
         notes: string | null;
         created_at: string;
-      }[] = [];
-      for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
-        let req = supabase
+      }>((from, to) =>
+        supabase
           .from("customers")
           .select("id, name, email, phone, address, notes, created_at")
           .eq("business_id", bid)
           .order("created_at", { ascending: false })
-          .range(from, from + EXPORT_PAGE_SIZE - 1);
-        if (term)
-          req = req.or(
-            `name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`,
-          );
-        const { data, error } = await req;
-        if (error) throw error;
-        allCustomers.push(...(data ?? []));
-        if (!data || data.length < EXPORT_PAGE_SIZE) break;
-      }
+          .order("id")
+          .range(from, to),
+      );
 
       const statsMap = new Map<
         string,
@@ -328,37 +345,38 @@ function CustomersPage() {
           last: string | null;
         }
       >();
-      for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
-        const { data, error } = await (supabase as any)
+      const stats = await collectCustomerPages<any>((from, to) =>
+        (supabase as any)
           .rpc("customer_export_stats", { _business_id: bid })
-          .range(from, from + EXPORT_PAGE_SIZE - 1);
-        if (error) throw error;
-        for (const row of (data ?? []) as any[]) {
-          statsMap.set(row.customer_id, {
-            visits: Number(row.visits),
-            spent: Number(row.total_spent_cents),
-            first: row.first_visit,
-            last: row.last_visit,
-          });
-        }
-        if (!data || data.length < EXPORT_PAGE_SIZE) break;
+          .order("customer_id")
+          .range(from, to),
+      );
+      for (const row of stats) {
+        statsMap.set(row.customer_id, {
+          visits: Number(row.visits),
+          spent: Number(row.total_spent_cents),
+          first: row.first_visit,
+          last: row.last_visit,
+        });
       }
 
-      const rows = allCustomers.map((c) => {
-        const stats = statsMap.get(c.id);
-        return {
-          Name: c.name ?? "",
-          Email: c.email ?? "",
-          Phone: c.phone ?? "",
-          Address: c.address ?? "",
-          "Total Visits": stats?.visits ?? 0,
-          "Total Spend": fmtMoney(stats?.spent ?? 0),
-          "First Visit": isoDateOnly(stats?.first),
-          "Last Visit": isoDateOnly(stats?.last),
-          "Date Added": isoDateOnly(c.created_at),
-          Notes: c.notes ?? "",
-        };
-      });
+      const rows = allCustomers
+        .filter((customer) => customerMatchesSearch(customer, term))
+        .map((c) => {
+          const stats = statsMap.get(c.id);
+          return {
+            Name: c.name ?? "",
+            Email: c.email ?? "",
+            Phone: c.phone ?? "",
+            Address: c.address ?? "",
+            "Total Visits": stats?.visits ?? 0,
+            "Past Appointment Value": fmtMoney(stats?.spent ?? 0),
+            "First Visit": isoDateOnly(stats?.first),
+            "Last Visit": isoDateOnly(stats?.last),
+            "Date Added": isoDateOnly(c.created_at),
+            Notes: c.notes ?? "",
+          };
+        });
 
       const bizSlug =
         (biz?.name ?? "clients")
@@ -412,10 +430,26 @@ function CustomersPage() {
         }
       />
       {bid && <DataRequestsBanner businessId={bid} onView={setOpenId} />}
+      {linkedCustomerError && (
+        <div
+          role="alert"
+          className="mb-5 rounded-xl border border-destructive/30 p-4 text-sm"
+        >
+          Could not open the linked customer.{" "}
+          <button
+            type="button"
+            onClick={() => retryLinkedCustomer()}
+            className="font-semibold underline"
+          >
+            Try again
+          </button>
+        </div>
+      )}
       <div className="mb-5 flex gap-2 xl:max-w-[520px]">
         <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            aria-label="Search customers"
             placeholder="Search by name, email or phone…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -466,7 +500,22 @@ function CustomersPage() {
           </div>
           <Skeleton className="hidden min-h-[660px] rounded-2xl xl:block" />
         </div>
-      ) : customers?.length === 0 ? (
+      ) : isError ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-destructive/30 bg-card p-6 text-sm"
+        >
+          Could not load customers and their visit history.{" "}
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="font-semibold underline"
+          >
+            Try again
+          </button>
+        </div>
+      ) : customers?.length === 0 ||
+        (q.trim() && visibleCustomers.length === 0) ? (
         <EmptyState
           icon={UserCircle}
           title={q ? "No matches" : "No customers yet"}
@@ -517,7 +566,7 @@ function CustomersPage() {
               </span>
             </div>
             <div className="max-h-[720px] divide-y overflow-y-auto">
-              {visibleCustomers.map((c: any) => {
+              {visibleCustomers.slice(0, displayLimit).map((c: any) => {
                 const selected = c.id === openId;
                 return (
                   <button
@@ -566,6 +615,19 @@ function CustomersPage() {
                 );
               })}
             </div>
+            {visibleCustomers.length > displayLimit && (
+              <div className="border-t p-4 text-center">
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Showing {displayLimit} of {visibleCustomers.length} customers
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setDisplayLimit((limit) => limit + 100)}
+                >
+                  Show 100 more
+                </Button>
+              </div>
+            )}
           </section>
 
           <CustomerDetailPanel
@@ -638,7 +700,11 @@ function DataRequestsBanner({
 }) {
   const qc = useQueryClient();
   const [acting, setActing] = useState<DataRequest | null>(null);
-  const { data: requests } = useQuery({
+  const {
+    data: requests,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["customer-data-requests", businessId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -647,12 +713,27 @@ function DataRequestsBanner({
         .eq("business_id", businessId)
         .eq("status", "pending")
         .order("created_at", { ascending: true });
-      // Degrade quietly if the migration hasn't been applied yet.
-      if (error) return [];
+      if (error) throw error;
       return (data ?? []) as DataRequest[];
     },
   });
 
+  if (isError)
+    return (
+      <div
+        role="alert"
+        className="mb-5 rounded-xl border border-destructive/30 p-4 text-sm"
+      >
+        Could not check pending customer data requests.{" "}
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="font-semibold underline"
+        >
+          Try again
+        </button>
+      </div>
+    );
   if (!requests || requests.length === 0) return null;
 
   return (
@@ -819,8 +900,11 @@ function DataRequestActionDialog({
                 <span className="font-medium">
                   {exportResult.customer.name}
                 </span>
-                , plus {exportResult.appointmentRequests.length} matching appointment request
-                {exportResult.appointmentRequests.length === 1 ? "" : "s"} and {exportResult.consultations.length} consultation or
+                , plus {exportResult.appointmentRequests.length} matching
+                appointment request
+                {exportResult.appointmentRequests.length === 1
+                  ? ""
+                  : "s"} and {exportResult.consultations.length} consultation or
                 patch-test record
                 {exportResult.consultations.length === 1 ? "" : "s"}. The
                 request has been marked resolved. Deliver the file securely to
@@ -838,9 +922,10 @@ function DataRequestActionDialog({
           ) : (
             <p className="text-sm text-muted-foreground">
               Downloads the customer's profile, bookings, payments, reviews,
-              consultations, patch-test records and any verified-linked appointment requests as a JSON file, then marks
-              this request as resolved. Confirm the requester’s identity and use
-              a secure delivery method before sending it.
+              consultations, patch-test records and any verified-linked
+              appointment requests as a JSON file, then marks this request as
+              resolved. Confirm the requester’s identity and use a secure
+              delivery method before sending it.
             </p>
           )
         ) : eraseResult ? (
@@ -854,9 +939,10 @@ function DataRequestActionDialog({
                   Personal information removed
                 </p>
                 <p className="leading-relaxed text-muted-foreground">
-                  This customer's linked information was removed. Booking and payment
-                  records needed for your accounts were kept without identity details.
-                  Check the manual items below for records that could not be safely matched.
+                  This customer's linked information was removed. Booking and
+                  payment records needed for your accounts were kept without
+                  identity details. Check the manual items below for records
+                  that could not be safely matched.
                 </p>
               </div>
             </div>
@@ -880,7 +966,8 @@ function DataRequestActionDialog({
                   {eraseResult.photosDeleted === 1 ? "" : "s"}, plus{" "}
                   {eraseResult.consultationsDeleted} consultation or patch-test
                   record{eraseResult.consultationsDeleted === 1 ? "" : "s"}, and{" "}
-                  {eraseResult.appointmentRequestsDeleted} matching appointment request
+                  {eraseResult.appointmentRequestsDeleted} matching appointment
+                  request
                   {eraseResult.appointmentRequestsDeleted === 1 ? "" : "s"}
                 </dd>
               </div>
@@ -1134,7 +1221,10 @@ function CustomerEditDialog({
           .from("business-assets")
           .remove([previousPath]);
         if (cleanupError) {
-          console.warn("Could not remove the replaced customer photo", cleanupError);
+          console.warn(
+            "Could not remove the replaced customer photo",
+            cleanupError,
+          );
         }
       }
       setForm((f) => ({ ...f, avatar_url: path }));
@@ -1311,24 +1401,30 @@ function CustomerDetailPanel({
   onBook: (prefill: CustomerBookingPrefill) => void;
   onMerge: (c: any) => void;
 }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["customer-detail", businessId, customerId],
     enabled: !!businessId && !!customerId,
     queryFn: async () => {
-      const { data: customer } = await supabase
+      const { data: customer, error: customerError } = await supabase
         .from("customers")
         .select("*")
         .eq("business_id", businessId!)
         .eq("id", customerId!)
         .single();
-      const { data: bookings } = await supabase
-        .from("bookings")
-        .select(
-          "id, starts_at, ends_at, status, price_cents, notes, service_id, staff_id, services(name), staff(name)",
-        )
-        .eq("business_id", businessId!)
-        .eq("customer_id", customerId!)
-        .order("starts_at", { ascending: false });
+      if (customerError) throw customerError;
+      if (!customer) throw new Error("Customer unavailable.");
+      const bookings = await collectCustomerPages((from, to) =>
+        supabase
+          .from("bookings")
+          .select(
+            "id, starts_at, ends_at, status, price_cents, notes, service_id, staff_id, services(name), staff(name)",
+          )
+          .eq("business_id", businessId!)
+          .eq("customer_id", customerId!)
+          .order("starts_at", { ascending: false })
+          .order("id")
+          .range(from, to),
+      );
       return { customer, bookings: bookings ?? [] };
     },
   });
@@ -1420,7 +1516,18 @@ function CustomerDetailPanel({
       id="customer-profile"
       className="min-h-[660px] overflow-hidden rounded-2xl border bg-card shadow-soft"
     >
-      {isLoading || !c ? (
+      {isError ? (
+        <div role="alert" className="p-6 text-sm">
+          Could not load this customer's profile and appointments.{" "}
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="font-semibold underline"
+          >
+            Try again
+          </button>
+        </div>
+      ) : isLoading || !c ? (
         <div className="grid min-h-[660px] place-items-center">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
@@ -1522,14 +1629,19 @@ function CustomerDetailPanel({
           <div className="grid grid-cols-3 divide-x border-b py-5 text-center">
             <ProfileStat label="Total visits" value={String(stats.visits)} />
             <ProfileStat
-              label="Total spent"
+              label="Past appointment value"
               value={formatMoney(stats.spent, currency)}
             />
             <ProfileStat
-              label="Average visit"
+              label="Average value"
               value={formatMoney(stats.avg, currency)}
             />
           </div>
+
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Values use booked prices for past appointments. Payments and refunds
+            may differ.
+          </p>
 
           <CustomerConsultationSummary customerId={c.id} />
 
@@ -1762,21 +1874,32 @@ function MergeDialog({
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const { data: results } = useQuery({
-    queryKey: ["merge-search", businessId, q, target?.id],
-    enabled: !!businessId && !!target && q.trim().length >= 2,
+  const {
+    data: mergeCandidates,
+    isError: searchError,
+    refetch: retrySearch,
+  } = useQuery({
+    queryKey: ["merge-search", businessId, target?.id],
+    enabled: !!businessId && !!target,
     queryFn: async () => {
-      const term = q.trim();
-      const { data } = await supabase
-        .from("customers")
-        .select("id, name, email, phone")
-        .eq("business_id", businessId!)
-        .neq("id", target.id)
-        .or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`)
-        .limit(6);
-      return data ?? [];
+      const data = await collectCustomerPages((from, to) =>
+        supabase
+          .from("customers")
+          .select("id, name, email, phone")
+          .eq("business_id", businessId!)
+          .neq("id", target.id)
+          .order("id")
+          .range(from, to),
+      );
+      return data;
     },
   });
+  const results =
+    q.trim().length < 2
+      ? []
+      : mergeCandidates
+          ?.filter((customer) => customerMatchesSearch(customer, q))
+          .slice(0, 6);
 
   const merge = async (loserId: string) => {
     if (!target) return;
@@ -1816,6 +1939,18 @@ function MergeDialog({
             onChange={(e) => setQ(e.target.value)}
           />
           <div className="rounded-xl border bg-card divide-y max-h-72 overflow-y-auto">
+            {searchError && (
+              <div role="alert" className="p-4 text-sm">
+                Could not search customers.{" "}
+                <button
+                  type="button"
+                  onClick={() => retrySearch()}
+                  className="font-semibold underline"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
             {q.trim().length < 2 && (
               <div className="p-4 text-sm text-muted-foreground text-center">
                 Type to search.

@@ -29,6 +29,13 @@ export const Route = createFileRoute("/api/stripe-webhook")({
         } catch {
           return new Response("Invalid JSON", { status: 400 });
         }
+        if (!event || typeof event !== "object" || Array.isArray(event) || typeof event.type !== "string") {
+          return new Response("Invalid Stripe event", { status: 400 });
+        }
+
+        if (event.type === "account.updated" || event.type === "account.application.deauthorized") {
+          return reconcileConnectAccountEvent(event);
+        }
 
         // Studio belongs to the platform account. Connected-account events
         // must never grant platform subscription access.
@@ -537,6 +544,104 @@ export const Route = createFileRoute("/api/stripe-webhook")({
     },
   },
 });
+
+function isStripeRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+async function reconcileConnectAccountEvent(event: Record<string, unknown>) {
+  const accountId = event.account;
+  const object = isStripeRecord(event.data) ? event.data.object : null;
+  if (
+    event.object !== "event" ||
+    typeof event.id !== "string" || !/^evt_[A-Za-z0-9]+$/.test(event.id) ||
+    typeof event.created !== "number" || !Number.isSafeInteger(event.created) || event.created < 0 ||
+    typeof event.livemode !== "boolean" ||
+    typeof accountId !== "string" || !/^acct_[A-Za-z0-9]+$/.test(accountId) ||
+    !isStripeRecord(object) ||
+    (event.type === "account.updated"
+      ? object.object !== "account" || object.id !== accountId
+      : object.object !== "application" || typeof object.id !== "string" || !/^ca_[A-Za-z0-9]+$/.test(object.id))
+  ) {
+    return new Response("Invalid connected account event", { status: 400 });
+  }
+
+  const key = process.env.STRIPE_SECRET_KEY ?? "";
+  const mode = /^(?:sk|rk)_(test|live)_/.exec(key)?.[1];
+  if (!mode) return new Response("Stripe is not configured", { status: 500 });
+  // Production Connect endpoints can receive both modes. Never let a test
+  // lifecycle event change the readiness used by a live-key deployment.
+  if (event.livemode !== (mode === "live")) {
+    return Response.json({ received: true });
+  }
+
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: business, error: lookupError } = await supabaseAdmin
+      .from("businesses")
+      .select("id, stripe_account_id")
+      .eq("stripe_account_id", accountId)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+    // Old/unlinked accounts are acknowledged without creating or moving a link.
+    if (!business) return Response.json({ received: true });
+    if (business.stripe_account_id !== accountId) throw new Error("Account mismatch");
+
+    // Events may be retried, delayed or delivered out of order. Read current
+    // account state instead of trusting the event's historical readiness flags.
+    const response = await fetch(`https://api.stripe.com/v1/accounts/${encodeURIComponent(accountId)}`, {
+      method: "GET",
+      // Workers Fetch supports manual redirects; never forward the credential.
+      redirect: "manual",
+      signal: AbortSignal.timeout(15_000),
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    if (response.status >= 300 && response.status < 400) {
+      throw new Error("Unexpected Stripe redirect");
+    }
+    const account: unknown = await response.json();
+    const providerError = isStripeRecord(account) && isStripeRecord(account.error) ? account.error : null;
+    const patch: { stripe_charges_enabled?: false; stripe_details_submitted?: false } = {};
+    if (
+      response.status === 403 && providerError?.type === "invalid_request_error" &&
+      providerError.code === "account_invalid"
+    ) {
+      // Stripe documents this exact response for accounts that no longer grant
+      // access. Authentication, permissions, rate limits and outages are retried.
+      patch.stripe_charges_enabled = false;
+      patch.stripe_details_submitted = false;
+    } else {
+      if (!response.ok || !isStripeRecord(account) || account.object !== "account" || account.id !== accountId) {
+        throw new Error("Could not verify current account");
+      }
+      if (account.livemode !== undefined && account.livemode !== event.livemode) {
+        throw new Error("Account mode mismatch");
+      }
+      if (account.deleted === true) {
+        patch.stripe_charges_enabled = false;
+        patch.stripe_details_submitted = false;
+      } else {
+        if (typeof account.charges_enabled !== "boolean" || typeof account.details_submitted !== "boolean") {
+          throw new Error("Invalid account status");
+        }
+        if (!account.charges_enabled) patch.stripe_charges_enabled = false;
+        if (!account.details_submitted) patch.stripe_details_submitted = false;
+      }
+    }
+    // Only revoke here: concurrent/delayed webhooks can never re-enable payments.
+    // The owner's authenticated Refresh Stripe status action restores readiness.
+    // Preserve the account ID and all ledger records for refunds/reconciliation.
+    if (Object.keys(patch).length > 0) {
+      const { error: updateError } = await supabaseAdmin.from("businesses")
+        .update(patch).eq("id", business.id).eq("stripe_account_id", accountId);
+      if (updateError) throw updateError;
+    }
+    return Response.json({ received: true });
+  } catch {
+    console.error("Stripe connected account status reconciliation failed");
+    return new Response("Could not reconcile connected account", { status: 500 });
+  }
+}
 
 async function isValidStripeSignature(
   payload: string,

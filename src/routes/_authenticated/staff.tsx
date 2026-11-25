@@ -1,4 +1,5 @@
 import { StudioUpgradePanel } from "@/components/studio-upgrade-panel";
+import { isNativeCompanion } from "@/lib/native-companion";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
@@ -178,7 +179,7 @@ function StaffPage() {
     if (v && (biz?.plan ?? "free") === "free") {
       const activeOthers = (staff ?? []).filter((x) => x.id !== s.id && x.active).length;
       if (activeOthers >= 1) {
-        toast.error("The free plan is limited to one staff member. Upgrade to Studio to enable more.");
+        toast.error(isNativeCompanion() ? "The current plan is limited to one staff member." : "The free plan is limited to one staff member. Upgrade to Studio to enable more.");
         return;
       }
     }
@@ -214,9 +215,9 @@ function StaffPage() {
                 <Crown className="h-4 w-4 text-[color:var(--gold-deep)]" />
                 The free plan is limited to one staff member.
               </div>
-              <Link to="/settings" search={{ tab: "plan" } as any} className="text-sm font-medium text-primary hover:underline">
+              {!isNativeCompanion() && <Link to="/settings" search={{ tab: "plan" } as any} className="text-sm font-medium text-primary hover:underline">
                 Upgrade to Studio
-              </Link>
+              </Link>}
             </div>
           )}
 

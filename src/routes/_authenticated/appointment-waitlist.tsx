@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Waitlist table types are generated after migration. */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -48,6 +48,7 @@ function BookingRequestsPage() {
   const { data: business } = useMyBusiness();
   const isOwner = !!business && business.owner_id === user?.id;
   const [workingId, setWorkingId] = useState<string | null>(null);
+  const mutationPending = useRef(false);
   const [tab, setTab] = useState<"active" | "closed">("active");
   const [search, setSearch] = useState("");
   const qc = useQueryClient();
@@ -58,14 +59,23 @@ function BookingRequestsPage() {
       const loadRequests = async (columns: string) => {
         try {
           const data = await collectRequestPages<RequestRow>((from, to) =>
-            (supabase as any).from("appointment_waitlist_requests").select(columns)
-              .eq("business_id", business!.id).order("created_at", { ascending: false })
-              .order("id", { ascending: false }).range(from, to));
+            (supabase as any)
+              .from("appointment_waitlist_requests")
+              .select(columns)
+              .eq("business_id", business!.id)
+              .order("created_at", { ascending: false })
+              .order("id", { ascending: false })
+              .range(from, to),
+          );
           return { data, error: null };
-        } catch (error) { return { data: null, error: error as { message?: string } }; }
+        } catch (error) {
+          return { data: null, error: error as { message?: string } };
+        }
       };
       const [initialRequests, services, staff] = await Promise.all([
-        loadRequests("id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,resolution,customer_name,customer_email,customer_phone,created_at"),
+        loadRequests(
+          "id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,resolution,customer_name,customer_email,customer_phone,created_at",
+        ),
         supabase
           .from("services")
           .select("id,name")
@@ -79,7 +89,9 @@ function BookingRequestsPage() {
       let resolutionEnabled = true;
       if (requests.error && /resolution/i.test(requests.error.message ?? "")) {
         resolutionEnabled = false;
-        requests = await loadRequests("id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,customer_name,customer_email,customer_phone,created_at");
+        requests = await loadRequests(
+          "id,business_id,service_id,preferred_staff_id,preferred_after,preferred_before,preferred_time,status,customer_name,customer_email,customer_phone,created_at",
+        );
       }
       for (const result of [requests, services, staff])
         if (result.error) throw result.error;
@@ -113,54 +125,73 @@ function BookingRequestsPage() {
     status: "active" | "closed",
     resolution: RequestRow["resolution"] = null,
   ) {
-    if (!business) return;
+    if (!business || !isOwner || mutationPending.current) return;
+    mutationPending.current = true;
     setWorkingId(id);
     const update = query.data?.resolutionEnabled
       ? { status, resolution }
       : { status };
-    const { error } = await (supabase as any)
-      .from("appointment_waitlist_requests")
-      .update(update)
-      .eq("id", id)
-      .eq("business_id", business.id);
-    setWorkingId(null);
-    if (error) {
-      toast.error("Could not update this request. Please try again.");
-      return;
+    try {
+      const { data, error } = await (supabase as any)
+        .from("appointment_waitlist_requests")
+        .update(update)
+        .eq("id", id)
+        .eq("business_id", business.id)
+        .select("id")
+        .maybeSingle();
+      if (error || !data) throw new Error("Request unavailable.");
+      toast.success(
+        status === "closed" && !query.data?.resolutionEnabled
+          ? "Moved to Handled."
+          : status === "closed"
+            ? `Marked ${resolution ? resolutionLabels[resolution].toLowerCase() : "handled"}. This did not create a booking or send a message.`
+            : "Moved back to Needs a reply.",
+      );
+      await qc.invalidateQueries({
+        queryKey: ["appointment-waitlist", business.id],
+      });
+    } catch {
+      toast.error(
+        "Could not update this request. Refresh the list and try again.",
+      );
+    } finally {
+      mutationPending.current = false;
+      setWorkingId(null);
     }
-    toast.success(
-      status === "closed" && !query.data?.resolutionEnabled
-        ? "Moved to Handled. Apply the booking-request update to record specific outcomes."
-        : status === "closed"
-          ? `Marked ${resolution ? resolutionLabels[resolution].toLowerCase() : "handled"}. This did not create a booking or send a message.`
-          : "Moved back to Needs a reply.",
-    );
-    await qc.invalidateQueries({
-      queryKey: ["appointment-waitlist", business.id],
-    });
   }
 
   async function deleteRequest(id: string) {
     if (
       !business ||
+      !isOwner ||
+      mutationPending.current ||
       !window.confirm(
         "Permanently delete this request? Only do this after checking the requester's identity.",
       )
     )
       return;
+    mutationPending.current = true;
     setWorkingId(id);
-    const { error } = await (supabase as any)
-      .from("appointment_waitlist_requests")
-      .delete()
-      .eq("id", id)
-      .eq("business_id", business.id);
-    setWorkingId(null);
-    if (error) toast.error("Could not delete this request. Please try again.");
-    else {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("appointment_waitlist_requests")
+        .delete()
+        .eq("id", id)
+        .eq("business_id", business.id)
+        .select("id")
+        .maybeSingle();
+      if (error || !data) throw new Error("Request unavailable.");
       toast.success("Request deleted.");
       await qc.invalidateQueries({
         queryKey: ["appointment-waitlist", business.id],
       });
+    } catch {
+      toast.error(
+        "Could not delete this request. Refresh the list and try again.",
+      );
+    } finally {
+      mutationPending.current = false;
+      setWorkingId(null);
     }
   }
 
@@ -443,7 +474,7 @@ function BookingRequestsPage() {
                           <select
                             id={`request-outcome-${request.id}`}
                             value=""
-                            disabled={workingId === request.id}
+                            disabled={workingId !== null}
                             onChange={(event) => {
                               const resolution = event.target.value as Exclude<
                                 RequestRow["resolution"],
@@ -469,7 +500,7 @@ function BookingRequestsPage() {
                       ) : request.status === "active" ? (
                         <button
                           type="button"
-                          disabled={workingId === request.id}
+                          disabled={workingId !== null}
                           onClick={() => updateStatus(request.id, "closed")}
                           className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#6c5631] hover:underline disabled:opacity-50"
                         >
@@ -479,7 +510,7 @@ function BookingRequestsPage() {
                       ) : (
                         <button
                           type="button"
-                          disabled={workingId === request.id}
+                          disabled={workingId !== null}
                           onClick={() => updateStatus(request.id, "active")}
                           className="inline-flex min-h-9 items-center gap-1.5 text-sm font-medium hover:underline disabled:opacity-50"
                         >
@@ -489,7 +520,7 @@ function BookingRequestsPage() {
                       )}
                       <button
                         type="button"
-                        disabled={workingId === request.id}
+                        disabled={workingId !== null}
                         onClick={() => deleteRequest(request.id)}
                         className="inline-flex min-h-9 items-center gap-1.5 text-sm text-muted-foreground hover:text-destructive disabled:opacity-50"
                       >
