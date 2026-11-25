@@ -13,7 +13,7 @@ const mocks = {
   "@/components/mfa-challenge-gate": `import React from 'react';export const MfaChallengeGate=()=>React.createElement('p',null,'Complete two-factor verification');`,
   "@/lib/account-deletion.functions": `
     export const getMyAccountDeletionRequest=async()=>{window.fixtureCalls.push({action:'status',user:window.fixtureAuth.user.id});if(window.fixtureLoadError)throw new Error('Fixture connection unavailable');return window.fixtureRecords[window.fixtureAuth.user.id]??null};
-    export const requestMyAccountDeletion=async({data})=>{const user=window.fixtureAuth.user.id;window.fixtureCalls.push({action:'request',user,data});if(window.fixtureDeferred)await new Promise(resolve=>window.fixtureResolve=resolve);const row=window.fixtureRecords[user]??{id:'99000000-0000-4000-8000-000000000021',status:'requested',requested_at:new Date().toISOString(),completion_target_at:new Date(Date.now()+30*86400000).toISOString()};window.fixtureRecords[user]=row;if(window.fixtureLostResponse){window.fixtureLostResponse=false;throw new Error('Your request could not be confirmed. Please try again.')}return row};
+    export const requestMyAccountDeletion=async({data})=>{const user=window.fixtureAuth.user.id;window.fixtureCalls.push({action:'request',user,data});if(window.fixtureDeferred)await new Promise(resolve=>window.fixtureResolve=resolve);const row=window.fixtureRecords[user]??{id:'99000000-0000-4000-8000-000000000021',status:'requested',requested_at:new Date().toISOString(),completion_target_at:new Date(Date.now()+27*86400000).toISOString()};window.fixtureRecords[user]=row;if(window.fixtureLostResponse){window.fixtureLostResponse=false;throw new Error('Your request could not be confirmed. Please try again.')}return row};
     export const cancelMyAccountDeletionRequest=async({data})=>{window.fixtureCalls.push({action:'cancel',data});const row=window.fixtureRecords[window.fixtureAuth.user.id];return window.fixtureRecords[window.fixtureAuth.user.id]={...row,status:'cancelled'}};`,
 };
 for (const [key, value] of Object.entries(mocks))
@@ -113,11 +113,21 @@ try {
       1,
       "No owner/workspace requirement",
     );
+    same(
+      await page.getByText("aim to complete them within 27 days", { exact: false }).count(),
+      1,
+      "Completion aim is qualified and uses the earlier operational target",
+    );
     await page.getByLabel("Type DELETE to confirm your request").fill("DELETE");
     await page
       .getByRole("button", { name: "Request account deletion", exact: true })
       .click();
     await page.getByText("Deletion requested", { exact: true }).waitFor();
+    same(
+      await page.getByText("not an automatic deletion date or the legal response deadline", { exact: false }).count(),
+      1,
+      "Receipt distinguishes the operational target from deletion and the legal deadline",
+    );
     same(
       await page.getByText("Deletion completed", { exact: true }).count(),
       0,

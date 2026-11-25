@@ -1,6 +1,9 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const ts = createRequire(import.meta.url)("typescript");
 
 // Nitro generates this file during every production build. Cloudflare's Git
 // deploy command then uses it directly, so keep the Worker identity stable and
@@ -8,6 +11,34 @@ import { fileURLToPath } from "node:url";
 const configUrl = new URL("../.output/server/wrangler.json", import.meta.url);
 const configPath = fileURLToPath(configUrl);
 const config = JSON.parse(await readFile(configPath, "utf8"));
+const wrapperName = "bookzenvo-cache-entry.mjs";
+if (config.main && !["index.mjs", "./index.mjs", wrapperName].includes(config.main)) {
+  throw new Error("Unexpected Nitro entry path; review the outer cache wrapper before deploying.");
+}
+// Never patch Nitro's generated source. Its manifest fast path bypasses
+// src/server.ts, so wrap the actual default entry and preserve named exports
+// and all non-fetch handlers. Re-running preparation cannot wrap itself.
+const cachePolicy = ts.transpileModule(
+  await readFile(new URL("../src/lib/response-cache.server.ts", import.meta.url), "utf8"),
+  { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } },
+).outputText;
+await writeFile(new URL("../.output/server/_bookzenvo-response-cache.mjs", import.meta.url), cachePolicy);
+await writeFile(new URL(`../.output/server/${wrapperName}`, import.meta.url), `import nitroEntry from "./index.mjs";
+import { applyResponseCachePolicy } from "./_bookzenvo-response-cache.mjs";
+export * from "./index.mjs";
+export default {
+  ...nitroEntry,
+  async fetch(request, env, context) {
+    try {
+      return applyResponseCachePolicy(request, await nitroEntry.fetch.call(nitroEntry, request, env, context));
+    } catch {
+      console.error("Bookzenvo outer Worker request failed");
+      return new Response(request.method === "HEAD" ? null : "Service unavailable", { status: 500, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+    }
+  },
+};
+`);
+config.main = wrapperName;
 
 function parseDotEnv(source) {
   return Object.fromEntries(
